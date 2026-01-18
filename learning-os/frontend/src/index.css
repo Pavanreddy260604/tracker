@@ -1,0 +1,653 @@
+@import "tailwindcss";
+@variant dark (&:where(.dark, .dark *));
+
+/* ============================================
+   LEARNING OS - Enterprise Console Theme
+   Faithful Google Cloud Platform Aesthetic
+   ============================================ */
+
+:root {
+  /* GCP Dark Theme Colors (Approximate) */
+  --console-bg: #1b1b1b;
+  /* Dark grey background */
+  --console-surface: #2d2d2d;
+  /* Card / Panel background */
+  --console-header: #1f1f1f;
+  /* Top bar background */
+  --console-sidebar: #1b1b1b;
+  /* Sidebar background */
+
+  /* Text */
+  --text-primary: #ffffff;
+  --text-secondary: #9e9e9e;
+  --text-disabled: #616161;
+
+  /* Accents */
+  --accent-primary: #3367d6;
+  /* GCP Blue (Light mode value, adjusted for dark) */
+  --accent-primary-dark: #8ab4f8;
+  /* Accessible blue for dark mode */
+  --accent-focus: rgba(138, 180, 248, 0.24);
+
+  /* Status */
+  --status-ok: #34a853;
+  /* Green */
+  --status-warning: #fbc02d;
+  /* Yellow 700 */
+  --status-error: #ea4335;
+  /* Red */
+
+  /* Borders */
+  --border-subtle: #3c4043;
+  --border-focus: #8ab4f8;
+
+  /* Shadows (Material Elevation) */
+  --elevation-1: 0 1px 2px 0 rgba(0, 0, 0, 0.3), 0 1px 3px 1px rgba(0, 0, 0, 0.15);
+  --elevation-2: 0 1px 2px 0 rgba(0, 0, 0, 0.3), 0 2px 6px 2px rgba(0, 0, 0, 0.15);
+  --elevation-3: 0 4px 8px 3px rgba(0, 0, 0, 0.15), 0 1px 3px 0 rgba(0, 0, 0, 0.3);
+}
+
+/* ================================================
+   LIGHT THEME - Premium Google Cloud Light Style
+   ================================================ */
+
+.light {
+  --console-bg: #f8f9fa;
+  --console-surface: #ffffff;
+  --console-header: #ffffff;
+  --console-sidebar: #f1f3f4;
+  --text-primary: #202124;
+  --text-secondary: #5f6368;
+  --text-disabled: #9aa0a6;
+  --accent-primary: #1a73e8;
+  --border-subtle: #e1e3e6;
+}
+
+/* Base - html and body */
+html.light,
+html.light body,
+html.light #root {
+  background-color: #f5f7fa !important;
+  color: #202124 !important;
+}
+
+/* ============ MAIN LAYOUT ============ */
+
+/* Header / App bar */
+html.light header,
+html.light .gcp-app-bar {
+  background-color: #ffffff !important;
+  border-bottom-color: #e1e3e6 !important;
+  color: #202124 !important;
+}
+
+/* Sidebar / Drawer */
+html.light aside,
+html.light nav {
+  background-color: #ffffff !important;
+  border-color: #e1e3e6 !important;
+}
+
+/* Main content area */
+html.light main {
+  background-color: #f5f7fa !important;
+}
+
+/* ============ TYPOGRAPHY ============ */
+
+html.light .text-white {
+  color: #202124 !important;
+}
+
+html.light .text-gray-200,
+html.light .text-gray-300 {
+  color: #3c4043 !important;
+}
+
+html.light .text-gray-400 {
+  color: #5f6368 !important;
+}
+
+html.light .text-gray-500 {
+  color: #80868b !important;
+}
+
+html.light h1,
+html.light h2,
+html.light h3,
+html.light h4 {
+  color: #202124 !important;
+}
+
+html.light p {
+  color: #3c4043 !important;
+}
+
+/* ============ BACKGROUNDS ============ */
+
+/* Dark colors to white */
+html.light [style*="background"],
+html.light [class*="bg-[#1"],
+html.light [class*="bg-[#2"],
+html.light [class*="bg-[#0"] {
+  background-color: #ffffff !important;
+}
+
+html.light .bg-black\/50,
+html.light .bg-black\/60 {
+  background-color: rgba(0, 0, 0, 0.3) !important;
+}
+
+/* ============ CARDS & PANELS ============ */
+
+html.light .rounded-xl,
+html.light .rounded-lg,
+html.light .rounded-2xl {
+  background-color: #ffffff !important;
+  border-color: #e1e3e6 !important;
+}
+
+html.light .gcp-card {
+  background-color: #ffffff !important;
+  border-color: #e1e3e6 !important;
+  box-shadow: 0 1px 3px rgba(60, 64, 67, 0.1) !important;
+}
+
+/* ============ BORDERS ============ */
+
+html.light [class*="border-white"],
+html.light [class*="border-[#"] {
+  border-color: #e1e3e6 !important;
+}
+
+html.light .border-b,
+html.light .border-t,
+html.light .border-r,
+html.light .border-l {
+  border-color: #e1e3e6 !important;
+}
+
+/* ============ INPUTS ============ */
+
+html.light input,
+html.light textarea,
+html.light select {
+  background-color: #ffffff !important;
+  border-color: #dadce0 !important;
+  color: #202124 !important;
+}
+
+html.light input::placeholder,
+html.light textarea::placeholder {
+  color: #9aa0a6 !important;
+}
+
+html.light input:focus,
+html.light textarea:focus {
+  border-color: #1a73e8 !important;
+  box-shadow: 0 0 0 2px rgba(26, 115, 232, 0.2) !important;
+}
+
+/* ============ BUTTONS ============ */
+
+/* Primary buttons - stay dark in light theme */
+html.light .bg-gray-800 {
+  background-color: #1f2937 !important;
+  color: #ffffff !important;
+  border-color: #374151 !important;
+}
+
+html.light .bg-gray-800:hover {
+  background-color: #111827 !important;
+}
+
+html.light .bg-gray-900 {
+  background-color: #111827 !important;
+  color: #ffffff !important;
+}
+
+html.light .bg-gray-700 {
+  background-color: #374151 !important;
+  color: #ffffff !important;
+}
+
+html.light .bg-gray-700:hover {
+  background-color: #1f2937 !important;
+}
+
+/* Ghost/secondary buttons - adapt to light theme */
+html.light button:not([class*="bg-gray-7"]):not([class*="bg-gray-8"]):not([class*="bg-gray-9"]) {
+  color: #374151 !important;
+}
+
+/* ============ MODALS ============ */
+
+html.light .backdrop-blur-sm {
+  background-color: rgba(255, 255, 255, 0.8) !important;
+}
+
+/* ============ NAVIGATION ============ */
+
+html.light a {
+  color: #202124 !important;
+}
+
+html.light a:hover {
+  background-color: rgba(0, 0, 0, 0.04) !important;
+}
+
+html.light .gcp-nav-item {
+  color: #5f6368 !important;
+}
+
+html.light .gcp-nav-item:hover {
+  background-color: #f1f3f4 !important;
+  color: #202124 !important;
+}
+
+html.light .gcp-nav-item.active {
+  background-color: #e8f0fe !important;
+  color: #1a73e8 !important;
+}
+
+/* ============ TABLES ============ */
+
+html.light table,
+html.light .gcp-table {
+  background-color: #ffffff !important;
+}
+
+html.light th {
+  background-color: #f8f9fa !important;
+  color: #5f6368 !important;
+  border-color: #e1e3e6 !important;
+}
+
+html.light td {
+  color: #202124 !important;
+  border-color: #e1e3e6 !important;
+}
+
+html.light tr:hover td {
+  background-color: #f8f9fa !important;
+}
+
+/* ============ BADGES & PILLS ============ */
+
+html.light [class*="bg-green-500/10"],
+html.light [class*="bg-blue-500/10"],
+html.light [class*="bg-amber-500/10"],
+html.light [class*="bg-red-500/10"] {
+  background-color: rgba(0, 0, 0, 0.05) !important;
+}
+
+/* ============ PROGRESS BARS ============ */
+
+html.light .bg-gray-700 {
+  background-color: #e1e3e6 !important;
+}
+
+/* ============ SCROLLBARS ============ */
+
+html.light ::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+html.light ::-webkit-scrollbar-track {
+  background: #f1f3f4;
+}
+
+html.light ::-webkit-scrollbar-thumb {
+  background: #dadce0;
+  border-radius: 4px;
+}
+
+html.light ::-webkit-scrollbar-thumb:hover {
+  background: #bdc1c6;
+}
+
+/* ============ HOVER STATES ============ */
+
+/* Prevent white backgrounds on hover in light theme */
+html.light [class*="hover:bg-white"]:hover {
+  background-color: rgba(0, 0, 0, 0.05) !important;
+}
+
+html.light [class*="hover:bg-gray"]:not(.bg-gray-900):hover {
+  background-color: rgba(0, 0, 0, 0.05) !important;
+}
+
+/* Prevent white text on hover in light theme */
+html.light [class*="hover:text-white"]:hover {
+  color: #202124 !important;
+}
+
+/* Prevent bg-white/10 and similar on hover */
+html.light [class*="bg-white/"]:hover {
+  background-color: rgba(0, 0, 0, 0.03) !important;
+}
+
+html.light [class*="bg-white/"] {
+  background-color: rgba(0, 0, 0, 0.03) !important;
+}
+
+/* ============ SEARCH BAR ============ */
+
+html.light .gcp-search-box,
+html.light [class*="bg-[#303030]"] {
+  background-color: #f1f3f4 !important;
+  border: 1px solid #dadce0 !important;
+  color: #202124 !important;
+}
+
+html.light .gcp-search-box input,
+html.light [class*="bg-[#303030]"] input {
+  background-color: transparent !important;
+  color: #202124 !important;
+}
+
+html.light .gcp-search-box input::placeholder,
+html.light [class*="bg-[#303030]"] input::placeholder {
+  color: #80868b !important;
+}
+
+/* ============ HEATMAP ============ */
+
+/* Heatmap empty cells */
+html.light [class*="bg-[#161b22]"] {
+  background-color: #ebedf0 !important;
+}
+
+/* Heatmap grid background */
+html.light .overflow-x-auto {
+  background-color: transparent !important;
+}
+
+/* Make heatmap container blend with card background */
+html.light .inline-block.min-w-fit {
+  background-color: #ffffff !important;
+}
+
+/* Base Reset & Typography */
+html,
+body {
+  background-color: var(--console-bg);
+  /* Only apply the radial gradient in dark mode implicitly (since light mode usually overrides or this color is dark-specific) 
+     Actually, better to use the .dark class if possible, but here we can stick to variable or just be explicit */
+  background-image: none;
+  color: var(--text-primary);
+  font-family: 'Inter', 'Roboto', system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  font-size: 13px;
+  /* Console standard font size is often smaller/denser */
+  line-height: 20px;
+}
+
+html.dark body {
+  background-image: radial-gradient(circle at 50% 0%, rgba(51, 103, 214, 0.03) 0%, transparent 50%);
+}
+
+#root {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+}
+
+/* Utilities */
+
+/* Material Card */
+.gcp-card {
+  background-color: var(--console-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: 4px;
+  /* Slight rounded corners */
+  box-shadow: var(--elevation-1);
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+}
+
+.gcp-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.gcp-card-title {
+  font-size: 16px;
+  font-weight: 500;
+  color: var(--text-primary);
+  letter-spacing: 0.1px;
+}
+
+/* Material Button */
+.gcp-btn {
+  height: 32px;
+  padding: 0 12px;
+  border-radius: 4px;
+  font-family: 'Roboto', sans-serif;
+  font-weight: 500;
+  font-size: 13px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: background-color 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  cursor: pointer;
+  text-transform: none;
+  /* GCP Modern doesn't force uppercase */
+}
+
+.gcp-btn-primary {
+  background-color: var(--accent-primary-dark);
+  color: #202124;
+  /* Dark text on light blue */
+  border: none;
+}
+
+.gcp-btn-primary:hover {
+  background-color: #82aef5;
+}
+
+.gcp-btn-text {
+  background-color: transparent;
+  color: var(--accent-primary-dark);
+  border: none;
+}
+
+.gcp-btn-text:hover {
+  background-color: rgba(138, 180, 248, 0.08);
+}
+
+.gcp-btn-outlined {
+  background-color: transparent;
+  color: var(--text-primary);
+  border: 1px solid var(--border-subtle);
+}
+
+.gcp-btn-outlined:hover {
+  background-color: rgba(255, 255, 255, 0.04);
+}
+
+/* Material Input */
+.gcp-input-group {
+  position: relative;
+  margin-bottom: 16px;
+}
+
+.gcp-input {
+  width: 100%;
+  height: 36px;
+  /* Standard dense height */
+  background-color: transparent;
+  border: 1px solid var(--border-subtle);
+  border-radius: 4px;
+  padding: 8px 12px;
+  color: var(--text-primary);
+  font-size: 13px;
+  transition: border-color 0.2s;
+}
+
+.gcp-input:focus {
+  outline: none;
+  border-color: var(--accent-primary-dark);
+  border-width: 2px;
+  padding: 7px 11px;
+  /* Adjust padding to prevent layout shift from bold border */
+}
+
+.gcp-label {
+  display: block;
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin-bottom: 4px;
+}
+
+/* Top Bar Specifics */
+.gcp-app-bar {
+  height: 48px;
+  /* Standard GCP specific height */
+  background-color: var(--console-header);
+  border-bottom: 1px solid #000;
+  display: flex;
+  align-items: center;
+  padding: 0 16px;
+  gap: 16px;
+  flex-shrink: 0;
+  z-index: 1200;
+  /* Above drawer */
+}
+
+.gcp-search-box {
+  background-color: rgba(255, 255, 255, 0.12);
+  border-radius: 4px;
+  height: 32px;
+  width: 480px;
+  /* Max width */
+  display: flex;
+  align-items: center;
+  padding: 0 8px;
+  color: var(--text-secondary);
+  font-size: 14px;
+}
+
+/* Sidebar Drawer */
+.gcp-drawer {
+  width: 256px;
+  background-color: var(--console-sidebar);
+  border-right: 1px solid var(--border-subtle);
+  display: flex;
+  flex-direction: column;
+  padding: 8px 0;
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.gcp-nav-item {
+  height: 34px;
+  padding: 0 24px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: var(--text-secondary);
+  font-size: 13px;
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.gcp-nav-item:hover {
+  background-color: rgba(255, 255, 255, 0.04);
+  color: var(--text-primary);
+}
+
+.gcp-nav-item.active {
+  background-color: rgba(138, 180, 248, 0.12);
+  color: var(--accent-primary-dark);
+}
+
+/* Table */
+.gcp-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.gcp-table th {
+  text-align: left;
+  padding: 10px 16px;
+  color: var(--text-secondary);
+  font-weight: 500;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.gcp-table td {
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--border-subtle);
+  color: var(--text-primary);
+}
+
+.gcp-table tr:hover td {
+  background-color: rgba(255, 255, 255, 0.04);
+}
+
+/* Mobile Tweaks */
+@media (max-width: 600px) {
+  .gcp-search-box {
+    display: none;
+  }
+
+  /* Hide on mobile to save space */
+  .gcp-drawer {
+    position: absolute;
+    top: 48px;
+    bottom: 0;
+    left: 0;
+    z-index: 1000;
+    transform: translateX(-100%);
+  }
+
+  .gcp-drawer.open {
+    transform: translateX(0);
+  }
+}
+
+
+
+/* ============ SUPER POLISH (PREMIUM UI) ============ */
+@layer utilities {
+  .glass-panel {
+    @apply bg-white dark:bg-[#1c2128]/90 backdrop-blur-md border border-gray-200 dark:border-white/20 shadow-xl;
+  }
+
+  .glass-card {
+    @apply bg-white dark:bg-gradient-to-b dark:from-white/10 dark:to-white/5 border border-gray-200 dark:border-white/20 backdrop-blur-sm shadow-sm hover:border-gray-300 dark:hover:border-white/30 transition-all duration-300;
+  }
+
+  .text-glow {
+    text-shadow: 0 0 20px rgba(138, 180, 248, 0.5);
+  }
+
+  .animate-spin-slow {
+    animation: spin 3s linear infinite;
+  }
+}
+
+/* Premium Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
