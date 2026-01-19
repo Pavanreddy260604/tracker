@@ -12,6 +12,8 @@ export interface IUser extends Document {
         backend: number;
         project: number;
     };
+    geminiApiKey?: string;
+    encryptionIV?: string;
     createdAt: Date;
     updatedAt: Date;
     comparePassword(candidatePassword: string): Promise<boolean>;
@@ -48,14 +50,22 @@ const userSchema = new Schema<IUser>(
             backend: { type: Number, default: 4, min: 0, max: 24 },
             project: { type: Number, default: 1, min: 0, max: 24 },
         },
+        geminiApiKey: {
+            type: String,
+            default: null,
+        },
+        encryptionIV: {
+            type: String,
+            default: null,
+        },
     },
     {
         timestamps: true,
     }
 );
 
-// Index for fast email lookups
-userSchema.index({ email: 1 });
+// Index for fast email lookups (handled by unique: true)
+// userSchema.index({ email: 1 });
 
 // Hash password before saving (only if password is new/modified)
 userSchema.pre('save', async function (next) {
@@ -84,7 +94,7 @@ userSchema.methods.comparePassword = async function (
 // Remove sensitive fields when converting to JSON
 userSchema.set('toJSON', {
     transform: (_doc, ret) => {
-        const { passwordHash, __v, ...rest } = ret;
+        const { passwordHash, geminiApiKey, encryptionIV, __v, ...rest } = ret;
         return rest;
     },
 });

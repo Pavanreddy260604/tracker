@@ -9,7 +9,8 @@ import {
     Trash2,
     Shield,
     Save,
-    Check
+    Check,
+    Sparkles
 } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
@@ -277,6 +278,40 @@ export function Settings() {
                         <div className="w-14 h-8 rounded-full bg-gray-700 relative">
                             <span className="absolute left-1 top-1 w-6 h-6 rounded-full bg-white shadow" />
                         </div>
+                    </div>
+                </div>
+            </motion.div>
+
+            {/* AI Settings */}
+            <motion.div
+                className="p-6 rounded-xl bg-white dark:bg-[#1c2128] border border-gray-200 dark:border-white/10"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.25 }}
+            >
+                <div className="flex items-center gap-3 mb-6">
+                    <Sparkles size={20} className="text-indigo-500" />
+                    <h2 className="text-lg font-semibold text-gray-900 dark:text-white">AI Copilot</h2>
+                </div>
+
+                <div className="space-y-4">
+                    <div>
+                        <Input
+                            label="Gemini API Key"
+                            type="password"
+                            placeholder="Paste your key here..."
+                            // Note: We don't show the key for security, user just pastes new one
+                            onChange={(e) => {
+                                if (e.target.value) {
+                                    api.updateAIKey(e.target.value)
+                                        .then(() => alert('AI Key updated and encrypted!'))
+                                        .catch(err => alert('Failed to save key: ' + err.message));
+                                }
+                            }}
+                        />
+                        <p className="text-[10px] text-gray-500 mt-2 flex items-center gap-1">
+                            <Shield size={10} /> Stored with AES-256-CBC encryption on the backend.
+                        </p>
                     </div>
                 </div>
             </motion.div>

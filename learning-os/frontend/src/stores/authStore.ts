@@ -1,7 +1,34 @@
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
+import { persist, createJSONStorage } from 'zustand/middleware';
+import type { StateStorage } from 'zustand/middleware';
 import { api } from '../services/api';
 import type { User } from '../services/api';
+
+// Safe storage wrapper that handles restricted contexts
+const safeStorage: StateStorage = {
+    getItem: (name: string): string | null => {
+        try {
+            return localStorage.getItem(name);
+        } catch {
+            console.warn('localStorage not available, using in-memory storage');
+            return null;
+        }
+    },
+    setItem: (name: string, value: string): void => {
+        try {
+            localStorage.setItem(name, value);
+        } catch {
+            console.warn('localStorage not available, data will not persist');
+        }
+    },
+    removeItem: (name: string): void => {
+        try {
+            localStorage.removeItem(name);
+        } catch {
+            console.warn('localStorage not available');
+        }
+    },
+};
 
 interface AuthState {
     user: User | null;
@@ -105,11 +132,11 @@ export const useAuthStore = create<AuthState>()(
         }),
         {
             name: 'auth-storage',
+            storage: createJSONStorage(() => safeStorage),
             partialize: (state) => ({
                 token: state.token,
                 user: state.user,
             }),
-            // CRITICAL: Sync token to API service when store is rehydrated from localStorage
             onRehydrateStorage: () => {
                 return (state) => {
                     if (state?.token) {

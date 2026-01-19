@@ -1,0 +1,11 @@
+
+> frontend@0.0.0 build
+> tsc -b && vite build
+
+src/components/ai/AIChatWidget.tsx(3,19): error TS6133: 'Paperclip' is declared but its value is never read.
+src/context/AIContext.tsx(1,54): error TS6133: 'useEffect' is declared but its value is never read.
+src/pages/Roadmap/Roadmap.tsx(1,8): error TS6133: 'React' is declared but its value is never read.
+src/pages/Roadmap/Roadmap.tsx(10,5): error TS1484: 'Connection' is a type and must be imported using a type-only import when 'verbatimModuleSyntax' is enabled.
+src/pages/Roadmap/Roadmap.tsx(11,5): error TS1484: 'Edge' is a type and must be imported using a type-only import when 'verbatimModuleSyntax' is enabled.
+src/pages/Roadmap/Roadmap.tsx(12,5): error TS1484: 'Node' is a type and must be imported using a type-only import when 'verbatimModuleSyntax' is enabled.
+src/pages/Roadmap/Roadmap.tsx(18,22): error TS6133: 'Trash2' is declared but its value is never read.

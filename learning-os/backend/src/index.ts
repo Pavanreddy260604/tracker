@@ -16,6 +16,9 @@ import dashboardRoutes from './routes/dashboard.js';
 import dsaProblemRoutes from './routes/dsaProblems.js';
 import backendTopicRoutes from './routes/backendTopics.js';
 import projectStudyRoutes from './routes/projectStudies.js';
+import aiRoutes from './routes/ai.js';
+import roadmapRoutes from './routes/roadmap.js';
+import interviewRoutes from './routes/interview.js';
 
 
 const app = express();
@@ -47,6 +50,9 @@ app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/dsa-problems', dsaProblemRoutes);
 app.use('/api/backend-topics', backendTopicRoutes);
 app.use('/api/project-studies', projectStudyRoutes);
+app.use('/api/ai', aiRoutes);
+app.use('/api/roadmap', roadmapRoutes);
+app.use('/api/interview', interviewRoutes);
 
 // Error handling
 app.use(notFound);

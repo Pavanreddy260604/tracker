@@ -8,6 +8,7 @@ import { DailyLog } from '../models/DailyLog.js';
 import { DSAProblem } from '../models/DSAProblem.js';
 import { BackendTopic } from '../models/BackendTopic.js';
 import { ProjectStudy } from '../models/ProjectStudy.js';
+import { encrypt } from '../utils/encryption.js';
 
 const router = Router();
 
@@ -207,6 +208,37 @@ router.put('/profile', authenticate, async (req: Request, res: Response) => {
     } catch (error) {
         console.error('Update profile error:', error);
         res.status(500).json({ success: false, error: 'Failed to update profile' });
+    }
+});
+
+/**
+ * PUT /api/auth/ai-key
+ * Securely update Gemini API key
+ */
+router.put('/ai-key', authenticate, async (req: Request, res: Response) => {
+    try {
+        const { apiKey } = req.body;
+        if (!apiKey) {
+            return res.status(400).json({ success: false, error: 'API Key is required' });
+        }
+
+        const { iv, encryptedData } = encrypt(apiKey);
+
+        const user = await User.findByIdAndUpdate(
+            req.userId,
+            {
+                $set: {
+                    geminiApiKey: encryptedData,
+                    encryptionIV: iv
+                }
+            },
+            { new: true }
+        );
+
+        res.json({ success: true, message: 'AI Key updated securely' });
+    } catch (error) {
+        console.error('Update AI key error:', error);
+        res.status(500).json({ success: false, error: 'Failed to update AI key' });
     }
 });
 

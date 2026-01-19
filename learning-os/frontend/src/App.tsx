@@ -10,10 +10,17 @@ import { BackendTopicDetail } from './pages/BackendTopicDetail';
 import { Projects } from './pages/Projects';
 import { Analytics } from './pages/Analytics';
 import { Settings } from './pages/Settings';
+import { Roadmap } from './pages/Roadmap/Roadmap';
+import { InterviewHistory } from './pages/Interview/InterviewHistory';
+import { InterviewSetup } from './pages/Interview/InterviewSetup';
+import { InterviewRoom } from './pages/Interview/InterviewRoom';
 import { useAuthStore } from './stores/authStore';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { Layout } from './components/layout/Layout';
 import { ToastContainer } from './components/ui/Toast';
+// AI Features Disabled - uncomment when billing is fixed
+// import { AIProvider } from './context/AIContext';
+// import { AIChatWidget } from './components/ai/AIChatWidget';
 
 // Loading Screen
 function LoadingScreen() {
@@ -82,7 +89,10 @@ function PublicRoute({ children }: { children: React.ReactNode }) {
 function App() {
   return (
     <ErrorBoundary>
+      {/* AI Features temporarily disabled - uncomment when billing is fixed */}
+      {/* <AIProvider> */}
       <ToastContainer />
+      {/* <AIChatWidget /> */}
       <BrowserRouter>
         <Routes>
           {/* Public routes */}
@@ -129,6 +139,14 @@ function App() {
             }
           />
           <Route
+            path="/roadmap"
+            element={
+              <ProtectedRoute>
+                <Roadmap />
+              </ProtectedRoute>
+            }
+          />
+          <Route
             path="/projects"
             element={
               <ProtectedRoute>
@@ -169,11 +187,38 @@ function App() {
             }
           />
 
+          {/* Interview Simulator Routes */}
+          <Route
+            path="/interview"
+            element={
+              <ProtectedRoute>
+                <InterviewHistory />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/interview/setup"
+            element={
+              <ProtectedRoute>
+                <InterviewSetup />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/interview/:id"
+            element={
+              <ProtectedRoute>
+                <InterviewRoom />
+              </ProtectedRoute>
+            }
+          />
+
           {/* Fallback */}
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </BrowserRouter>
-    </ErrorBoundary>
+      {/* </AIProvider> */}
+    </ErrorBoundary >
   );
 }
 

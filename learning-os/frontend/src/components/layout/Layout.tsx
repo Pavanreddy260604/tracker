@@ -10,7 +10,9 @@ import {
     FolderGit2,
     BarChart2,
     Settings,
-    Keyboard
+    Keyboard,
+    Map,
+    Bot
 } from 'lucide-react';
 import { useAuthStore } from '../../stores/authStore';
 import { ShortcutsModal } from '../ui/ShortcutsModal';
@@ -24,7 +26,9 @@ const navItems = [
     { icon: LayoutDashboard, label: 'Dashboard', href: '/' },
     { icon: Code2, label: 'DSA Tracking', href: '/dsa' },
     { icon: Server, label: 'Backend Topics', href: '/backend' },
+    { icon: Map, label: 'Roadmap', href: '/roadmap' },
     { icon: FolderGit2, label: 'Projects', href: '/projects' },
+    { icon: Bot, label: 'Interview Simulator', href: '/interview' },
     { icon: BarChart2, label: 'Analytics', href: '/analytics' },
 ];
 

@@ -217,6 +217,32 @@ class ApiService {
         return response.user;
     }
 
+    async updateAIKey(apiKey: string) {
+        return this.request<{ message: string }>('/auth/ai-key', {
+            method: 'PUT',
+            body: JSON.stringify({ apiKey }),
+        });
+    }
+
+    // Roadmap
+    async getRoadmap() {
+        return this.request<{ nodes: any[]; edges: any[] }>('/roadmap');
+    }
+
+    async syncRoadmap(nodes: any[], edges: any[]) {
+        return this.request<{ message: string }>('/roadmap/sync', {
+            method: 'POST',
+            body: JSON.stringify({ nodes, edges }),
+        });
+    }
+
+    async updateNodeStatus(nodeId: string, status: string, label: string) {
+        return this.request<{ data: any }>(`/roadmap/node/${nodeId}`, {
+            method: 'PATCH',
+            body: JSON.stringify({ status, label }),
+        });
+    }
+
     async exportData() {
         return this.request<{ data: any }>('/auth/export');
     }
@@ -226,9 +252,69 @@ class ApiService {
             method: 'DELETE',
         });
     }
+
+    // Interview Simulator
+    // Interview Simulator
+    async startInterview(config: { duration: number; questionCount: number; difficulty: string; language: string; topics?: string[] }) {
+        return this.request<InterviewSession>('/interview/start', {
+            method: 'POST',
+            body: JSON.stringify(config),
+        });
+    }
+
+    async submitInterviewCode(sessionId: string, questionIndex: number, code: string) {
+        return this.request<{ status: 'pass' | 'fail'; feedback: string; score: number }>('/interview/submit', {
+            method: 'POST',
+            body: JSON.stringify({ sessionId, questionIndex, code }),
+        });
+    }
+
+    async runInterviewCode(sessionId: string, questionIndex: number, code: string) {
+        return this.request<{ output: string; status: 'error' | 'success' }>('/interview/run', {
+            method: 'POST',
+            body: JSON.stringify({ sessionId, questionIndex, code }),
+        });
+    }
+
+    async endInterview(sessionId: string) {
+        return this.request<InterviewSession>('/interview/end', {
+            method: 'POST',
+            body: JSON.stringify({ sessionId }),
+        });
+    }
+
+    async getInterviewHistory() {
+        return this.request<InterviewSession[]>('/interview/history');
+    }
+
+    async getInterviewSession(sessionId: string) {
+        return this.request<InterviewSession>(`/interview/${sessionId}`);
+    }
 }
 
 // Types
+export interface InterviewSession {
+    _id: string;
+    config: {
+        duration: number;
+        questionCount: number;
+        difficulty: 'easy' | 'medium' | 'hard';
+        language?: string;
+    };
+    questions: {
+        problemName: string;
+        description: string;
+        status: 'pending' | 'solved' | 'failed';
+        userCode?: string;
+        feedback?: string;
+        score?: number;
+    }[];
+    status: 'in-progress' | 'completed' | 'aborted';
+    totalScore: number;
+    startedAt: string;
+    endedAt?: string;
+}
+
 export interface User {
     _id: string;
     name: string;

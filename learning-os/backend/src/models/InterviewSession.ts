@@ -1,0 +1,67 @@
+import mongoose, { Document, Schema } from 'mongoose';
+
+export interface IInterviewSession extends Document {
+    userId: mongoose.Types.ObjectId;
+    config: {
+        duration: number; // in minutes
+        questionCount: number;
+        difficulty: 'easy' | 'medium' | 'hard';
+        language?: string;
+    };
+    questions: {
+        problemName: string;
+        description: string;
+        status: 'pending' | 'solved' | 'failed';
+        userCode?: string;
+        feedback?: string;
+        score?: number;
+    }[];
+    status: 'in-progress' | 'completed' | 'aborted';
+    totalScore: number;
+    overallFeedback: string;
+    startedAt: Date;
+    endedAt?: Date;
+}
+
+const interviewSessionSchema = new Schema<IInterviewSession>(
+    {
+        userId: {
+            type: Schema.Types.ObjectId,
+            ref: 'User',
+            required: true,
+            index: true,
+        },
+        config: {
+            duration: { type: Number, required: true },
+            questionCount: { type: Number, required: true },
+            difficulty: { type: String, enum: ['easy', 'medium', 'hard'], required: true },
+            language: { type: String, default: 'javascript' },
+        },
+        questions: [
+            {
+                problemName: { type: String, required: true },
+                description: { type: String }, // AI generated description
+                status: {
+                    type: String,
+                    enum: ['pending', 'solved', 'failed'],
+                    default: 'pending',
+                },
+                userCode: { type: String },
+                feedback: { type: String },
+                score: { type: Number },
+            },
+        ],
+        status: {
+            type: String,
+            enum: ['in-progress', 'completed', 'aborted'],
+            default: 'in-progress',
+        },
+        totalScore: { type: Number, default: 0 },
+        overallFeedback: { type: String },
+        startedAt: { type: Date, default: Date.now },
+        endedAt: { type: Date },
+    },
+    { timestamps: true }
+);
+
+export const InterviewSession = mongoose.model<IInterviewSession>('InterviewSession', interviewSessionSchema);
