@@ -44,7 +44,7 @@ export class ExecutionService {
                     { content: code }
                 ],
                 stdin: stdin
-            });
+            }, { timeout: 10000 }); // INFRA: 10s Timeout limit to prevent hanging processes
             return response.data;
         } catch (error: any) {
             console.error('Piston Execution Error:', error.message);

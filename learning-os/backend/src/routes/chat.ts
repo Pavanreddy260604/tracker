@@ -41,6 +41,14 @@ router.post('/', authenticate, async (req: any, res) => {
     try {
         const { message, model } = req.body; // Optional initial message
 
+        // INFRA: Cleanup empty sessions for this user before creating a new one
+        // This prevents accumulating "New Chat" orphans that were never used.
+        await ChatSession.deleteMany({
+            userId: req.userId,
+            messages: { $size: 0 },
+            createdAt: { $lt: new Date(Date.now() - 5 * 60 * 1000) } // Older than 5 mins
+        });
+
         const session = new ChatSession({
             userId: req.userId,
             title: message ? message.substring(0, 30) + (message.length > 30 ? '...' : '') : 'New Chat',
@@ -66,20 +74,28 @@ router.post('/:id/message', authenticate, async (req: any, res) => {
         const { message } = req.body;
         const sessionId = req.params.id;
 
-        const session = await ChatSession.findOne({ _id: sessionId, userId: req.userId });
+        // 1. ATOMIC: Save User Message
+        // Use findOneAndUpdate to ensure atomic append and return updated doc if needed
+        const session = await ChatSession.findOneAndUpdate(
+            { _id: sessionId, userId: req.userId },
+            {
+                $push: { messages: { role: 'user', content: message, timestamp: new Date() } },
+                $set: { updatedAt: new Date() }
+            },
+            { new: true }
+        );
+
         if (!session) return res.status(404).json({ success: false, error: 'Session not found' });
 
-        // 1. Save User Message
-        session.messages.push({ role: 'user', content: message, timestamp: new Date() });
-        // Update title if it's the first message and still default
-        if (session.messages.length === 1 && session.title === 'New Conversation') {
-            session.title = message.substring(0, 30) + (message.length > 30 ? '...' : '');
+        // Update title if it's the first message
+        if (session.messages.length === 1 && session.title === 'New Chat') {
+            await ChatSession.updateOne(
+                { _id: sessionId },
+                { $set: { title: message.substring(0, 30) + (message.length > 30 ? '...' : '') } }
+            );
         }
-        await session.save();
 
-        // 2. Prepare Context (Last N messages to avoid context overflow, or full history if supported)
-        // Ollama usually handles context window truncation, but sending 1000 messages is slow. 
-        // Let's send last 20 messages for context + system prompt.
+        // 2. Prepare Context (Last 20 messages)
         const contextMessages = session.messages.slice(-20).map(m => ({
             role: m.role,
             content: m.content
@@ -95,35 +111,63 @@ router.post('/:id/message', authenticate, async (req: any, res) => {
             const stream = ollama.generateChatStream(contextMessages, systemPrompt);
 
             let fullReply = "";
+            let isClientConnected = true;
+
+            // Handle client disconnect (Stop processing if user leaves/cancels)
+            req.on('close', () => {
+                isClientConnected = false;
+                console.log(`[Chat] Client disconnected ${sessionId}`);
+            });
 
             for await (const chunk of stream) {
-                res.write(chunk);
+                if (!isClientConnected) break;
+                if (!res.writableEnded) res.write(chunk);
                 fullReply += chunk;
             }
 
-            // 4. Save Assistant Response AFTER streaming is done
-            if (fullReply) {
-                // We need to re-fetch to avoid version error? OR just push to found session since we hold the lock logic (simple app)
-                // Ideally, atomic update, but simple push is okay here for single user flow.
+            // 4. ATOMIC: Save Assistant Response
+            // Only save if we actually got a reply (even partial)
+            if (fullReply && fullReply.length > 0) {
                 await ChatSession.updateOne(
                     { _id: sessionId },
                     {
                         $push: { messages: { role: 'assistant', content: fullReply, timestamp: new Date() } },
-                        $set: { updatedAt: new Date() } // Bump updated at
+                        $set: { updatedAt: new Date() }
                     }
                 );
             }
 
-            res.end();
+            if (!res.writableEnded) res.end();
 
         } catch (streamError) {
             console.error("Streaming failed:", streamError);
-            res.end();
+            if (!res.writableEnded) res.end();
         }
 
     } catch (error) {
         console.error('Chat Error:', error);
         if (!res.headersSent) res.status(500).json({ success: false, error: 'Message failed' });
+    }
+});
+
+// PATCH /api/chat/:id
+// Update session (e.g. title)
+router.patch('/:id', authenticate, async (req: any, res) => {
+    try {
+        const { title } = req.body;
+        const updateData: any = {};
+        if (title) updateData.title = title;
+
+        const session = await ChatSession.findOneAndUpdate(
+            { _id: req.params.id, userId: req.userId },
+            { $set: updateData },
+            { new: true }
+        );
+
+        if (!session) return res.status(404).json({ success: false, error: 'Session not found' });
+        res.json({ success: true, data: session });
+    } catch (error) {
+        res.status(500).json({ success: false, error: 'Failed to update session' });
     }
 });
 

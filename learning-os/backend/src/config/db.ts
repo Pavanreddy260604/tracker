@@ -7,7 +7,9 @@ const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/learni
 
 export const connectDB = async (): Promise<void> => {
     try {
-        const conn = await mongoose.connect(MONGODB_URI);
+        const conn = await mongoose.connect(MONGODB_URI, {
+            maxPoolSize: 50, // INFRA: Limit concurrent connections per instance (Scale horizontally for more)
+        });
         console.log(`✅ MongoDB connected: ${conn.connection.host}`);
     } catch (error) {
         console.error('❌ MongoDB connection error:', error);

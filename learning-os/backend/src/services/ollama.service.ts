@@ -11,11 +11,16 @@ export class OllamaService {
 
         // Defined fallback chain
         this.fallbackModels = [
-
+            // Cloud Models (Prioritized)
+            'glm-4.6:cloud',
             'deepseek-v3.1:671b-cloud',
             'qwen3-coder:480b-cloud',
             'gpt-oss:120b-cloud',
-            'gemma3:4b'
+
+            // Local Fallbacks (If cloud fails)
+            'gemma3:4b',
+            'tinyllama:latest',
+            'hf.co/bartowski/Llama-3.2-1B-Instruct-GGUF:latest'
         ];
     }
 
@@ -86,41 +91,57 @@ export class OllamaService {
     }
 
     async *generateChatStream(messages: { role: string; content: string }[], systemPrompt?: string): AsyncGenerator<string, void, unknown> {
-        try {
-            const payload: any = {
-                model: this.primaryModel, // TODO: Implement fallback logic for chat too
-                messages: messages,
-                stream: true
-            };
+        const modelsToTry = Array.from(new Set([this.primaryModel, ...this.fallbackModels]));
 
-            if (systemPrompt) {
-                // Prepend system prompt if provided
-                payload.messages = [{ role: 'system', content: systemPrompt }, ...messages];
-            }
+        for (const model of modelsToTry) {
+            console.log(`[OllamaStream] Attempting with model: ${model}`);
+            try {
+                const payload: any = {
+                    model: model,
+                    messages: messages,
+                    stream: true
+                };
 
-            const response = await axios.post(`${this.baseUrl}/api/chat`, payload, {
-                responseType: 'stream'
-            });
+                if (systemPrompt) {
+                    // Prepend system prompt if provided
+                    payload.messages = [{ role: 'system', content: systemPrompt }, ...messages];
+                }
 
-            for await (const chunk of response.data) {
-                const lines = chunk.toString().split('\n').filter((line: string) => line.trim() !== '');
-                for (const line of lines) {
-                    try {
-                        const json = JSON.parse(line);
-                        // Ollama /api/chat returns 'message.content'
-                        if (json.message && json.message.content) {
-                            yield json.message.content;
+                const response = await axios.post(`${this.baseUrl}/api/chat`, payload, {
+                    responseType: 'stream',
+                    timeout: 60000 // 60s timeout for model loading
+                });
+
+                console.log(`[OllamaStream] Success with model: ${model}`); // DEBUG: Confirm which model worked
+
+                // If successful, yield the stream
+                for await (const chunk of response.data) {
+                    const lines = chunk.toString().split('\n').filter((line: string) => line.trim() !== '');
+                    for (const line of lines) {
+                        try {
+                            const json = JSON.parse(line);
+                            // Ollama /api/chat returns 'message.content'
+                            if (json.message && json.message.content) {
+                                yield json.message.content;
+                            }
+                            if (json.done) return;
+                        } catch (e) {
+                            // Ignore incomplete JSON chunks
                         }
-                        if (json.done) return;
-                    } catch (e) {
-                        // Ignore incomplete JSON chunks
                     }
                 }
-            }
+                // If stream finishes normally, return.
+                return;
 
-        } catch (error: any) {
-            console.error('Ollama Chat Stream Error:', error.message);
-            yield "I'm having trouble connecting to my brain (Ollama). Please try again.";
+            } catch (error: any) {
+                console.warn(`[OllamaStream] Model ${model} failed: ${error.message}`);
+                // If this was the last model, yield error
+                if (model === modelsToTry[modelsToTry.length - 1]) {
+                    console.error('All AI models failed to stream.');
+                    yield "I'm having trouble connecting to my brain (Ollama). Please check if local LLM is running.";
+                }
+                // Otherwise continue to next model
+            }
         }
     }
 

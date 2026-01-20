@@ -152,5 +152,6 @@ dsaProblemSchema.index({ userId: 1, date: -1 });
 dsaProblemSchema.index({ userId: 1, topic: 1 });
 dsaProblemSchema.index({ userId: 1, difficulty: 1 });
 dsaProblemSchema.index({ userId: 1, status: 1 }); // Added for status filtering
+dsaProblemSchema.index({ userId: 1, platform: 1 }); // INFRA: Added for platform-specific queries
 
 export const DSAProblem = mongoose.model<IDSAProblem>('DSAProblem', dsaProblemSchema);
