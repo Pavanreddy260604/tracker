@@ -5,16 +5,19 @@ export interface IInterviewSession extends Document {
     config: {
         duration: number; // in minutes
         questionCount: number;
-        difficulty: 'easy' | 'medium' | 'hard';
+        difficulty: 'easy' | 'medium' | 'hard' | 'mixed';
         language?: string;
     };
     questions: {
+        questionId?: mongoose.Types.ObjectId;
         problemName: string;
+        difficulty?: 'easy' | 'medium' | 'hard';
         description: string;
         status: 'pending' | 'solved' | 'failed';
         userCode?: string;
         feedback?: string;
         score?: number;
+        testCases?: { input: string; expectedOutput: string }[];
     }[];
     status: 'in-progress' | 'completed' | 'aborted';
     totalScore: number;
@@ -34,12 +37,14 @@ const interviewSessionSchema = new Schema<IInterviewSession>(
         config: {
             duration: { type: Number, required: true },
             questionCount: { type: Number, required: true },
-            difficulty: { type: String, enum: ['easy', 'medium', 'hard'], required: true },
+            difficulty: { type: String, enum: ['easy', 'medium', 'hard', 'mixed'], required: true },
             language: { type: String, default: 'javascript' },
         },
         questions: [
             {
+                questionId: { type: Schema.Types.ObjectId, ref: 'Question' },
                 problemName: { type: String, required: true },
+                difficulty: { type: String, enum: ['easy', 'medium', 'hard'] },
                 description: { type: String }, // AI generated description
                 status: {
                     type: String,
@@ -49,6 +54,7 @@ const interviewSessionSchema = new Schema<IInterviewSession>(
                 userCode: { type: String },
                 feedback: { type: String },
                 score: { type: Number },
+                testCases: [{ input: String, expectedOutput: String }],
             },
         ],
         status: {
@@ -58,7 +64,7 @@ const interviewSessionSchema = new Schema<IInterviewSession>(
         },
         totalScore: { type: Number, default: 0 },
         overallFeedback: { type: String },
-        startedAt: { type: Date, default: Date.now },
+        startedAt: { type: Date, default: Date.now, expires: 86400 }, // Auto-delete after 24 hours
         endedAt: { type: Date },
     },
     { timestamps: true }

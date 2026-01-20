@@ -1,0 +1,69 @@
+[
+    {
+        "slug": "two-sum",
+        "title": "Two Sum",
+        "description": "Given an array of integers `nums` and an integer `target`, return indices of the two numbers such that they add up to `target`.\n\nYou may assume that each input would have **exactly one solution**, and you may not use the *same* element twice.\n\nYou can return the answer in any order.\n\n### Example 1:\n```\nInput: nums = [2,7,11,15], target = 9\nOutput: [0,1]\nExplanation: Because nums[0] + nums[1] == 9, we return [0, 1].\n```",
+        "difficulty": "easy",
+        "topics": [
+            "Array",
+            "HashTable"
+        ],
+        "templates": {
+            "javascript": "/**\n * @param {number[]} nums\n * @param {number} target\n * @return {number[]}\n */\nvar twoSum = function(nums, target) {\n    \n};",
+            "python": "def twoSum(nums: List[int], target: int) -> List[int]:\n    "
+        },
+        "testCases": [
+            {
+                "input": "[2,7,11,15]\n9",
+                "expectedOutput": "[0, 1]",
+                "isHidden": false
+            },
+            {
+                "input": "[3,2,4]\n6",
+                "expectedOutput": "[1, 2]",
+                "isHidden": false
+            },
+            {
+                "input": "[3,3]\n6",
+                "expectedOutput": "[0, 1]",
+                "isHidden": true
+            }
+        ]
+    },
+    {
+        "slug": "valid-parentheses",
+        "title": "Valid Parentheses",
+        "description": "Given a string `s` containing just the characters '(', ')', '{', '}', '[' and ']', determine if the input string is valid.\n\nAn input string is valid if:\n1. Open brackets must be closed by the same type of brackets.\n2. Open brackets must be closed in the correct order.\n3. Every close bracket has a corresponding open bracket of the same type.\n\n### Example 1:\n```\nInput: s = \"()\"\nOutput: true\n```",
+        "difficulty": "easy",
+        "topics": [
+            "String",
+            "Stack"
+        ],
+        "templates": {
+            "javascript": "/**\n * @param {string} s\n * @return {boolean}\n */\nvar isValid = function(s) {\n    \n};",
+            "python": "def isValid(s: str) -> bool:\n    "
+        },
+        "testCases": [
+            {
+                "input": "\"()\"",
+                "expectedOutput": "true",
+                "isHidden": false
+            },
+            {
+                "input": "\"()[]{}\"",
+                "expectedOutput": "true",
+                "isHidden": false
+            },
+            {
+                "input": "\"(]\"",
+                "expectedOutput": "false",
+                "isHidden": false
+            },
+            {
+                "input": "\"{[]}\"",
+                "expectedOutput": "true",
+                "isHidden": true
+            }
+        ]
+    }
+]
