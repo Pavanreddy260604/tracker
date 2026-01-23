@@ -38,13 +38,13 @@ app.get('/api/script/templates', (req, res) => {
                 { id: 'tv-episode', name: 'TV Episode', description: '22-60 minutes' }
             ],
             styles: [
-                { id: 'nolan', name: 'Christopher Nolan', description: 'Non-linear, complex, thought-provoking' },
-                { id: 'tarantino', name: 'Quentin Tarantino', description: 'Snappy dialogue, chapter-based, pop culture' },
-                { id: 'spielberg', name: 'Steven Spielberg', description: 'Emotional, family themes, adventure' },
-                { id: 'wes-anderson', name: 'Wes Anderson', description: 'Symmetrical, quirky, deadpan humor' },
-                { id: 'scorsese', name: 'Martin Scorsese', description: 'Gritty, character-driven, voiceover' },
-                { id: 'fincher', name: 'David Fincher', description: 'Dark, meticulous, psychological' },
-                { id: 'villeneuve', name: 'Denis Villeneuve', description: 'Visual, slow-burn, minimalist dialogue' }
+                { id: 'classic', name: 'Classic Screenplay', description: 'Traditional three-act structure, balanced dialogue and action' },
+                { id: 'dialogue-driven', name: 'Dialogue-Driven', description: 'Character conversations carry the story, minimal action' },
+                { id: 'visual-minimal', name: 'Visual/Minimal Dialogue', description: 'Show don\'t tell, imagery over words' },
+                { id: 'non-linear', name: 'Non-Linear Narrative', description: 'Flashbacks, time jumps, puzzle structure' },
+                { id: 'documentary', name: 'Documentary Style', description: 'Interviews, voiceover, found footage feel' },
+                { id: 'action-heavy', name: 'Action-Heavy', description: 'Fast pacing, detailed action sequences' },
+                { id: 'experimental', name: 'Experimental', description: 'Breaking conventions, unique formatting' }
             ]
         }
     });
