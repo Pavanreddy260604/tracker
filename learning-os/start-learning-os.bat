@@ -7,13 +7,21 @@ echo       Starting Learning OS (Silent Mode)
 echo ========================================================
 echo.
 
-:: 1. Database connection check (optional, visual only)
-echo [1/3] Verifying MongoDB Service...
+:: 1. Database and AI connection check (optional, visual only)
+echo [1/3] Verifying Services...
 sc query MongoDB >nul 2>&1
 if %errorlevel% equ 0 (
     echo    - MongoDB Connection: ACTIVE
 ) else (
     echo    - Check: MongoDB service might be stopped.
+)
+
+:: Check if Ollama is reachable
+curl http://localhost:11434/api/tags >nul 2>&1
+if %errorlevel% equ 0 (
+    echo    - AI Service (Ollama): ACTIVE
+) else (
+    echo    - WARNING: Ollama appears to be stopped. AI features may not work.
 )
 
 :: 2. Launch Servers Silently

@@ -3,28 +3,18 @@ import dotenv from 'dotenv';
 
 dotenv.config();
 
-// Security: Require MongoDB URI in production - no localhost fallback
-if (process.env.NODE_ENV === 'production' && !process.env.MONGODB_URI) {
-    throw new Error(
-        '❌ CRITICAL: MONGODB_URI environment variable is required in production.'
-    );
-}
-
 const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/learning-os';
 
 export const connectDB = async (): Promise<void> => {
     try {
-        const conn = await mongoose.connect(MONGODB_URI, {
-            maxPoolSize: 50, // INFRA: Limit concurrent connections per instance (Scale horizontally for more)
-        });
-        console.log(`✅ MongoDB connected: ${conn.connection.host}`);
+        const conn = await mongoose.connect(MONGODB_URI);
+        console.log(`✅ Script Writer DB connected: ${conn.connection.host}`);
     } catch (error) {
         console.error('❌ MongoDB connection error:', error);
         process.exit(1);
     }
 };
 
-// Handle connection events
 mongoose.connection.on('disconnected', () => {
     console.log('⚠️ MongoDB disconnected');
 });

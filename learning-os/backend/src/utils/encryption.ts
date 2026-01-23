@@ -1,7 +1,28 @@
 import crypto from 'crypto';
 
 const ALGORITHM = 'aes-256-cbc';
-const ENCRYPTION_KEY = process.env.ENCRYPTION_KEY || 'default-32-char-encryption-key!'; // Must be 32 chars
+
+// Security: Require encryption key from environment - no fallback allowed
+function getValidatedEncryptionKey(): string {
+    const key = process.env.ENCRYPTION_KEY;
+
+    if (!key) {
+        throw new Error(
+            '❌ CRITICAL: ENCRYPTION_KEY environment variable is required.\n' +
+            '   Generate one with: node -e "console.log(require(\'crypto\').randomBytes(16).toString(\'hex\'))"'
+        );
+    }
+
+    if (key.length !== 32) {
+        throw new Error(
+            `❌ CRITICAL: ENCRYPTION_KEY must be exactly 32 characters. Got ${key.length}.`
+        );
+    }
+
+    return key;
+}
+
+const ENCRYPTION_KEY = getValidatedEncryptionKey();
 
 export function encrypt(text: string) {
     const iv = crypto.randomBytes(16);

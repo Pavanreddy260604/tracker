@@ -4,6 +4,12 @@
 /* ============================================
    LEARNING OS - Enterprise Console Theme
    Faithful Google Cloud Platform Aesthetic
+   
+   NOTE: The !important overrides in the .light theme section
+   are intentional to ensure light mode properly overrides
+   Tailwind's dark-first approach. A future refactor could
+   move to a CSS-variable-only approach with Tailwind v4's
+   built-in light-dark() but this works for now.
    ============================================ */
 
 :root {
@@ -45,6 +51,28 @@
   --elevation-1: 0 1px 2px 0 rgba(0, 0, 0, 0.3), 0 1px 3px 1px rgba(0, 0, 0, 0.15);
   --elevation-2: 0 1px 2px 0 rgba(0, 0, 0, 0.3), 0 2px 6px 2px rgba(0, 0, 0, 0.15);
   --elevation-3: 0 4px 8px 3px rgba(0, 0, 0, 0.15), 0 1px 3px 0 rgba(0, 0, 0, 0.3);
+}
+
+/* Tailwind v4 Theme - Expose CSS variables as utilities */
+@theme {
+  --color-console-bg: var(--console-bg);
+  --color-console-surface: var(--console-surface);
+  --color-console-header: var(--console-header);
+  --color-console-sidebar: var(--console-sidebar);
+  
+  --color-text-primary: var(--text-primary);
+  --color-text-secondary: var(--text-secondary);
+  --color-text-disabled: var(--text-disabled);
+  
+  --color-accent-primary: var(--accent-primary);
+  --color-accent-dark: var(--accent-primary-dark);
+  
+  --color-status-ok: var(--status-ok);
+  --color-status-warning: var(--status-warning);
+  --color-status-error: var(--status-error);
+  
+  --color-border-subtle: var(--border-subtle);
+  --color-border-focus: var(--border-focus);
 }
 
 /* ================================================

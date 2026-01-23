@@ -12,9 +12,12 @@ import {
     Settings,
     Keyboard,
     Map,
-    Bot
+    Bot,
+    Brain,
+    MessageSquare
 } from 'lucide-react';
 import { useAuthStore } from '../../stores/authStore';
+import { useAI } from '../../contexts/AIContext';
 import { ShortcutsModal } from '../ui/ShortcutsModal';
 import { SHORTCUTS } from '../../hooks/useKeyboardShortcuts';
 
@@ -39,6 +42,7 @@ export function Layout({ children }: LayoutProps) {
     const [showShortcuts, setShowShortcuts] = useState(false);
 
     const { user, logout } = useAuthStore();
+    const { toggleOpen, isOpen } = useAI();
 
     const location = useLocation();
     const navigate = useNavigate();
@@ -113,6 +117,13 @@ export function Layout({ children }: LayoutProps) {
 
                 {/* Right Actions */}
                 <div className="flex items-center gap-2 text-gray-400">
+                    <button
+                        onClick={toggleOpen}
+                        className={`p-2 rounded-full transition-colors ${isOpen ? 'bg-violet-100 text-violet-600 dark:bg-violet-500/20 dark:text-violet-400' : 'hover:bg-gray-100 dark:hover:bg-white/10 text-gray-500 dark:text-gray-400'}`}
+                        title="Ask AI"
+                    >
+                        <Brain size={20} />
+                    </button>
                     <button
                         onClick={() => setShowShortcuts(true)}
                         className="p-2 hover:bg-gray-100 dark:hover:bg-white/10 rounded-full text-gray-500 dark:text-gray-400"
@@ -264,6 +275,14 @@ export function Layout({ children }: LayoutProps) {
                         <div className="px-4 py-2 text-xs font-medium text-gray-500 uppercase tracking-wider">
                             More Products
                         </div>
+
+                        <Link
+                            to="/chat"
+                            className="group flex items-center px-4 py-2 mx-2 rounded text-[13px] font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-[#3c4043]/50 hover:text-gray-900 transition-colors"
+                        >
+                            <MessageSquare size={18} className="mr-3 text-gray-400 group-hover:text-gray-600 dark:group-hover:text-gray-300" />
+                            AI Chat
+                        </Link>
 
                         <Link
                             to="/settings"

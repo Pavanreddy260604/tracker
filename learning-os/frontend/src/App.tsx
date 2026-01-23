@@ -14,13 +14,13 @@ import { Roadmap } from './pages/Roadmap/Roadmap';
 import { InterviewHistory } from './pages/Interview/InterviewHistory';
 import { InterviewSetup } from './pages/Interview/InterviewSetup';
 import { InterviewRoom } from './pages/Interview/InterviewRoom';
+import ChatPage from './pages/ChatPage';
 import { useAuthStore } from './stores/authStore';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { Layout } from './components/layout/Layout';
 import { ToastContainer } from './components/ui/Toast';
-// AI Features Disabled - uncomment when billing is fixed
-// import { AIProvider } from './context/AIContext';
-// import { AIChatWidget } from './components/ai/AIChatWidget';
+import { AIProvider } from './contexts/AIContext';
+import { GlobalAIWidget } from './components/GlobalAIWidget';
 
 // Loading Screen
 function LoadingScreen() {
@@ -40,8 +40,8 @@ function LoadingScreen() {
   );
 }
 
-// Protected Route wrapper - includes Layout
-function ProtectedRoute({ children }: { children: React.ReactNode }) {
+// Protected Route wrapper
+function ProtectedRoute({ children, useLayout = true }: { children: React.ReactNode; useLayout?: boolean }) {
   const { isAuthenticated, isLoading, checkAuth, token } = useAuthStore();
   const [isChecking, setIsChecking] = useState(true);
   const location = useLocation();
@@ -71,7 +71,10 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
-  // Wrap all protected routes with Layout (sidebar, header, nav)
+  if (!useLayout) {
+    return <>{children}</>;
+  }
+
   return <Layout>{children}</Layout>;
 }
 
@@ -89,136 +92,145 @@ function PublicRoute({ children }: { children: React.ReactNode }) {
 function App() {
   return (
     <ErrorBoundary>
-      {/* AI Features temporarily disabled - uncomment when billing is fixed */}
-      {/* <AIProvider> */}
-      <ToastContainer />
-      {/* <AIChatWidget /> */}
-      <BrowserRouter>
-        <Routes>
-          {/* Public routes */}
-          <Route
-            path="/login"
-            element={
-              <PublicRoute>
-                <Login />
-              </PublicRoute>
-            }
-          />
-          <Route
-            path="/register"
-            element={
-              <PublicRoute>
-                <Register />
-              </PublicRoute>
-            }
-          />
+      <AIProvider>
+        <ToastContainer />
+        <BrowserRouter>
+          <Routes>
+            {/* Public routes */}
+            <Route
+              path="/login"
+              element={
+                <PublicRoute>
+                  <Login />
+                </PublicRoute>
+              }
+            />
+            <Route
+              path="/register"
+              element={
+                <PublicRoute>
+                  <Register />
+                </PublicRoute>
+              }
+            />
 
-          {/* Protected routes */}
-          <Route
-            path="/"
-            element={
-              <ProtectedRoute>
-                <Dashboard />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/dsa"
-            element={
-              <ProtectedRoute>
-                <DSATracking />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/backend"
-            element={
-              <ProtectedRoute>
-                <BackendTopics />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/roadmap"
-            element={
-              <ProtectedRoute>
-                <Roadmap />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/projects"
-            element={
-              <ProtectedRoute>
-                <Projects />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/analytics"
-            element={
-              <ProtectedRoute>
-                <Analytics />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/settings"
-            element={
-              <ProtectedRoute>
-                <Settings />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/dsa/:id"
-            element={
-              <ProtectedRoute>
-                <DSAProblemDetail />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/backend/:id"
-            element={
-              <ProtectedRoute>
-                <BackendTopicDetail />
-              </ProtectedRoute>
-            }
-          />
+            {/* Protected routes */}
+            <Route
+              path="/"
+              element={
+                <ProtectedRoute>
+                  <Dashboard />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/dsa"
+              element={
+                <ProtectedRoute>
+                  <DSATracking />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/backend"
+              element={
+                <ProtectedRoute>
+                  <BackendTopics />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/roadmap"
+              element={
+                <ProtectedRoute>
+                  <Roadmap />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/projects"
+              element={
+                <ProtectedRoute>
+                  <Projects />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/analytics"
+              element={
+                <ProtectedRoute>
+                  <Analytics />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/settings"
+              element={
+                <ProtectedRoute>
+                  <Settings />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/dsa/:id"
+              element={
+                <ProtectedRoute>
+                  <DSAProblemDetail />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/backend/:id"
+              element={
+                <ProtectedRoute>
+                  <BackendTopicDetail />
+                </ProtectedRoute>
+              }
+            />
 
-          {/* Interview Simulator Routes */}
-          <Route
-            path="/interview"
-            element={
-              <ProtectedRoute>
-                <InterviewHistory />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/interview/setup"
-            element={
-              <ProtectedRoute>
-                <InterviewSetup />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/interview/:id"
-            element={
-              <ProtectedRoute>
-                <InterviewRoom />
-              </ProtectedRoute>
-            }
-          />
+            {/* Interview Simulator Routes */}
+            <Route
+              path="/interview"
+              element={
+                <ProtectedRoute>
+                  <InterviewHistory />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/interview/setup"
+              element={
+                <ProtectedRoute>
+                  <InterviewSetup />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/interview/:id"
+              element={
+                <ProtectedRoute>
+                  <InterviewRoom />
+                </ProtectedRoute>
+              }
+            />
 
-          {/* Fallback */}
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
-      </BrowserRouter>
-      {/* </AIProvider> */}
-    </ErrorBoundary >
+            {/* AI Chat Layout-less Route */}
+            <Route
+              path="/chat"
+              element={
+                <ProtectedRoute useLayout={false}>
+                  <ChatPage />
+                </ProtectedRoute>
+              }
+            />
+
+            {/* Fallback */}
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+          <GlobalAIWidget />
+        </BrowserRouter>
+      </AIProvider>
+    </ErrorBoundary>
   );
 }
 

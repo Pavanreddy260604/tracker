@@ -1,5 +1,23 @@
 import axios from 'axios';
 
+/**
+ * Custom error class for AI service failures.
+ * Allows frontend to distinguish between recoverable and non-recoverable errors.
+ */
+export class AIServiceError extends Error {
+    public readonly recoverable: boolean;
+    public readonly cause?: Error;
+    public readonly context?: string;
+
+    constructor(message: string, options: { recoverable?: boolean; cause?: Error; context?: string } = {}) {
+        super(message);
+        this.name = 'AIServiceError';
+        this.recoverable = options.recoverable ?? true;
+        this.cause = options.cause;
+        this.context = options.context;
+    }
+}
+
 export class OllamaService {
     private baseUrl: string;
     private primaryModel: string;
@@ -125,8 +143,9 @@ export class OllamaService {
                                 yield json.message.content;
                             }
                             if (json.done) return;
-                        } catch (e) {
-                            // Ignore incomplete JSON chunks
+                        } catch (parseError) {
+                            // Log incomplete JSON chunks for debugging but continue streaming
+                            console.debug('[OllamaStream] Skipping incomplete JSON chunk');
                         }
                     }
                 }
@@ -232,18 +251,19 @@ export class OllamaService {
                 }
             }
 
-            return Array(count).fill({
-                title: 'Two Sum (Fallback)',
-                description: 'Service returned invalid format. Please try again.',
-                signature: langConfig.fallbackSignature
-            });
+            // Instead of silent fallback, throw structured error so UI can show retry button
+            console.error('[Ollama] Question generation failed: invalid response format');
+            throw new AIServiceError(
+                'Failed to generate interview questions. AI returned invalid format.',
+                { recoverable: true, context: 'question_generation' }
+            );
 
         } catch (error) {
-            return Array(count).fill({
-                title: 'Two Sum (Error Fallback)',
-                description: 'Service temporarily unavailable.',
-                signature: langConfig.fallbackSignature
-            });
+            console.error('[Ollama] Question generation error:', error);
+            throw new AIServiceError(
+                'Failed to generate interview questions. AI service unavailable.',
+                { recoverable: true, cause: error as Error, context: 'question_generation' }
+            );
         }
     }
 
@@ -261,8 +281,12 @@ export class OllamaService {
             const response = await this.chat(prompt, [], true);
             const jsonStr = response.replace(/```json/g, '').replace(/```/g, '').trim();
             return JSON.parse(jsonStr);
-        } catch (e) {
-            return { feedback: 'Analysis failed.', complexityAnalysis: 'N/A' };
+        } catch (error) {
+            console.error('[Ollama] Code analysis error:', error);
+            throw new AIServiceError(
+                'Failed to analyze code. Please try again.',
+                { recoverable: true, cause: error as Error, context: 'code_analysis' }
+            );
         }
     }
 
@@ -276,8 +300,10 @@ export class OllamaService {
                 status: (statusMatch && statusMatch[1].toUpperCase() === 'SUCCESS') ? 'success' : 'error',
                 output: outputMatch ? outputMatch[1].trim() : response
             };
-        } catch (e) {
-            return { status: 'error', output: 'Execution failed.' };
+        } catch (error) {
+            console.error('[Ollama] Code execution error:', error);
+            // Keep this as a return (not throw) since execution errors are expected sometimes
+            return { status: 'error', output: `Execution failed: ${(error as Error).message || 'Unknown error'}` };
         }
     }
 
@@ -294,9 +320,11 @@ export class OllamaService {
 
             return response.data.message.content;
         } catch (error) {
-            // Last resort fallback
-            if (jsonMode) return this.getMockJsonResponse(message);
-            return "AI Service is currently overloaded (All models failed). Please try again later.";
+            console.error('[Ollama] Chat error after all model attempts:', error);
+            throw new AIServiceError(
+                'AI Service is currently unavailable. All models failed to respond.',
+                { recoverable: true, cause: error as Error, context: 'chat' }
+            );
         }
     }
 
