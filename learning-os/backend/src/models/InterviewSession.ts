@@ -64,7 +64,7 @@ const interviewSessionSchema = new Schema<IInterviewSession>(
         },
         totalScore: { type: Number, default: 0 },
         overallFeedback: { type: String },
-        startedAt: { type: Date, default: Date.now, expires: 86400 }, // Auto-delete after 24 hours
+        startedAt: { type: Date, default: Date.now },
         endedAt: { type: Date },
     },
     { timestamps: true }

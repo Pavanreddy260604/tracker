@@ -6,6 +6,7 @@ import { z } from 'zod';
 import { motion } from 'framer-motion';
 import { User, Mail, Lock, Sparkles, ArrowRight, Check, X } from 'lucide-react';
 import { useAuthStore } from '../stores/authStore';
+import { cn } from '../lib/utils';
 
 const registerSchema = z.object({
     name: z.string().min(2, 'Name must be at least 2 characters'),
@@ -57,17 +58,8 @@ export function Register() {
         }
     };
 
-    const inputStyle = {
-        background: '#1f2b4d',
-        border: '1px solid rgba(255,255,255,0.1)',
-        color: '#e8eaed'
-    };
-
     return (
-        <div
-            className="min-h-screen flex flex-col justify-center px-5 py-8 sm:px-6 lg:px-8"
-            style={{ background: '#1a1a2e' }}
-        >
+        <div className="auth-shell">
             <motion.div
                 className="w-full max-w-sm mx-auto"
                 initial={{ opacity: 0, y: 20 }}
@@ -77,7 +69,7 @@ export function Register() {
                 {/* Logo */}
                 <div className="text-center mb-8">
                     <motion.div
-                        className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gray-800"
+                        className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-[color:var(--console-surface-2)] border border-white/10 shadow-lg"
                         initial={{ scale: 0 }}
                         animate={{ scale: 1 }}
                         transition={{ type: 'spring', delay: 0.1 }}
@@ -85,28 +77,17 @@ export function Register() {
                         <Sparkles size={28} className="text-white" />
                     </motion.div>
                     <h1 className="text-2xl sm:text-3xl font-semibold text-white">Create account</h1>
-                    <p className="text-base mt-2" style={{ color: '#9aa0a6' }}>
+                    <p className="text-base mt-2 auth-muted">
                         Start tracking your learning journey
                     </p>
                 </div>
 
                 {/* Form Card */}
-                <div
-                    className="rounded-2xl p-5 sm:p-8"
-                    style={{
-                        background: '#16213e',
-                        border: '1px solid rgba(255,255,255,0.08)'
-                    }}
-                >
+                <div className="auth-card rounded-2xl p-5 sm:p-8">
                     <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
                         {error && (
                             <motion.div
-                                className="p-4 rounded-xl text-sm"
-                                style={{
-                                    background: 'rgba(234, 67, 53, 0.1)',
-                                    border: '1px solid rgba(234, 67, 53, 0.3)',
-                                    color: '#ff6b6b'
-                                }}
+                                className="p-4 rounded-xl text-sm border border-red-500/30 bg-red-500/10 text-red-400"
                                 initial={{ opacity: 0 }}
                                 animate={{ opacity: 1 }}
                             >
@@ -118,17 +99,19 @@ export function Register() {
                         <div className="space-y-2">
                             <label className="block text-sm font-medium text-white">Full Name</label>
                             <div className="relative">
-                                <User size={20} className="absolute left-4 top-1/2 -translate-y-1/2" style={{ color: '#6b7280' }} />
+                                <User size={20} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
                                 <input
                                     type="text"
-                                    className="w-full h-13 pl-12 pr-4 text-base rounded-xl transition-all"
-                                    style={inputStyle}
+                                    className={cn(
+                                        "auth-input w-full pl-12 pr-4 text-base",
+                                        errors.name && "auth-input-error"
+                                    )}
                                     placeholder="John Doe"
                                     {...register('name')}
                                 />
                             </div>
                             {errors.name && (
-                                <p className="text-sm" style={{ color: '#ff6b6b' }}>{errors.name.message}</p>
+                                <p className="text-sm text-red-400">{errors.name.message}</p>
                             )}
                         </div>
 
@@ -136,17 +119,19 @@ export function Register() {
                         <div className="space-y-2">
                             <label className="block text-sm font-medium text-white">Email</label>
                             <div className="relative">
-                                <Mail size={20} className="absolute left-4 top-1/2 -translate-y-1/2" style={{ color: '#6b7280' }} />
+                                <Mail size={20} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
                                 <input
                                     type="email"
-                                    className="w-full h-13 pl-12 pr-4 text-base rounded-xl transition-all"
-                                    style={inputStyle}
+                                    className={cn(
+                                        "auth-input w-full pl-12 pr-4 text-base",
+                                        errors.email && "auth-input-error"
+                                    )}
                                     placeholder="you@example.com"
                                     {...register('email')}
                                 />
                             </div>
                             {errors.email && (
-                                <p className="text-sm" style={{ color: '#ff6b6b' }}>{errors.email.message}</p>
+                                <p className="text-sm text-red-400">{errors.email.message}</p>
                             )}
                         </div>
 
@@ -154,18 +139,20 @@ export function Register() {
                         <div className="space-y-2">
                             <label className="block text-sm font-medium text-white">Password</label>
                             <div className="relative">
-                                <Lock size={20} className="absolute left-4 top-1/2 -translate-y-1/2" style={{ color: '#6b7280' }} />
+                                <Lock size={20} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
                                 <input
                                     type="password"
-                                    className="w-full h-13 pl-12 pr-4 text-base rounded-xl transition-all"
-                                    style={inputStyle}
+                                    className={cn(
+                                        "auth-input w-full pl-12 pr-4 text-base",
+                                        errors.password && "auth-input-error"
+                                    )}
                                     placeholder="Create a strong password"
                                     {...register('password')}
                                 />
                             </div>
 
                             {/* Password Requirements - Better Mobile Layout */}
-                            <div className="grid grid-cols-2 gap-3 mt-4 p-4 rounded-xl" style={{ background: 'rgba(255,255,255,0.03)' }}>
+                            <div className="auth-hint-panel grid grid-cols-2 gap-3 mt-4 p-4 rounded-xl">
                                 {passwordChecks.map((check) => (
                                     <div
                                         key={check.label}
@@ -198,25 +185,26 @@ export function Register() {
                         <div className="space-y-2">
                             <label className="block text-sm font-medium text-white">Confirm Password</label>
                             <div className="relative">
-                                <Lock size={20} className="absolute left-4 top-1/2 -translate-y-1/2" style={{ color: '#6b7280' }} />
+                                <Lock size={20} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
                                 <input
                                     type="password"
-                                    className="w-full h-13 pl-12 pr-4 text-base rounded-xl transition-all"
-                                    style={inputStyle}
+                                    className={cn(
+                                        "auth-input w-full pl-12 pr-4 text-base",
+                                        errors.confirmPassword && "auth-input-error"
+                                    )}
                                     placeholder="Confirm your password"
                                     {...register('confirmPassword')}
                                 />
                             </div>
                             {errors.confirmPassword && (
-                                <p className="text-sm" style={{ color: '#ff6b6b' }}>{errors.confirmPassword.message}</p>
+                                <p className="text-sm text-red-400">{errors.confirmPassword.message}</p>
                             )}
                         </div>
 
                         {/* Submit Button */}
                         <button
                             type="submit"
-                            className="w-full h-14 text-base font-medium rounded-xl flex items-center justify-center gap-2 transition-all active:scale-[0.98] mt-6"
-                            style={{ background: '#4285f4', color: 'white' }}
+                            className="auth-primary-button w-full h-14 text-base font-medium rounded-xl flex items-center justify-center gap-2 transition-all active:scale-[0.98] disabled:opacity-70 disabled:cursor-not-allowed mt-6"
                             disabled={isLoading}
                         >
                             {isLoading ? (
@@ -237,13 +225,13 @@ export function Register() {
                     </form>
 
                     {/* Divider */}
-                    <div className="mt-6 pt-6" style={{ borderTop: '1px solid rgba(255,255,255,0.08)' }}>
-                        <p className="text-center text-base" style={{ color: '#9aa0a6' }}>
+                    <div className="mt-6 pt-6 border-t border-[color:var(--border-subtle)]">
+                        <p className="text-center text-base auth-muted">
                             Already have an account?{' '}
                             <Link
                                 to="/login"
                                 className="font-semibold hover:underline"
-                                style={{ color: '#4285f4' }}
+                                style={{ color: 'var(--accent-primary)' }}
                             >
                                 Sign in
                             </Link>

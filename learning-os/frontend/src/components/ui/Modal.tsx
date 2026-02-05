@@ -64,7 +64,7 @@ export function Modal({ isOpen, onClose, title, children, size = 'md', className
                         aria-labelledby={title ? "modal-title" : undefined}
                         className={cn(
                             'relative w-full rounded-2xl flex flex-col max-h-[90vh]',
-                            'bg-[#1c2128] border border-white/10',
+                            'bg-[var(--sw-surface)] border border-[var(--sw-border)]',
                             'shadow-2xl',
                             sizeClasses[size as keyof typeof sizeClasses] || sizeClasses.md,
                             className

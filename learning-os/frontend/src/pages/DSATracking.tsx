@@ -158,11 +158,11 @@ export function DSATracking() {
                 ].map(stat => (
                     <motion.div
                         key={stat.label}
-                        className="p-4 rounded-xl bg-[#1c2128] border border-white/10"
+                        className="p-4 rounded-xl bg-[var(--sw-surface)] border border-[var(--sw-border)]"
                         initial={{ opacity: 0, y: 10 }}
                         animate={{ opacity: 1, y: 0 }}
                     >
-                        <p className="text-xs text-gray-500 uppercase tracking-wide">{stat.label}</p>
+                        <p className="text-xs text-[var(--sw-text-muted)] uppercase tracking-wide">{stat.label}</p>
                         <p className={`text-2xl font-bold ${stat.color}`}>{stat.value}</p>
                     </motion.div>
                 ))}
@@ -171,7 +171,7 @@ export function DSATracking() {
             {/* Filters */}
             <div className="flex flex-col sm:flex-row gap-4">
                 <div className="relative flex-1">
-                    <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500" />
+                    <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-[var(--sw-text-muted)]" />
                     <Input
                         placeholder="Search problems..."
                         value={search}
@@ -205,7 +205,7 @@ export function DSATracking() {
             {isLoading ? (
                 <div className="space-y-4">
                     {[1, 2, 3].map((i) => (
-                        <div key={i} className="p-4 rounded-xl bg-[#1c2128] border border-white/5 space-y-4">
+                        <div key={i} className="p-4 rounded-xl bg-[var(--sw-surface)] border border-[var(--sw-border)] space-y-4">
                             <div className="flex justify-between items-start">
                                 <div className="space-y-2 flex-1">
                                     <Skeleton className="h-6 w-1/3 bg-gray-700/50" />
@@ -230,8 +230,8 @@ export function DSATracking() {
                         <div className="bg-green-500/10 p-6 rounded-full mb-4">
                             <CheckCircle2 size={48} className="text-green-500" />
                         </div>
-                        <h3 className="text-xl font-bold text-white mb-2">All Caught Up!</h3>
-                        <p className="text-gray-400 max-w-sm">
+                        <h3 className="text-xl font-bold text-[var(--sw-text)] mb-2">All Caught Up!</h3>
+                        <p className="text-[var(--sw-text-muted)] max-w-sm">
                             You have no problem reviews due today. Feel free to solve new problems!
                         </p>
                         <Button

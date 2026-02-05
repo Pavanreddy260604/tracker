@@ -206,6 +206,31 @@ export interface InterviewSession {
     endedAt?: string;
 }
 
+export interface InterviewTestResult {
+    index?: number;
+    input?: string;
+    expected?: string;
+    actual?: string;
+    passed?: boolean;
+    error?: string;
+    isHidden?: boolean;
+    isCustom?: boolean;
+}
+
+export interface InterviewRunResult {
+    status: 'success' | 'fail' | 'error';
+    summary: { passed: number; total: number };
+    testResults: InterviewTestResult[];
+}
+
+export interface InterviewSubmitResult {
+    status: 'pass' | 'fail';
+    feedback: string;
+    score: number;
+    summary?: { passed: number; total: number };
+    testResults?: InterviewTestResult[];
+}
+
 export interface ChatSession {
     _id: string;
     userId: string;

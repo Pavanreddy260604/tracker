@@ -14,6 +14,7 @@ interface PistonResponse {
 
 export class ExecutionService {
     private baseUrl = 'https://emkc.org/api/v2/piston';
+    private resultMarker = '__RESULT__';
 
     /**
      * Map internal language names to Piston runtime names
@@ -27,7 +28,11 @@ export class ExecutionService {
             'cpp': { language: 'c++', version: '10.2.0' },
             'go': { language: 'go', version: '1.16.2' }
         };
-        return langMap[language.toLowerCase()] || langMap['javascript'];
+        const runtime = langMap[language.toLowerCase()];
+        if (!runtime) {
+            throw new Error(`Unsupported language: ${language}`);
+        }
+        return runtime;
     }
 
     /**
@@ -35,6 +40,10 @@ export class ExecutionService {
      */
     async execute(language: string, code: string, stdin: string = ''): Promise<PistonResponse> {
         const runtime = this.getRuntime(language);
+
+        if (code.length > 50_000) {
+            throw new Error('Code payload too large (50k char limit).');
+        }
 
         try {
             const response = await axios.post(`${this.baseUrl}/execute`, {
@@ -53,35 +62,50 @@ export class ExecutionService {
     }
 
     /**
+     * Execute user code with provided raw input and return extracted output.
+     */
+    async executeWithInput(
+        language: string,
+        userCode: string,
+        input: string
+    ): Promise<{ actual: string; stdout: string; error?: string }> {
+        const args = this.parseInputArgs(input);
+        const runnableCode = this.wrapCode(language, userCode, args);
+        const result = await this.execute(language, runnableCode, input);
+
+        if (result.run.code !== 0) {
+            return {
+                actual: this.extractActualOutput(result.run.stdout),
+                stdout: result.run.stdout,
+                error: result.run.stderr || result.run.output || 'Runtime Error'
+            };
+        }
+
+        const actualOutput = this.extractActualOutput(result.run.stdout);
+        return { actual: actualOutput, stdout: result.run.stdout };
+    }
+
+    /**
      * Run a specific test case check (Boilerplate injection usually needed here)
      * For MVP, we will rely on the user writing code that reads stdin or we wrap it.
      * LeetCode style: we wrap the user function with a main runner.
      */
-    async runTest(language: string, userCode: string, testCase: { input: string, expected: string }): Promise<{ passed: boolean, actual: string, error?: string }> {
-        // We need language specific wrappers to call the function with input
-        // This is complex for a full system. 
-        // SIMPLIFICATION: We will assume the user code + a runner script.
+    async runTest(
+        language: string,
+        userCode: string,
+        testCase: { input: string; expected: string }
+    ): Promise<{ passed: boolean; actual: string; error?: string }> {
+        const result = await this.executeWithInput(language, userCode, testCase.input);
 
-        // Construct the full runnable code based on language
-        const runnableCode = this.wrapCode(language, userCode, testCase.input);
-
-        const result = await this.execute(language, runnableCode);
-
-        if (result.run.code !== 0) {
-            return { passed: false, actual: '', error: result.run.stderr };
+        if (result.error) {
+            return { passed: false, actual: result.actual, error: result.error };
         }
 
-        const actualOutput = result.run.stdout.trim();
-        const expectedOutput = testCase.expected.trim();
-
-        // Weak equality check (ignoring trailing newlines)
-        return {
-            passed: actualOutput === expectedOutput,
-            actual: actualOutput
-        };
+        const passed = this.compareOutputs(result.actual, testCase.expected);
+        return { passed, actual: result.actual };
     }
 
-    private wrapCode(language: string, userCode: string, input: string): string {
+    private wrapCode(language: string, userCode: string, args: any[]): string {
         // Enterprise Grade: Dynamic Function Wrapper
         // Instead of hardcoding 'twoSum', we find the function definition in the user code.
 
@@ -93,24 +117,26 @@ export class ExecutionService {
             const funcMatch = userCode.match(/function\s+(\w+)\s*\(|const\s+(\w+)\s*=\s*function|const\s+(\w+)\s*=\s*\(/);
             const funcName = funcMatch ? (funcMatch[1] || funcMatch[2] || funcMatch[3]) : 'solution';
 
-            // Handle array inputs correctly for Apply (e.g. twoSum(arr, target)) vs Single (isValid(s))
-            // This is tricky without metadata. We'll try to spread if looks like array, else single.
-            // BETTER: AI Questions usually come with a wrapper template.
-            // For now, let's look at the input format.
-            // If input contains multiple args separated by valid commas OUTSIDE brackets, it's multiple.
-            // But test case input is just a string. 
-            // We will assume the input string is a valid JS Array of arguments [arg1, arg2]
+            const argsJson = JSON.stringify(args ?? []);
+            const marker = this.resultMarker;
 
             return `
 ${userCode}
 
 // Enterprise Runner
 try {
-    const args = ${input.startsWith('[') ? input : `[${input}]`};
+    const args = ${argsJson};
     const result = ${funcName}(...args);
-    console.log(JSON.stringify(result));
+    let serialized;
+    try {
+        serialized = JSON.stringify(result);
+        if (serialized === undefined) serialized = String(result);
+    } catch (e) {
+        serialized = String(result);
+    }
+    console.log("${marker}" + serialized);
 } catch (e) {
-    console.log("Error: " + e.message);
+    console.error(e && e.message ? e.message : String(e));
     process.exit(1);
 }
 `;
@@ -120,6 +146,10 @@ try {
             const funcMatch = userCode.match(/def\s+(\w+)\s*\(/);
             const funcName = funcMatch ? funcMatch[1] : 'solution';
 
+            const argsJson = JSON.stringify(args ?? []);
+            const argsJsonLiteral = JSON.stringify(argsJson);
+            const marker = this.resultMarker;
+
             return `
 import json
 import sys
@@ -127,26 +157,115 @@ from typing import *
 
 ${userCode}
 
+def _serialize(value):
+    try:
+        return json.dumps(value)
+    except Exception:
+        return str(value)
+
 # Enterprise Runner
 if __name__ == '__main__':
     try:
-        # Piston stdin handling or mocked input string
-        # We inject input directly
-        args = [${input.replace(/\n/g, ',')}]
-        
-        # Call dynamically
+        args = json.loads(${argsJsonLiteral})
+
         if '${funcName}' in locals():
             result = ${funcName}(*args)
-            print(json.dumps(result))
+            print("${marker}" + _serialize(result))
         else:
-            print("Error: Function '${funcName}' not found", file=sys.stderr)
+            print("Function '${funcName}' not found", file=sys.stderr)
             sys.exit(1)
     except Exception as e:
-        print(f"Runtime Error: {str(e)}", file=sys.stderr)
+        print(str(e), file=sys.stderr)
         sys.exit(1)
 `;
         }
 
         return userCode;
+    }
+
+    private parseInputArgs(input: string): any[] {
+        if (!input) return [];
+        const lines = input
+            .split(/\r?\n/)
+            .map((line) => line.trim())
+            .filter((line) => line.length > 0);
+
+        if (lines.length === 0) return [];
+
+        return lines.map((line) => {
+            const parsed = this.safeJsonParse(line);
+            return parsed.ok ? parsed.value : line;
+        });
+    }
+
+    private safeJsonParse(value: string): { ok: boolean; value: any } {
+        try {
+            return { ok: true, value: JSON.parse(value) };
+        } catch (error) {
+            return { ok: false, value };
+        }
+    }
+
+    private extractActualOutput(stdout: string): string {
+        if (!stdout) return '';
+        const lines = stdout.split(/\r?\n/).filter((line) => line.trim().length > 0);
+        for (let i = lines.length - 1; i >= 0; i -= 1) {
+            const line = lines[i];
+            if (line.includes(this.resultMarker)) {
+                return line.split(this.resultMarker).pop()?.trim() || '';
+            }
+        }
+        return stdout.trim();
+    }
+
+    private normalizeOutput(raw: string): { raw: string; parsed: any; isJson: boolean } {
+        const trimmed = raw.trim();
+        if (!trimmed) return { raw: '', parsed: '', isJson: false };
+
+        const parsed = this.safeJsonParse(trimmed);
+        if (parsed.ok) {
+            return { raw: trimmed, parsed: parsed.value, isJson: true };
+        }
+
+        return { raw: trimmed, parsed: trimmed, isJson: false };
+    }
+
+    private compareOutputs(actual: string, expected: string): boolean {
+        const actualNormalized = this.normalizeOutput(actual);
+        const expectedNormalized = this.normalizeOutput(expected);
+
+        if (actualNormalized.isJson && expectedNormalized.isJson) {
+            return this.deepEqual(actualNormalized.parsed, expectedNormalized.parsed);
+        }
+
+        return actualNormalized.raw === expectedNormalized.raw;
+    }
+
+    private deepEqual(a: any, b: any): boolean {
+        if (a === b) return true;
+
+        if (Number.isNaN(a) && Number.isNaN(b)) return true;
+
+        if (typeof a !== typeof b) return false;
+
+        if (Array.isArray(a) && Array.isArray(b)) {
+            if (a.length !== b.length) return false;
+            for (let i = 0; i < a.length; i += 1) {
+                if (!this.deepEqual(a[i], b[i])) return false;
+            }
+            return true;
+        }
+
+        if (a && b && typeof a === 'object' && typeof b === 'object') {
+            const keysA = Object.keys(a);
+            const keysB = Object.keys(b);
+            if (keysA.length !== keysB.length) return false;
+            for (const key of keysA) {
+                if (!this.deepEqual(a[key], b[key])) return false;
+            }
+            return true;
+        }
+
+        return false;
     }
 }

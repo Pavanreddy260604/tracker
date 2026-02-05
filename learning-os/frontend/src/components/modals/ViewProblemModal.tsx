@@ -49,14 +49,14 @@ export function ViewProblemModal({ problem, isOpen, onClose, onEdit, onDelete, o
                 >
                     <motion.div
                         ref={modalRef}
-                        className="w-full max-w-2xl bg-white dark:bg-[#1c2128] rounded-2xl shadow-2xl overflow-hidden border border-gray-200 dark:border-white/10 flex flex-col max-h-[90vh]"
+                        className="w-full max-w-2xl bg-white dark:bg-[var(--sw-surface)] rounded-2xl shadow-2xl overflow-hidden border border-gray-200 dark:border-[var(--sw-border)] flex flex-col max-h-[90vh]"
                         initial={{ opacity: 0, scale: 0.95, y: 20 }}
                         animate={{ opacity: 1, scale: 1, y: 0 }}
                         exit={{ opacity: 0, scale: 0.95, y: 20 }}
                         transition={{ duration: 0.2 }}
                     >
                         {/* Header */}
-                        <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-white/10 bg-gray-50/50 dark:bg-white/5">
+                        <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-[var(--sw-border)] bg-gray-50/50 dark:bg-white/5">
                             <div>
                                 <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-2">
                                     {problem.problemName}

@@ -1,9 +1,10 @@
 import { useState, useRef, useEffect } from 'react';
-import { MessageSquare, Send, Sparkles, Bot, Minimize2, Check, Copy } from 'lucide-react';
+import { MessageSquare, Send, Sparkles, Bot, Minimize2, Check, Copy, ArrowDown } from 'lucide-react';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import { motion, AnimatePresence } from 'framer-motion';
 import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import { Link } from 'react-router-dom';
 import { useAI } from '../contexts/AIContext';
 
@@ -17,12 +18,12 @@ const CodeBlock = ({ language, value }: { language: string, value: string }) => 
     };
 
     return (
-        <div className="relative group my-4 rounded-lg overflow-hidden border border-gray-700/50 shadow-2xl">
-            <div className="flex items-center justify-between px-4 py-2 bg-[#2d2d2d] border-b border-white/5">
-                <span className="text-xs font-mono text-gray-400 lowercase">{language || 'code'}</span>
+        <div className="ai-code-block">
+            <div className="ai-code-header">
+                <span className="ai-code-lang">{language || 'code'}</span>
                 <button
                     onClick={handleCopy}
-                    className="flex items-center gap-1.5 text-xs text-gray-400 hover:text-white transition-colors"
+                    className="ai-code-copy"
                 >
                     {copied ? <Check size={14} className="text-green-400" /> : <Copy size={14} />}
                     <span>{copied ? 'Copied!' : 'Copy'}</span>
@@ -31,7 +32,7 @@ const CodeBlock = ({ language, value }: { language: string, value: string }) => 
             <SyntaxHighlighter
                 language={language || 'text'}
                 style={vscDarkPlus}
-                customStyle={{ margin: 0, padding: '1.5rem', fontSize: '0.875rem' }}
+                customStyle={{ margin: 0, padding: '1.25rem', fontSize: '0.85rem', background: '#1e1e1e' }}
                 wrapLines={true}
             >
                 {value}
@@ -45,19 +46,30 @@ export function GlobalAIWidget() {
     const { isOpen, toggleOpen, messages, isLoading, sendMessage } = useAI();
     const [input, setInput] = useState('');
     const messagesEndRef = useRef<HTMLDivElement>(null);
+    const messagesContainerRef = useRef<HTMLDivElement>(null);
+    const [shouldAutoScroll, setShouldAutoScroll] = useState(true);
 
-    const scrollToBottom = () => {
-        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    const scrollToBottom = (behavior: ScrollBehavior = 'smooth') => {
+        messagesEndRef.current?.scrollIntoView({ behavior });
+    };
+
+    const handleMessagesScroll = () => {
+        const container = messagesContainerRef.current;
+        if (!container) return;
+        const distanceFromBottom = container.scrollHeight - container.scrollTop - container.clientHeight;
+        setShouldAutoScroll(distanceFromBottom < 120);
     };
 
     useEffect(() => {
-        scrollToBottom();
-    }, [messages, isOpen]);
+        if (!shouldAutoScroll) return;
+        scrollToBottom(isLoading ? 'auto' : 'smooth');
+    }, [messages, isOpen, shouldAutoScroll, isLoading]);
 
     const handleSend = async () => {
         if (!input.trim() || isLoading) return;
         const messageToSend = input;
         setInput('');
+        setShouldAutoScroll(true);
         await sendMessage(messageToSend);
     };
 
@@ -70,69 +82,70 @@ export function GlobalAIWidget() {
                         animate={{ opacity: 1, scale: 1, y: 0 }}
                         exit={{ opacity: 0, scale: 0.95, y: 10 }}
                         transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }} // Apple-like spring/ease
-                        className="w-full max-w-[440px] h-[750px] max-h-[90vh] bg-white dark:bg-[#212121] rounded-2xl shadow-xl border border-gray-200/50 dark:border-white/5 flex flex-col overflow-hidden pointer-events-auto font-sans"
+                        className="ai-widget w-full max-w-[440px] h-[750px] max-h-[90vh] flex flex-col overflow-hidden pointer-events-auto"
                     >
                         {/* Header */}
-                        <div className="h-14 px-4 flex items-center justify-between border-b border-gray-100 dark:border-white/5 bg-white/50 dark:bg-[#212121] backdrop-blur-sm shrink-0">
-                            <div className="flex items-center gap-3 text-gray-700 dark:text-gray-100 font-medium">
-                                <span className="text-sm">AI Assistant</span>
-                                <span className="text-xs text-gray-400 dark:text-gray-500 font-normal">Auto</span>
+                        <div className="ai-widget-header shrink-0">
+                            <div className="ai-widget-title">
+                                <span>AI Assistant</span>
+                                <span className="ai-widget-sub">Auto</span>
                             </div>
-                            <Link to="/chat" className="p-2 hover:bg-black/5 dark:hover:bg-white/5 rounded-lg transition-colors text-gray-500 dark:text-gray-400" title="Open Full Chat">
-                                <MessageSquare size={18} strokeWidth={1.5} />
-                            </Link>
-                            <button
-                                onClick={toggleOpen}
-                                className="p-2 hover:bg-black/5 dark:hover:bg-white/5 rounded-lg transition-colors text-gray-500 dark:text-gray-400"
-                            >
-                                <Minimize2 size={18} strokeWidth={1.5} />
-                            </button>
+                            <div className="ai-widget-actions">
+                                <Link to="/chat" className="ai-widget-icon" title="Open Full Chat">
+                                    <MessageSquare size={18} strokeWidth={1.5} />
+                                </Link>
+                                <button
+                                    onClick={toggleOpen}
+                                    className="ai-widget-icon"
+                                >
+                                    <Minimize2 size={18} strokeWidth={1.5} />
+                                </button>
+                            </div>
                         </div>
 
                         {/* Messages */}
-                        <div className="flex-1 overflow-y-auto p-0 scroll-smooth">
+                        <div
+                            ref={messagesContainerRef}
+                            onScroll={handleMessagesScroll}
+                            className="ai-widget-body flex-1 overflow-y-auto p-0 scroll-smooth relative"
+                        >
                             {messages.length === 0 ? (
-                                <div className="h-full flex flex-col items-center justify-center text-center p-8 opacity-0 animate-fade-in fill-mode-forwards" style={{ animationDelay: '0.1s' }}>
-                                    <div className="w-12 h-12 bg-white dark:bg-white/10 rounded-full flex items-center justify-center mb-6 shadow-sm ring-1 ring-black/5">
-                                        <Bot size={24} className="text-gray-800 dark:text-gray-100" strokeWidth={1.5} />
+                                <div className="ai-widget-empty h-full flex flex-col items-center justify-center text-center p-8 opacity-0 animate-fade-in fill-mode-forwards" style={{ animationDelay: '0.1s' }}>
+                                    <div className="ai-widget-avatar">
+                                        <Bot size={24} className="text-[color:var(--text-primary)]" strokeWidth={1.5} />
                                     </div>
-                                    <h3 className="text-xl font-semibold text-gray-800 dark:text-gray-100 mb-2">How can I help you today?</h3>
+                                    <h3 className="ai-widget-empty-title">How can I help you today?</h3>
                                 </div>
                             ) : (
-                                <div className="flex flex-col pb-4">
+                                <div className="ai-widget-thread flex flex-col pb-4">
                                     {messages.map((msg) => (
                                         <div
                                             key={msg.id}
-                                            className={`px-5 py-6 w-full group ${msg.role === 'user'
-                                                ? 'bg-transparent'
-                                                : 'bg-transparent'
-                                                }`}
+                                            className="ai-widget-row px-5 py-6 w-full"
                                         >
-                                            <div className="flex gap-4 max-w-3xl mx-auto">
-                                                <div className="w-8 h-8 rounded-full flex items-center justify-center shrink-0 mt-1 select-none">
+                                            <div className="flex gap-4">
+                                                <div className="ai-widget-avatar-sm select-none">
                                                     {msg.role === 'user' ? (
-                                                        <div className="w-7 h-7 bg-gray-500 dark:bg-gray-700 text-white rounded-full flex items-center justify-center">
-                                                            {/* User Initials or Icon */}
-                                                            <span className="text-xs font-medium">YO</span>
-                                                        </div>
+                                                        <div className="ai-widget-user-avatar">YO</div>
                                                     ) : (
-                                                        <div className="w-7 h-7 bg-[#10a37f] rounded-full flex items-center justify-center shadow-sm">
+                                                        <div className="ai-widget-assistant-avatar">
                                                             <Sparkles size={16} className="text-white" strokeWidth={2} />
                                                         </div>
                                                     )}
                                                 </div>
 
-                                                <div className="flex-1 min-w-0 overflow-hidden space-y-1">
-                                                    <div className="font-semibold text-sm text-gray-900 dark:text-white select-none mb-1">
+                                                <div className="ai-widget-content flex-1 min-w-0 overflow-hidden space-y-1">
+                                                    <div className="ai-widget-name select-none mb-1">
                                                         {msg.role === 'user' ? 'You' : 'Assistant'}
                                                     </div>
-                                                    <div className={`prose prose-sm dark:prose-invert max-w-none text-[15px] leading-7 text-gray-800 dark:text-gray-100 ${isLoading && msg.role === 'assistant' && !msg.content ? 'animate-pulse' : ''}`}>
+                                                    <div className={`ai-widget-text prose prose-sm dark:prose-invert max-w-none ${isLoading && msg.role === 'assistant' && !msg.content ? 'animate-pulse' : ''}`}>
                                                         {msg.role === 'assistant' && !msg.content ? (
                                                             <div className="flex items-center gap-1 h-6">
-                                                                <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" />
+                                                                <span className="w-2 h-2 bg-[color:var(--text-secondary)] rounded-full animate-bounce" />
                                                             </div>
                                                         ) : (
                                                             <ReactMarkdown
+                                                                remarkPlugins={[remarkGfm]}
                                                                 components={{
                                                                     code({ node, inline, className, children, ...props }: any) {
                                                                         const match = /language-(\w+)/.exec(className || '');
@@ -142,7 +155,7 @@ export function GlobalAIWidget() {
                                                                                 value={String(children).replace(/\n$/, '')}
                                                                             />
                                                                         ) : (
-                                                                            <code className={`${className} font-mono text-sm bg-black/5 dark:bg-white/15 px-1.5 py-0.5 rounded text-gray-800 dark:text-gray-200`} {...props}>
+                                                                            <code className={`${className} chat-inline-code`} {...props}>
                                                                                 {children}
                                                                             </code>
                                                                         );
@@ -155,6 +168,31 @@ export function GlobalAIWidget() {
                                                                     },
                                                                     ol({ children }) {
                                                                         return <ol className="list-decimal pl-4 mb-4 space-y-1 marker:text-gray-500">{children}</ol>;
+                                                                    },
+                                                                    table({ children }: any) {
+                                                                        return (
+                                                                            <div className="chat-table-wrap">
+                                                                                <table>{children}</table>
+                                                                            </div>
+                                                                        );
+                                                                    },
+                                                                    th({ children }: any) {
+                                                                        return <th className="chat-table-th">{children}</th>;
+                                                                    },
+                                                                    td({ children }: any) {
+                                                                        return <td className="chat-table-td">{children}</td>;
+                                                                    },
+                                                                    h1({ children }: any) {
+                                                                        return <h1 className="chat-h1">{children}</h1>;
+                                                                    },
+                                                                    h2({ children }: any) {
+                                                                        return <h2 className="chat-h2">{children}</h2>;
+                                                                    },
+                                                                    h3({ children }: any) {
+                                                                        return <h3 className="chat-h3">{children}</h3>;
+                                                                    },
+                                                                    h4({ children }: any) {
+                                                                        return <h4 className="chat-h4">{children}</h4>;
                                                                     }
                                                                 }}
                                                             >
@@ -169,13 +207,26 @@ export function GlobalAIWidget() {
                                     <div ref={messagesEndRef} className="h-4" />
                                 </div>
                             )}
+                            {!shouldAutoScroll && (
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+                                        setShouldAutoScroll(true);
+                                    }}
+                                    className="chat-widget-scroll"
+                                    aria-label="Scroll to bottom"
+                                >
+                                    <ArrowDown size={14} />
+                                </button>
+                            )}
                         </div>
 
                         {/* Input Area */}
-                        <div className="p-4 pt-2 bg-gradient-to-t from-white via-white to-transparent dark:from-[#212121] dark:via-[#212121] dark:to-transparent shrink-0 z-10 w-full flex justify-center">
+                        <div className="ai-widget-input-wrap shrink-0 z-10 w-full">
                             <form
                                 onSubmit={(e) => { e.preventDefault(); handleSend(); }}
-                                className="w-full max-w-3xl relative flex items-end bg-[#f4f4f4] dark:bg-[#2f2f2f] rounded-[26px] p-2 ring-1 ring-transparent focus-within:ring-gray-200 dark:focus-within:ring-white/10 transition-all shadow-sm"
+                                className="ai-widget-input"
                             >
                                 <textarea
                                     value={input}
@@ -190,15 +241,15 @@ export function GlobalAIWidget() {
                                         }
                                     }}
                                     placeholder="Message Assistant..."
-                                    className="flex-1 max-h-[200px] min-h-[44px] py-3 pl-4 pr-12 bg-transparent border-none outline-none text-[15px] text-gray-900 dark:text-white placeholder:text-gray-500 resize-none overflow-y-auto"
+                                    className="ai-widget-textarea"
                                     rows={1}
                                 />
                                 <button
                                     type="submit"
                                     disabled={!input.trim() || isLoading}
-                                    className={`absolute bottom-2 right-2 p-1.5 rounded-full transition-all duration-200 flex items-center justify-center w-8 h-8 ${input.trim()
-                                        ? 'bg-[#10a37f] text-white hover:opacity-90'
-                                        : 'bg-black/10 dark:bg-white/10 text-gray-400 dark:text-gray-500 cursor-not-allowed'
+                                    className={`ai-widget-send ${input.trim()
+                                        ? 'is-active'
+                                        : 'is-disabled'
                                         }`}
                                 >
                                     <Send size={18} strokeWidth={2} className={input.trim() ? '' : ''} />
@@ -206,7 +257,7 @@ export function GlobalAIWidget() {
                             </form>
                         </div>
 
-                        <div className="text-[11px] text-center pb-3 text-gray-400 dark:text-gray-500 bg-white dark:bg-[#212121]">
+                        <div className="ai-widget-footer text-[11px] text-center pb-3">
                             AI can make mistakes. Check important info.
                         </div>
                     </motion.div>

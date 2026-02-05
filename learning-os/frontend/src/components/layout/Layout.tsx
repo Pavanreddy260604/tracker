@@ -14,7 +14,8 @@ import {
     Map,
     Bot,
     Brain,
-    MessageSquare
+    MessageSquare,
+    Film
 } from 'lucide-react';
 import { useAuthStore } from '../../stores/authStore';
 import { useAI } from '../../contexts/AIContext';
@@ -32,6 +33,7 @@ const navItems = [
     { icon: Map, label: 'Roadmap', href: '/roadmap' },
     { icon: FolderGit2, label: 'Projects', href: '/projects' },
     { icon: Bot, label: 'Interview Simulator', href: '/interview' },
+    { icon: Film, label: 'Script Writer', href: '/script-writer', openNewWindow: true },
     { icon: BarChart2, label: 'Analytics', href: '/analytics' },
 ];
 
@@ -85,9 +87,9 @@ export function Layout({ children }: LayoutProps) {
     }, []);
 
     return (
-        <div className="flex flex-col h-full min-h-screen bg-gray-50 dark:bg-[#1b1b1b] text-gray-900 dark:text-white overflow-hidden">
+        <div className="app-shell flex flex-col min-h-screen text-gray-900 dark:text-white overflow-hidden">
             {/* GCP Top App Bar */}
-            <header className="gcp-app-bar flex items-center justify-between px-4 bg-white dark:bg-[#1f1f1f] border-b border-gray-200 dark:border-[#000] h-12 shrink-0 z-50">
+            <header className="gcp-app-bar flex items-center justify-between px-4 shrink-0">
                 <div className="flex items-center gap-4">
                     <button
                         onClick={toggleDrawer}
@@ -103,13 +105,13 @@ export function Layout({ children }: LayoutProps) {
 
                 {/* Search Box - Hidden on small mobile */}
                 <div className="hidden md:flex flex-1 max-w-2xl mx-8">
-                    <div className="flex items-center w-full bg-gray-100 dark:bg-[#303030] rounded h-9 px-3 border border-transparent focus-within:border-blue-500 dark:focus-within:border-[#8ab4f8] transition-colors">
+                    <div className="gcp-search-box w-full">
                         <Search size={18} className="text-gray-500 dark:text-gray-400 mr-2" />
                         <input
                             ref={searchInputRef}
                             type="text"
                             placeholder={`Search resources... (Ctrl + ${SHORTCUTS.SEARCH.key.toUpperCase()})`}
-                            className="bg-transparent border-none outline-none text-sm w-full placeholder-gray-500 text-gray-900 dark:text-white"
+                            className="bg-transparent border-none outline-none text-sm w-full placeholder:text-[color:var(--text-disabled)] text-[color:var(--text-primary)]"
                         />
                         <div className="text-xs text-gray-500 dark:text-gray-400 border border-gray-300 dark:border-gray-600 rounded px-1.5 py-0.5">/</div>
                     </div>
@@ -119,7 +121,10 @@ export function Layout({ children }: LayoutProps) {
                 <div className="flex items-center gap-2 text-gray-400">
                     <button
                         onClick={toggleOpen}
-                        className={`p-2 rounded-full transition-colors ${isOpen ? 'bg-violet-100 text-violet-600 dark:bg-violet-500/20 dark:text-violet-400' : 'hover:bg-gray-100 dark:hover:bg-white/10 text-gray-500 dark:text-gray-400'}`}
+                        className={`p-2 rounded-full transition-colors ${isOpen
+                            ? 'bg-gray-100 text-gray-800 dark:bg-white/10 dark:text-white ring-1 ring-blue-500/20'
+                            : 'hover:bg-gray-100 dark:hover:bg-white/10 text-gray-500 dark:text-gray-400'
+                            }`}
                         title="Ask AI"
                     >
                         <Brain size={20} />
@@ -221,24 +226,27 @@ export function Layout({ children }: LayoutProps) {
 
             <div className="flex flex-1 overflow-hidden relative">
                 {/* Navigation Drawer */}
+                {/* Navigation Drawer */}
                 <aside
                     className={`
-            fixed md:static inset-y-0 left-0 z-40
-            w-64 bg-white dark:bg-[#1b1b1b] border-r border-gray-200 dark:border-[#3c4043]
-            transform transition-transform duration-200 ease-in-out
-            ${isDrawerOpen ? 'translate-x-0' : '-translate-x-full md:hidden'}
+            gcp-drawer 
+            fixed md:static 
+            inset-y-0 left-0 z-40
+            w-64 shrink-0
             flex flex-col
+            transform transition-all duration-200 ease-in-out
+            ${isDrawerOpen ? 'translate-x-0 md:ml-0' : '-translate-x-full md:-ml-64'}
           `}
-                    style={{ top: '48px' }} // Below header on mobile
+                    style={{ top: 'var(--app-bar-height)' }} // Ignored when static (desktop)
                 >
                     {/* Mobile Search - Visible only in drawer on mobile */}
                     <div className="md:hidden p-4">
-                        <div className="flex items-center w-full bg-gray-100 dark:bg-[#303030] rounded h-9 px-3">
+                        <div className="gcp-search-box w-full">
                             <Search size={18} className="text-gray-500 dark:text-gray-400 mr-2" />
                             <input
                                 type="text"
                                 placeholder="Search..."
-                                className="bg-transparent border-none outline-none text-sm w-full placeholder-gray-500 text-gray-900 dark:text-white"
+                                className="bg-transparent border-none outline-none text-sm w-full placeholder:text-[color:var(--text-disabled)] text-[color:var(--text-primary)]"
                             />
                         </div>
                     </div>
@@ -250,21 +258,32 @@ export function Layout({ children }: LayoutProps) {
 
                         {navItems.map((item) => {
                             const isActive = location.pathname === item.href;
+
+                            // Handle new window items differently
+                            if (item.openNewWindow) {
+                                return (
+                                    <button
+                                        key={item.href}
+                                        onClick={() => {
+                                            window.open(item.href, '_blank', 'noopener,noreferrer');
+                                            if (window.innerWidth < 768) setDrawerOpen(false);
+                                        }}
+                                        className={`gcp-nav-item group mx-2 mb-0.5 w-[calc(100%-16px)] text-left ${isActive ? 'active' : ''}`}
+                                    >
+                                        <item.icon size={18} className={`mr-3 ${isActive ? 'text-[color:var(--accent-primary-dark)]' : 'text-gray-400 group-hover:text-gray-300'}`} />
+                                        {item.label}
+                                    </button>
+                                );
+                            }
+
                             return (
                                 <Link
                                     key={item.href}
                                     to={item.href}
                                     onClick={() => window.innerWidth < 768 && setDrawerOpen(false)}
-                                    className={`
-                    group flex items-center px-4 py-2 mx-2 rounded
-                    text-[13px] font-medium transition-colors mb-0.5
-                    ${isActive
-                                            ? 'bg-blue-50 dark:bg-[#8ab4f8]/10 text-blue-600 dark:text-[#8ab4f8]'
-                                            : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-[#3c4043]/50 hover:text-gray-900'
-                                        }
-                  `}
+                                    className={`gcp-nav-item group mx-2 mb-0.5 ${isActive ? 'active' : ''}`}
                                 >
-                                    <item.icon size={18} className={`mr-3 ${isActive ? 'text-[#8ab4f8]' : 'text-gray-400 group-hover:text-gray-300'}`} />
+                                    <item.icon size={18} className={`mr-3 ${isActive ? 'text-[color:var(--accent-primary-dark)]' : 'text-gray-400 group-hover:text-gray-300'}`} />
                                     {item.label}
                                 </Link>
                             );
@@ -278,7 +297,7 @@ export function Layout({ children }: LayoutProps) {
 
                         <Link
                             to="/chat"
-                            className="group flex items-center px-4 py-2 mx-2 rounded text-[13px] font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-[#3c4043]/50 hover:text-gray-900 transition-colors"
+                            className="gcp-nav-item group mx-2"
                         >
                             <MessageSquare size={18} className="mr-3 text-gray-400 group-hover:text-gray-600 dark:group-hover:text-gray-300" />
                             AI Chat
@@ -286,7 +305,7 @@ export function Layout({ children }: LayoutProps) {
 
                         <Link
                             to="/settings"
-                            className="group flex items-center px-4 py-2 mx-2 rounded text-[13px] font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-[#3c4043]/50 hover:text-gray-900 transition-colors"
+                            className="gcp-nav-item group mx-2"
                         >
                             <Settings size={18} className="mr-3 text-gray-400 group-hover:text-gray-600 dark:group-hover:text-gray-300" />
                             Settings
@@ -299,13 +318,17 @@ export function Layout({ children }: LayoutProps) {
                     <div
                         className="md:hidden fixed inset-0 bg-black/50 z-30"
                         onClick={() => setDrawerOpen(false)}
-                        style={{ top: '48px' }}
+                        style={{ top: 'var(--app-bar-height)' }}
                     />
                 )}
 
                 {/* Main Content Area */}
-                <main className="flex-1 overflow-auto bg-gray-50 dark:bg-[#1b1b1b] p-4 md:p-6 w-full relative">
-                    {children}
+                <main
+                    className="app-main flex-1 overflow-auto min-w-0 relative"
+                >
+                    <div className="p-4 md:p-6">
+                        {children}
+                    </div>
                 </main>
 
                 <ShortcutsModal isOpen={showShortcuts} onClose={() => setShowShortcuts(false)} />

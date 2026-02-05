@@ -1,6 +1,6 @@
 // Interview Simulator API Service
 import { baseApi, API_BASE } from './base.api';
-import type { InterviewSession } from './types';
+import type { InterviewRunResult, InterviewSession, InterviewSubmitResult } from './types';
 
 export const interviewApi = {
     async startInterview(config: {
@@ -8,7 +8,8 @@ export const interviewApi = {
         questionCount: number;
         difficulty: string;
         language: string;
-        topics?: string[]
+        topics?: string[];
+        questionsConfig?: { difficulty: string; topics: string[] }[];
     }) {
         return baseApi.request<InterviewSession>('/interview/start', {
             method: 'POST',
@@ -57,16 +58,16 @@ export const interviewApi = {
     },
 
     async submitInterviewCode(sessionId: string, questionIndex: number, code: string) {
-        return baseApi.request<{ status: 'pass' | 'fail'; feedback: string; score: number }>('/interview/submit', {
+        return baseApi.request<InterviewSubmitResult>('/interview/submit', {
             method: 'POST',
             body: JSON.stringify({ sessionId, questionIndex, code }),
         });
     },
 
-    async runInterviewCode(sessionId: string, questionIndex: number, code: string) {
-        return baseApi.request<{ output: string; status: 'error' | 'success' }>('/interview/run', {
+    async runInterviewCode(sessionId: string, questionIndex: number, code: string, customInput?: string) {
+        return baseApi.request<InterviewRunResult>('/interview/run', {
             method: 'POST',
-            body: JSON.stringify({ sessionId, questionIndex, code }),
+            body: JSON.stringify({ sessionId, questionIndex, code, customInput }),
         });
     },
 

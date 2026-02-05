@@ -1,17 +1,19 @@
-import { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useState, useEffect, useRef } from 'react';
+import { useParams } from 'react-router-dom';
 import Editor from '@monaco-editor/react';
 import ReactMarkdown from 'react-markdown';
-import { Clock, CheckCircle, XCircle, Play, ChevronRight, ChevronLeft, Save, Maximize, Minimize, Terminal, AlertTriangle } from 'lucide-react';
+import remarkGfm from 'remark-gfm';
+import { Clock, CheckCircle, Play, ChevronRight, ChevronLeft, Maximize, Minimize, Terminal } from 'lucide-react';
 import { api } from '../../services/api';
-import type { InterviewSession } from '../../services/api';
+import type { InterviewSession, InterviewTestResult } from '../../services/api';
 
 import { useAI } from '../../contexts/AIContext';
+import { useAuthStore } from '../../stores/authStore';
 
 export function InterviewRoom() {
     const { id } = useParams();
-    const navigate = useNavigate();
     const { setContext } = useAI(); // Global AI Context
+    const user = useAuthStore((state) => state.user);
     const [session, setSession] = useState<InterviewSession | null>(null);
     const [currentQuestionIdx, setCurrentQuestionIdx] = useState(0);
     const [activeTab, setActiveTab] = useState<'description' | 'testCases'>('description');
@@ -19,16 +21,28 @@ export function InterviewRoom() {
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [timeLeft, setTimeLeft] = useState(0);
     const [isFullscreen, setIsFullscreen] = useState(false);
-    const [consoleOpen, setConsoleOpen] = useState(false);
-    const [consoleTab, setConsoleTab] = useState<'output' | 'result'>('output');
+    const [consoleOpen, setConsoleOpen] = useState(true);
+    const [consoleTab, setConsoleTab] = useState<'testcase' | 'result'>('testcase');
+    const [selectedCase, setSelectedCase] = useState<number | 'custom'>(0);
+    const [customInput, setCustomInput] = useState('');
+    const [activeResultIndex, setActiveResultIndex] = useState(0);
+    const [consoleHeight, setConsoleHeight] = useState(260);
+    const [consoleWidth, setConsoleWidth] = useState(420);
+    const [consoleDock, setConsoleDock] = useState<'bottom' | 'right'>('bottom');
+    const [isResizingHeight, setIsResizingHeight] = useState(false);
+    const [isResizingWidth, setIsResizingWidth] = useState(false);
+    const rightPaneRef = useRef<HTMLDivElement>(null);
 
-    const [output, setOutput] = useState<{
-        status: string;
+    type OutputState = {
+        status: 'running' | 'success' | 'fail' | 'error' | 'pass';
         feedback?: string;
         output?: string;
         score?: number;
-        testResults?: any[];
-    } | null>(null);
+        summary?: { passed: number; total: number };
+        testResults?: InterviewTestResult[];
+    };
+
+    const [output, setOutput] = useState<OutputState | null>(null);
 
     // Fetch Session
     useEffect(() => {
@@ -69,6 +83,60 @@ export function InterviewRoom() {
         return () => clearInterval(timer);
     }, [timeLeft, session]);
 
+    useEffect(() => {
+        const handleMouseMove = (event: MouseEvent) => {
+            if (!rightPaneRef.current) return;
+            const rect = rightPaneRef.current.getBoundingClientRect();
+
+            if (isResizingHeight) {
+                const minHeight = 140;
+                const maxHeight = Math.max(minHeight, rect.height - 160);
+                const newHeight = Math.min(Math.max(rect.bottom - event.clientY, minHeight), maxHeight);
+                setConsoleHeight(newHeight);
+            }
+
+            if (isResizingWidth) {
+                const minWidth = 280;
+                const maxWidth = Math.max(minWidth, rect.width - 280);
+                const newWidth = Math.min(Math.max(rect.right - event.clientX, minWidth), maxWidth);
+                setConsoleWidth(newWidth);
+            }
+        };
+
+        const handleMouseUp = () => {
+            if (!isResizingHeight && !isResizingWidth) return;
+            setIsResizingHeight(false);
+            setIsResizingWidth(false);
+            document.body.style.userSelect = '';
+            document.body.style.cursor = '';
+        };
+
+        window.addEventListener('mousemove', handleMouseMove);
+        window.addEventListener('mouseup', handleMouseUp);
+
+        return () => {
+            window.removeEventListener('mousemove', handleMouseMove);
+            window.removeEventListener('mouseup', handleMouseUp);
+        };
+    }, [isResizingHeight, isResizingWidth]);
+
+    useEffect(() => {
+        const clampSizes = () => {
+            if (!rightPaneRef.current) return;
+            const rect = rightPaneRef.current.getBoundingClientRect();
+            const minHeight = 140;
+            const maxHeight = Math.max(minHeight, rect.height - 160);
+            const minWidth = 280;
+            const maxWidth = Math.max(minWidth, rect.width - 280);
+            setConsoleHeight((prev) => Math.min(Math.max(prev, minHeight), maxHeight));
+            setConsoleWidth((prev) => Math.min(Math.max(prev, minWidth), maxWidth));
+        };
+
+        clampSizes();
+        window.addEventListener('resize', clampSizes);
+        return () => window.removeEventListener('resize', clampSizes);
+    }, []);
+
     // Update code when question changes
     useEffect(() => {
         if (session && session.questions[currentQuestionIdx]) {
@@ -81,13 +149,22 @@ export function InterviewRoom() {
             const initialCode = savedDraft || q.userCode || boilerplate;
             setCode(initialCode);
 
+            // Reset testcase UI
+            setSelectedCase(q.testCases && q.testCases.length > 0 ? 0 : 'custom');
+            setCustomInput('');
+            setActiveResultIndex(0);
+
             // Restore previous result if exists
             if (q.status !== 'pending') {
-                setOutput({ status: q.status === 'solved' ? 'pass' : 'fail', feedback: q.feedback || '', score: q.score || 0 });
-                setConsoleOpen(true);
+                setOutput({
+                    status: q.status === 'solved' ? 'pass' : 'fail',
+                    feedback: q.feedback || '',
+                    score: q.score || 0
+                });
+                setConsoleTab('testcase');
             } else {
                 setOutput(null);
-                setConsoleOpen(false);
+                setConsoleTab('testcase');
             }
 
             // Sync with Global AI
@@ -100,6 +177,45 @@ export function InterviewRoom() {
             });
         }
     }, [currentQuestionIdx, session?.questions]);
+
+    useEffect(() => {
+        const userKey = user?._id || 'guest';
+        try {
+            const savedDock = localStorage.getItem(`interview_console_dock_${userKey}`);
+            const savedHeight = localStorage.getItem(`interview_console_height_${userKey}`);
+            const savedWidth = localStorage.getItem(`interview_console_width_${userKey}`);
+            if (savedDock === 'bottom' || savedDock === 'right') {
+                setConsoleDock(savedDock);
+            }
+            if (savedHeight) {
+                const parsedHeight = Number(savedHeight);
+                if (!Number.isNaN(parsedHeight)) setConsoleHeight(parsedHeight);
+            }
+            if (savedWidth) {
+                const parsedWidth = Number(savedWidth);
+                if (!Number.isNaN(parsedWidth)) setConsoleWidth(parsedWidth);
+            }
+        } catch (error) {
+            console.warn('Console preferences unavailable');
+        }
+    }, [user?._id]);
+
+    useEffect(() => {
+        const userKey = user?._id || 'guest';
+        try {
+            localStorage.setItem(`interview_console_dock_${userKey}`, consoleDock);
+            localStorage.setItem(`interview_console_height_${userKey}`, String(consoleHeight));
+            localStorage.setItem(`interview_console_width_${userKey}`, String(consoleWidth));
+        } catch (error) {
+            console.warn('Failed saving console preferences');
+        }
+    }, [consoleDock, consoleHeight, consoleWidth, user?._id]);
+
+    useEffect(() => {
+        if (session) {
+            setConsoleOpen(true);
+        }
+    }, [session?._id]);
 
     const handleCodeChange = (newCode: string | undefined) => {
         const val = newCode || '';
@@ -138,15 +254,25 @@ export function InterviewRoom() {
     const handleRun = async () => {
         setIsSubmitting(true);
         setConsoleOpen(true);
-        setConsoleTab('output');
+        setConsoleTab('result');
         setOutput({ status: 'running', output: 'Compiling and executing...' });
 
         try {
             if (!session) return;
-            const res = await api.runInterviewCode(session._id, currentQuestionIdx, code);
-            setOutput(res as any);
+            if (selectedCase === 'custom' && customInput.trim().length === 0) {
+                setOutput({ status: 'error', feedback: 'Please enter custom input to run.' });
+                return;
+            }
+            const res = await api.runInterviewCode(
+                session._id,
+                currentQuestionIdx,
+                code,
+                selectedCase === 'custom' ? customInput : undefined
+            );
+            setOutput({ status: res.status, summary: res.summary, testResults: res.testResults });
+            setActiveResultIndex(0);
         } catch (error) {
-            setOutput({ status: 'fail', feedback: 'Execution Error', score: 0 } as any);
+            setOutput({ status: 'error', feedback: 'Execution Error', score: 0 });
         } finally {
             setIsSubmitting(false);
         }
@@ -161,7 +287,14 @@ export function InterviewRoom() {
         try {
             if (!session) return;
             const res = await api.submitInterviewCode(session._id, currentQuestionIdx, code);
-            setOutput(res);
+            setOutput({
+                status: res.status,
+                feedback: res.feedback,
+                score: res.score,
+                summary: res.summary,
+                testResults: res.testResults
+            });
+            setActiveResultIndex(0);
             const updated = await api.getInterviewSession(session._id);
             setSession(updated);
         } catch (error) {
@@ -171,41 +304,201 @@ export function InterviewRoom() {
         }
     };
 
-    if (!session) return <div className="h-screen flex items-center justify-center text-gray-500">Loading Environment...</div>;
+    if (!session) return <div className="interview-shell interview-empty">Loading Environment...</div>;
 
     const question = session.questions[currentQuestionIdx];
+    const publicCases = question.testCases || [];
+    const selectedPublicCase = typeof selectedCase === 'number' ? publicCases[selectedCase] : null;
+    const resultCases = output?.testResults || [];
+    const activeResult = resultCases[activeResultIndex];
+    const hasRuntimeError = resultCases.some((res) => Boolean(res.error));
+    const displayStatus = output?.status === 'running'
+        ? 'running'
+        : hasRuntimeError
+            ? 'error'
+            : output?.status;
+
+    const renderConsoleContent = () => (
+        <div className="flex-1 flex overflow-hidden text-sm">
+            <div className="interview-console-body">
+                {consoleTab === 'testcase' ? (
+                    <div className="space-y-4">
+                        <div className="flex flex-wrap gap-2">
+                            {publicCases.map((_, idx) => (
+                                <button
+                                    key={`case-${idx}`}
+                                    type="button"
+                                    onClick={() => setSelectedCase(idx)}
+                                    className={`interview-case ${selectedCase === idx ? 'is-active' : ''}`}
+                                >
+                                    Case {idx + 1}
+                                </button>
+                            ))}
+                            <button
+                                type="button"
+                                onClick={() => setSelectedCase('custom')}
+                                className={`interview-case ${selectedCase === 'custom' ? 'is-active' : ''}`}
+                            >
+                                Custom
+                            </button>
+                        </div>
+
+                        <div className="sw-muted text-xs">
+                            Input format: one JSON value per line (each line is one argument).
+                        </div>
+
+                        {selectedCase === 'custom' ? (
+                            <div className="space-y-3">
+                                <div className="sw-label">Custom Input</div>
+                                <textarea
+                                    value={customInput}
+                                    onChange={(e) => setCustomInput(e.target.value)}
+                                    placeholder={'Example:\n[2,7,11,15]\n9'}
+                                    className="sw-textarea sw-textarea-compact sw-code-textarea"
+                                />
+                                <div className="sw-muted text-xs">
+                                    Run will execute only the custom input when selected.
+                                </div>
+                            </div>
+                        ) : (
+                            <div className="grid gap-4">
+                                <div>
+                                    <div className="sw-label">Input</div>
+                                    <pre className="sw-code-block">{selectedPublicCase?.input || 'No input available.'}</pre>
+                                </div>
+                                <div>
+                                    <div className="sw-label">Expected Output</div>
+                                    <pre className="sw-code-block">{selectedPublicCase?.expectedOutput || 'No expected output.'}</pre>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                ) : (
+                    <div className="space-y-4">
+                        {!output ? (
+                            <div className="h-full flex flex-col items-center justify-center sw-muted gap-2">
+                                <Terminal size={32} strokeWidth={1.5} />
+                                <p>Run your code to see output here</p>
+                            </div>
+                        ) : displayStatus === 'running' ? (
+                            <div className="flex items-center gap-2 sw-muted animate-pulse">
+                                <span className="w-2 h-2 bg-[color:var(--sw-accent)] rounded-full animate-bounce" />
+                                Running Code...
+                            </div>
+                        ) : (
+                            <>
+                                <div className={`interview-result ${displayStatus === 'pass' || displayStatus === 'success'
+                                    ? 'is-success'
+                                    : displayStatus === 'error' ? 'is-warning' : 'is-danger'
+                                    }`}>
+                                    <div className="font-bold text-lg mb-2">
+                                        {displayStatus === 'pass' || displayStatus === 'success'
+                                            ? 'Accepted'
+                                            : displayStatus === 'error'
+                                                ? 'Runtime Error'
+                                                : 'Wrong Answer'}
+                                    </div>
+                                    {output.summary && (
+                                        <div className="text-xs uppercase tracking-wide opacity-80 mb-2">
+                                            Passed {output.summary.passed}/{output.summary.total} test cases
+                                        </div>
+                                    )}
+                                    {output.score !== undefined && (
+                                        <div className="text-xs uppercase tracking-wide opacity-80 mb-2">Score: {output.score}/100</div>
+                                    )}
+                                    {output.feedback && (
+                                        <div className="whitespace-pre-wrap text-xs opacity-90 leading-relaxed">{output.feedback}</div>
+                                    )}
+                                </div>
+
+                                {resultCases.length > 0 && (
+                                    <div className="space-y-3">
+                                        <div className="flex flex-wrap gap-2">
+                                            {resultCases.map((res, idx) => {
+                                                const displayIndex = (res.index ?? idx) + 1;
+                                                const label = res.isCustom ? 'Custom' : res.isHidden ? `Hidden ${displayIndex}` : `Case ${displayIndex}`;
+                                                const statusColor = res.error
+                                                    ? 'is-warning'
+                                                    : res.passed === false
+                                                        ? 'is-danger'
+                                                        : 'is-success';
+                                                return (
+                                                    <button
+                                                        key={`result-${idx}`}
+                                                        type="button"
+                                                        onClick={() => setActiveResultIndex(idx)}
+                                                        className={`interview-case ${statusColor} ${activeResultIndex === idx ? 'is-active' : ''}`}
+                                                    >
+                                                        {label}
+                                                    </button>
+                                                );
+                                            })}
+                                        </div>
+
+                                        {activeResult && (
+                                            <div className="grid gap-3">
+                                                <div>
+                                                    <div className="sw-label">Input</div>
+                                                    <pre className="sw-code-block">
+                                                        {activeResult.input ?? (activeResult.isHidden ? 'Hidden test case' : '-')}
+                                                    </pre>
+                                                </div>
+                                                <div>
+                                                    <div className="sw-label">Expected Output</div>
+                                                    <pre className="sw-code-block">
+                                                        {activeResult.expected ?? (activeResult.isHidden ? 'Hidden test case' : '-')}
+                                                    </pre>
+                                                </div>
+                                                <div>
+                                                    <div className="sw-label">Your Output</div>
+                                                    <pre className="sw-code-block">
+                                                        {activeResult.error
+                                                            ? `Runtime Error: ${activeResult.error}`
+                                                            : activeResult.actual ?? (activeResult.isHidden ? 'Hidden test case' : '-')}
+                                                    </pre>
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+                            </>
+                        )}
+                    </div>
+                )}
+            </div>
+        </div>
+    );
 
     return (
-        <div className="h-screen flex flex-col bg-gray-50 dark:bg-[#0d1117] text-gray-900 dark:text-gray-300 font-sans overflow-hidden">
-            {/* Header */}
-            <div className="h-14 bg-white dark:bg-[#1c2128] border-b border-gray-200 dark:border-white/10 px-4 flex items-center justify-between shadow-sm z-10 shrink-0">
+        <div className="interview-shell">
+            <div className="interview-topbar">
                 <div className="flex items-center gap-4">
-                    <span className="font-bold text-gray-900 dark:text-white flex items-center gap-2">
-                        <Terminal size={18} className="text-blue-500" />
-                        CodeRival <span className="text-xs font-normal text-gray-500 px-2 border-l border-gray-600">Enterprise Edition</span>
+                    <span className="interview-brand">
+                        <Terminal size={18} />
+                        CodeRival <span className="interview-brand-sub">Enterprise Edition</span>
                     </span>
-                    <div className="h-6 w-px bg-gray-200 dark:bg-white/10 mx-2" />
-                    <div className="flex items-center gap-2 text-sm font-mono">
-                        <Clock size={14} className={timeLeft < 300 ? 'text-red-500' : 'text-gray-400'} />
-                        <span className={timeLeft < 300 ? 'text-red-500 font-bold' : ''}>{formatTime(timeLeft)}</span>
+                    <div className="interview-divider" />
+                    <div className="interview-timer-row">
+                        <Clock size={14} className={timeLeft < 300 ? 'interview-timer is-danger' : 'interview-timer'} />
+                        <span className={timeLeft < 300 ? 'interview-timer is-danger' : 'interview-timer'}>{formatTime(timeLeft)}</span>
                     </div>
                 </div>
 
                 <div className="flex items-center gap-3">
-                    <button onClick={toggleFullScreen} className="p-2 text-gray-500 hover:bg-gray-100 dark:hover:bg-white/10 rounded-lg transition-colors" title="Toggle Full Screen">
+                    <button onClick={toggleFullScreen} className="sw-icon-button" title="Toggle Full Screen">
                         {isFullscreen ? <Minimize size={18} /> : <Maximize size={18} />}
                     </button>
                     <button
                         onClick={handleRun}
                         disabled={isSubmitting}
-                        className="px-4 py-1.5 bg-gray-100 dark:bg-white/5 hover:bg-gray-200 dark:hover:bg-white/10 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-white/10 rounded-md flex items-center gap-2 text-xs font-bold uppercase tracking-wide transition-all disabled:opacity-50"
+                        className="sw-btn sw-btn-secondary"
                     >
                         <Play size={14} /> Run
                     </button>
                     <button
                         onClick={handleSubmit}
                         disabled={isSubmitting}
-                        className="px-4 py-1.5 bg-green-600 hover:bg-green-500 text-white rounded-md flex items-center gap-2 text-xs font-bold uppercase tracking-wide shadow-md transition-all disabled:opacity-50"
+                        className="sw-btn sw-btn-success"
                     >
                         <CheckCircle size={14} /> Submit
                     </button>
@@ -214,31 +507,30 @@ export function InterviewRoom() {
 
             {/* Main Split Pane */}
             <div className="flex-1 flex overflow-hidden">
-                {/* LEFT: Problem Description */}
-                <div className="w-5/12 border-r border-gray-200 dark:border-white/10 flex flex-col bg-white dark:bg-[#0d1117]">
-                    <div className="flex border-b border-gray-200 dark:border-white/10 bg-gray-50 dark:bg-[#1c2128]">
+                <div className="interview-pane w-5/12 flex flex-col">
+                    <div className="interview-pane-tabs">
                         <button
                             onClick={() => setActiveTab('description')}
-                            className={`px-4 py-2 text-xs font-semibold uppercase tracking-wide border-b-2 transition-colors ${activeTab === 'description' ? 'border-blue-500 text-blue-600 dark:text-blue-400' : 'border-transparent text-gray-500'}`}
+                            className={`interview-tab ${activeTab === 'description' ? 'is-active' : ''}`}
                         >
                             Description
                         </button>
                         <button
                             onClick={() => setActiveTab('testCases')}
-                            className={`px-4 py-2 text-xs font-semibold uppercase tracking-wide border-b-2 transition-colors ${activeTab === 'testCases' ? 'border-blue-500 text-blue-600 dark:text-blue-400' : 'border-transparent text-gray-500'}`}
+                            className={`interview-tab ${activeTab === 'testCases' ? 'is-active' : ''}`}
                         >
                             Test Cases
                         </button>
                     </div>
 
-                    <div className="flex-1 overflow-y-auto p-6 bg-white dark:bg-[#0d1117]">
+                    <div className="interview-pane-body">
                         <div className="mb-4">
-                            <h1 className="text-xl font-bold text-gray-900 dark:text-white mb-2">{currentQuestionIdx + 1}. {question.problemName}</h1>
-                            <span className={`text-[10px] px-2 py-0.5 rounded border uppercase font-bold tracking-wider ${question.difficulty === 'hard'
-                                ? 'text-red-600 border-red-200 bg-red-50'
+                            <h1 className="sw-section-title">{currentQuestionIdx + 1}. {question.problemName}</h1>
+                            <span className={`sw-badge ${question.difficulty === 'hard'
+                                ? 'is-danger'
                                 : question.difficulty === 'medium'
-                                    ? 'text-yellow-600 border-yellow-200 bg-yellow-50'
-                                    : 'text-green-600 border-green-200 bg-green-50'
+                                    ? 'is-warning'
+                                    : 'is-success'
                                 }`}>
                                 {question.difficulty}
                             </span>
@@ -246,16 +538,16 @@ export function InterviewRoom() {
 
                         {activeTab === 'description' ? (
                             <div className="prose prose-sm max-w-none dark:prose-invert">
-                                <ReactMarkdown>{question.description}</ReactMarkdown>
+                                <ReactMarkdown remarkPlugins={[remarkGfm]}>{question.description}</ReactMarkdown>
                             </div>
                         ) : (
                             <div className="space-y-4">
                                 {question.testCases?.map((tc, idx) => (
-                                    <div key={idx} className="bg-gray-50 dark:bg-[#1c2128] rounded-lg p-3 border border-gray-200 dark:border-white/10">
-                                        <div className="text-xs font-mono mb-1 text-gray-500">Input:</div>
-                                        <div className="text-sm font-mono bg-white dark:bg-black/20 p-2 rounded mb-2">{tc.input}</div>
-                                        <div className="text-xs font-mono mb-1 text-gray-500">Expected:</div>
-                                        <div className="text-sm font-mono bg-white dark:bg-black/20 p-2 rounded">{tc.expectedOutput}</div>
+                                    <div key={idx} className="sw-card sw-card-muted p-3">
+                                        <div className="sw-mono-label">Input</div>
+                                        <div className="sw-code-block">{tc.input}</div>
+                                        <div className="sw-mono-label mt-3">Expected</div>
+                                        <div className="sw-code-block">{tc.expectedOutput}</div>
                                     </div>
                                 ))}
                             </div>
@@ -263,107 +555,219 @@ export function InterviewRoom() {
                     </div>
 
                     {/* Pagination */}
-                    <div className="p-2 border-t border-gray-200 dark:border-white/10 bg-gray-50 dark:bg-[#1c2128] flex justify-between items-center">
+                    <div className="interview-pane-footer">
                         <button
                             disabled={currentQuestionIdx === 0}
                             onClick={() => setCurrentQuestionIdx(i => i - 1)}
-                            className="p-1.5 rounded hover:bg-gray-200 dark:hover:bg-white/10 disabled:opacity-30"
+                            className="sw-icon-button sw-icon-button-sm"
                         >
                             <ChevronLeft size={16} />
                         </button>
-                        <span className="text-xs font-mono text-gray-500">Problem {currentQuestionIdx + 1}/{session.questions.length}</span>
+                        <span className="sw-muted text-xs font-mono">Problem {currentQuestionIdx + 1}/{session.questions.length}</span>
                         <button
                             disabled={currentQuestionIdx === session.questions.length - 1}
                             onClick={() => setCurrentQuestionIdx(i => i + 1)}
-                            className="p-1.5 rounded hover:bg-gray-200 dark:hover:bg-white/10 disabled:opacity-30"
+                            className="sw-icon-button sw-icon-button-sm"
                         >
                             <ChevronRight size={16} />
                         </button>
                     </div>
                 </div>
 
-                {/* RIGHT: Editor & Console */}
-                <div className="w-7/12 flex flex-col bg-[#1e1e1e]">
-                    <div className="flex-1 relative">
-                        <Editor
-                            height="100%"
-                            defaultLanguage={session.config.language || "javascript"}
-                            language={session.config.language || "javascript"}
-                            theme="vs-dark"
-                            value={code}
-                            onChange={handleCodeChange}
-                            options={{
-                                minimap: { enabled: false },
-                                fontSize: 13,
-                                fontFamily: "'JetBrains Mono', monospace",
-                                scrollBeyondLastLine: false,
-                                automaticLayout: true,
-                                padding: { top: 16 }
-                            }}
-                        />
-                    </div>
-
-                    {/* Console Panel */}
-                    <div className={`transition-all duration-300 ease-in-out bg-[#1c2128] border-t border-white/10 flex flex-col ${consoleOpen ? 'h-[40%]' : 'h-10'}`}>
-                        <div
-                            className="flex items-center justify-between px-4 h-10 cursor-pointer bg-[#2d333b] hover:bg-[#373e47] shrink-0"
-                            onClick={() => setConsoleOpen(!consoleOpen)}
-                        >
-                            <div className="flex items-center gap-2 text-sm text-gray-300 font-semibold select-none">
-                                <span className="transform transition-transform duration-200" style={{ rotate: consoleOpen ? '180deg' : '0deg' }}>
-                                    <ChevronRight size={16} className="-rotate-90" />
-                                </span>
-                                Console
+                <div ref={rightPaneRef} className="interview-editor-pane w-7/12 flex flex-col">
+                    {consoleDock === 'bottom' ? (
+                        <div className="flex-1 flex flex-col">
+                            <div className="flex-1 relative">
+                                <Editor
+                                    height="100%"
+                                    defaultLanguage={session.config.language || "javascript"}
+                                    language={session.config.language || "javascript"}
+                                    theme="vs-dark"
+                                    value={code}
+                                    onChange={handleCodeChange}
+                                    options={{
+                                        minimap: { enabled: false },
+                                        fontSize: 13,
+                                        fontFamily: "'JetBrains Mono', monospace",
+                                        scrollBeyondLastLine: false,
+                                        automaticLayout: true,
+                                        padding: { top: 16 }
+                                    }}
+                                />
                             </div>
-                            {output && (
-                                <span className={`text-[10px] px-2 py-0.5 rounded uppercase font-bold ${output.status === 'running' ? 'bg-blue-500/20 text-blue-400' :
-                                    output.status === 'pass' || output.status === 'success' ? 'bg-green-500/20 text-green-400' :
-                                        'bg-red-500/20 text-red-400'
-                                    }`}>
-                                    {output.status === 'running' ? 'Executing...' : output.status === 'pass' ? 'Accepted' : 'Wrong Answer'}
-                                </span>
-                            )}
-                        </div>
 
-                        {consoleOpen && (
-                            <div className="flex-1 flex overflow-hidden font-mono text-sm">
-                                <div className="w-full h-full p-4 overflow-y-auto custom-scrollbar">
-                                    {output ? (
-                                        <div className="space-y-4">
-                                            {output.status === 'running' ? (
-                                                <div className="flex items-center gap-2 text-gray-400 animate-pulse">
-                                                    <span className="w-2 h-2 bg-blue-500 rounded-full animate-bounce" />
-                                                    Running Code...
-                                                </div>
-                                            ) : (
-                                                <>
-                                                    <div className={`p-4 rounded-lg border ${output.status === 'pass' || output.status === 'success'
-                                                        ? 'bg-green-500/10 border-green-500/30 text-green-300'
-                                                        : 'bg-red-500/10 border-red-500/30 text-red-300'
-                                                        }`}>
-                                                        <div className="font-bold text-lg mb-2">
-                                                            {output.status === 'pass' || output.status === 'success' ? 'Accepted' : 'Wrong Answer'}
-                                                        </div>
-                                                        {output.score !== undefined && (
-                                                            <div className="text-xs uppercase tracking-wide opacity-80 mb-2">Score: {output.score}/100</div>
-                                                        )}
-                                                        <div className="whitespace-pre-wrap font-mono text-sm opacity-90 leading-relaxed">
-                                                            {output.feedback || output.output}
-                                                        </div>
-                                                    </div>
-                                                </>
-                                            )}
+                            {/* Console Panel */}
+                            <div
+                                className="interview-console transition-[height] duration-200 ease-out"
+                                style={{ height: consoleOpen ? consoleHeight : 48 }}
+                            >
+                                <div
+                                    className="interview-resize-handle is-horizontal"
+                                    onMouseDown={(event) => {
+                                        event.preventDefault();
+                                        setConsoleOpen(true);
+                                        setIsResizingHeight(true);
+                                        document.body.style.userSelect = 'none';
+                                        document.body.style.cursor = 'row-resize';
+                                    }}
+                                >
+                                    <div className="interview-resize-grip" />
+                                </div>
+                                <div className="interview-console-header">
+                                    <div className="flex items-center gap-3">
+                                        <button
+                                            type="button"
+                                            onClick={() => setConsoleOpen(!consoleOpen)}
+                                            className="interview-console-toggle"
+                                        >
+                                            <span className="transform transition-transform duration-200" style={{ rotate: consoleOpen ? '180deg' : '0deg' }}>
+                                                <ChevronRight size={16} className="-rotate-90" />
+                                            </span>
+                                            Console
+                                        </button>
+                                        <div className="interview-console-tabs">
+                                            <button
+                                                type="button"
+                                                onClick={() => setConsoleTab('testcase')}
+                                                className={`interview-console-tab ${consoleTab === 'testcase' ? 'is-active' : ''}`}
+                                            >
+                                                Testcase
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={() => setConsoleTab('result')}
+                                                className={`interview-console-tab ${consoleTab === 'result' ? 'is-active' : ''}`}
+                                            >
+                                                Result
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={() => {
+                                                    setConsoleDock('right');
+                                                    setConsoleOpen(true);
+                                                }}
+                                                className="interview-console-tab"
+                                            >
+                                                Dock Right
+                                            </button>
                                         </div>
-                                    ) : (
-                                        <div className="h-full flex flex-col items-center justify-center text-gray-500 gap-2">
-                                            <Terminal size={32} strokeWidth={1.5} />
-                                            <p>Run your code to see output here</p>
-                                        </div>
+                                    </div>
+                                    {output && (
+                                        <span className={`sw-badge ${displayStatus === 'running' ? 'is-info' :
+                                            displayStatus === 'pass' || displayStatus === 'success' ? 'is-success' :
+                                                displayStatus === 'error' ? 'is-warning' : 'is-danger'
+                                            }`}>
+                                            {displayStatus === 'running'
+                                                ? 'Executing...'
+                                                : displayStatus === 'pass' || displayStatus === 'success'
+                                                    ? 'Accepted'
+                                                    : displayStatus === 'error'
+                                                        ? 'Runtime Error'
+                                                        : 'Wrong Answer'}
+                                        </span>
                                     )}
                                 </div>
+
+                                {consoleOpen && renderConsoleContent()}
                             </div>
-                        )}
-                    </div>
+                        </div>
+                    ) : (
+                        <div className="flex-1 flex overflow-hidden">
+                            <div className="flex-1 relative">
+                                <Editor
+                                    height="100%"
+                                    defaultLanguage={session.config.language || "javascript"}
+                                    language={session.config.language || "javascript"}
+                                    theme="vs-dark"
+                                    value={code}
+                                    onChange={handleCodeChange}
+                                    options={{
+                                        minimap: { enabled: false },
+                                        fontSize: 13,
+                                        fontFamily: "'JetBrains Mono', monospace",
+                                        scrollBeyondLastLine: false,
+                                        automaticLayout: true,
+                                        padding: { top: 16 }
+                                    }}
+                                />
+                            </div>
+                            <div
+                                className="interview-console is-docked-right"
+                                style={{ width: consoleOpen ? consoleWidth : 52 }}
+                            >
+                                <div
+                                    className="interview-resize-handle is-vertical"
+                                    onMouseDown={(event) => {
+                                        event.preventDefault();
+                                        setConsoleOpen(true);
+                                        setIsResizingWidth(true);
+                                        document.body.style.userSelect = 'none';
+                                        document.body.style.cursor = 'col-resize';
+                                    }}
+                                >
+                                    <div className="interview-resize-grip is-vertical" />
+                                </div>
+                                <div className="flex-1 flex flex-col">
+                                    <div className="interview-console-header">
+                                        <div className="flex items-center gap-3">
+                                            <button
+                                                type="button"
+                                                onClick={() => setConsoleOpen(!consoleOpen)}
+                                                className="interview-console-toggle"
+                                            >
+                                                <span className="transform transition-transform duration-200" style={{ rotate: consoleOpen ? '180deg' : '0deg' }}>
+                                                    <ChevronRight size={16} className="-rotate-90" />
+                                                </span>
+                                                Console
+                                            </button>
+                                            <div className="interview-console-tabs">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setConsoleTab('testcase')}
+                                                    className={`interview-console-tab ${consoleTab === 'testcase' ? 'is-active' : ''}`}
+                                                >
+                                                    Testcase
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setConsoleTab('result')}
+                                                    className={`interview-console-tab ${consoleTab === 'result' ? 'is-active' : ''}`}
+                                                >
+                                                    Result
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => {
+                                                        setConsoleDock('bottom');
+                                                        setConsoleOpen(true);
+                                                    }}
+                                                    className="interview-console-tab"
+                                                >
+                                                    Dock Bottom
+                                                </button>
+                                            </div>
+                                        </div>
+                                        {output && (
+                                            <span className={`sw-badge ${displayStatus === 'running' ? 'is-info' :
+                                                displayStatus === 'pass' || displayStatus === 'success' ? 'is-success' :
+                                                    displayStatus === 'error' ? 'is-warning' : 'is-danger'
+                                                }`}>
+                                                {displayStatus === 'running'
+                                                    ? 'Executing...'
+                                                    : displayStatus === 'pass' || displayStatus === 'success'
+                                                        ? 'Accepted'
+                                                        : displayStatus === 'error'
+                                                            ? 'Runtime Error'
+                                                            : 'Wrong Answer'}
+                                            </span>
+                                        )}
+                                    </div>
+
+                                {consoleOpen && renderConsoleContent()}
+                                </div>
+                            </div>
+                        </div>
+                    )}
                 </div>
             </div>
         </div>

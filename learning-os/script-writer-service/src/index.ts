@@ -10,7 +10,7 @@ const PORT = process.env.PORT || 5001;
 
 // Middleware
 app.use(cors({
-    origin: ['http://localhost:5173', 'http://localhost:3000'],
+    origin: ['http://localhost:5173', 'http://localhost:5174', 'http://localhost:5175', 'http://localhost:3000'],
     credentials: true
 }));
 app.use(express.json({ limit: '10mb' }));
@@ -24,31 +24,22 @@ app.get('/health', (req, res) => {
     });
 });
 
-// API Routes (to be added)
-app.get('/api/script/templates', (req, res) => {
-    res.json({
-        success: true,
-        data: {
-            formats: [
-                { id: 'film', name: 'Feature Film', description: '90-180 minutes' },
-                { id: 'short', name: 'Short Film', description: '5-30 minutes' },
-                { id: 'youtube', name: 'YouTube Video', description: '3-20 minutes' },
-                { id: 'reel', name: 'Reel/Short', description: '15-90 seconds' },
-                { id: 'commercial', name: 'Commercial', description: '15-60 seconds' },
-                { id: 'tv-episode', name: 'TV Episode', description: '22-60 minutes' }
-            ],
-            styles: [
-                { id: 'classic', name: 'Classic Screenplay', description: 'Traditional three-act structure, balanced dialogue and action' },
-                { id: 'dialogue-driven', name: 'Dialogue-Driven', description: 'Character conversations carry the story, minimal action' },
-                { id: 'visual-minimal', name: 'Visual/Minimal Dialogue', description: 'Show don\'t tell, imagery over words' },
-                { id: 'non-linear', name: 'Non-Linear Narrative', description: 'Flashbacks, time jumps, puzzle structure' },
-                { id: 'documentary', name: 'Documentary Style', description: 'Interviews, voiceover, found footage feel' },
-                { id: 'action-heavy', name: 'Action-Heavy', description: 'Fast pacing, detailed action sequences' },
-                { id: 'experimental', name: 'Experimental', description: 'Breaking conventions, unique formatting' }
-            ]
-        }
-    });
-});
+// API Routes
+import { scriptRoutes } from './routes/script.routes';
+import voiceRoutes from './routes/voice.routes';
+import { bibleRoutes } from './routes/bible.routes';
+import { sceneRoutes } from './routes/scene.routes';
+import { characterRoutes } from './routes/character.routes';
+import { treatmentRoutes } from './routes/treatment.routes';
+
+// Routes
+app.use('/api/script', scriptRoutes);
+app.use('/api/voice', voiceRoutes);
+app.use('/api/bible', bibleRoutes);
+app.use('/api/scene', sceneRoutes);
+app.use('/api/character', characterRoutes);
+app.use('/api/treatment', treatmentRoutes);
+
 
 // Start server
 const startServer = async () => {

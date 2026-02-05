@@ -5,13 +5,14 @@ import { OllamaService } from '../services/ollama.service.js';
 import { DSAProblem } from '../models/DSAProblem.js';
 import { ExecutionService } from '../services/execution.service.js';
 import { Question } from '../models/Question.js';
+import { writeLimiter } from '../middleware/rateLimiter.js';
 
 const router = express.Router();
 const ollama = new OllamaService();
 
 // POST /api/interview/start
 // Start a new interview session
-router.post('/start', authenticate, async (req: any, res) => {
+router.post('/start', authenticate, writeLimiter, async (req: any, res) => {
     try {
         const { duration, language, questionsConfig } = req.body;
         // questionsConfig = [{ difficulty: 'easy', topics: ['Array'] }, ...]
@@ -115,7 +116,7 @@ router.post('/start', authenticate, async (req: any, res) => {
 
 // POST /api/interview/submit
 // Submit code for a specific question
-router.post('/submit', authenticate, async (req: any, res) => {
+router.post('/submit', authenticate, writeLimiter, async (req: any, res) => {
     try {
         const { sessionId, questionIndex, code } = req.body;
 
@@ -139,17 +140,20 @@ router.post('/submit', authenticate, async (req: any, res) => {
         let correctnessScore = 0;
         let testResults: any[] = [];
         let executionFeedback = "Execution failed silently.";
+        let passedCount = 0;
+        let totalCount = 0;
 
         // 2. Execute Code against Test Cases (Deterministic Grading)
         if (dbQuestion && dbQuestion.testCases.length > 0) {
             const executor = new ExecutionService();
             const language = session.config.language || 'javascript';
-            let passedCount = 0;
-            let outputLog = "";
+            let errorCount = 0;
+            totalCount = dbQuestion.testCases.length;
 
-            for (const tc of dbQuestion.testCases) {
+            for (const [index, tc] of dbQuestion.testCases.entries()) {
                 const res = await executor.runTest(language, code, { input: tc.input, expected: tc.expectedOutput });
                 testResults.push({
+                    index,
                     input: tc.input,
                     expected: tc.expectedOutput,
                     actual: res.actual,
@@ -158,13 +162,13 @@ router.post('/submit', authenticate, async (req: any, res) => {
                     isHidden: tc.isHidden
                 });
                 if (res.passed) passedCount++;
-                if (res.error) outputLog += `Error on ${tc.isHidden ? 'Hidden Case' : tc.input}: ${res.error}\n`;
+                if (res.error) errorCount++;
             }
-            correctnessScore = Math.round((passedCount / dbQuestion.testCases.length) * 100);
+            correctnessScore = Math.round((passedCount / totalCount) * 100);
 
-            executionFeedback = `Passed ${passedCount}/${dbQuestion.testCases.length} test cases.\n`;
-            if (correctnessScore < 100) executionFeedback += "Check your logic against edge cases.";
-            if (outputLog) executionFeedback += `\n\nErrors:\n${outputLog}`;
+            executionFeedback = `Passed ${passedCount}/${totalCount} test cases.`;
+            if (errorCount > 0) executionFeedback += ` ${errorCount} runtime error(s) detected.`;
+            if (correctnessScore < 100) executionFeedback += " Check your logic against edge cases.";
         } else {
             // Fallback for old sessions or generated questions (Skip execution)
             console.warn("No linked DB question found, skipping deterministic grading.");
@@ -188,13 +192,34 @@ router.post('/submit', authenticate, async (req: any, res) => {
         session.markModified('questions');
         await session.save();
 
+        const clientResults = testResults.map((result) => {
+            if (result.isHidden) {
+                return {
+                    index: result.index,
+                    passed: result.passed,
+                    error: result.error,
+                    isHidden: true
+                };
+            }
+            return {
+                index: result.index,
+                input: result.input,
+                expected: result.expected,
+                actual: result.actual,
+                passed: result.passed,
+                error: result.error,
+                isHidden: false
+            };
+        });
+
         res.json({
             success: true,
             data: {
                 status: question.status === 'solved' ? 'pass' : 'fail',
                 score: correctnessScore,
                 feedback: question.feedback,
-                testResults // Frontend can optionally visualize this
+                summary: totalCount > 0 ? { passed: passedCount, total: totalCount } : undefined,
+                testResults: clientResults
             }
         });
     } catch (error: any) {
@@ -257,9 +282,9 @@ router.post('/chat', authenticate, async (req: any, res) => {
 
 // POST /api/interview/run
 // Dry run code against test cases (no grading, no DB save)
-router.post('/run', authenticate, async (req: any, res) => {
+router.post('/run', authenticate, writeLimiter, async (req: any, res) => {
     try {
-        const { sessionId, questionIndex, code } = req.body;
+        const { sessionId, questionIndex, code, customInput } = req.body;
 
         const session = await InterviewSession.findOne({ _id: sessionId, userId: req.userId });
         if (!session) return res.status(404).json({ success: false, error: 'Session not found' });
@@ -279,26 +304,72 @@ router.post('/run', authenticate, async (req: any, res) => {
         const executor = new ExecutionService();
         const language = session.config.language || 'javascript';
 
-        let outputLog = "";
-        let allPassed = true;
+        if (customInput !== undefined && customInput !== null) {
+            const rawInput = String(customInput);
+            const runResult = await executor.executeWithInput(language, code, rawInput);
+            const status = runResult.error ? 'error' : 'success';
+
+            return res.json({
+                success: true,
+                data: {
+                    status,
+                    summary: { passed: runResult.error ? 0 : 1, total: 1 },
+                    testResults: [
+                        {
+                            index: 0,
+                            input: rawInput,
+                            actual: runResult.actual,
+                            passed: !runResult.error,
+                            error: runResult.error,
+                            isCustom: true
+                        }
+                    ]
+                }
+            });
+        }
 
         // Run against visible test cases ONLY for "Run" button
         const publicCases = dbQuestion.testCases.filter(tc => !tc.isHidden);
 
         if (publicCases.length === 0) {
-            return res.json({ success: true, output: "No public test cases to run against.", status: "success" });
+            return res.json({
+                success: true,
+                data: {
+                    status: 'success',
+                    summary: { passed: 0, total: 0 },
+                    testResults: []
+                }
+            });
         }
 
-        for (const tc of publicCases) {
+        let passedCount = 0;
+        let errorCount = 0;
+        const testResults = [];
+
+        for (const [index, tc] of publicCases.entries()) {
             const result = await executor.runTest(language, code, { input: tc.input, expected: tc.expectedOutput });
-            outputLog += `Input:Str ${tc.input}\nExpected: ${tc.expectedOutput}\nActual: ${result.actual}\nResult: ${result.passed ? 'PASS' : 'FAIL'}\n\n`;
-            if (!result.passed) allPassed = false;
+            if (result.passed) passedCount++;
+            if (result.error) errorCount++;
+            testResults.push({
+                index,
+                input: tc.input,
+                expected: tc.expectedOutput,
+                actual: result.actual,
+                passed: result.passed,
+                error: result.error,
+                isHidden: false
+            });
         }
+
+        const status = errorCount > 0 ? 'error' : passedCount === publicCases.length ? 'success' : 'fail';
 
         res.json({
             success: true,
-            output: outputLog,
-            status: allPassed ? 'success' : 'fail'
+            data: {
+                status,
+                summary: { passed: passedCount, total: publicCases.length },
+                testResults
+            }
         });
 
     } catch (error: any) {
@@ -309,7 +380,7 @@ router.post('/run', authenticate, async (req: any, res) => {
 
 // POST /api/interview/end
 // Finish user interview
-router.post('/end', authenticate, async (req: any, res) => {
+router.post('/end', authenticate, writeLimiter, async (req: any, res) => {
     try {
         const { sessionId } = req.body;
 

@@ -35,11 +35,11 @@ export function Input({
                 <input
                     type={isPassword && showPassword ? 'text' : type}
                     className={cn(
-                        'w-full px-4 py-3 text-[15px] bg-gray-50 dark:bg-[#0d1117] border border-gray-200 dark:border-white/10 rounded-xl',
-                        'text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400',
+                        'w-full px-4 py-3 text-[15px] bg-gray-50 dark:bg-[var(--sw-bg)] border border-gray-200 dark:border-[var(--sw-border)] rounded-xl',
+                        'text-gray-900 dark:text-[var(--sw-text)] placeholder-gray-500 dark:placeholder-[var(--sw-text-muted)]',
                         'transition-all duration-200',
                         'focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20',
-                        'hover:border-gray-300 dark:hover:border-white/20',
+                        'hover:border-gray-300 dark:hover:border-[var(--sw-text-muted)]',
                         leftIcon && 'pl-10',
                         isPassword && 'pr-10',
                         error && 'border-red-500/50 focus:border-red-500 focus:ring-red-500/20',

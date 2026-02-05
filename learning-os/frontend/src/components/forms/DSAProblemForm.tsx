@@ -214,7 +214,7 @@ export function DSAProblemForm({ initialValues, onSuccess, onCancel }: DSAProble
             </div>
 
             {/* Section 2: Classification & Metrics */}
-            <div className="bg-gray-50 dark:bg-white/5 p-6 rounded-xl border border-gray-100 dark:border-white/10 space-y-6">
+            <div className="bg-gray-50 dark:bg-[var(--sw-surface)] p-6 rounded-xl border border-gray-100 dark:border-[var(--sw-border)] space-y-6">
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                     <Select
                         label="Topic"
@@ -296,7 +296,7 @@ export function DSAProblemForm({ initialValues, onSuccess, onCancel }: DSAProble
                     <div className="space-y-2">
                         <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Solution Code</label>
                         <textarea
-                            className="w-full h-64 p-4 font-mono text-sm bg-gray-900 text-gray-100 rounded-lg border border-gray-700 focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-y"
+                            className="w-full h-64 p-4 font-mono text-sm bg-gray-900 dark:bg-[var(--sw-bg)] text-gray-100 rounded-lg border border-gray-700 dark:border-[var(--sw-border)] focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-y"
                             placeholder="// Paste your standardized solution code here..."
                             value={values.solutionCode}
                             onChange={(e) => handleChange('solutionCode', e.target.value)}

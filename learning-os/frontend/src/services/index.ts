@@ -30,5 +30,8 @@ export type {
     BackendTopic,
     ProjectStudy,
     InterviewSession,
+    InterviewTestResult,
+    InterviewRunResult,
+    InterviewSubmitResult,
     ChatSession,
 } from './types';

@@ -6,6 +6,7 @@ import { z } from 'zod';
 import { motion } from 'framer-motion';
 import { Mail, Lock, Sparkles, ArrowRight } from 'lucide-react';
 import { useAuthStore } from '../stores/authStore';
+import { cn } from '../lib/utils';
 
 const loginSchema = z.object({
     email: z.string().email('Invalid email address'),
@@ -40,10 +41,7 @@ export function Login() {
     };
 
     return (
-        <div
-            className="min-h-screen flex flex-col justify-center px-5 py-8 sm:px-6 lg:px-8"
-            style={{ background: '#1a1a2e' }}
-        >
+        <div className="auth-shell">
             <motion.div
                 className="w-full max-w-sm mx-auto"
                 initial={{ opacity: 0, y: 20 }}
@@ -53,7 +51,7 @@ export function Login() {
                 {/* Logo */}
                 <div className="text-center mb-10">
                     <motion.div
-                        className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gray-800"
+                        className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-[color:var(--console-surface-2)] border border-white/10 shadow-lg"
                         initial={{ scale: 0 }}
                         animate={{ scale: 1 }}
                         transition={{ type: 'spring', delay: 0.1 }}
@@ -61,28 +59,17 @@ export function Login() {
                         <Sparkles size={28} className="text-white" />
                     </motion.div>
                     <h1 className="text-2xl sm:text-3xl font-semibold text-white">Welcome back</h1>
-                    <p className="text-base mt-2" style={{ color: '#9aa0a6' }}>
+                    <p className="text-base mt-2 auth-muted">
                         Sign in to continue to Learning OS
                     </p>
                 </div>
 
                 {/* Form Card */}
-                <div
-                    className="rounded-2xl p-6 sm:p-8"
-                    style={{
-                        background: '#16213e',
-                        border: '1px solid rgba(255,255,255,0.08)'
-                    }}
-                >
+                <div className="auth-card rounded-2xl p-6 sm:p-8">
                     <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
                         {error && (
                             <motion.div
-                                className="p-4 rounded-xl text-sm"
-                                style={{
-                                    background: 'rgba(234, 67, 53, 0.1)',
-                                    border: '1px solid rgba(234, 67, 53, 0.3)',
-                                    color: '#ff6b6b'
-                                }}
+                                className="p-4 rounded-xl text-sm border border-red-500/30 bg-red-500/10 text-red-400"
                                 initial={{ opacity: 0, height: 0 }}
                                 animate={{ opacity: 1, height: 'auto' }}
                             >
@@ -96,21 +83,19 @@ export function Login() {
                                 Email
                             </label>
                             <div className="relative">
-                                <Mail size={20} className="absolute left-4 top-1/2 -translate-y-1/2" style={{ color: '#6b7280' }} />
+                                <Mail size={20} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
                                 <input
                                     type="email"
-                                    className="w-full h-14 pl-12 pr-4 text-base rounded-xl transition-all"
-                                    style={{
-                                        background: '#1f2b4d',
-                                        border: errors.email ? '2px solid #ea4335' : '1px solid rgba(255,255,255,0.1)',
-                                        color: '#e8eaed'
-                                    }}
+                                    className={cn(
+                                        "auth-input w-full pl-12 pr-4 text-base",
+                                        errors.email && "auth-input-error"
+                                    )}
                                     placeholder="you@example.com"
                                     {...register('email')}
                                 />
                             </div>
                             {errors.email && (
-                                <p className="text-sm" style={{ color: '#ff6b6b' }}>{errors.email.message}</p>
+                                <p className="text-sm text-red-400">{errors.email.message}</p>
                             )}
                         </div>
 
@@ -120,32 +105,26 @@ export function Login() {
                                 Password
                             </label>
                             <div className="relative">
-                                <Lock size={20} className="absolute left-4 top-1/2 -translate-y-1/2" style={{ color: '#6b7280' }} />
+                                <Lock size={20} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
                                 <input
                                     type="password"
-                                    className="w-full h-14 pl-12 pr-4 text-base rounded-xl transition-all"
-                                    style={{
-                                        background: '#1f2b4d',
-                                        border: errors.password ? '2px solid #ea4335' : '1px solid rgba(255,255,255,0.1)',
-                                        color: '#e8eaed'
-                                    }}
+                                    className={cn(
+                                        "auth-input w-full pl-12 pr-4 text-base",
+                                        errors.password && "auth-input-error"
+                                    )}
                                     placeholder="Enter your password"
                                     {...register('password')}
                                 />
                             </div>
                             {errors.password && (
-                                <p className="text-sm" style={{ color: '#ff6b6b' }}>{errors.password.message}</p>
+                                <p className="text-sm text-red-400">{errors.password.message}</p>
                             )}
                         </div>
 
                         {/* Submit Button */}
                         <button
                             type="submit"
-                            className="w-full h-14 text-base font-medium rounded-xl flex items-center justify-center gap-2 transition-all active:scale-[0.98]"
-                            style={{
-                                background: '#4285f4',
-                                color: 'white'
-                            }}
+                            className="auth-primary-button w-full h-14 text-base font-medium rounded-xl flex items-center justify-center gap-2 transition-all active:scale-[0.98] disabled:opacity-70 disabled:cursor-not-allowed"
                             disabled={isLoading}
                         >
                             {isLoading ? (
@@ -166,13 +145,13 @@ export function Login() {
                     </form>
 
                     {/* Divider */}
-                    <div className="mt-8 pt-6" style={{ borderTop: '1px solid rgba(255,255,255,0.08)' }}>
-                        <p className="text-center text-base" style={{ color: '#9aa0a6' }}>
+                    <div className="mt-8 pt-6 border-t border-[color:var(--border-subtle)]">
+                        <p className="text-center text-base auth-muted">
                             Don't have an account?{' '}
                             <Link
                                 to="/register"
                                 className="font-semibold hover:underline"
-                                style={{ color: '#4285f4' }}
+                                style={{ color: 'var(--accent-primary)' }}
                             >
                                 Create account
                             </Link>
@@ -182,7 +161,7 @@ export function Login() {
 
                 {/* Footer */}
                 <div className="mt-10 text-center">
-                    <p className="text-sm font-medium" style={{ color: '#6b7280' }}>
+                    <p className="text-sm font-medium auth-muted">
                         Track • Learn • Grow
                     </p>
                 </div>

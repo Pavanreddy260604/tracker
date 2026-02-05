@@ -14,6 +14,7 @@ import { Roadmap } from './pages/Roadmap/Roadmap';
 import { InterviewHistory } from './pages/Interview/InterviewHistory';
 import { InterviewSetup } from './pages/Interview/InterviewSetup';
 import { InterviewRoom } from './pages/Interview/InterviewRoom';
+import { ScriptWriterPage } from './pages/ScriptWriter';
 import ChatPage from './pages/ChatPage';
 import { useAuthStore } from './stores/authStore';
 import { ErrorBoundary } from './components/ErrorBoundary';
@@ -27,12 +28,12 @@ function LoadingScreen() {
   return (
     <div
       className="min-h-screen flex items-center justify-center"
-      style={{ background: '#0b0f14' }}
+      style={{ background: 'var(--console-bg)' }}
     >
       <div className="flex flex-col items-center gap-4">
         <div
           className="w-12 h-12 rounded-full border-3 border-t-transparent animate-spin"
-          style={{ borderColor: '#4285f4', borderTopColor: 'transparent' }}
+          style={{ borderColor: 'var(--accent-primary-dark)', borderTopColor: 'transparent' }}
         />
         <p className="text-sm text-gray-400">Loading...</p>
       </div>
@@ -210,6 +211,16 @@ function App() {
               element={
                 <ProtectedRoute>
                   <InterviewRoom />
+                </ProtectedRoute>
+              }
+            />
+
+            {/* Script Writer Layout-less Route (Opens in new window style) */}
+            <Route
+              path="/script-writer"
+              element={
+                <ProtectedRoute useLayout={false}>
+                  <ScriptWriterPage />
                 </ProtectedRoute>
               }
             />
