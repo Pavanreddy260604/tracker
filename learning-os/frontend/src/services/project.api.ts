@@ -29,9 +29,15 @@ export interface Scene {
     status: 'planned' | 'drafted' | 'reviewed' | 'final';
     goal?: string;
     critique?: CritiqueResult;
+    lastCritiqueContent?: string;
+    highScore?: {
+        content: string;
+        critique: CritiqueResult;
+        savedAt: string;
+    };
 }
 
-const API_URL = import.meta.env.VITE_SCRIPT_SERVICE_URL || 'http://localhost:5001/api';
+const API_URL = '/api';
 
 // Auth helper - pulls token from persisted auth store
 const getToken = () => {
@@ -55,13 +61,19 @@ const getAuthHeaders = (): HeadersInit => {
     };
 };
 
+const assertOk = async (res: Response, fallback: string) => {
+    if (res.ok) return;
+    const payload = await res.json().catch(() => ({}));
+    throw new Error(payload.error || payload.message || fallback);
+};
+
 export const projectApi = {
     // Projects (Bibles)
     listProjects: async (_userId?: string): Promise<Bible[]> => {
         const res = await fetch(`${API_URL}/bible`, {
             headers: getAuthHeaders(),
         });
-        if (!res.ok) throw new Error('Failed to fetch projects');
+        await assertOk(res, 'Failed to fetch projects');
         const json = await res.json();
         return json.data;
     },
@@ -72,7 +84,7 @@ export const projectApi = {
             headers: getAuthHeaders(),
             body: JSON.stringify({ ...data }),
         });
-        if (!res.ok) throw new Error('Failed to create project');
+        await assertOk(res, 'Failed to create project');
         const json = await res.json();
         return json.data;
     },
@@ -81,7 +93,7 @@ export const projectApi = {
         const res = await fetch(`${API_URL}/bible/${id}`, {
             headers: getAuthHeaders(),
         });
-        if (!res.ok) throw new Error('Failed to fetch project');
+        await assertOk(res, 'Failed to fetch project');
         const json = await res.json();
         return json.data;
     },
@@ -91,7 +103,7 @@ export const projectApi = {
         const res = await fetch(`${API_URL}/scene/bible/${bibleId}`, {
             headers: getAuthHeaders(),
         });
-        if (!res.ok) throw new Error('Failed to fetch scenes');
+        await assertOk(res, 'Failed to fetch scenes');
         const json = await res.json();
         return json.data;
     },
@@ -102,7 +114,7 @@ export const projectApi = {
             headers: getAuthHeaders(),
             body: JSON.stringify({ bibleId, ...data }),
         });
-        if (!res.ok) throw new Error('Failed to create scene');
+        await assertOk(res, 'Failed to create scene');
         const json = await res.json();
         return json.data;
     },
@@ -113,7 +125,7 @@ export const projectApi = {
             headers: getAuthHeaders(),
             body: JSON.stringify(data),
         });
-        if (!res.ok) throw new Error('Failed to update scene');
+        await assertOk(res, 'Failed to update scene');
         const json = await res.json();
         return json.data;
     },
@@ -124,7 +136,7 @@ export const projectApi = {
             method: 'DELETE',
             headers: getAuthHeaders(),
         });
-        if (!res.ok) throw new Error('Failed to delete scene');
+        await assertOk(res, 'Failed to delete scene');
     },
 
     // Update a project
@@ -134,7 +146,7 @@ export const projectApi = {
             headers: getAuthHeaders(),
             body: JSON.stringify(data),
         });
-        if (!res.ok) throw new Error('Failed to update project');
+        await assertOk(res, 'Failed to update project');
         const json = await res.json();
         return json.data;
     },
@@ -145,7 +157,7 @@ export const projectApi = {
             method: 'DELETE',
             headers: getAuthHeaders(),
         });
-        if (!res.ok) throw new Error('Failed to delete project');
+        await assertOk(res, 'Failed to delete project');
     },
 
     // Generation
@@ -155,17 +167,36 @@ export const projectApi = {
             headers: getAuthHeaders(),
             body: JSON.stringify({ ...options }),
         });
-        if (!res.ok || !res.body) throw new Error('Generation failed');
+        await assertOk(res, 'Generation failed');
+        if (!res.body) throw new Error('Generation failed');
         return res.body;
     },
 
     // Critique
-    critiqueScene: async (sceneId: string): Promise<CritiqueResult> => {
+    critiqueScene: async (sceneId: string, content?: string): Promise<CritiqueResult> => {
+        console.log('[API] critiqueScene payload:', { sceneId, contentLength: content?.length, contentPreview: content?.slice(0, 50) });
         const res = await fetch(`${API_URL}/scene/${sceneId}/critique`, {
             method: 'POST',
             headers: getAuthHeaders(),
+            body: JSON.stringify({ content }),
         });
-        if (!res.ok) throw new Error('Critique failed');
+        await assertOk(res, 'Critique failed');
+        const json = await res.json();
+        return json.data;
+    },
+
+    fixScene: async (sceneId: string): Promise<{
+        content: string;
+        critique: any;
+        auditNotes: string;
+        isSuperior: boolean;
+        benchmarkScore: number;
+    }> => {
+        const res = await fetch(`${API_URL}/scene/${sceneId}/fix`, {
+            method: 'POST',
+            headers: getAuthHeaders(),
+        });
+        await assertOk(res, 'Fix failed');
         const json = await res.json();
         return json.data;
     },
@@ -175,7 +206,7 @@ export const projectApi = {
         const res = await fetch(`${API_URL}/bible/${bibleId}/export?format=${format}`, {
             headers: getAuthHeaders(),
         });
-        if (!res.ok) throw new Error('Export failed');
+        await assertOk(res, 'Export failed');
 
         const blob = await res.blob();
         const url = window.URL.createObjectURL(blob);
@@ -188,4 +219,3 @@ export const projectApi = {
         document.body.removeChild(a);
     },
 };
-

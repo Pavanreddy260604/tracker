@@ -27,6 +27,21 @@ export interface IScene extends Document {
         suggestions: string[];
     };
 
+    // The "High Water Mark" (Highest scoring version ever)
+    highScore?: {
+        content: string;
+        critique: {
+            score: number;
+            grade: string;
+            summary: string;
+            formattingIssues: string[];
+            dialogueIssues: string[];
+            pacingIssues: string[];
+            suggestions: string[];
+        };
+        savedAt: Date;
+    };
+
     // The "Neural Link" (Interconnections)
     charactersInvolved: mongoose.Types.ObjectId[];
     mentionedItems: string[]; // Chekhov's guns introduced here
@@ -61,6 +76,20 @@ const SceneSchema: Schema = new Schema({
         dialogueIssues: [{ type: String }],
         pacingIssues: [{ type: String }],
         suggestions: [{ type: String }]
+    },
+
+    highScore: {
+        content: { type: String },
+        critique: {
+            score: { type: Number },
+            grade: { type: String },
+            summary: { type: String },
+            formattingIssues: [{ type: String }],
+            dialogueIssues: [{ type: String }],
+            pacingIssues: [{ type: String }],
+            suggestions: [{ type: String }]
+        },
+        savedAt: { type: Date }
     },
 
     charactersInvolved: [{ type: Schema.Types.ObjectId, ref: 'Character' }],

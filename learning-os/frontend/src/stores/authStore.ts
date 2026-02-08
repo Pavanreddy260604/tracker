@@ -3,6 +3,7 @@ import { persist, createJSONStorage } from 'zustand/middleware';
 import type { StateStorage } from 'zustand/middleware';
 import { api } from '../services/api';
 import type { User } from '../services/api';
+import { activityTracker } from '../services/activity.tracker';
 
 // Safe storage wrapper that handles restricted contexts
 const safeStorage: StateStorage = {
@@ -59,6 +60,7 @@ export const useAuthStore = create<AuthState>()(
                 try {
                     const { user, token } = await api.login(email, password);
                     api.setToken(token);
+                    activityTracker.setToken(token); // Connect tracker
                     set({
                         user,
                         token,
@@ -92,6 +94,7 @@ export const useAuthStore = create<AuthState>()(
 
             logout: () => {
                 api.setToken(null);
+                activityTracker.setToken(null as any); // Clear tracker
                 set({
                     user: null,
                     token: null,
@@ -141,6 +144,7 @@ export const useAuthStore = create<AuthState>()(
                 return (state) => {
                     if (state?.token) {
                         api.setToken(state.token);
+                        activityTracker.setToken(state.token); // Rehydrate tracker
                     }
                 };
             },

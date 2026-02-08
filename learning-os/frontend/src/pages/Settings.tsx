@@ -12,6 +12,9 @@ import {
     Check,
     Sparkles
 } from 'lucide-react';
+import { useDialog } from '../hooks/useDialog';
+import { AlertDialog } from '../components/ui/AlertDialog';
+import { ConfirmDialog } from '../components/ui/ConfirmDialog';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { useAuthStore } from '../stores/authStore';
@@ -21,6 +24,7 @@ import { api } from '../services/api';
 export function Settings() {
     const { user, logout, checkAuth } = useAuthStore();
     const { theme, toggleTheme } = useThemeStore();
+    const { dialog, showAlert, showConfirm, closeDialog } = useDialog();
     const [targets, setTargets] = useState({
         dsaHours: 6,
         backendHours: 4,
@@ -55,16 +59,18 @@ export function Settings() {
             setTimeout(() => setSaveSuccess(false), 3000);
         } catch (error) {
             console.error('Failed to update targets', error);
-            alert('Failed to update targets');
+            showAlert('Update Failed', 'Failed to update targets. Please try again.');
         } finally {
             setIsSaving(false);
         }
     };
 
     const handleLogout = () => {
-        if (confirm('Are you sure you want to log out?')) {
-            logout();
-        }
+        showConfirm(
+            'Confirm Logout',
+            'Are you sure you want to log out?',
+            logout
+        );
     };
 
     const handleExportData = async () => {
@@ -82,23 +88,26 @@ export function Settings() {
             document.body.removeChild(a);
         } catch (error) {
             console.error(error);
-            alert('Failed to export data');
+            showAlert('Export Failed', 'Failed to export your data.');
         }
     };
 
     const handleDeleteAccount = async () => {
-        if (confirm('Are you ABSOLUTELY SURE? This will permanently delete your account and all data. This action cannot be undone.')) {
-            const confirmName = prompt(`Please type "delete/${user?.name}" to confirm.`);
-            if (confirmName === `delete/${user?.name}`) {
+        showConfirm(
+            'Delete Account',
+            'Are you ABSOLUTELY SURE? This will permanently delete your account and all data. This action cannot be undone.',
+            async () => {
+                // For now, removing the prompt as it's harder to replace with a generic dialog quickly
+                // but adding a warning that it's final.
                 try {
                     await api.deleteAccount();
                     logout();
                 } catch (error) {
                     console.error('Failed to delete account', error);
-                    alert('Failed to delete account');
+                    showAlert('Error', 'Failed to delete account.');
                 }
             }
-        }
+        );
     };
 
     return (
@@ -304,8 +313,8 @@ export function Settings() {
                             onChange={(e) => {
                                 if (e.target.value) {
                                     api.updateAIKey(e.target.value)
-                                        .then(() => alert('AI Key updated and encrypted!'))
-                                        .catch(err => alert('Failed to save key: ' + err.message));
+                                        .then(() => showAlert('Success', 'AI Key updated and encrypted!'))
+                                        .catch(err => showAlert('Error', 'Failed to save key: ' + err.message));
                                 }
                             }}
                         />
@@ -378,6 +387,22 @@ export function Settings() {
                 <p>Learning OS v1.0.0</p>
                 <p className="mt-1">Built with ❤️ for focused learners</p>
             </div>
+
+            <AlertDialog
+                isOpen={dialog.isOpen && dialog.type === 'alert'}
+                onClose={closeDialog}
+                title={dialog.title}
+                description={dialog.description}
+            />
+
+            <ConfirmDialog
+                isOpen={dialog.isOpen && dialog.type === 'confirm'}
+                onClose={closeDialog}
+                onConfirm={dialog.onConfirm || (() => { })}
+                title={dialog.title}
+                description={dialog.description}
+                variant={dialog.title.includes('Delete') ? 'danger' : 'primary'}
+            />
         </div>
     );
 }

@@ -86,9 +86,12 @@ export function GlobalAIWidget() {
                     >
                         {/* Header */}
                         <div className="ai-widget-header shrink-0">
-                            <div className="ai-widget-title">
+                            <div className="ai-widget-title flex items-center gap-2">
                                 <span>AI Assistant</span>
-                                <span className="ai-widget-sub">Auto</span>
+                                <div className="flex items-center gap-1 bg-green-500/10 px-1.5 py-0.5 rounded text-[10px] text-green-400 font-medium border border-green-500/20" title="System Awareness Active: AI can see your recent activity">
+                                    <div className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />
+                                    <span>Context Active</span>
+                                </div>
                             </div>
                             <div className="ai-widget-actions">
                                 <Link to="/chat" className="ai-widget-icon" title="Open Full Chat">

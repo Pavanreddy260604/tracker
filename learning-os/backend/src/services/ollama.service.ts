@@ -1,4 +1,10 @@
 import axios from 'axios';
+import { DailyLog } from '../models/DailyLog.js';
+import { DSAProblem } from '../models/DSAProblem.js';
+import { BackendTopic } from '../models/BackendTopic.js';
+import { RoadmapNode } from '../models/RoadmapNode.js';
+import { RoadmapEdge } from '../models/RoadmapEdge.js';
+import { UserActivity } from '../models/UserActivity.js';
 
 /**
  * Custom error class for AI service failures.
@@ -22,20 +28,21 @@ export class OllamaService {
     private baseUrl: string;
     private primaryModel: string;
     private fallbackModels: string[];
+    private userId?: string;
 
-    constructor(model?: string) {
+    constructor(model?: string, userId?: string) {
         this.baseUrl = process.env.OLLAMA_URL || 'http://localhost:11434';
-        this.primaryModel = model || process.env.OLLAMA_MODEL || 'mistral';
+        // User Preference: Deepseek -> GPT-OSS -> Others -> Small Models
+        this.primaryModel = model || process.env.OLLAMA_MODEL || 'deepseek-v3.1:671b-cloud';
+        this.userId = userId;
 
-        // Defined fallback chain
+        // Defined fallback chain based on user preference
         this.fallbackModels = [
-            // Cloud Models (Prioritized)
-            'glm-4.6:cloud',
-            'deepseek-v3.1:671b-cloud',
-            'qwen3-coder:480b-cloud',
-            'gpt-oss:120b-cloud',
+            'gpt-oss:120b-cloud',       // 2nd Choice
+            'glm-4.6:cloud',            // 3rd Choice
+            'qwen3-coder:480b-cloud',   // 4th Choice
 
-            // Local Fallbacks (If cloud fails)
+            // Smaller / Local Models (Last Resort)
             'gemma3:4b',
             'tinyllama:latest',
             'hf.co/bartowski/Llama-3.2-1B-Instruct-GGUF:latest'
@@ -308,23 +315,164 @@ export class OllamaService {
     }
 
     async chat(message: string, history: any[] = [], jsonMode: boolean = false): Promise<string> {
+        return this.chatInternal(message, history, jsonMode);
+    }
+
+    private async chatInternal(message: string, history: any[] = [], jsonMode: boolean = false): Promise<string> {
         try {
-            const response = await this.makeRequest('/api/chat', {
+            const tools = this.getToolsDefinition();
+            const payload: any = {
                 messages: [
                     ...history,
                     { role: 'user', content: message }
                 ],
                 stream: false,
-                format: jsonMode ? 'json' : undefined
-            });
+                format: jsonMode ? 'json' : undefined,
+                tools: (this.userId && !jsonMode) ? tools : undefined // Only use tools if userId is present and not in strict JSON mode
+            };
 
-            return response.data.message.content;
+            const response = await this.makeRequest('/api/chat', payload);
+            const responseMsg = response.data.message;
+
+            // Handle Tool Calls if present
+            if (responseMsg.tool_calls && responseMsg.tool_calls.length > 0) {
+                console.log(`[Ollama] Tool calls detected:`, responseMsg.tool_calls.length);
+
+                // Add assistant's tool call message to history
+                const newHistory = [
+                    ...history,
+                    { role: 'user', content: message },
+                    responseMsg // The message containing tool_calls
+                ];
+
+                // Execute tools
+                for (const toolCall of responseMsg.tool_calls) {
+                    const functionName = toolCall.function.name;
+                    const functionArgs = toolCall.function.arguments;
+
+                    const toolResult = await this.executeTool(functionName, functionArgs);
+
+                    // Add tool result to history
+                    newHistory.push({
+                        role: 'tool',
+                        content: JSON.stringify(toolResult),
+                        name: functionName
+                    });
+                }
+
+                // Call LLM again with tool results
+                const followUpResponse = await this.makeRequest('/api/chat', {
+                    messages: newHistory,
+                    stream: false
+                });
+                return followUpResponse.data.message.content;
+            }
+
+            return responseMsg.content;
         } catch (error) {
             console.error('[Ollama] Chat error after all model attempts:', error);
             throw new AIServiceError(
                 'AI Service is currently unavailable. All models failed to respond.',
                 { recoverable: true, cause: error as Error, context: 'chat' }
             );
+        }
+    }
+
+    // --- System Awareness Tools ---
+    private getToolsDefinition() {
+        return [
+            {
+                type: 'function',
+                function: {
+                    name: 'getRecentLogs',
+                    description: 'Get the user\'s daily activity logs for the last N days.',
+                    parameters: {
+                        type: 'object',
+                        properties: {
+                            days: { type: 'number', description: 'Number of days to look back' }
+                        },
+                        required: ['days']
+                    }
+                }
+            },
+            {
+                type: 'function',
+                function: {
+                    name: 'getUserActivity',
+                    description: 'Get high-resolution system activity (clicks, navigation) for the last N minutes.',
+                    parameters: {
+                        type: 'object',
+                        properties: {
+                            minutes: { type: 'number', description: 'Minutes to look back' }
+                        },
+                        required: ['minutes']
+                    }
+                }
+            },
+            {
+                type: 'function',
+                function: {
+                    name: 'getDSAStats',
+                    description: 'Get statistics about solved DSA problems.',
+                    parameters: {
+                        type: 'object',
+                        properties: {
+                            topic: { type: 'string', description: 'Topic filter' },
+                            difficulty: { type: 'string', enum: ['easy', 'medium', 'hard'] }
+                        }
+                    }
+                }
+            },
+            {
+                type: 'function',
+                function: {
+                    name: 'getRoadmap',
+                    description: 'Get the user\'s learning roadmap.',
+                    parameters: { type: 'object', properties: {} }
+                }
+            }
+        ];
+    }
+
+    private async executeTool(name: string, args: any): Promise<any> {
+        if (!this.userId) return { error: "User context missing" };
+        console.log(`[Ollama-Tool] Executing ${name}`, args);
+
+        try {
+            switch (name) {
+                case "getRecentLogs":
+                    const limit = args.days || 7;
+                    return await DailyLog.find({ userId: this.userId }).sort({ date: -1 }).limit(limit).lean();
+
+                case "getUserActivity":
+                    const minutes = args.minutes || 10;
+                    const since = new Date(Date.now() - minutes * 60 * 1000);
+                    return await UserActivity.find({
+                        userId: this.userId,
+                        timestamp: { $gte: since }
+                    }).sort({ timestamp: -1 }).limit(20).lean();
+
+                case "getDSAStats":
+                    const query: any = { userId: this.userId, status: 'solved' };
+                    if (args.topic) query.topic = new RegExp(args.topic, 'i');
+                    if (args.difficulty) query.difficulty = args.difficulty;
+                    const count = await DSAProblem.countDocuments(query);
+                    const problems = await DSAProblem.find(query).select('problemName difficulty topic date').limit(5).lean();
+                    return { totalSolved: count, recent: problems };
+
+                case "getRoadmap":
+                    const [nodes, edges] = await Promise.all([
+                        RoadmapNode.find({ userId: this.userId }).lean(),
+                        RoadmapEdge.find({ userId: this.userId }).lean()
+                    ]);
+                    return { nodes, edges };
+
+                default:
+                    return { error: "Tool not found" };
+            }
+        } catch (error: any) {
+            console.error(`[Ollama-Tool] Error executing ${name}:`, error);
+            return { error: error.message };
         }
     }
 

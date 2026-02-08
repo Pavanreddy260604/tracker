@@ -1,10 +1,3 @@
-// ... imports
-
-// ... (rest of imports)
-
-// ...
-
-// ...
 export interface ScriptTemplates {
     formats: {
         id: string;
@@ -28,6 +21,11 @@ export interface ScriptRequest {
     genre?: string;
     tone?: string;
     transliteration?: boolean;
+    bibleId?: string;
+    characterIds?: string[];
+    sceneLength?: 'short' | 'medium' | 'long' | 'extended';
+    currentContent?: string;
+    model?: string;
 }
 
 export interface ScriptHistoryItem {
@@ -48,8 +46,8 @@ export interface IScriptDetail {
 }
 
 
-// Microservice runs on a different port (5001)
-export const BASE_SERVICE_URL = import.meta.env.VITE_SCRIPT_SERVICE_URL || 'http://127.0.0.1:5001/api';
+// Microservice runs on a different port (5003)
+export const BASE_SERVICE_URL = import.meta.env.VITE_SCRIPT_SERVICE_URL || 'http://localhost:5003/api';
 export const SCRIPT_SERVICE_URL = `${BASE_SERVICE_URL}/script`;
 export const VOICE_SERVICE_URL = `${BASE_SERVICE_URL}/voice`;
 
@@ -172,7 +170,6 @@ class ScriptWriterApi {
             method: 'POST',
             headers: getAuthHeadersNoContentType(),
             body: formData
-            // assert content-type is automatic with fetch FormData
         });
 
         if (!response.ok) {
@@ -180,6 +177,30 @@ class ScriptWriterApi {
         }
 
         return response.json();
+    }
+
+    async getAIProvider(): Promise<'ollama' | 'gemini' | 'groq'> {
+        const response = await fetch(`${BASE_SERVICE_URL}/ai/provider`, {
+            headers: getAuthHeaders()
+        });
+        const data = await response.json();
+        return data.data.provider;
+    }
+
+    async setAIProvider(provider: 'ollama' | 'gemini' | 'groq'): Promise<'ollama' | 'gemini' | 'groq'> {
+        const response = await fetch(`${BASE_SERVICE_URL}/ai/provider`, {
+            method: 'POST',
+            headers: getAuthHeaders(),
+            body: JSON.stringify({ provider })
+        });
+
+        if (!response.ok) {
+            const error = await response.json().catch(() => ({ error: 'Failed to set provider' }));
+            throw new Error(error.error || `Failed to set provider: ${response.statusText}`);
+        }
+
+        const data = await response.json();
+        return data.data.provider;
     }
 }
 

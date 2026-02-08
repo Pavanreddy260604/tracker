@@ -6,6 +6,7 @@ export interface IBible extends Document {
     logline: string;
     genre: string;
     tone: string;
+    language: string;
     visualStyle: string; // "Noir", "Wes Anderson", "Handheld"
     rules: string[]; // "No voiceovers", "Only takes place at night"
     createdAt: Date;
@@ -18,6 +19,7 @@ const BibleSchema: Schema = new Schema({
     logline: { type: String, default: '' },
     genre: { type: String },
     tone: { type: String },
+    language: { type: String, default: 'English' },
     visualStyle: { type: String },
     rules: [{ type: String }],
 }, { timestamps: true });

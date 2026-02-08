@@ -20,6 +20,7 @@ import aiRoutes from './routes/ai.js';
 import roadmapRoutes from './routes/roadmap.js';
 import interviewRoutes from './routes/interview.js';
 import chatRoutes from './routes/chat.js';
+import { activityRoutes } from './routes/activityRoutes.js';
 
 
 const app = express();
@@ -55,6 +56,7 @@ app.use('/api/ai', aiRoutes);
 app.use('/api/roadmap', roadmapRoutes);
 app.use('/api/interview', interviewRoutes);
 app.use('/api/chat', chatRoutes);
+app.use('/api/activity', activityRoutes); // System Awareness
 
 // Error handling
 app.use(notFound);

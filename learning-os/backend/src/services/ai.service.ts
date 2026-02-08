@@ -5,6 +5,7 @@ import { DailyLog, IDailyLog } from "../models/DailyLog.js";
 import { BackendTopic, IBackendTopic } from "../models/BackendTopic.js";
 import { RoadmapNode } from "../models/RoadmapNode.js";
 import { RoadmapEdge } from "../models/RoadmapEdge.js";
+import { UserActivity } from "../models/UserActivity.js";
 import { decrypt } from "../utils/encryption.js";
 
 export class AIService {
@@ -61,6 +62,17 @@ export class AIService {
                             days: { type: "NUMBER", description: "Number of days to look back (default 7)" }
                         },
                         required: ["days"]
+                    }
+                },
+                {
+                    name: "getUserActivity",
+                    description: "Get the user's high-resolution system activity (clicks, navigation) for the last N minutes. Useful for understanding what they were just doing.",
+                    parameters: {
+                        type: "OBJECT",
+                        properties: {
+                            minutes: { type: "NUMBER", description: "Number of minutes to look back (default 10)" }
+                        },
+                        required: ["minutes"]
                     }
                 },
                 {
@@ -165,6 +177,14 @@ export class AIService {
             case "getRecentLogs":
                 const limit = args.days || 7;
                 return await DailyLog.find({ userId: this.userId }).sort({ date: -1 }).limit(limit).lean();
+
+            case "getUserActivity":
+                const minutes = args.minutes || 10;
+                const since = new Date(Date.now() - minutes * 60 * 1000);
+                return await UserActivity.find({
+                    userId: this.userId,
+                    timestamp: { $gte: since }
+                }).sort({ timestamp: -1 }).limit(20).lean();
 
             case "getDSAStats":
                 const query: any = { userId: this.userId, status: 'solved' };

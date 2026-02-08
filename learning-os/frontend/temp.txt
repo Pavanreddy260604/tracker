@@ -1,0 +1,180 @@
+@import url("https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500&family=Source+Sans+3:wght@400;500;600;700&display=swap");
+@import "tailwindcss";
+@variant dark (&:where(.dark, .dark *));
+
+/* ============================================
+   LEARNING OS - Enterprise Console Theme
+   Faithful Google Cloud Platform Aesthetic
+   
+   NOTE: The !important overrides in the .light theme section
+   are intentional to ensure light mode properly overrides
+   Tailwind's dark-first approach. A future refactor could
+   move to a CSS-variable-only approach with Tailwind v4's
+   built-in light-dark() but this works for now.
+   ============================================ */
+
+:root {
+  /* MNC Studio – Dark (Cinema Pro) */
+  --console-bg: #09090b;
+  /* Zinc-950/Black */
+  --console-surface: #121214;
+  /* Zinc-925 */
+  --console-surface-2: #1c1c1f;
+  /* Zinc-900 */
+  --console-elevated: #27272a;
+  /* Zinc-800 */
+  --console-header: #09090b;
+  --console-sidebar: #0f0f11;
+
+  /* Text */
+  --text-primary: #f4f4f5;
+  /* Zinc-100 */
+  --text-secondary: #a1a1aa;
+  /* Zinc-400 */
+  --text-disabled: #52525b;
+  /* Zinc-600 */
+
+  /* Accents – Cinema Blue (Professional, Trustworthy) */
+  --accent-primary: #3b82f6;
+  /* Blue-500 */
+  --accent-primary-dark: #2563eb;
+  /* Blue-600 */
+  --accent-soft: rgba(59, 130, 246, 0.12);
+  --accent-focus: rgba(59, 130, 246, 0.25);
+
+  /* Status */
+  --status-ok: #22c55e;
+  --status-warning: #f59e0b;
+  --status-error: #ef4444;
+
+  /* Borders */
+  --border-subtle: #27272a;
+  --border-strong: #3f3f46;
+  --border-focus: rgba(59, 130, 246, 0.5);
+
+  /* Shadows */
+  --elevation-1: 0 1px 2px rgba(0, 0, 0, 0.5), 0 4px 12px rgba(0, 0, 0, 0.3);
+  --elevation-2: 0 8px 24px rgba(0, 0, 0, 0.6), 0 4px 8px rgba(0, 0, 0, 0.4);
+  --elevation-3: 0 16px 40px rgba(0, 0, 0, 0.7);
+
+  /* Radius & layout */
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --app-bar-height: 48px;
+
+  /* Script Writer - Dark Theme (default) */
+  --sw-bg: #0d1117;
+  --sw-editor-bg: #0d1117;
+  --sw-surface: #161b22;
+  --sw-panel-bg: #161b22;
+  /* Sidebar matches surface in dark mode */
+  --sw-header-bg: #161b22;
+  --sw-surface-2: #21262d;
+  --sw-border: #30363d;
+  --sw-text: #c9d1d9;
+  --sw-text-muted: #8b949e;
+  --sw-accent: #1f6feb;
+  --sw-accent-soft: rgba(31, 111, 235, 0.15);
+  --sw-header-bg: #161b22;
+  --sw-panel-bg: #0d1117;
+  --sw-caret: #58a6ff;
+}
+
+/* ============================================
+   VS CODE SCROLL ARCHITECTURE
+   Lock viewport, enable container-level scrolling
+   ============================================ */
+
+html,
+body {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  /* CRITICAL: No body scroll */
+}
+
+#root {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* Tailwind v4 Theme - Expose CSS variables as utilities */
+@theme {
+  --color-console-bg: var(--console-bg);
+  --color-console-surface: var(--console-surface);
+  --color-console-surface-2: var(--console-surface-2);
+  --color-console-elevated: var(--console-elevated);
+  --color-console-header: var(--console-header);
+  --color-console-sidebar: var(--console-sidebar);
+
+  --color-text-primary: var(--text-primary);
+  --color-text-secondary: var(--text-secondary);
+  --color-text-disabled: var(--text-disabled);
+
+  --color-accent-primary: var(--accent-primary);
+  --color-accent-dark: var(--accent-primary-dark);
+  --color-accent-soft: var(--accent-soft);
+
+  --color-status-ok: var(--status-ok);
+  --color-status-warning: var(--status-warning);
+  --color-status-error: var(--status-error);
+
+  --color-border-subtle: var(--border-subtle);
+  --color-border-strong: var(--border-strong);
+  --color-border-focus: var(--border-focus);
+}
+
+/* ================================================
+   LIGHT THEME - Premium Google Cloud Light Style
+   ================================================ */
+
+.light {
+  /* ============================================
+     PREMIUM LIGHT THEME - "Warm Paper"
+     Inspired by Notion, iA Writer, Bear
+     Designed for concentration & comfort
+     ============================================ */
+
+  /* Backgrounds - Warm Cream Paper */
+  --console-bg: #faf9f6;
+  /* Warm cream base */
+  --console-surface: #ffffff;
+  /* Pure white cards pop */
+  --console-surface-2: #f5f4f0;
+  /* Warm gray for depth */
+  --console-elevated: #ffffff;
+  /* Elevated white */
+  --console-header: #fdfcfa;
+  /* Warm header */
+  --console-sidebar: #f7f6f3;
+  /* Sidebar with warmth */
+
+  /* Typography - Soft, Readable */
+  --text-primary: #1a1a1a;
+  /* Soft black, not harsh */
+  --text-secondary: #5c5c5c;
+  /* Warm gray */
+  --text-disabled: #9ca3af;
+  /* Muted but visible */
+
+  /* Accents - Deep Professional Blue */
+  --accent-primary: #0066cc;
+  /* Rich, trustworthy blue */
+  --accent-primary-dark: #0052a3;
+  /* Darker on hover */
+  --accent-soft: rgba(0, 102, 204, 0.08);
+  --accent-focus: rgba(0, 102, 204, 0.15);
+
+  /* Borders - Warm, Subtle */
+  --border-subtle: #e8e6e1;
+  /* Warm border */
+  --border-strong: #d8d5cf;
+  /* Stronger warm border */
+  --border-focus: #0066cc;
+
+  /* Premium Shadows - Soft, Layered */
+  --elevation-1: 0 1px 3px rgba(0, 0, 0, 0.04), 0 4px 12px rgba(0, 0, 0, 0.03);

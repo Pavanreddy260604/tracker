@@ -127,193 +127,205 @@ export function Dashboard() {
 
     return (
         <>
-            {/* Page Header with Quick Log Button */}
-            <div className="flex items-center justify-between mb-6">
-                <div>
-                    <h1 className="text-xl lg:text-2xl font-bold text-gray-900 dark:text-white">Dashboard</h1>
-                    <p className="text-sm text-gray-500 dark:text-gray-400">
-                        {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
-                    </p>
-                </div>
-                <button
-                    onClick={() => setShowQuickLog(true)}
-                    className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium bg-gray-900 dark:bg-gray-700 text-white hover:bg-black dark:hover:bg-gray-800 transition-colors"
-                >
-                    <Plus size={18} />
-                    <span className="hidden sm:inline">Quick Log</span>
-                </button>
-            </div>
-
-            {/* Alert Banner when no activity logged */}
-            {todayHours === 0 && (
-                <motion.div
-                    className="mb-5 p-4 rounded-xl flex flex-col sm:flex-row sm:items-center gap-3 bg-amber-500/10 border border-amber-500/30"
-                    initial={{ opacity: 0, y: -10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                >
-                    <div className="flex items-center gap-3 flex-1">
-                        <div className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 bg-gray-500/20">
-                            <AlertTriangle size={20} className="text-gray-300" />
-                        </div>
-                        <div>
-                            <p className="font-medium text-gray-300">No activity logged today</p>
-                            <p className="text-sm text-blue-300/70">Log your hours to keep your streak</p>
-                        </div>
+            <div className="max-w-7xl mx-auto w-full space-y-10">
+                {/* Page Header with Quick Log Button */}
+                <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                    <div className="space-y-1">
+                        <p className="inline-flex items-center gap-2 text-[11px] uppercase tracking-[0.2em] text-blue-300/80 bg-blue-500/10 px-3 py-1 rounded-full border border-blue-500/20">
+                            Pulse • Personalized
+                        </p>
+                        <h1 className="text-3xl font-black text-gray-900 dark:text-white leading-tight">Dashboard</h1>
+                        <p className="text-sm text-gray-500 dark:text-gray-400">
+                            {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
+                        </p>
                     </div>
                     <button
                         onClick={() => setShowQuickLog(true)}
-                        className="w-full sm:w-auto px-4 py-2.5 rounded-lg text-sm font-medium bg-gray-500/20 text-gray-300 border border-gray-500/30 hover:bg-gray-500/30 transition-colors"
+                        className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold bg-gradient-to-r from-blue-500 to-indigo-500 text-white shadow-lg shadow-blue-500/20 hover:shadow-blue-500/30 transition-all"
                     >
-                        Log Now
+                        <Plus size={18} />
+                        Quick Log
                     </button>
-                </motion.div>
-            )}
-
-            {/* Key Metrics Grid */}
-            <section className="mb-6">
-                <h2 className="text-sm font-semibold uppercase tracking-wider mb-4 flex items-center gap-2 text-gray-400">
-                    <Activity size={16} />
-                    Key Metrics
-                </h2>
-
-                <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-4">
-                    {/* Current Streak */}
-                    <MotionCard
-                        className="p-4"
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: 0.1 }}
-                    >
-                        <p className="text-xs font-medium uppercase tracking-wide mb-2 text-gray-500">Streak</p>
-                        <p className="text-3xl font-bold text-white text-glow">{streak?.currentStreak || 0}</p>
-                        <div className="flex items-center gap-1.5 mt-2 text-xs text-gray-400">
-                            <Award size={12} />
-                            <span>days</span>
-                        </div>
-                    </MotionCard>
-
-                    {/* Today's Hours */}
-                    <MotionCard
-                        className="p-4"
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: 0.15 }}
-                    >
-                        <p className="text-xs font-medium uppercase tracking-wide mb-2 text-gray-500">Today</p>
-                        <p className="text-3xl font-bold text-white text-glow">{todayHours}h</p>
-                        <div className={`flex items-center gap-1.5 mt-2 text-xs ${todayHours >= 6 ? 'text-green-400' : 'text-gray-400'}`}>
-                            {todayHours >= 6 ? <TrendingUp size={12} /> : <TrendingDown size={12} />}
-                            <span>{todayHours >= 11 ? 'Great!' : todayHours >= 6 ? 'On track' : 'Below target'}</span>
-                        </div>
-                    </MotionCard>
-
-                    {/* Total Hours */}
-                    <MotionCard
-                        className="p-4"
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: 0.2 }}
-                    >
-                        <p className="text-xs font-medium uppercase tracking-wide mb-2 text-gray-500">Total</p>
-                        <p className="text-3xl font-bold text-white text-glow">{insights?.totalHours || 0}h</p>
-                        <div className="flex items-center gap-1.5 mt-2 text-xs text-gray-400">
-                            <Clock size={12} />
-                            <span>all time</span>
-                        </div>
-                    </MotionCard>
-
-                    {/* Consistency */}
-                    <MotionCard
-                        className="p-4"
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: 0.25 }}
-                    >
-                        <p className="text-xs font-medium uppercase tracking-wide mb-2 text-gray-500">Consistency</p>
-                        <p className="text-3xl font-bold text-white text-glow">{insights?.consistencyPercent || 0}%</p>
-                        <div className={`flex items-center gap-1.5 mt-2 text-xs ${(insights?.consistencyPercent || 0) >= 70 ? 'text-green-400' : 'text-gray-400'}`}>
-                            {(insights?.consistencyPercent || 0) >= 70 ? <TrendingUp size={12} /> : <TrendingDown size={12} />}
-                            <span>active ratio</span>
-                        </div>
-                    </MotionCard>
                 </div>
-            </section>
 
-            {/* Today's Progress */}
-            {todayProgress && (
-                <section className="mb-6">
-                    <h2 className="text-sm font-semibold uppercase tracking-wider mb-4 flex items-center gap-2 text-gray-400">
+                {/* Alert Banner when no activity logged */}
+                {todayHours === 0 && (
+                    <motion.div
+                        className="p-4 rounded-2xl flex flex-col sm:flex-row sm:items-center gap-3 bg-gradient-to-r from-amber-500/15 via-amber-400/10 to-transparent border border-amber-500/25 shadow-lg shadow-amber-500/10"
+                        initial={{ opacity: 0, y: -10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                    >
+                        <div className="flex items-center gap-3 flex-1">
+                            <div className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 bg-amber-500/15 border border-amber-500/30">
+                                <AlertTriangle size={20} className="text-amber-200" />
+                            </div>
+                            <div>
+                                <p className="font-semibold text-amber-100">No activity logged today</p>
+                                <p className="text-sm text-amber-200/70">Log your hours to keep your streak</p>
+                            </div>
+                        </div>
+                        <button
+                            onClick={() => setShowQuickLog(true)}
+                            className="w-full sm:w-auto px-4 py-2.5 rounded-lg text-sm font-semibold bg-amber-400/20 text-amber-50 border border-amber-400/30 hover:bg-amber-400/30 transition-colors"
+                        >
+                            Log Now
+                        </button>
+                    </motion.div>
+                )}
+
+                {/* Key Metrics Grid */}
+                <section className="space-y-4">
+                    <h2 className="text-sm font-semibold uppercase tracking-wider flex items-center gap-2 text-gray-400">
                         <Activity size={16} />
-                        Today's Progress
+                        Key Metrics
                     </h2>
 
-                    <div className="flex flex-col md:flex-row gap-4">
-                        {/* DSA Ring */}
-                        <div className="flex-1 p-6 rounded-2xl bg-white dark:bg-[#1c2128] border border-gray-200 dark:border-white/10 flex flex-col items-center justify-center relative">
-                            {(summary?.summary.dsaDueCount || 0) > 0 && (
-                                <div className="absolute top-4 right-4 bg-red-500/10 text-red-500 px-2 py-1 rounded-full text-xs font-bold border border-red-500/20 animate-pulse">
-                                    {summary?.summary.dsaDueCount} Due
-                                </div>
-                            )}
-                            <CircularProgress
-                                value={todayProgress.targets.dsa.percent}
-                                size={140}
-                                strokeWidth={12}
-                                color="blue"
-                                showValue={true}
-                                label="DSA Hours"
-                                sublabel={`${todayProgress.targets.dsa.current} / ${todayProgress.targets.dsa.target}h`}
-                            />
-                        </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+                    {/* Current Streak */}
+                        <MotionCard
+                            className="relative overflow-hidden group p-5 bg-gradient-to-br from-white/6 via-white/3 to-transparent border border-white/10 shadow-lg hover:-translate-y-1 hover:shadow-xl transition-all duration-300"
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: 0.1 }}
+                        >
+                            <div className="pointer-events-none absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 bg-[radial-gradient(circle_at_20%_20%,rgba(255,255,255,0.18),transparent_35%),radial-gradient(circle_at_80%_0%,rgba(255,255,255,0.12),transparent_35%)]" />
+                            <p className="text-[11px] font-semibold uppercase tracking-[0.2em] mb-2 text-gray-400">Streak</p>
+                            <p className="text-4xl font-black text-white text-glow">{streak?.currentStreak || 0}</p>
+                            <div className="flex items-center gap-1.5 mt-2 text-xs text-gray-400">
+                                <Award size={12} />
+                                <span>days</span>
+                            </div>
+                        </MotionCard>
 
-                        {/* Backend Ring */}
-                        <div className="flex-1 p-6 rounded-2xl bg-white dark:bg-[#1c2128] border border-gray-200 dark:border-white/10 flex flex-col items-center justify-center relative">
-                            {(summary?.summary.backendDueCount || 0) > 0 && (
-                                <div className="absolute top-4 right-4 bg-red-500/10 text-red-500 px-2 py-1 rounded-full text-xs font-bold border border-red-500/20 animate-pulse">
-                                    {summary?.summary.backendDueCount} Due
-                                </div>
-                            )}
-                            <CircularProgress
-                                value={todayProgress.targets.backend.percent}
-                                size={140}
-                                strokeWidth={12}
-                                color="purple"
-                                showValue={true}
-                                label="Backend Hours"
-                                sublabel={`${todayProgress.targets.backend.current} / ${todayProgress.targets.backend.target}h`}
-                            />
-                        </div>
+                        {/* Today's Hours */}
+                        <MotionCard
+                            className="relative overflow-hidden group p-5 bg-gradient-to-br from-blue-500/10 via-blue-500/5 to-transparent border border-blue-500/20 shadow-lg hover:-translate-y-1 hover:shadow-xl transition-all duration-300"
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: 0.15 }}
+                        >
+                            <div className="pointer-events-none absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 bg-[radial-gradient(circle_at_20%_20%,rgba(255,255,255,0.2),transparent_35%),radial-gradient(circle_at_80%_0%,rgba(255,255,255,0.15),transparent_35%)]" />
+                            <p className="text-[11px] font-semibold uppercase tracking-[0.2em] mb-2 text-blue-200/80">Today</p>
+                            <p className="text-4xl font-black text-white text-glow">{todayHours}h</p>
+                            <div className={`flex items-center gap-1.5 mt-2 text-xs ${todayHours >= 6 ? 'text-green-400' : 'text-gray-200'}`}>
+                                {todayHours >= 6 ? <TrendingUp size={12} /> : <TrendingDown size={12} />}
+                                <span>{todayHours >= 11 ? 'Great!' : todayHours >= 6 ? 'On track' : 'Below target'}</span>
+                            </div>
+                        </MotionCard>
 
-                        {/* Project Ring */}
-                        <div className="flex-1 p-6 rounded-2xl bg-white dark:bg-[#1c2128] border border-gray-200 dark:border-white/10 flex flex-col items-center justify-center">
-                            <CircularProgress
-                                value={todayProgress.targets.project.percent}
-                                size={140}
-                                strokeWidth={12}
-                                color="cyan"
-                                showValue={true}
-                                label="Project Hours"
-                                sublabel={`${todayProgress.targets.project.current} / ${todayProgress.targets.project.target}h`}
-                            />
+                        {/* Total Hours */}
+                        <MotionCard
+                            className="relative overflow-hidden group p-5 bg-gradient-to-br from-purple-500/10 via-purple-500/5 to-transparent border border-purple-500/20 shadow-lg hover:-translate-y-1 hover:shadow-xl transition-all duration-300"
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: 0.2 }}
+                        >
+                            <div className="pointer-events-none absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 bg-[radial-gradient(circle_at_20%_20%,rgba(255,255,255,0.18),transparent_35%),radial-gradient(circle_at_80%_0%,rgba(255,255,255,0.12),transparent_35%)]" />
+                            <p className="text-[11px] font-semibold uppercase tracking-[0.2em] mb-2 text-purple-200/80">Total</p>
+                            <p className="text-4xl font-black text-white text-glow">{insights?.totalHours || 0}h</p>
+                            <div className="flex items-center gap-1.5 mt-2 text-xs text-gray-200">
+                                <Clock size={12} />
+                                <span>all time</span>
+                            </div>
+                        </MotionCard>
+
+                        {/* Consistency */}
+                        <MotionCard
+                            className="relative overflow-hidden group p-5 bg-gradient-to-br from-emerald-500/10 via-emerald-500/5 to-transparent border border-emerald-500/20 shadow-lg hover:-translate-y-1 hover:shadow-xl transition-all duration-300"
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: 0.25 }}
+                        >
+                            <div className="pointer-events-none absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 bg-[radial-gradient(circle_at_20%_20%,rgba(255,255,255,0.18),transparent_35%),radial-gradient(circle_at_80%_0%,rgba(255,255,255,0.12),transparent_35%)]" />
+                            <p className="text-[11px] font-semibold uppercase tracking-[0.2em] mb-2 text-emerald-200/80">Consistency</p>
+                            <p className="text-4xl font-black text-white text-glow">{insights?.consistencyPercent || 0}%</p>
+                            <div className={`flex items-center gap-1.5 mt-2 text-xs ${(insights?.consistencyPercent || 0) >= 70 ? 'text-green-400' : 'text-gray-200'}`}>
+                                {(insights?.consistencyPercent || 0) >= 70 ? <TrendingUp size={12} /> : <TrendingDown size={12} />}
+                                <span>active ratio</span>
                         </div>
+                    </MotionCard>
                     </div>
                 </section>
-            )}
 
-            {/* Quick Actions */}
-            <section className="mb-6">
-                <h2 className="text-sm font-semibold uppercase tracking-wider mb-4 flex items-center gap-2 text-gray-400">
-                    <Plus size={16} />
-                    Quick Actions
-                </h2>
+                {/* Today's Progress */}
+                {todayProgress && (
+                    <section className="space-y-4">
+                        <h2 className="text-sm font-semibold uppercase tracking-wider flex items-center gap-2 text-gray-400">
+                            <Activity size={16} />
+                            Today's Progress
+                        </h2>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="flex flex-col md:flex-row gap-4">
+                            {/* DSA Ring */}
+                            <div className="relative overflow-hidden group flex-1 p-6 rounded-2xl bg-gradient-to-br from-white/8 via-white/3 to-transparent border border-white/10 flex flex-col items-center justify-center shadow-lg shadow-blue-500/5">
+                                <div className="pointer-events-none absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 bg-[radial-gradient(circle_at_20%_20%,rgba(255,255,255,0.18),transparent_35%),radial-gradient(circle_at_80%_0%,rgba(255,255,255,0.12),transparent_35%)]" />
+                                {(summary?.summary.dsaDueCount || 0) > 0 && (
+                                    <div className="absolute top-4 right-4 bg-red-500/10 text-red-500 px-2 py-1 rounded-full text-xs font-bold border border-red-500/20 animate-pulse">
+                                        {summary?.summary.dsaDueCount} Due
+                                    </div>
+                                )}
+                                <CircularProgress
+                                    value={todayProgress.targets.dsa.percent}
+                                    size={140}
+                                    strokeWidth={12}
+                                    color="blue"
+                                    showValue={true}
+                                    label="DSA Hours"
+                                    sublabel={`${todayProgress.targets.dsa.current} / ${todayProgress.targets.dsa.target}h`}
+                                />
+                            </div>
+
+                            {/* Backend Ring */}
+                            <div className="relative overflow-hidden group flex-1 p-6 rounded-2xl bg-gradient-to-br from-purple-500/10 via-purple-500/4 to-transparent border border-purple-500/15 flex flex-col items-center justify-center shadow-lg shadow-purple-500/10">
+                                <div className="pointer-events-none absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 bg-[radial-gradient(circle_at_20%_20%,rgba(255,255,255,0.2),transparent_35%),radial-gradient(circle_at_80%_0%,rgba(255,255,255,0.15),transparent_35%)]" />
+                                {(summary?.summary.backendDueCount || 0) > 0 && (
+                                    <div className="absolute top-4 right-4 bg-red-500/10 text-red-500 px-2 py-1 rounded-full text-xs font-bold border border-red-500/20 animate-pulse">
+                                        {summary?.summary.backendDueCount} Due
+                                    </div>
+                                )}
+                                <CircularProgress
+                                    value={todayProgress.targets.backend.percent}
+                                    size={140}
+                                    strokeWidth={12}
+                                    color="purple"
+                                    showValue={true}
+                                    label="Backend Hours"
+                                    sublabel={`${todayProgress.targets.backend.current} / ${todayProgress.targets.backend.target}h`}
+                                />
+                            </div>
+
+                            {/* Project Ring */}
+                            <div className="relative overflow-hidden group flex-1 p-6 rounded-2xl bg-gradient-to-br from-cyan-500/10 via-cyan-500/4 to-transparent border border-cyan-500/15 flex flex-col items-center justify-center shadow-lg shadow-cyan-500/10">
+                                <div className="pointer-events-none absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 bg-[radial-gradient(circle_at_20%_20%,rgba(255,255,255,0.18),transparent_35%),radial-gradient(circle_at_80%_0%,rgba(255,255,255,0.12),transparent_35%)]" />
+                                <CircularProgress
+                                    value={todayProgress.targets.project.percent}
+                                    size={140}
+                                    strokeWidth={12}
+                                    color="cyan"
+                                    showValue={true}
+                                    label="Project Hours"
+                                    sublabel={`${todayProgress.targets.project.current} / ${todayProgress.targets.project.target}h`}
+                                />
+                            </div>
+                        </div>
+                    </section>
+                )}
+
+                {/* Quick Actions */}
+                <section className="space-y-4">
+                    <h2 className="text-sm font-semibold uppercase tracking-wider flex items-center gap-2 text-gray-400">
+                        <Plus size={16} />
+                        Quick Actions
+                    </h2>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {/* Exercise Toggle */}
                     <MotionCard
-                        className="p-4"
+                        className="relative overflow-hidden group p-5 bg-gradient-to-r from-white/6 via-white/2 to-transparent border border-white/10 shadow-lg hover:-translate-y-1 hover:shadow-xl transition-all duration-300"
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
                     >
+                        <div className="pointer-events-none absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 bg-[radial-gradient(circle_at_20%_20%,rgba(255,255,255,0.18),transparent_35%),radial-gradient(circle_at_80%_0%,rgba(255,255,255,0.12),transparent_35%)]" />
                         <div className="flex items-center justify-between">
                             <div>
                                 <p className="text-sm font-medium text-white">Exercise Completed</p>
@@ -339,11 +351,12 @@ export function Dashboard() {
 
                     {/* DSA Problems Solved */}
                     <MotionCard
-                        className="p-4"
+                        className="relative overflow-hidden group p-5 bg-gradient-to-r from-white/6 via-white/2 to-transparent border border-white/10 shadow-lg hover:-translate-y-1 hover:shadow-xl transition-all duration-300"
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ delay: 0.05 }}
                     >
+                        <div className="pointer-events-none absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 bg-[radial-gradient(circle_at_20%_20%,rgba(255,255,255,0.18),transparent_35%),radial-gradient(circle_at_80%_0%,rgba(255,255,255,0.12),transparent_35%)]" />
                         <div className="flex items-center justify-between">
                             <div>
                                 <p className="text-sm font-medium text-white">DSA Problems Solved</p>
@@ -362,42 +375,44 @@ export function Dashboard() {
                             </div>
                         </div>
                     </MotionCard>
-                </div>
-            </section>
-
-            {/* Insights */}
-            {insights && (insights.strongestTopic || insights.weakestTopic) && (
-                <section>
-                    <h2 className="text-sm font-semibold uppercase tracking-wider mb-4 flex items-center gap-2 text-gray-400">
-                        <Activity size={16} />
-                        Insights
-                    </h2>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        {insights.strongestTopic && (
-                            <Card className="p-4 bg-gradient-to-br from-green-500/5 to-transparent border-green-500/10">
-                                <p className="text-xs font-medium uppercase tracking-wide mb-2 text-green-400">
-                                    Strongest Topic
-                                </p>
-                                <p className="text-lg font-semibold text-gray-200">
-                                    {insights.strongestTopic}
-                                </p>
-                            </Card>
-                        )}
-
-                        {insights.weakestTopic && (
-                            <Card className="p-4 bg-gradient-to-br from-red-500/5 to-transparent border-red-500/10">
-                                <p className="text-xs font-medium uppercase tracking-wide mb-2 text-red-400">
-                                    Needs Work
-                                </p>
-                                <p className="text-lg font-semibold text-gray-200">
-                                    {insights.weakestTopic}
-                                </p>
-                            </Card>
-                        )}
                     </div>
                 </section>
-            )}
+
+                {/* Insights */}
+                {insights && (insights.strongestTopic || insights.weakestTopic) && (
+                    <section className="space-y-4">
+                        <h2 className="text-sm font-semibold uppercase tracking-wider flex items-center gap-2 text-gray-400">
+                            <Activity size={16} />
+                            Insights
+                        </h2>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            {insights.strongestTopic && (
+                                <Card className="p-4 bg-gradient-to-br from-green-500/10 via-green-500/5 to-transparent border border-green-500/20 shadow-lg">
+                                    <p className="text-[11px] font-semibold uppercase tracking-[0.2em] mb-2 text-green-200">
+                                        Strongest Topic
+                                    </p>
+                                    <p className="text-lg font-semibold text-gray-200">
+                                        {insights.strongestTopic}
+                                    </p>
+                                </Card>
+                            )}
+
+                            {insights.weakestTopic && (
+                                <Card className="p-4 bg-gradient-to-br from-red-500/10 via-red-500/5 to-transparent border border-red-500/20 shadow-lg">
+                                    <p className="text-[11px] font-semibold uppercase tracking-[0.2em] mb-2 text-red-200">
+                                        Needs Work
+                                    </p>
+                                    <p className="text-lg font-semibold text-gray-200">
+                                        {insights.weakestTopic}
+                                    </p>
+                                </Card>
+                            )}
+                        </div>
+                    </section>
+                )}
+
+            </div>
 
             {/* Quick Log Modal */}
             {showQuickLog && (

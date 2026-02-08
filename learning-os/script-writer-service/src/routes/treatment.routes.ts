@@ -39,12 +39,12 @@ router.post('/generate', async (req, res) => {
 // POST /api/treatment/save
 // Save a confirmed Treatment
 router.post('/save', async (req, res) => {
-    const { bibleId, logline, acts } = req.body;
+    const { bibleId, logline, acts, style } = req.body;
     if (!bibleId || !acts) return res.status(400).json({ error: 'Bible ID and acts are required' });
 
     try {
         await assertBibleAccess(bibleId, req.userId);
-        const treatment = await treatmentService.saveTreatment(bibleId, logline, acts);
+        const treatment = await treatmentService.saveTreatment(bibleId, logline, acts, style);
         res.json({ success: true, data: treatment });
     } catch (error: any) {
         console.error('[TreatmentAPI] Save Error:', error);

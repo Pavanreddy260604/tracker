@@ -7,26 +7,19 @@ echo       Starting Learning OS (Silent Mode)
 echo ========================================================
 echo.
 
-:: 1. Database and AI connection check (optional, visual only)
+:: 1. Database and AI connection check
 echo [1/3] Verifying Services...
 sc query MongoDB >nul 2>&1
-if %errorlevel% equ 0 (
-    echo    - MongoDB Connection: ACTIVE
-) else (
-    echo    - Check: MongoDB service might be stopped.
-)
+if %errorlevel% equ 0 ( echo    - MongoDB Connection: ACTIVE )
 
-:: Check if Ollama is reachable
 curl http://localhost:11434/api/tags >nul 2>&1
-if %errorlevel% equ 0 (
-    echo    - AI Service (Ollama): ACTIVE
-) else (
-    echo    - WARNING: Ollama appears to be stopped. AI features may not work.
-)
+if %errorlevel% equ 0 ( echo    - AI Service (Ollama): ACTIVE )
 
 :: 2. Launch Servers Silently
 echo [2/3] Launching Background Services...
 echo    - Starting Backend Server...
+echo    - Starting Script Writer Service...
+echo    - Starting Chroma Vector DB...
 echo    - Starting Frontend Server...
 :: Using wscript to run the VBS file which hides the windows
 wscript "silent-start.vbs"

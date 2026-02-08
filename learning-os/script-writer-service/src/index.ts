@@ -1,14 +1,31 @@
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
+import helmet from 'helmet';
+import compression from 'compression';
+import rateLimit from 'express-rate-limit';
+import morgan from 'morgan';
 import { connectDB } from './config/db.js';
 
 dotenv.config();
 
 const app = express();
-const PORT = process.env.PORT || 5001;
+const PORT = process.env.PORT || 5003;
 
 // Middleware
+app.use(helmet()); // Security headers
+app.use(compression()); // Gzip compression
+app.use(morgan('short')); // Logging
+
+// Rate Limiting (High capacity: ~55 req/sec per IP, or 1M per 5 hours roughly)
+const limiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    limit: 5000, // Limit each IP to 5000 requests per windowMs
+    standardHeaders: 'draft-7',
+    legacyHeaders: false,
+});
+app.use(limiter);
+
 app.use(cors({
     origin: ['http://localhost:5173', 'http://localhost:5174', 'http://localhost:5175', 'http://localhost:3000'],
     credentials: true
@@ -31,6 +48,7 @@ import { bibleRoutes } from './routes/bible.routes';
 import { sceneRoutes } from './routes/scene.routes';
 import { characterRoutes } from './routes/character.routes';
 import { treatmentRoutes } from './routes/treatment.routes';
+import { aiRoutes } from './routes/ai.routes';
 
 // Routes
 app.use('/api/script', scriptRoutes);
@@ -39,6 +57,7 @@ app.use('/api/bible', bibleRoutes);
 app.use('/api/scene', sceneRoutes);
 app.use('/api/character', characterRoutes);
 app.use('/api/treatment', treatmentRoutes);
+app.use('/api/ai', aiRoutes);
 
 
 // Start server

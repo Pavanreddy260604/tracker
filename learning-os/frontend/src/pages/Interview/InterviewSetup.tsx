@@ -3,6 +3,9 @@ import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Clock, Play, Plus, Trash2, Settings, Code2, AlertCircle, Sparkles } from 'lucide-react';
 import { api } from '../../services/api';
+import { useDialog } from '../../hooks/useDialog';
+import { AlertDialog } from '../../components/ui/AlertDialog';
+
 
 interface QuestionConfig {
     id: string;
@@ -12,6 +15,7 @@ interface QuestionConfig {
 
 export function InterviewSetup() {
     const navigate = useNavigate();
+    const { dialog, showAlert, closeDialog } = useDialog();
     const [isLoading, setIsLoading] = useState(false);
 
     // Global Config
@@ -75,7 +79,7 @@ export function InterviewSetup() {
             navigate(`/interview/${response._id}`);
         } catch (error) {
             console.error('Failed to start:', error);
-            alert('Failed to start interview. Please check if backend is running.');
+            showAlert('Setup Failed', 'Failed to start interview. Please check if backend is running.');
         } finally {
             setIsLoading(false);
         }
@@ -248,6 +252,13 @@ export function InterviewSetup() {
                     </button>
                 </div>
             </div>
+
+            <AlertDialog
+                isOpen={dialog.isOpen}
+                onClose={closeDialog}
+                title={dialog.title}
+                description={dialog.description}
+            />
         </div>
     );
 }

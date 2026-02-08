@@ -1,0 +1,67 @@
+import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useScriptWriterProjects } from './useScriptWriterProjects';
+import { ProjectDashboard } from './ProjectDashboard';
+
+export function ScriptWriterDashboard() {
+    const navigate = useNavigate();
+    const [error, setError] = useState<string | null>(null);
+
+    const {
+        projects,
+        loadingProjects,
+        newProjectForm,
+        isCreatingProject,
+        creatingProject,
+        setNewProjectForm,
+        setIsCreatingProject,
+        handleNewProject,
+        handleDeleteProject,
+    } = useScriptWriterProjects({
+        setError,
+        // No active project needed for dashboard
+        activeProjectId: null,
+        setActiveProjectId: () => { },
+        activeSceneId: null,
+        setActiveSceneId: () => { }
+    });
+
+    const handleProjectSelect = (projectId: string) => {
+        // Navigate to the specific project route
+        navigate(`/script-writer/${projectId}`);
+    };
+
+    const handleProjectCreated = async () => {
+        await handleNewProject();
+        // optionally navigate to the new project? 
+        // handleNewProject updates the list. 
+        // We might want to find the latest project and navigate to it?
+        // For now, staying on dashboard is fine, user can click it.
+        // Or we can modify handleNewProject to return the project, but that requires changing the hook.
+        // Let's just let them see it in the list for now.
+    };
+
+    if (error) {
+        return (
+            <div className="flex items-center justify-center h-screen bg-zinc-950 text-red-500">
+                Error: {error}
+            </div>
+        );
+    }
+
+    return (
+        <ProjectDashboard
+            projects={projects}
+            loadingProjects={loadingProjects}
+            onProjectSelect={handleProjectSelect}
+            isCreatingProject={isCreatingProject}
+            creatingProject={creatingProject}
+            newProjectForm={newProjectForm}
+            onNewProjectClick={() => setIsCreatingProject(true)}
+            onNewProjectCancel={() => setIsCreatingProject(false)}
+            onNewProjectFieldChange={(field, value) => setNewProjectForm((prev) => ({ ...prev, [field]: value }))}
+            onNewProjectSubmit={handleNewProject}
+            onProjectDelete={handleDeleteProject}
+        />
+    );
+}

@@ -37,11 +37,26 @@ export class CharacterService {
      * Delete a character and unlink their voice samples.
      */
     async deleteCharacter(id: string): Promise<boolean> {
+        // Try to use a transaction if possible, but fall back if standalone instance
+        const client = mongoose.connection.getClient();
+        const supportsTransactions = client.topology?.description?.type !== 'Single';
+
+        if (!supportsTransactions) {
+            // Standalone instance: Delete sequentially without session
+            const result = await Character.findByIdAndDelete(id);
+            if (!result) return false;
+            await VoiceSample.updateMany(
+                { characterId: id },
+                { $unset: { characterId: "" } }
+            );
+            return true;
+        }
+
+        // Replica set or Mongos: Use transaction
         const session = await mongoose.startSession();
         session.startTransaction();
 
         try {
-            // 1. Delete the character
             const result = await Character.findByIdAndDelete(id).session(session);
 
             if (!result) {
@@ -49,8 +64,6 @@ export class CharacterService {
                 return false;
             }
 
-            // 2. Unlink voice samples (set characterId to null)
-            // We don't delete the samples, just the association
             await VoiceSample.updateMany(
                 { characterId: id },
                 { $unset: { characterId: "" } }

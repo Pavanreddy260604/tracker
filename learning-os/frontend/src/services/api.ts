@@ -21,6 +21,7 @@ import { backendApi } from './backend.api';
 import { projectsApi } from './projects.api';
 import { interviewApi } from './interview.api';
 import { chatApi } from './chat.api';
+import { activityApi } from './activity.api';
 
 // Re-export types for backward compatibility
 export type {
@@ -115,6 +116,10 @@ class ApiService {
     sendChatMessage = chatApi.sendChatMessage;
     updateChatSession = chatApi.updateChatSession;
     deleteChatSession = chatApi.deleteChatSession;
+
+    // Activity / System Awareness
+    logActivity = activityApi.log;
+    getActivityHistory = activityApi.getHistory;
 
     // Roadmap (kept inline as it's small)
     async getRoadmap() {

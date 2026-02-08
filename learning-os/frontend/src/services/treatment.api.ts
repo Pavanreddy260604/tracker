@@ -53,11 +53,11 @@ class TreatmentApi {
         return data.data.acts;
     }
 
-    async saveTreatment(bibleId: string, logline: string, acts: Act[]): Promise<Treatment> {
+    async saveTreatment(bibleId: string, logline: string, acts: Act[], style: string = 'Save The Cat'): Promise<Treatment> {
         const response = await fetch(`${TREATMENT_SERVICE_URL}/save`, {
             method: 'POST',
             headers: getAuthHeaders(),
-            body: JSON.stringify({ bibleId, logline, acts })
+            body: JSON.stringify({ bibleId, logline, acts, style })
         });
         const data = await response.json();
         if (!data.success) throw new Error(data.error || 'Failed to save treatment');

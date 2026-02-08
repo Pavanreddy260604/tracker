@@ -2,6 +2,8 @@ import express from 'express';
 import { Bible } from '../models/Bible';
 import { exportService } from '../services/export.service';
 import { authenticate } from '../middleware/auth.js';
+import fs from 'fs';
+import path from 'path';
 
 const router = express.Router();
 
@@ -23,14 +25,27 @@ router.get('/', async (req, res) => {
         const bibles = await Bible.find({ userId }).sort({ createdAt: -1 });
         res.json({ success: true, data: bibles });
     } catch (error) {
+        const msg = (error as Error).message;
+        const stack = (error as Error).stack;
+        // Log to file for debugging since we can't see console
+        try {
+            fs.appendFileSync('error_log.txt', `[${new Date().toISOString()}] List Error: ${msg}\nStack: ${stack}\nUser: ${userId}\n\n`);
+        } catch (e) {
+            console.error('Failed to write to log file', e);
+        }
+
         console.error('[BibleAPI] List Error:', error);
-        res.status(500).json({ error: 'Failed to fetch projects' });
+        res.status(500).json({
+            error: 'Failed to fetch projects',
+            details: msg,
+            stack: process.env.NODE_ENV === 'development' ? stack : undefined
+        });
     }
 });
 
 // POST /api/bible - Create a new project
 router.post('/', async (req, res) => {
-    const { title, logline, genre, tone } = req.body;
+    const { title, logline, genre, tone, language } = req.body;
 
     if (!req.userId || !title) {
         return res.status(400).json({ error: 'User ID and Title are required' });
@@ -43,6 +58,7 @@ router.post('/', async (req, res) => {
             logline: logline || '',
             genre: genre || 'Drama',
             tone: tone || 'Serious',
+            language: language || 'English',
             rules: []
         });
 

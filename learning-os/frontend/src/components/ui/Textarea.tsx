@@ -57,7 +57,7 @@ export function Textarea({
                 value={value}
                 onChange={handleChange}
                 className={cn(
-                    'w-full px-4 py-3 text-sm bg-gray-50 dark:bg-[var(--sw-bg)] border border-[var(--sw-border)] rounded-lg',
+                    'w-full px-4 py-3 text-sm bg-[var(--sw-surface)] border border-[var(--sw-border)] rounded-lg',
                     'text-[var(--sw-text)] placeholder-[var(--sw-text-muted)]',
                     'transition-all duration-200 resize-none overflow-hidden', // hidden overflow for auto-resize
                     'focus:outline-none focus:border-[var(--sw-accent)] focus:ring-1 focus:ring-[var(--sw-accent)]/20',

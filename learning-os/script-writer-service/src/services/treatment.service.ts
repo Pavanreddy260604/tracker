@@ -1,6 +1,6 @@
 import { Treatment, ITreatment } from '../models/Treatment';
 import { Scene } from '../models/Scene';
-import { ollamaService } from './ollama.service';
+import { aiServiceManager } from './ai.manager';
 import { buildBeatSheetPrompt } from '../prompts/hollywood';
 import mongoose from 'mongoose';
 
@@ -13,28 +13,29 @@ export class TreatmentService {
     async generatePreview(logline: string, style: string = 'Save The Cat'): Promise<any> {
         const prompt = buildBeatSheetPrompt(logline, style);
 
-        let fullResponse = '';
         console.log(`[TreatmentService] Generating beat sheet for: "${logline}"`);
 
-        // Use chatStream to get the JSON
-        // Note: We might want a non-streaming method in ollamaService for JSON tasks, 
-        // but we can just consume the stream here.
-        const stream = ollamaService.chatStream([
-            { role: 'user', content: prompt }
-        ]);
-
-        for await (const chunk of stream) {
-            fullResponse += chunk;
-        }
-
-        // Clean up JSON (Ollama sometimes adds markdown blocks)
-        const jsonStr = fullResponse.replace(/```json/g, '').replace(/```/g, '').trim();
-
         try {
+            // Use non-streaming chat with JSON mode enabled for reliability
+            const response = await aiServiceManager.chat(prompt, [], true);
+
+            let jsonStr = response.trim();
+
+            // Sanitize markdown if present (even in JSON mode models sometimes add it)
+            jsonStr = jsonStr.replace(/^```json\s*/i, '').replace(/\s*```$/, '');
+
+            // Find valid JSON boundaries
+            const firstBrace = jsonStr.indexOf('{');
+            const lastBrace = jsonStr.lastIndexOf('}');
+
+            if (firstBrace !== -1 && lastBrace !== -1) {
+                jsonStr = jsonStr.substring(firstBrace, lastBrace + 1);
+            }
+
             const data = JSON.parse(jsonStr);
             return data;
         } catch (error) {
-            console.error('[TreatmentService] Failed to parse JSON:', fullResponse);
+            console.error('[TreatmentService] Failed to generate/parse Beat Sheet JSON:', error);
             throw new Error('AI failed to generate a valid Beat Sheet structure. Please try again.');
         }
     }
@@ -42,10 +43,11 @@ export class TreatmentService {
     /**
      * Saves a confirmed Treatment to database.
      */
-    async saveTreatment(bibleId: string, logline: string, acts: any[]): Promise<ITreatment> {
+    async saveTreatment(bibleId: string, logline: string, acts: any[], style: string = 'Save The Cat'): Promise<ITreatment> {
         const treatment = await Treatment.create({
             bibleId: new mongoose.Types.ObjectId(bibleId),
             logline,
+            style,
             acts
         });
         return treatment;

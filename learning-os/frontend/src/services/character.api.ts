@@ -33,6 +33,7 @@ export interface Character {
         accent?: string;
     };
     traits?: string[];
+    motivation?: string;
 }
 
 class CharacterApi {
@@ -41,13 +42,11 @@ class CharacterApi {
         const response = await fetch(`${CHARACTER_SERVICE_URL}/bible/${bibleId}`, {
             headers: getAuthHeaders()
         });
-        const data = await response.json();
-
-        if (!data.success) {
-            throw new Error('Failed to load characters');
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok || !data.success) {
+            throw new Error(data.error || 'Failed to load characters');
         }
-
-        return data.data;
+        return data.data || [];
     }
 
     async createCharacter(character: Partial<Character>): Promise<Character> {
@@ -56,12 +55,10 @@ class CharacterApi {
             headers: getAuthHeaders(),
             body: JSON.stringify(character)
         });
-        const data = await response.json();
-
-        if (!data.success) {
-            throw new Error('Failed to create character');
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok || !data.success) {
+            throw new Error(data.error || 'Failed to create character');
         }
-
         return data.data;
     }
 
@@ -71,12 +68,10 @@ class CharacterApi {
             headers: getAuthHeaders(),
             body: JSON.stringify(updates)
         });
-        const data = await response.json();
-
-        if (!data.success) {
-            throw new Error('Failed to update character');
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok || !data.success) {
+            throw new Error(data.error || 'Failed to update character');
         }
-
         return data.data;
     }
 
@@ -85,10 +80,9 @@ class CharacterApi {
             method: 'DELETE',
             headers: getAuthHeaders()
         });
-        const data = await response.json();
-
-        if (!data.success) {
-            throw new Error('Failed to delete character');
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok || !data.success) {
+            throw new Error(data.error || 'Failed to delete character');
         }
     }
 }

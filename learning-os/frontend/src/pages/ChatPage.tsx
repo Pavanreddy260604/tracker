@@ -7,7 +7,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
-import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism';
+import { vscDarkPlus, vs } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import { cn } from '../lib/utils';
 
 export default function ChatPage() {
@@ -274,7 +274,7 @@ export default function ChatPage() {
     }, [currentSession?.messages[currentSession.messages.length - 1]?.content, shouldAutoScroll, isLoading]);
 
     return (
-        <div className="chat-shell">
+        <div className="chat-shell bg-gradient-to-b from-[#0b1020] via-[#0c111d] to-[#0b0f17]">
             {/* Sidebar */}
             <motion.div
                 initial={{ width: 260 }}
@@ -350,7 +350,7 @@ export default function ChatPage() {
             <div className="chat-main flex-1 flex flex-col relative">
                 {/* Header */}
                 <div className="chat-header sticky top-0 z-10 px-4">
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-3">
                         <button
                             onClick={() => setSidebarOpen((prev) => !prev)}
                             className="chat-icon-button p-2 rounded-lg"
@@ -358,12 +358,24 @@ export default function ChatPage() {
                         >
                             {sidebarOpen ? <PanelLeftClose size={20} /> : <PanelLeftOpen size={20} />}
                         </button>
-                        <span className="chat-title">Learning OS</span>
+                        <span className="chat-title">AI Chat</span>
+                        <span className="px-3 py-1 rounded-full text-[11px] font-semibold uppercase tracking-[0.15em] bg-white/5 border border-white/10 text-blue-100">
+                            Model • Studio Pro
+                        </span>
                     </div>
 
-                    <button onClick={handleExit} className="chat-icon-button p-2 rounded-lg transition-colors" title="Exit Chat">
-                        <X size={20} />
-                    </button>
+                    <div className="flex items-center gap-2">
+                        <button
+                            onClick={handleNewChat}
+                            className="chat-icon-button p-2 rounded-lg transition-colors"
+                            title="New chat"
+                        >
+                            <Plus size={18} />
+                        </button>
+                        <button onClick={handleExit} className="chat-icon-button p-2 rounded-lg transition-colors" title="Exit Chat">
+                            <X size={20} />
+                        </button>
+                    </div>
                 </div>
 
                 {/* Messages */}
@@ -373,14 +385,28 @@ export default function ChatPage() {
                     className="chat-messages flex-1 overflow-y-auto p-4 custom-scrollbar relative"
                 >
                     {!currentSession || currentSession.messages.length === 0 ? (
-                        <div className="chat-empty h-full flex flex-col items-center justify-center text-center">
-                            <div className="w-16 h-16 rounded-2xl flex items-center justify-center mb-6 bg-[color:var(--console-surface-2)] border border-[color:var(--border-subtle)]">
+                        <div className="chat-empty h-full flex flex-col items-center justify-center text-center gap-4 max-w-3xl mx-auto">
+                            <div className="w-16 h-16 rounded-2xl flex items-center justify-center bg-[color:var(--console-surface-2)] border border-[color:var(--border-subtle)] shadow-xl shadow-black/30">
                                 <Bot size={32} className="text-[color:var(--text-secondary)]" />
                             </div>
-                            <h2 className="text-xl font-semibold text-[color:var(--text-primary)]">How can I help you today?</h2>
+                            <div className="space-y-2">
+                                <h2 className="text-2xl font-bold text-[color:var(--text-primary)]">How can I help you today?</h2>
+                                <p className="text-[color:var(--text-secondary)] text-sm">Ask about code, debugging, or planning. You’ll get streaming replies with copyable code.</p>
+                            </div>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 w-full">
+                                {["Explain this error", "Draft a REST API spec", "Review my function", "Create a study plan"].map((prompt) => (
+                                    <button
+                                        key={prompt}
+                                        onClick={() => setInput(prompt)}
+                                        className="text-left px-4 py-3 rounded-xl bg-white/5 border border-white/10 hover:border-white/20 hover:bg-white/8 transition-colors text-[color:var(--text-primary)]"
+                                    >
+                                        {prompt}
+                                    </button>
+                                ))}
+                            </div>
                         </div>
                     ) : (
-                        <div className="chat-content max-w-3xl mx-auto space-y-8 pb-16">
+                        <div className="chat-content max-w-5xl mx-auto space-y-8 pb-16">
                             {currentSession.messages.map((msg, idx) => (
                                 <div key={idx} className={`flex gap-4 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                                     {msg.role === 'assistant' && (
@@ -408,6 +434,8 @@ export default function ChatPage() {
                                                             const codeString = String(children).replace(/\n$/, '');
                                                             if (!inline && match) {
                                                                 const codeId = getCodeId(codeString, match[1]);
+                                                                const isDark = typeof document !== 'undefined' && document.documentElement.classList.contains('dark');
+                                                                const syntaxTheme = isDark ? vscDarkPlus : vs;
                                                                 return (
                                                                     <div className="chat-code-block">
                                                                         <div className="chat-code-toolbar">
@@ -421,13 +449,16 @@ export default function ChatPage() {
                                                                             </button>
                                                                         </div>
                                                                         <SyntaxHighlighter
-                                                                            style={vscDarkPlus}
+                                                                            style={syntaxTheme}
                                                                             language={match[1]}
                                                                             PreTag="div"
-                                                                            customStyle={{ margin: 0, borderRadius: '0.75em', background: '#1e1e1e', padding: '16px' }}
+                                                                            customStyle={{ margin: 0, borderRadius: '0.75em', padding: '16px' }}
                                                                             showLineNumbers
                                                                             wrapLines
-                                                                            lineNumberStyle={{ color: '#6b7280', opacity: 0.6 }}
+                                                                            lineNumberStyle={{
+                                                                                color: isDark ? '#6b7280' : '#9ca3af',
+                                                                                opacity: 0.7
+                                                                            }}
                                                                             {...props}
                                                                         >
                                                                             {codeString}
@@ -486,7 +517,7 @@ export default function ChatPage() {
                                 messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
                                 setShouldAutoScroll(true);
                             }}
-                            className="chat-scroll-button"
+                            className="chat-scroll-button shadow-lg shadow-black/40"
                             aria-label="Scroll to bottom"
                         >
                             <ArrowDown size={16} />

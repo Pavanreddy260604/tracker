@@ -1,5 +1,17 @@
 import { useEffect, useState } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import { activityTracker } from './services/activity.tracker';
+
+// Component to track route changes
+function NavigationTracker() {
+  const location = useLocation();
+
+  useEffect(() => {
+    activityTracker.logNavigation(location.pathname);
+  }, [location]);
+
+  return null;
+}
 import { Login } from './pages/Login';
 import { Register } from './pages/Register';
 import { Dashboard } from './pages/Dashboard';
@@ -14,7 +26,8 @@ import { Roadmap } from './pages/Roadmap/Roadmap';
 import { InterviewHistory } from './pages/Interview/InterviewHistory';
 import { InterviewSetup } from './pages/Interview/InterviewSetup';
 import { InterviewRoom } from './pages/Interview/InterviewRoom';
-import { ScriptWriterPage } from './pages/ScriptWriter';
+import { ScriptWriterDashboard } from './pages/ScriptWriter/ScriptWriterDashboard';
+import { ScriptWriterInfinite } from './pages/ScriptWriter/ScriptWriterInfinite';
 import ChatPage from './pages/ChatPage';
 import { useAuthStore } from './stores/authStore';
 import { ErrorBoundary } from './components/ErrorBoundary';
@@ -96,6 +109,7 @@ function App() {
       <AIProvider>
         <ToastContainer />
         <BrowserRouter>
+          <NavigationTracker />
           <Routes>
             {/* Public routes */}
             <Route
@@ -215,12 +229,22 @@ function App() {
               }
             />
 
+
             {/* Script Writer Layout-less Route (Opens in new window style) */}
+            {/* Script Writer Routes - SEPARATE PAGES */}
             <Route
               path="/script-writer"
               element={
                 <ProtectedRoute useLayout={false}>
-                  <ScriptWriterPage />
+                  <ScriptWriterDashboard />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/script-writer/:projectId/:sceneId?"
+              element={
+                <ProtectedRoute useLayout={false}>
+                  <ScriptWriterInfinite />
                 </ProtectedRoute>
               }
             />

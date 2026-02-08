@@ -2,11 +2,36 @@ import { ChromaClient, Collection } from "chromadb";
 import { VoiceSample, IVoiceSample } from "../models/VoiceSample";
 
 /**
+ * Scored sample with similarity metric.
+ * Uses a plain object shape rather than extending Mongoose Document.
+ */
+export interface ScoredSample {
+    _id: string;
+    bibleId: string;
+    characterId?: string;
+    content: string;
+    contentHash?: string;
+    speaker?: string;
+    chunkType?: 'dialogue' | 'action' | 'narration';
+    chunkIndex?: number;
+    embedding?: number[];
+    tags?: string[];
+    source?: string;
+    similarityScore: number;
+}
+
+export interface FindSimilarOptions {
+    minSimilarity?: number;      // Minimum cosine similarity (0-1), default 0.5
+    maxLength?: number;          // Max content length to include
+    dedupe?: boolean;            // Deduplicate by content hash, default true
+}
+
+/**
  * VectorService
  * -------------
  * Responsible ONLY for:
  * - Indexing embeddings into ChromaDB
- * - Vector similarity search
+ * - Vector similarity search with relevance scoring
  *
  * Embeddings are generated externally (Ollama).
  * MongoDB remains the source of truth.
@@ -81,6 +106,18 @@ export class VectorService {
             metadata.characterId = sample.characterId.toString();
         }
 
+        if (sample.speaker) {
+            metadata.speaker = sample.speaker;
+        }
+
+        if (sample.chunkType) {
+            metadata.chunkType = sample.chunkType;
+        }
+
+        if (sample.contentHash) {
+            metadata.contentHash = sample.contentHash;
+        }
+
         await this.collection.upsert({
             ids: [sample._id.toString()],
             embeddings: [sample.embedding],
@@ -91,13 +128,15 @@ export class VectorService {
 
     /**
      * Finds semantically similar samples using vector search.
+     * Now includes relevance scoring and optional filtering.
      */
     async findSimilarSamples(
         bibleId: string,
         queryEmbedding: number[],
         limit: number = 5,
-        characterIds?: string[]
-    ): Promise<IVoiceSample[]> {
+        characterIds?: string[],
+        options?: FindSimilarOptions
+    ): Promise<ScoredSample[]> {
         await this.init();
         if (!this.collection) return [];
 
@@ -105,12 +144,11 @@ export class VectorService {
             throw new Error("Query embedding is missing or empty");
         }
 
-        // Build simple where clause
-        // ChromaDB 'where' object syntax for AND logic needs care.
-        // Simple: { "propertyName": "value" }
-        // AND: { "$and": [ { "p1": "v1" }, { "p2": "v2" } ] }
-        // IN: { "prop": { "$in": ["v1", "v2"] } }
+        const minSimilarity = options?.minSimilarity ?? 0.5;
+        const maxLength = options?.maxLength ?? 2000;
+        const shouldDedupe = options?.dedupe ?? true;
 
+        // Build filter conditions
         const conditions: any[] = [];
 
         if (bibleId !== "ALL") {
@@ -128,28 +166,107 @@ export class VectorService {
             where = { "$and": conditions };
         }
 
-        const results = await this.collection.query({
+        // Fetch more results than needed for filtering
+        const fetchLimit = Math.max(limit * 3, 15);
+
+        // Cast to any to access full query result including distances
+        const results: any = await this.collection.query({
             queryEmbeddings: [queryEmbedding],
-            nResults: limit,
-            where
-        });
+            nResults: fetchLimit,
+            where,
+            include: ["distances", "metadatas", "documents"]
+        } as any);
 
         const ids = results.ids?.[0];
+        const distances = results.distances?.[0];
+        const documents = results.documents?.[0];
+        const metadatas = results.metadatas?.[0];
+
         if (!ids || ids.length === 0) return [];
+
+        // Calculate similarity scores and filter
+        // ChromaDB returns L2 distance by default, convert to similarity
+        // For normalized embeddings: similarity ≈ 1 - (distance² / 2)
+        const scoredIds: { id: string; score: number; doc: string; meta: any }[] = [];
+
+        for (let i = 0; i < ids.length; i++) {
+            const distance = distances?.[i] ?? 1;
+            // Convert L2 distance to cosine similarity approximation
+            // For normalized vectors, cosine_sim ≈ 1 - (L2² / 2)
+            const similarity = Math.max(0, 1 - (distance * distance) / 2);
+
+            // Apply similarity threshold
+            if (similarity < minSimilarity) {
+                continue;
+            }
+
+            // Apply length filter
+            const doc = documents?.[i] ?? '';
+            if (doc.length > maxLength) {
+                continue;
+            }
+
+            scoredIds.push({
+                id: ids[i],
+                score: similarity,
+                doc,
+                meta: metadatas?.[i]
+            });
+        }
+
+        // Deduplicate by content hash if enabled
+        if (shouldDedupe) {
+            const seenHashes = new Set<string>();
+            const dedupedIds = scoredIds.filter(item => {
+                const hash = item.meta?.contentHash;
+                if (!hash) return true; // Keep items without hash
+                if (seenHashes.has(hash)) return false;
+                seenHashes.add(hash);
+                return true;
+            });
+            scoredIds.length = 0;
+            scoredIds.push(...dedupedIds);
+        }
+
+        // Take top N after filtering
+        const topIds = scoredIds
+            .sort((a, b) => b.score - a.score)
+            .slice(0, limit);
+
+        if (topIds.length === 0) return [];
 
         // Fetch authoritative documents from MongoDB
         const samples = await VoiceSample.find({
-            _id: { $in: ids }
+            _id: { $in: topIds.map(t => t.id) }
         });
 
-        // Preserve Chroma relevance order
+        // Create map for merging scores
+        const scoreMap = new Map(topIds.map(t => [t.id, t.score]));
         const sampleMap = new Map(
             samples.map(s => [s._id.toString(), s])
         );
 
-        return ids
-            .map(id => sampleMap.get(id))
-            .filter(Boolean) as IVoiceSample[];
+        // Return scored samples in order
+        return topIds
+            .map(t => {
+                const sample = sampleMap.get(t.id);
+                if (!sample) return null;
+                const obj = sample.toObject();
+                return {
+                    _id: obj._id.toString(),
+                    bibleId: obj.bibleId.toString(),
+                    characterId: obj.characterId?.toString(),
+                    content: obj.content,
+                    contentHash: obj.contentHash,
+                    speaker: obj.speaker,
+                    chunkType: obj.chunkType,
+                    chunkIndex: obj.chunkIndex,
+                    tags: obj.tags,
+                    source: obj.source,
+                    similarityScore: t.score
+                } as ScoredSample;
+            })
+            .filter(Boolean) as ScoredSample[];
     }
 
     /**
@@ -162,6 +279,22 @@ export class VectorService {
         await this.collection.delete({
             ids: [sampleId]
         });
+    }
+
+    /**
+     * Get collection stats for debugging.
+     */
+    async getStats(): Promise<{ count: number }> {
+        await this.init();
+        if (!this.collection) return { count: 0 };
+
+        // Use peek to get count since count() may not exist in all ChromaDB versions
+        try {
+            const peek = await (this.collection as any).count();
+            return { count: typeof peek === 'number' ? peek : 0 };
+        } catch {
+            return { count: 0 };
+        }
     }
 }
 

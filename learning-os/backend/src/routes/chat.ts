@@ -105,42 +105,31 @@ router.post('/:id/message', authenticate, async (req: any, res) => {
         res.setHeader('Content-Type', 'text/plain');
         res.setHeader('Transfer-Encoding', 'chunked');
 
-        const systemPrompt = "You are an intelligent, helpful AI assistant built into Learning OS. Be concise, professional, and technically accurate.";
-
         try {
-            const stream = ollama.generateChatStream(contextMessages, systemPrompt);
+            // User requested Ollama (local) usage.
+            // We now initialize OllamaService with userId to enable "System Awareness" tools.
+            const ollamaService = new OllamaService('mistral', req.userId);
 
-            let fullReply = "";
-            let isClientConnected = true;
+            // Our upgraded OllamaService.chat() now handles Tools automatically and returns full text.
+            // (We simulate streaming for the frontend for now, or we could update frontend to handle non-stream)
+            const responseText = await ollamaService.chat(message, contextMessages);
 
-            // Handle client disconnect (Stop processing if user leaves/cancels)
-            req.on('close', () => {
-                isClientConnected = false;
-                console.log(`[Chat] Client disconnected ${sessionId}`);
-            });
+            if (responseText) {
+                res.write(responseText);
 
-            for await (const chunk of stream) {
-                if (!isClientConnected) break;
-                if (!res.writableEnded) res.write(chunk);
-                fullReply += chunk;
-            }
-
-            // 4. ATOMIC: Save Assistant Response
-            // Only save if we actually got a reply (even partial)
-            if (fullReply && fullReply.length > 0) {
+                // Save Assistant Response
                 await ChatSession.updateOne(
                     { _id: sessionId },
                     {
-                        $push: { messages: { role: 'assistant', content: fullReply, timestamp: new Date() } },
+                        $push: { messages: { role: 'assistant', content: responseText, timestamp: new Date() } },
                         $set: { updatedAt: new Date() }
                     }
                 );
             }
-
-            if (!res.writableEnded) res.end();
+            res.end();
 
         } catch (streamError) {
-            console.error("Streaming failed:", streamError);
+            console.error("Chat processing failed:", streamError);
             if (!res.writableEnded) res.end();
         }
 

@@ -25,7 +25,7 @@ export interface IScript extends Document {
     title: string;
     prompt: string;
     format: 'film' | 'short' | 'youtube' | 'reel' | 'commercial' | 'tv-episode';
-    style: 'classic' | 'nolan' | 'tarantino' | 'spielberg' | 'anderson' | 'dialogue-driven' | 'visual-minimal' | 'non-linear' | 'documentary' | 'action-heavy' | 'experimental' | 'custom';
+    style: 'classic' | 'nolan' | 'tarantino' | 'spielberg' | 'anderson' | 'dialogue-driven' | 'visual-minimal' | 'non-linear' | 'documentary' | 'action-heavy' | 'experimental' | 'custom' | 'indie' | 'modern';
     language: string;
     content: string;
     revisions: IRevision[];
@@ -89,7 +89,7 @@ const scriptSchema = new Schema<IScript>({
     },
     style: {
         type: String,
-        enum: ['classic', 'nolan', 'tarantino', 'spielberg', 'anderson', 'dialogue-driven', 'visual-minimal', 'non-linear', 'documentary', 'action-heavy', 'experimental', 'custom'],
+        enum: ['classic', 'nolan', 'tarantino', 'spielberg', 'anderson', 'dialogue-driven', 'visual-minimal', 'non-linear', 'documentary', 'action-heavy', 'experimental', 'custom', 'indie', 'modern'],
         default: 'classic'
     },
     language: {

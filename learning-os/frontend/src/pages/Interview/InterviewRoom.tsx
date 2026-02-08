@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import Editor from '@monaco-editor/react';
 import ReactMarkdown from 'react-markdown';
@@ -8,12 +8,13 @@ import { api } from '../../services/api';
 import type { InterviewSession, InterviewTestResult } from '../../services/api';
 
 import { useAI } from '../../contexts/AIContext';
-import { useAuthStore } from '../../stores/authStore';
+import { useDialog } from '../../hooks/useDialog';
+import { AlertDialog } from '../../components/ui/AlertDialog';
 
 export function InterviewRoom() {
     const { id } = useParams();
     const { setContext } = useAI(); // Global AI Context
-    const user = useAuthStore((state) => state.user);
+    const { dialog, showAlert, closeDialog } = useDialog();
     const [session, setSession] = useState<InterviewSession | null>(null);
     const [currentQuestionIdx, setCurrentQuestionIdx] = useState(0);
     const [activeTab, setActiveTab] = useState<'description' | 'testCases'>('description');
@@ -26,12 +27,8 @@ export function InterviewRoom() {
     const [selectedCase, setSelectedCase] = useState<number | 'custom'>(0);
     const [customInput, setCustomInput] = useState('');
     const [activeResultIndex, setActiveResultIndex] = useState(0);
-    const [consoleHeight, setConsoleHeight] = useState(260);
-    const [consoleWidth, setConsoleWidth] = useState(420);
-    const [consoleDock, setConsoleDock] = useState<'bottom' | 'right'>('bottom');
-    const [isResizingHeight, setIsResizingHeight] = useState(false);
-    const [isResizingWidth, setIsResizingWidth] = useState(false);
-    const rightPaneRef = useRef<HTMLDivElement>(null);
+    const [editorTheme, setEditorTheme] = useState<'vs-dark' | 'vs'>('vs-dark');
+    const CONSOLE_HEIGHT = 260;
 
     type OutputState = {
         status: 'running' | 'success' | 'fail' | 'error' | 'pass';
@@ -62,7 +59,7 @@ export function InterviewRoom() {
                 setCode(data.questions[0]?.userCode || '// Write your solution here\n');
             } catch (err) {
                 console.error('Load session error:', err);
-                alert('Failed to load session. Please check console.');
+                showAlert('Error', 'Failed to load session. Please check console.');
             }
         };
         loadSession();
@@ -83,58 +80,16 @@ export function InterviewRoom() {
         return () => clearInterval(timer);
     }, [timeLeft, session]);
 
+    // Keep Monaco theme in sync with light/dark mode
     useEffect(() => {
-        const handleMouseMove = (event: MouseEvent) => {
-            if (!rightPaneRef.current) return;
-            const rect = rightPaneRef.current.getBoundingClientRect();
-
-            if (isResizingHeight) {
-                const minHeight = 140;
-                const maxHeight = Math.max(minHeight, rect.height - 160);
-                const newHeight = Math.min(Math.max(rect.bottom - event.clientY, minHeight), maxHeight);
-                setConsoleHeight(newHeight);
-            }
-
-            if (isResizingWidth) {
-                const minWidth = 280;
-                const maxWidth = Math.max(minWidth, rect.width - 280);
-                const newWidth = Math.min(Math.max(rect.right - event.clientX, minWidth), maxWidth);
-                setConsoleWidth(newWidth);
-            }
+        const updateTheme = () => {
+            const isDark = document.documentElement.classList.contains('dark');
+            setEditorTheme(isDark ? 'vs-dark' : 'vs');
         };
-
-        const handleMouseUp = () => {
-            if (!isResizingHeight && !isResizingWidth) return;
-            setIsResizingHeight(false);
-            setIsResizingWidth(false);
-            document.body.style.userSelect = '';
-            document.body.style.cursor = '';
-        };
-
-        window.addEventListener('mousemove', handleMouseMove);
-        window.addEventListener('mouseup', handleMouseUp);
-
-        return () => {
-            window.removeEventListener('mousemove', handleMouseMove);
-            window.removeEventListener('mouseup', handleMouseUp);
-        };
-    }, [isResizingHeight, isResizingWidth]);
-
-    useEffect(() => {
-        const clampSizes = () => {
-            if (!rightPaneRef.current) return;
-            const rect = rightPaneRef.current.getBoundingClientRect();
-            const minHeight = 140;
-            const maxHeight = Math.max(minHeight, rect.height - 160);
-            const minWidth = 280;
-            const maxWidth = Math.max(minWidth, rect.width - 280);
-            setConsoleHeight((prev) => Math.min(Math.max(prev, minHeight), maxHeight));
-            setConsoleWidth((prev) => Math.min(Math.max(prev, minWidth), maxWidth));
-        };
-
-        clampSizes();
-        window.addEventListener('resize', clampSizes);
-        return () => window.removeEventListener('resize', clampSizes);
+        updateTheme();
+        const observer = new MutationObserver(updateTheme);
+        observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
+        return () => observer.disconnect();
     }, []);
 
     // Update code when question changes
@@ -177,39 +132,6 @@ export function InterviewRoom() {
             });
         }
     }, [currentQuestionIdx, session?.questions]);
-
-    useEffect(() => {
-        const userKey = user?._id || 'guest';
-        try {
-            const savedDock = localStorage.getItem(`interview_console_dock_${userKey}`);
-            const savedHeight = localStorage.getItem(`interview_console_height_${userKey}`);
-            const savedWidth = localStorage.getItem(`interview_console_width_${userKey}`);
-            if (savedDock === 'bottom' || savedDock === 'right') {
-                setConsoleDock(savedDock);
-            }
-            if (savedHeight) {
-                const parsedHeight = Number(savedHeight);
-                if (!Number.isNaN(parsedHeight)) setConsoleHeight(parsedHeight);
-            }
-            if (savedWidth) {
-                const parsedWidth = Number(savedWidth);
-                if (!Number.isNaN(parsedWidth)) setConsoleWidth(parsedWidth);
-            }
-        } catch (error) {
-            console.warn('Console preferences unavailable');
-        }
-    }, [user?._id]);
-
-    useEffect(() => {
-        const userKey = user?._id || 'guest';
-        try {
-            localStorage.setItem(`interview_console_dock_${userKey}`, consoleDock);
-            localStorage.setItem(`interview_console_height_${userKey}`, String(consoleHeight));
-            localStorage.setItem(`interview_console_width_${userKey}`, String(consoleWidth));
-        } catch (error) {
-            console.warn('Failed saving console preferences');
-        }
-    }, [consoleDock, consoleHeight, consoleWidth, user?._id]);
 
     useEffect(() => {
         if (session) {
@@ -506,8 +428,8 @@ export function InterviewRoom() {
             </div>
 
             {/* Main Split Pane */}
-            <div className="flex-1 flex overflow-hidden">
-                <div className="interview-pane w-5/12 flex flex-col">
+            <div className="flex-1 flex overflow-hidden min-h-0">
+                <div className="interview-pane w-5/12 flex flex-col min-h-0">
                     <div className="interview-pane-tabs">
                         <button
                             onClick={() => setActiveTab('description')}
@@ -574,202 +496,99 @@ export function InterviewRoom() {
                     </div>
                 </div>
 
-                <div ref={rightPaneRef} className="interview-editor-pane w-7/12 flex flex-col">
-                    {consoleDock === 'bottom' ? (
-                        <div className="flex-1 flex flex-col">
-                            <div className="flex-1 relative">
-                                <Editor
-                                    height="100%"
-                                    defaultLanguage={session.config.language || "javascript"}
-                                    language={session.config.language || "javascript"}
-                                    theme="vs-dark"
-                                    value={code}
-                                    onChange={handleCodeChange}
-                                    options={{
-                                        minimap: { enabled: false },
-                                        fontSize: 13,
-                                        fontFamily: "'JetBrains Mono', monospace",
-                                        scrollBeyondLastLine: false,
-                                        automaticLayout: true,
-                                        padding: { top: 16 }
-                                    }}
-                                />
-                            </div>
+                <div className="interview-editor-pane w-7/12 flex flex-col min-h-0 min-w-0">
+                    <div className="flex-1 relative min-h-0">
+                        <Editor
+                            height="100%"
+                            defaultLanguage={session.config.language || "javascript"}
+                            language={session.config.language || "javascript"}
+                            theme={editorTheme}
+                            value={code}
+                            onChange={handleCodeChange}
+                            options={{
+                                minimap: { enabled: false },
+                                fontSize: 13,
+                                fontFamily: "'JetBrains Mono', monospace",
+                                scrollBeyondLastLine: false,
+                                automaticLayout: true,
+                                padding: { top: 16 }
+                            }}
+                        />
+                    </div>
 
-                            {/* Console Panel */}
-                            <div
-                                className="interview-console transition-[height] duration-200 ease-out"
-                                style={{ height: consoleOpen ? consoleHeight : 48 }}
-                            >
-                                <div
-                                    className="interview-resize-handle is-horizontal"
-                                    onMouseDown={(event) => {
-                                        event.preventDefault();
-                                        setConsoleOpen(true);
-                                        setIsResizingHeight(true);
-                                        document.body.style.userSelect = 'none';
-                                        document.body.style.cursor = 'row-resize';
+                    <div
+                        className={`interview-console ${consoleOpen ? 'is-open' : 'is-collapsed'} transition-[height] duration-200 ease-out`}
+                        style={{
+                            height: consoleOpen ? CONSOLE_HEIGHT : 48,
+                            minHeight: 48,
+                            flexShrink: 0
+                        }}
+                    >
+                        <div
+                            className="interview-console-header"
+                            onClick={() => {
+                                if (!consoleOpen) setConsoleOpen(true);
+                            }}
+                        >
+                            <div className="flex items-center gap-3">
+                                <button
+                                    type="button"
+                                    onClick={(event) => {
+                                        event.stopPropagation();
+                                        setConsoleOpen((prev) => !prev);
                                     }}
+                                    className="interview-console-toggle"
+                                    aria-expanded={consoleOpen}
                                 >
-                                    <div className="interview-resize-grip" />
+                                    <span className="transform transition-transform duration-200" style={{ rotate: consoleOpen ? '180deg' : '0deg' }}>
+                                        <ChevronRight size={16} className="-rotate-90" />
+                                    </span>
+                                    Console
+                                </button>
+                                <div className="interview-console-tabs">
+                                    <button
+                                        type="button"
+                                        onClick={() => setConsoleTab('testcase')}
+                                        className={`interview-console-tab ${consoleTab === 'testcase' ? 'is-active' : ''}`}
+                                    >
+                                        Testcase
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => setConsoleTab('result')}
+                                        className={`interview-console-tab ${consoleTab === 'result' ? 'is-active' : ''}`}
+                                    >
+                                        Result
+                                    </button>
                                 </div>
-                                <div className="interview-console-header">
-                                    <div className="flex items-center gap-3">
-                                        <button
-                                            type="button"
-                                            onClick={() => setConsoleOpen(!consoleOpen)}
-                                            className="interview-console-toggle"
-                                        >
-                                            <span className="transform transition-transform duration-200" style={{ rotate: consoleOpen ? '180deg' : '0deg' }}>
-                                                <ChevronRight size={16} className="-rotate-90" />
-                                            </span>
-                                            Console
-                                        </button>
-                                        <div className="interview-console-tabs">
-                                            <button
-                                                type="button"
-                                                onClick={() => setConsoleTab('testcase')}
-                                                className={`interview-console-tab ${consoleTab === 'testcase' ? 'is-active' : ''}`}
-                                            >
-                                                Testcase
-                                            </button>
-                                            <button
-                                                type="button"
-                                                onClick={() => setConsoleTab('result')}
-                                                className={`interview-console-tab ${consoleTab === 'result' ? 'is-active' : ''}`}
-                                            >
-                                                Result
-                                            </button>
-                                            <button
-                                                type="button"
-                                                onClick={() => {
-                                                    setConsoleDock('right');
-                                                    setConsoleOpen(true);
-                                                }}
-                                                className="interview-console-tab"
-                                            >
-                                                Dock Right
-                                            </button>
-                                        </div>
-                                    </div>
-                                    {output && (
-                                        <span className={`sw-badge ${displayStatus === 'running' ? 'is-info' :
-                                            displayStatus === 'pass' || displayStatus === 'success' ? 'is-success' :
-                                                displayStatus === 'error' ? 'is-warning' : 'is-danger'
-                                            }`}>
-                                            {displayStatus === 'running'
-                                                ? 'Executing...'
-                                                : displayStatus === 'pass' || displayStatus === 'success'
-                                                    ? 'Accepted'
-                                                    : displayStatus === 'error'
-                                                        ? 'Runtime Error'
-                                                        : 'Wrong Answer'}
-                                        </span>
-                                    )}
-                                </div>
-
-                                {consoleOpen && renderConsoleContent()}
                             </div>
+                            {output && (
+                                <span className={`sw-badge ${displayStatus === 'running' ? 'is-info' :
+                                    displayStatus === 'pass' || displayStatus === 'success' ? 'is-success' :
+                                        displayStatus === 'error' ? 'is-warning' : 'is-danger'
+                                    }`}>
+                                    {displayStatus === 'running'
+                                        ? 'Executing...'
+                                        : displayStatus === 'pass' || displayStatus === 'success'
+                                            ? 'Accepted'
+                                            : displayStatus === 'error'
+                                                ? 'Runtime Error'
+                                                : 'Wrong Answer'}
+                                </span>
+                            )}
                         </div>
-                    ) : (
-                        <div className="flex-1 flex overflow-hidden">
-                            <div className="flex-1 relative">
-                                <Editor
-                                    height="100%"
-                                    defaultLanguage={session.config.language || "javascript"}
-                                    language={session.config.language || "javascript"}
-                                    theme="vs-dark"
-                                    value={code}
-                                    onChange={handleCodeChange}
-                                    options={{
-                                        minimap: { enabled: false },
-                                        fontSize: 13,
-                                        fontFamily: "'JetBrains Mono', monospace",
-                                        scrollBeyondLastLine: false,
-                                        automaticLayout: true,
-                                        padding: { top: 16 }
-                                    }}
-                                />
-                            </div>
-                            <div
-                                className="interview-console is-docked-right"
-                                style={{ width: consoleOpen ? consoleWidth : 52 }}
-                            >
-                                <div
-                                    className="interview-resize-handle is-vertical"
-                                    onMouseDown={(event) => {
-                                        event.preventDefault();
-                                        setConsoleOpen(true);
-                                        setIsResizingWidth(true);
-                                        document.body.style.userSelect = 'none';
-                                        document.body.style.cursor = 'col-resize';
-                                    }}
-                                >
-                                    <div className="interview-resize-grip is-vertical" />
-                                </div>
-                                <div className="flex-1 flex flex-col">
-                                    <div className="interview-console-header">
-                                        <div className="flex items-center gap-3">
-                                            <button
-                                                type="button"
-                                                onClick={() => setConsoleOpen(!consoleOpen)}
-                                                className="interview-console-toggle"
-                                            >
-                                                <span className="transform transition-transform duration-200" style={{ rotate: consoleOpen ? '180deg' : '0deg' }}>
-                                                    <ChevronRight size={16} className="-rotate-90" />
-                                                </span>
-                                                Console
-                                            </button>
-                                            <div className="interview-console-tabs">
-                                                <button
-                                                    type="button"
-                                                    onClick={() => setConsoleTab('testcase')}
-                                                    className={`interview-console-tab ${consoleTab === 'testcase' ? 'is-active' : ''}`}
-                                                >
-                                                    Testcase
-                                                </button>
-                                                <button
-                                                    type="button"
-                                                    onClick={() => setConsoleTab('result')}
-                                                    className={`interview-console-tab ${consoleTab === 'result' ? 'is-active' : ''}`}
-                                                >
-                                                    Result
-                                                </button>
-                                                <button
-                                                    type="button"
-                                                    onClick={() => {
-                                                        setConsoleDock('bottom');
-                                                        setConsoleOpen(true);
-                                                    }}
-                                                    className="interview-console-tab"
-                                                >
-                                                    Dock Bottom
-                                                </button>
-                                            </div>
-                                        </div>
-                                        {output && (
-                                            <span className={`sw-badge ${displayStatus === 'running' ? 'is-info' :
-                                                displayStatus === 'pass' || displayStatus === 'success' ? 'is-success' :
-                                                    displayStatus === 'error' ? 'is-warning' : 'is-danger'
-                                                }`}>
-                                                {displayStatus === 'running'
-                                                    ? 'Executing...'
-                                                    : displayStatus === 'pass' || displayStatus === 'success'
-                                                        ? 'Accepted'
-                                                        : displayStatus === 'error'
-                                                            ? 'Runtime Error'
-                                                            : 'Wrong Answer'}
-                                            </span>
-                                        )}
-                                    </div>
 
-                                {consoleOpen && renderConsoleContent()}
-                                </div>
-                            </div>
-                        </div>
-                    )}
+                        {consoleOpen && renderConsoleContent()}
+                    </div>
                 </div>
             </div>
+
+            <AlertDialog
+                isOpen={dialog.isOpen && dialog.type === 'alert'}
+                onClose={closeDialog}
+                title={dialog.title}
+                description={dialog.description}
+            />
         </div>
     );
 }

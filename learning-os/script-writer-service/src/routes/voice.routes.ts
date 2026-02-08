@@ -29,11 +29,14 @@ router.post('/ingest', upload.single('file'), async (req, res) => {
         }
 
         const allowedTypes = ['application/pdf', 'text/plain'];
-        if (!allowedTypes.includes(file.mimetype)) {
+        const isOctetStream = file.mimetype === 'application/octet-stream';
+        const isSupportedExt = file.originalname.endsWith('.pdf') || file.originalname.endsWith('.txt');
+
+        if (!allowedTypes.includes(file.mimetype) && !(isOctetStream && isSupportedExt)) {
             return res.status(400).json({ success: false, error: 'Unsupported file type. Use PDF or plain text.' });
         }
 
-        const count = await voiceService.ingestReferenceMaterial(
+        const result = await voiceService.ingestReferenceMaterial(
             bibleId,
             file.buffer,
             file.mimetype,
@@ -41,7 +44,15 @@ router.post('/ingest', upload.single('file'), async (req, res) => {
             characterId // Pass optional characterId
         );
 
-        res.json({ success: true, count, message: `Successfully ingested ${count} samples.` });
+        res.json({
+            success: true,
+            count: result.savedCount,
+            skippedDuplicates: result.skippedDuplicates,
+            skippedShort: result.skippedShort,
+            characters: result.characters,
+            sceneCount: result.sceneCount,
+            message: `Successfully ingested ${result.savedCount} samples (${result.skippedDuplicates} duplicates skipped, detected ${result.characters.length} characters).`
+        });
 
     } catch (error: any) {
         console.error('Ingestion failed:', error);
