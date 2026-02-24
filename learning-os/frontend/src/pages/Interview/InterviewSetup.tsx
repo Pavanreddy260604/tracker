@@ -1,11 +1,10 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Clock, Play, Plus, Trash2, Settings, Code2, AlertCircle, Sparkles } from 'lucide-react';
+import { Clock, Play, Plus, Trash2, Settings, Code2, AlertCircle, Sparkles, Shield } from 'lucide-react';
 import { api } from '../../services/api';
 import { useDialog } from '../../hooks/useDialog';
 import { AlertDialog } from '../../components/ui/AlertDialog';
-
 
 interface QuestionConfig {
     id: string;
@@ -13,69 +12,176 @@ interface QuestionConfig {
     topics: string[];
 }
 
+interface SectionConfig {
+    id: string;
+    name: string;
+    type: 'warm-up' | 'coding' | 'sql' | 'system-design' | 'mixed';
+    duration: number; // in minutes
+    questionCount: number;
+    difficulty?: 'easy' | 'medium' | 'hard';
+    topics?: string[];
+    questionsConfig?: QuestionConfig[];
+}
+
+type SectionType = SectionConfig['type'];
+
+const SECTION_TYPE_OPTIONS: Array<{ value: SectionType; label: string }> = [
+    { value: 'warm-up', label: 'Warm-up' },
+    { value: 'coding', label: 'Coding' },
+    { value: 'sql', label: 'SQL' },
+    { value: 'system-design', label: 'System Design' },
+    { value: 'mixed', label: 'Mixed' },
+];
+
+const TOPICS_BY_SECTION_TYPE: Record<SectionType, string[]> = {
+    'warm-up': ['Array', 'String', 'HashTable', 'Stack', 'Queue'],
+    coding: ['Array', 'String', 'DP', 'Graph', 'Tree', 'Greedy', 'HashTable', 'Stack', 'Queue', 'Heap'],
+    sql: ['Joins', 'Aggregation', 'Window Functions', 'CTE', 'Subqueries', 'Indexing', 'Transactions', 'Schema Design'],
+    'system-design': ['Scalability', 'Caching', 'Load Balancing', 'Database Sharding', 'Message Queues', 'Consistency', 'Observability', 'Security'],
+    mixed: ['Algorithms', 'SQL', 'System Design', 'Data Modeling', 'Scalability'],
+};
+
+const getDefaultTopicsForType = (type: SectionType): string[] => TOPICS_BY_SECTION_TYPE[type].slice(0, 2);
+
 export function InterviewSetup() {
     const navigate = useNavigate();
     const { dialog, showAlert, closeDialog } = useDialog();
     const [isLoading, setIsLoading] = useState(false);
 
     // Global Config
-    const [duration, setDuration] = useState(30);
+    const [totalDuration, setTotalDuration] = useState(90); // 90 minutes for protracted test
     const [language, setLanguage] = useState('javascript');
+    const [strictMode, setStrictMode] = useState(true);
+    const [enforceFullscreen, setEnforceFullscreen] = useState(true);
 
-    // Question Config List
-    const [questions, setQuestions] = useState<QuestionConfig[]>([
-        { id: '1', difficulty: 'easy', topics: ['Array'] }
+    // Section Config List
+    const [sections, setSections] = useState<SectionConfig[]>([
+        {
+            id: '1',
+            name: 'Warm-up',
+            type: 'warm-up',
+            duration: 10,
+            questionCount: 2,
+            difficulty: 'easy',
+            topics: ['Array', 'String'],
+            questionsConfig: [
+                { id: 'q1', difficulty: 'easy', topics: ['Array'] },
+                { id: 'q2', difficulty: 'easy', topics: ['String'] }
+            ]
+        },
+        {
+            id: '2',
+            name: 'Core Coding',
+            type: 'coding',
+            duration: 40,
+            questionCount: 3,
+            difficulty: 'medium',
+            topics: ['Array', 'DP', 'Tree'],
+            questionsConfig: [
+                { id: 'q3', difficulty: 'medium', topics: ['Array'] },
+                { id: 'q4', difficulty: 'medium', topics: ['DP'] },
+                { id: 'q5', difficulty: 'hard', topics: ['Tree'] }
+            ]
+        },
+        {
+            id: '3',
+            name: 'SQL',
+            type: 'sql',
+            duration: 20,
+            questionCount: 2,
+            difficulty: 'medium',
+            topics: ['Joins', 'Aggregation'],
+            questionsConfig: []
+        },
+        {
+            id: '4',
+            name: 'System Design',
+            type: 'system-design',
+            duration: 20,
+            questionCount: 1,
+            difficulty: 'hard',
+            topics: ['Scalability', 'Caching'],
+            questionsConfig: []
+        }
     ]);
 
-    const categories = ['Array', 'String', 'DP', 'Graph', 'Tree', 'Greedy', 'HashTable', 'Stack', 'Queue', 'Heap'];
+    // Force cache refresh
+    console.log('InterviewSetup component loaded');
 
-    const addQuestion = () => {
-        setQuestions([
-            ...questions,
-            { id: Math.random().toString(36).substr(2, 9), difficulty: 'medium', topics: ['Array'] }
+    const addSection = () => {
+        const newType: SectionType = 'sql';
+
+        setSections([
+            ...sections,
+            {
+                id: Math.random().toString(36).substr(2, 9),
+                name: `Section ${sections.length + 1}`,
+                type: newType,
+                duration: 20,
+                questionCount: 2,
+                difficulty: 'medium',
+                topics: getDefaultTopicsForType(newType),
+                questionsConfig: []
+            }
         ]);
     };
 
-    const removeQuestion = (id: string) => {
-        if (questions.length > 1) {
-            setQuestions(questions.filter(q => q.id !== id));
+    const removeSection = (id: string) => {
+        if (sections.length > 1) {
+            setSections(sections.filter(s => s.id !== id));
         }
     };
 
-    const updateQuestion = (id: string, field: keyof QuestionConfig, value: any) => {
-        setQuestions(questions.map(q => q.id === id ? { ...q, [field]: value } : q));
+    const updateSection = (id: string, field: keyof SectionConfig, value: any) => {
+        setSections(sections.map(s => s.id === id ? { ...s, [field]: value } : s));
     };
 
-    const toggleTopic = (qId: string, topic: string) => {
-        setQuestions(questions.map(q => {
-            if (q.id === qId) {
-                const currentTopics = q.topics;
-                const newTopics = currentTopics.includes(topic)
-                    ? currentTopics.filter(t => t !== topic)
-                    : [...currentTopics, topic];
-                return { ...q, topics: newTopics.length ? newTopics : ['Array'] }; // Prevent empty topics
-            }
-            return q;
-        }));
+    const handleSectionTypeChange = (id: string, nextType: SectionType) => {
+        setSections(prev =>
+            prev.map((section) => {
+                if (section.id !== id) return section;
+
+                const allowedTopics = TOPICS_BY_SECTION_TYPE[nextType];
+                const retainedTopics = (section.topics || []).filter(topic => allowedTopics.includes(topic));
+                const topics = retainedTopics.length > 0 ? retainedTopics : getDefaultTopicsForType(nextType);
+
+                return {
+                    ...section,
+                    type: nextType,
+                    topics,
+                    questionCount: nextType === 'system-design'
+                        ? 1
+                        : Math.max(section.questionCount || 1, 1),
+                };
+            })
+        );
     };
 
     const handleStart = async () => {
         setIsLoading(true);
         try {
-            // Remove 'id' before sending to API
-            const questionsConfig = questions.map(({ difficulty, topics }) => ({ difficulty, topics }));
-            const questionCount = questions.length;
-            const aggregatedTopics = Array.from(new Set(questions.flatMap(q => q.topics)));
-            const difficultyMix = questions.length === 1 ? questions[0].difficulty : 'mixed';
+            // Prepare sections config for API
+            const sectionsConfig = sections.map(section => {
+                const { id, ...sectionData } = section;
+                return {
+                    ...sectionData,
+                    questionsConfig: sectionData.questionsConfig?.map(q => {
+                        const { id, ...questionData } = q;
+                        return questionData;
+                    })
+                };
+            });
 
             const response = await api.startInterview({
-                duration,
+                duration: totalDuration,
+                sectionCount: sections.length,
+                difficulty: sections.every(s => s.difficulty === sections[0].difficulty) ? sections[0].difficulty as 'easy' | 'medium' | 'hard' | 'mixed' : 'mixed',
                 language,
-                questionCount,
-                difficulty: difficultyMix,
-                topics: aggregatedTopics,
-                questionsConfig
+                strictMode,
+                enforceFullscreen,
+                sectionsConfig
             });
+
             navigate(`/interview/${response._id}`);
         } catch (error) {
             console.error('Failed to start:', error);
@@ -111,8 +217,8 @@ export function InterviewSetup() {
                                 {[30, 45, 60, 90].map(mins => (
                                     <button
                                         key={mins}
-                                        onClick={() => setDuration(mins)}
-                                        className={`sw-option ${duration === mins ? 'is-active' : ''}`}
+                                        onClick={() => setTotalDuration(mins)}
+                                        className={`sw-option h-11 flex items-center justify-center transition-all ${totalDuration === mins ? 'is-active' : ''}`}
                                     >
                                         {mins}m
                                     </button>
@@ -121,14 +227,14 @@ export function InterviewSetup() {
                         </div>
 
                         {/* Language */}
-                        <div>
+                        <div className="mb-6">
                             <label className="sw-label flex items-center gap-2">
                                 <Code2 size={14} /> Language
                             </label>
                             <select
                                 value={language}
                                 onChange={(e) => setLanguage(e.target.value)}
-                                className="sw-select"
+                                className="sw-select h-11"
                             >
                                 <option value="javascript">JavaScript</option>
                                 <option value="python">Python</option>
@@ -136,6 +242,42 @@ export function InterviewSetup() {
                                 <option value="cpp">C++</option>
                                 <option value="go">Go</option>
                             </select>
+                        </div>
+
+                        {/* Proctoring Settings */}
+                        <div className="space-y-4">
+                            <div className="flex items-center justify-between">
+                                <div>
+                                    <label className="sw-label flex items-center gap-2">
+                                        <Shield size={14} /> Strict Mode
+                                    </label>
+                                    <p className="text-xs text-gray-500 mt-1">Enable proctoring and test integrity features</p>
+                                </div>
+                                <button
+                                    onClick={() => {
+                                        setStrictMode(!strictMode);
+                                        if (!strictMode) setEnforceFullscreen(true);
+                                    }}
+                                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${strictMode ? 'bg-blue-600' : 'bg-gray-200'}`}
+                                >
+                                    <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${strictMode ? 'translate-x-6' : 'translate-x-1'}`} />
+                                </button>
+                            </div>
+
+                            {strictMode && (
+                                <div className="flex items-center justify-between pl-4 border-l-2 border-blue-200">
+                                    <div>
+                                        <label className="sw-label text-sm">Enforce Fullscreen</label>
+                                        <p className="text-xs text-gray-500">Require fullscreen mode during test</p>
+                                    </div>
+                                    <button
+                                        onClick={() => setEnforceFullscreen(!enforceFullscreen)}
+                                        className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${enforceFullscreen ? 'bg-blue-600' : 'bg-gray-200'}`}
+                                    >
+                                        <span className={`inline-block h-3 w-3 transform rounded-full bg-white transition-transform ${enforceFullscreen ? 'translate-x-5' : 'translate-x-1'}`} />
+                                    </button>
+                                </div>
+                            )}
                         </div>
                     </div>
                 </div>
@@ -148,32 +290,36 @@ export function InterviewSetup() {
                                 <Sparkles size={18} className="sw-accent-text" />
                                 Question Configuration
                             </h2>
-                            <span className="sw-muted text-sm">{questions.length} Questions</span>
+                            <span className="sw-muted text-sm">{sections.length} Sections</span>
                         </div>
 
                         <div className="space-y-4">
                             <AnimatePresence>
-                                {questions.map((q, idx) => (
+                                {sections.map((section, idx) => (
                                     <motion.div
-                                        key={q.id}
+                                        key={section.id}
                                         initial={{ opacity: 0, height: 0 }}
                                         animate={{ opacity: 1, height: 'auto' }}
                                         exit={{ opacity: 0, height: 0 }}
                                         className="sw-card sw-card-muted p-4"
                                     >
+                                        {(() => {
+                                            const topicOptions = TOPICS_BY_SECTION_TYPE[section.type] || TOPICS_BY_SECTION_TYPE.coding;
+                                            return (
+                                                <>
                                         <div className="flex items-start justify-between gap-4 mb-4">
                                             <div className="flex items-center gap-3">
                                                 <span className="sw-step-indicator">
                                                     {idx + 1}
                                                 </span>
-                                                <h3 className="sw-item-title">Question {idx + 1}</h3>
+                                                <h3 className="sw-item-title">{section.name}</h3>
                                             </div>
 
-                                            {questions.length > 1 && (
+                                            {sections.length > 1 && (
                                                 <button
-                                                    onClick={() => removeQuestion(q.id)}
+                                                    onClick={() => removeSection(section.id)}
                                                     className="sw-icon-button sw-icon-button-sm"
-                                                    aria-label="Remove question"
+                                                    aria-label="Remove section"
                                                 >
                                                     <Trash2 size={16} />
                                                 </button>
@@ -181,15 +327,31 @@ export function InterviewSetup() {
                                         </div>
 
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                            {/* Section Type */}
+                                            <div>
+                                                <label className="sw-label">Section Type</label>
+                                                <select
+                                                    value={section.type}
+                                                    onChange={(e) => handleSectionTypeChange(section.id, e.target.value as SectionType)}
+                                                    className="sw-select h-11"
+                                                >
+                                                    {SECTION_TYPE_OPTIONS.map((option) => (
+                                                        <option key={option.value} value={option.value}>
+                                                            {option.label}
+                                                        </option>
+                                                    ))}
+                                                </select>
+                                            </div>
+
                                             {/* Difficulty Select */}
                                             <div>
                                                 <label className="sw-label">Difficulty</label>
-                                                <div className="sw-segment">
+                                                <div className="sw-segment min-h-[44px]">
                                                     {['easy', 'medium', 'hard'].map(diff => (
                                                         <button
                                                             key={diff}
-                                                            onClick={() => updateQuestion(q.id, 'difficulty', diff)}
-                                                            className={`sw-segment-item ${q.difficulty === diff ? 'is-active' : ''} is-${diff}`}
+                                                            onClick={() => updateSection(section.id, 'difficulty', diff)}
+                                                            className={`sw-segment-item h-full flex-1 flex items-center justify-center ${section.difficulty === diff ? 'is-active' : ''} is-${diff}`}
                                                         >
                                                             {diff}
                                                         </button>
@@ -200,14 +362,24 @@ export function InterviewSetup() {
                                             {/* Topics Select */}
                                             <div>
                                                 <label className="sw-label">
-                                                    Topics <span className="sw-muted font-normal ml-1">({q.topics.length})</span>
+                                                    Topics <span className="sw-muted font-normal ml-1">({section.topics?.length || 0})</span>
                                                 </label>
-                                                <div className="flex flex-wrap gap-2 max-h-32 overflow-y-auto">
-                                                    {categories.map(cat => (
+                                                <div className="flex overflow-x-auto pb-2 gap-2 no-scrollbar -mx-1 px-1">
+                                                    {topicOptions.map(cat => (
                                                         <button
                                                             key={cat}
-                                                            onClick={() => toggleTopic(q.id, cat)}
-                                                            className={`sw-chip ${q.topics.includes(cat) ? 'is-active' : ''}`}
+                                                            onClick={() => {
+                                                                const currentTopics = section.topics || [];
+                                                                const newTopics = currentTopics.includes(cat)
+                                                                    ? currentTopics.filter(t => t !== cat)
+                                                                    : [...currentTopics, cat];
+                                                                updateSection(
+                                                                    section.id,
+                                                                    'topics',
+                                                                    newTopics.length ? newTopics : getDefaultTopicsForType(section.type)
+                                                                );
+                                                            }}
+                                                            className={`sw-chip whitespace-nowrap h-9 px-4 flex items-center justify-center shrink-0 ${section.topics?.includes(cat) ? 'is-active' : ''}`}
                                                         >
                                                             {cat}
                                                         </button>
@@ -215,35 +387,40 @@ export function InterviewSetup() {
                                                 </div>
                                             </div>
                                         </div>
+                                                </>
+                                            );
+                                        })()}
                                     </motion.div>
                                 ))}
                             </AnimatePresence>
                         </div>
 
                         <button
-                            onClick={addQuestion}
-                            className="sw-btn sw-btn-secondary w-full justify-center border-dashed"
+                            onClick={addSection}
+                            className="sw-btn sw-btn-secondary w-full justify-center border-dashed h-11"
                         >
-                            <Plus size={18} /> Add Another Question
+                            <Plus size={18} /> Add Another Section
                         </button>
                     </div>
                 </div>
             </div>
 
             {/* Sticky Footer */}
-            <div className="interview-footer">
-                <div className="max-w-5xl mx-auto flex items-center justify-between gap-4">
+            <div className="interview-footer pb-[calc(1rem+env(safe-area-inset-bottom,0px))] md:pb-4">
+                <div className="max-w-5xl mx-auto flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                     <div className="flex items-center gap-3 text-sm sw-muted">
                         <AlertCircle size={18} className="sw-accent-text" />
-                        <span>AI will generate tailored questions for each slot.</span>
+                        <span>
+                            AI will generate tailored questions for each slot. Interview questions and rules are proprietary and protected. Sharing or bypass attempts may result in account termination.
+                        </span>
                     </div>
                     <button
                         onClick={handleStart}
                         disabled={isLoading}
-                        className="sw-btn sw-btn-primary"
+                        className="sw-btn sw-btn-primary w-full sm:w-auto h-12 justify-center"
                     >
                         {isLoading ? (
-                            <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                            <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                         ) : (
                             <>
                                 Begin Interview <Play size={16} fill="currentColor" />

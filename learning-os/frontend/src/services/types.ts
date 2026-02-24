@@ -167,8 +167,9 @@ export interface ProjectStudy {
     projectName: string;
     repoUrl: string;
     moduleStudied: string;
+    flowUnderstood: boolean;
     flowUnderstanding: string;
-    involvedTables: string;
+    coreComponents: string;
     questions: string;
     notes: string;
     date: string;
@@ -180,30 +181,83 @@ export interface ProjectStudy {
         text: string;
         status: 'todo' | 'in-progress' | 'done';
     }[];
+    createdAt: string;
+    updatedAt: string;
+}
+
+export interface InterviewQuestion {
+    questionId?: string;
+    problemName: string;
+    difficulty?: 'easy' | 'medium' | 'hard';
+    description: string;
+    type: 'coding' | 'sql' | 'behavioral' | 'system-design';
+    status: 'pending' | 'solved' | 'failed' | 'skipped';
+    userCode?: string;
+    userAnswer?: string;
+    feedback?: string;
+    score?: number;
+    testCases?: {
+        input: string;
+        expectedOutput: string;
+        isHidden?: boolean;
+        isEdgeCase?: boolean;
+    }[];
+    timeSpent?: number; // in seconds
+    submittedAt?: string;
+}
+
+export interface InterviewSection {
+    id: string;
+    name: string;
+    type: 'warm-up' | 'coding' | 'sql' | 'behavioral' | 'system-design' | 'mixed';
+    duration: number; // in minutes
+    questions: InterviewQuestion[];
+    status: 'pending' | 'start' | 'submitted';
+    startTime?: string;
+    endTime?: string;
+    sectionScore?: number;
 }
 
 export interface InterviewSession {
     _id: string;
     config: {
-        duration: number;
-        questionCount: number;
-        difficulty: 'easy' | 'medium' | 'hard';
+        duration: number; // total duration in minutes
+        sectionCount: number;
+        difficulty: 'easy' | 'medium' | 'hard' | 'mixed';
         language?: string;
+        hasCameraAccess?: boolean;
+        strictMode?: boolean;
+        enforceFullscreen?: boolean;
+        sections: {
+            name: string;
+            type: 'warm-up' | 'coding' | 'sql' | 'behavioral' | 'system-design' | 'mixed';
+            duration: number; // in minutes
+            questionCount: number;
+        }[];
     };
-    questions: {
-        problemName: string;
-        difficulty?: 'easy' | 'medium' | 'hard';
-        description: string;
-        status: 'pending' | 'solved' | 'failed';
-        userCode?: string;
-        feedback?: string;
-        score?: number;
-        testCases?: { input: string; expectedOutput: string }[];
-    }[];
-    status: 'in-progress' | 'completed' | 'aborted';
+    sections: InterviewSection[];
+    status: 'start' | 'submitted';
+    currentSectionIndex: number;
     totalScore: number;
+    overallFeedback: string;
     startedAt: string;
     endedAt?: string;
+    proctoring?: {
+        cameraAccessGranted: boolean;
+        fullscreenRequired: boolean;
+        tabSwitchCount: number;
+        idleTime: number; // in seconds
+        lastActivityTime: string;
+    };
+    analytics?: {
+        totalTimeSpent: number; // in seconds
+        timePerQuestion: { questionId: string; timeSpent: number }[];
+        sectionPerformance: { sectionId: string; score: number; timeSpent: number }[];
+        difficultyBreakdown: { difficulty: string; count: number; averageScore: number }[];
+        topicBreakdown: { topic: string; count: number; averageScore: number }[];
+        strengths: string[];
+        areasForImprovement: string[];
+    };
 }
 
 export interface InterviewTestResult {
@@ -215,20 +269,32 @@ export interface InterviewTestResult {
     error?: string;
     isHidden?: boolean;
     isCustom?: boolean;
+    isEdgeCase?: boolean;
 }
 
 export interface InterviewRunResult {
     status: 'success' | 'fail' | 'error';
+    feedback?: string;
     summary: { passed: number; total: number };
     testResults: InterviewTestResult[];
 }
 
 export interface InterviewSubmitResult {
-    status: 'pass' | 'fail';
+    status: 'pass' | 'fail' | 'error';
     feedback: string;
     score: number;
     summary?: { passed: number; total: number };
     testResults?: InterviewTestResult[];
+}
+
+export interface InterviewAnalytics {
+    totalTimeSpent: number; // in seconds
+    timePerQuestion: { questionId: string; timeSpent: number }[];
+    sectionPerformance: { sectionId: string; score: number; timeSpent: number }[];
+    difficultyBreakdown: { difficulty: string; count: number; averageScore: number }[];
+    topicBreakdown: { topic: string; count: number; averageScore: number }[];
+    strengths: string[];
+    areasForImprovement: string[];
 }
 
 export interface ChatSession {

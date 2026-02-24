@@ -42,3 +42,18 @@ export const writeLimiter = rateLimit({
     standardHeaders: true,
     legacyHeaders: false,
 });
+
+/**
+ * Interview flow performs many legitimate writes (submit/run/section transitions).
+ * Keep protection but with a higher ceiling than generic writes.
+ */
+export const interviewWriteLimiter = rateLimit({
+    windowMs: 1 * 60 * 1000, // 1 minute
+    max: 120, // 120 interview writes per minute
+    message: {
+        success: false,
+        error: 'Too many interview write operations. Please slow down.',
+    },
+    standardHeaders: true,
+    legacyHeaders: false,
+});
