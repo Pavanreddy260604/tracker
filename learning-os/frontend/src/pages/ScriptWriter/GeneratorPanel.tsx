@@ -1,8 +1,7 @@
-import { Sparkles, History, ChevronDown, Copy, Loader2, FileText } from 'lucide-react';
+import { Sparkles, Copy, Loader2, FileText } from 'lucide-react';
 import { useState, useRef, useEffect } from 'react';
 import type { Bible } from '../../services/project.api';
-import type { Character } from '../../services/character.api';
-import type { ScriptHistoryItem, ScriptTemplates } from '../../services/scriptWriter.api';
+import type { ScriptTemplates } from '../../services/scriptWriter.api';
 
 interface GeneratorPanelProps {
     activeProject: Bible | null;
@@ -14,14 +13,8 @@ interface GeneratorPanelProps {
     scriptStyle: string;
     onScriptStyleChange: (value: string) => void;
     scriptOutput: string;
-    scriptHistory: ScriptHistoryItem[];
-    activeHistoryId: string | null;
-    onScriptHistorySelect: (id: string) => void;
     onGenerateScript: () => void;
     isScriptGenerating: boolean;
-    characters: Character[];
-    selectedScriptCharacterIds: string[];
-    onToggleScriptCharacter: (id: string) => void;
 }
 
 export function GeneratorPanel({
@@ -34,16 +27,9 @@ export function GeneratorPanel({
     scriptStyle,
     onScriptStyleChange,
     scriptOutput,
-    scriptHistory,
-    activeHistoryId,
-    onScriptHistorySelect,
     onGenerateScript,
     isScriptGenerating,
-    characters,
-    selectedScriptCharacterIds,
-    onToggleScriptCharacter
 }: GeneratorPanelProps) {
-    const [historyOpen, setHistoryOpen] = useState(false);
     const [showOutput, setShowOutput] = useState(false);
     const outputRef = useRef<HTMLDivElement>(null);
 

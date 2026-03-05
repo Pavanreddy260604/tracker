@@ -1,9 +1,8 @@
 import { useEffect, useState, useCallback, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import {
     Plus, Search, Server, Edit2, Trash2, RefreshCw, ChevronLeft, ChevronRight,
-    Database, Shield, Code, Settings, Zap, CheckCircle2, BookOpen, Clock, BarChart3, Copy
+    Database, Shield, Code, Settings, Zap, CheckCircle2, BookOpen, Clock, BarChart3, Copy, SlidersHorizontal, BrainCircuit
 } from 'lucide-react';
 import { Skeleton } from '../components/ui/Skeleton';
 import { Button } from '../components/ui/Button';
@@ -16,8 +15,11 @@ import { Badge, StatusBadge } from '../components/ui/Badge';
 import { Card } from '../components/ui/Card';
 import { BackendTopicForm } from '../components/forms/BackendTopicForm';
 import { DeleteModal } from '../components/ui/DeleteModal';
+import { AnimatedList } from '../components/ui/AnimatedList';
 import { api, type BackendTopic } from '../services/api';
 import { toast } from '../stores/toastStore';
+import { BackendTopicViewModal } from '../components/ui/BackendTopicViewModal';
+import { useAI } from '../contexts/AIContext';
 
 const CATEGORIES = [
     { value: '', label: 'All Categories' },
@@ -39,26 +41,25 @@ const SORT_OPTIONS = [
     { value: 'name', label: 'Name (A-Z)' },
 ];
 
-const categoryIcons: Record<string, React.ReactNode> = {
-    node: <Code size={16} className="text-gray-300" />,
-    express: <Server size={16} className="text-gray-400" />,
-    database: <Database size={16} className="text-gray-300" />,
-    auth: <Shield size={16} className="text-gray-300" />,
-    api: <Zap size={16} className="text-gray-300" />,
-    'system-design': <Settings size={16} className="text-gray-400" />,
-    devops: <Server size={16} className="text-gray-300" />,
-    security: <Shield size={16} className="text-gray-400" />,
-    testing: <Code size={16} className="text-gray-300" />,
-    performance: <Zap size={16} className="text-gray-300" />,
+const categoryIconMap: Record<string, any> = {
+    node: Code,
+    express: Server,
+    database: Database,
+    auth: Shield,
+    api: Zap,
+    'system-design': Settings,
+    devops: Server,
+    security: Shield,
+    testing: Code,
+    performance: Zap,
 };
 
 const statusColors = {
-    completed: 'border-l-green-500',
-    in_progress: 'border-l-yellow-500',
-    planned: 'border-l-gray-500',
+    completed: 'border-l-status-ok',
+    in_progress: 'border-l-status-warning',
+    planned: 'border-l-border-subtle',
 };
 
-const MotionCard = motion(Card);
 
 export function BackendTopics() {
     const [topics, setTopics] = useState<BackendTopic[]>([]);
@@ -69,6 +70,7 @@ export function BackendTopics() {
     const [search, setSearch] = useState('');
     const [categoryFilter, setCategoryFilter] = useState('');
     const [showReviewDueOnly, setShowReviewDueOnly] = useState(false);
+    const [showMobileFilters, setShowMobileFilters] = useState(false);
     const [sortBy, setSortBy] = useState('newest');
     const [page, setPage] = useState(1);
     const [pagination, setPagination] = useState({ total: 0, pages: 1 });
@@ -78,7 +80,8 @@ export function BackendTopics() {
     const [topicToDelete, setTopicToDelete] = useState<string | null>(null);
     const [isDeleting, setIsDeleting] = useState(false);
 
-    const navigate = useNavigate();
+    const [viewModalTopicId, setViewModalTopicId] = useState<string | null>(null);
+    const { toggleOpen } = useAI();
 
     const fetchTopics = useCallback(async () => {
         setIsLoading(true);
@@ -203,127 +206,162 @@ export function BackendTopics() {
     return (
         <div className="space-y-6">
             {/* Header */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="flex items-center justify-between gap-3 sm:gap-4">
                 <div>
-                    <h1 className="text-2xl font-bold text-white">Backend Topics</h1>
-                    <div className="flex items-center gap-2 mt-1">
-                        <p className="text-sm text-gray-400">Track your backend development learning</p>
+                    <h1 className="text-xl sm:text-2xl font-bold text-text-primary">Backend Topics</h1>
+                    <div className="hidden sm:flex items-center gap-2 mt-1">
+                        <p className="text-sm text-text-secondary">Track your backend development learning</p>
                         <button
                             onClick={() => setShowSRSModal(true)}
-                            className="text-xs text-blue-400 hover:text-blue-300 underline"
+                            className="text-xs text-accent-primary hover:text-accent-primary-dark underline"
                         >
                             How SRS review works?
                         </button>
                     </div>
                 </div>
-                <Button onClick={() => setShowAddModal(true)} leftIcon={<Plus size={18} />}>
-                    Add Topic
-                </Button>
+                <div className="flex items-center gap-2">
+                    <button
+                        onClick={toggleOpen}
+                        className="p-2 rounded-full hover:bg-accent-primary/10 text-accent-primary transition-colors active:scale-95"
+                        title="Ask AI about Backend"
+                    >
+                        <BrainCircuit size={20} />
+                    </button>
+                    <Button size="sm" onClick={() => setShowAddModal(true)} leftIcon={<Plus size={16} />} className="shrink-0">
+                        <span className="hidden sm:inline">Add Topic</span>
+                        <span className="sm:hidden">Add</span>
+                    </Button>
+                </div>
             </div>
 
             {/* Dashboard Stats */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 {[
-                    { label: 'Total', value: stats.total, icon: BarChart3, color: 'text-blue-400' },
-                    { label: 'Completed', value: stats.completed, icon: CheckCircle2, color: 'text-green-400' },
-                    { label: 'In Progress', value: stats.inProgress, icon: Clock, color: 'text-yellow-400' },
-                    { label: 'Mastery', value: `${stats.completionRate}%`, icon: Zap, color: 'text-purple-400' },
-                ].map((stat, idx) => (
-                    <div key={idx} className="p-4 rounded-xl bg-[#1c2128] border border-white/10 flex items-center gap-3">
-                        <stat.icon size={20} className={stat.color} />
-                        <div>
-                            <p className="text-2xl font-bold text-white">{stat.value}</p>
-                            <p className="text-xs text-gray-500 uppercase tracking-wide">{stat.label}</p>
+                    { label: 'Total', value: stats.total, icon: BarChart3, color: 'text-accent-primary' },
+                    { label: 'Completed', value: stats.completed, icon: CheckCircle2, color: 'text-status-ok' },
+                    { label: 'In Progress', value: stats.inProgress, icon: Clock, color: 'text-status-warning' },
+                    { label: 'Mastery', value: `${stats.completionRate}%`, icon: Zap, color: 'text-accent-primary' },
+                ].map((stat, i) => (
+                    <motion.div
+                        key={i}
+                        initial={{ opacity: 0, scale: 0.95 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        transition={{ delay: i * 0.05 }}
+                        className="py-3 px-4 rounded-xl bg-console-surface border border-border-subtle flex items-center gap-3 shadow-premium premium-card glow-border"
+                    >
+                        <div className={`p-2 rounded-lg bg-black/20 ${stat.color}`}>
+                            <stat.icon size={18} />
                         </div>
-                    </div>
+                        <div className="min-w-0">
+                            <p className="text-xl sm:text-2xl font-black text-text-primary leading-none text-glow">{stat.value}</p>
+                            <p className="text-[10px] text-text-secondary uppercase tracking-[0.1em] font-bold mt-1 opacity-60">{stat.label}</p>
+                        </div>
+                    </motion.div>
                 ))}
             </div>
 
             {/* Category Stats */}
-            <div className="flex flex-wrap gap-2">
+            <div className="flex overflow-x-auto pb-2 scrollbar-hide -mx-1 px-1 gap-2">
                 {Object.entries(categoryCounts).map(([category, count]) => (
                     <motion.div
                         key={category}
-                        className={`flex items-center gap-2 px-3 py-2 rounded-lg border cursor-pointer transition-colors ${categoryFilter === category
-                            ? 'bg-white/10 border-white/30'
-                            : 'bg-[#1c2128] border-white/10 hover:border-white/20'
+                        className={`flex items-center gap-2 px-3 py-2 rounded-lg border cursor-pointer transition-colors whitespace-nowrap shrink-0 ${categoryFilter === category
+                            ? 'bg-accent-soft border-accent-primary/30'
+                            : 'bg-console-surface border-border-subtle hover:border-accent-primary/20'
                             }`}
                         onClick={() => setCategoryFilter(categoryFilter === category ? '' : category)}
                         whileHover={{ scale: 1.02 }}
                         whileTap={{ scale: 0.98 }}
                     >
-                        {categoryIcons[category] || <Server size={16} className="text-gray-400" />}
-                        <span className="text-sm text-gray-300 capitalize">{category.replace('-', ' ')}</span>
-                        <span className="text-xs text-gray-500">{count}</span>
+                        {(() => {
+                            const IconComponent = categoryIconMap[category] || Server;
+                            return <IconComponent size={16} className="text-text-secondary" />;
+                        })()}
+                        <span className="text-sm font-medium text-text-primary capitalize">{category.replace('-', ' ')}</span>
+                        <span className="text-xs text-text-secondary">{count}</span>
                     </motion.div>
                 ))}
             </div>
 
             {/* Filters */}
-            <div className="flex flex-col sm:flex-row gap-4">
-                <div className="relative flex-1">
-                    <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500" />
-                    <Input
-                        placeholder="Search topics..."
-                        value={search}
-                        onChange={(e) => setSearch(e.target.value)}
-                        className="pl-11"
-                    />
+            <div className="flex flex-col gap-3 sm:flex-row sm:gap-4">
+                <div className="flex gap-2 w-full sm:flex-1">
+                    <div className="relative flex-1">
+                        <Search size={18} className="absolute left-3 sm:left-4 top-1/2 -translate-y-1/2 text-text-secondary" />
+                        <Input
+                            placeholder="Search topics..."
+                            value={search}
+                            onChange={(e) => setSearch(e.target.value)}
+                            className="pl-9 sm:pl-11"
+                        />
+                    </div>
+                    <Button
+                        variant="secondary"
+                        onClick={() => setShowMobileFilters(!showMobileFilters)}
+                        className="sm:hidden shrink-0 px-3 w-[40px] border border-border-strong hover:bg-console-surface"
+                    >
+                        <SlidersHorizontal size={16} className={showMobileFilters ? "text-accent-primary" : "text-text-secondary"} />
+                    </Button>
                 </div>
-                <Select
-                    value={categoryFilter}
-                    onChange={setCategoryFilter}
-                    options={CATEGORIES}
-                    className="sm:w-48"
-                />
+
+                <div className={`${showMobileFilters ? "flex" : "hidden"} flex-col sm:flex sm:flex-row gap-3 sm:gap-4 animate-in fade-in slide-in-from-top-2 duration-200`}>
+                    <div className="grid grid-cols-2 gap-3 sm:flex sm:gap-4">
+                        <Select
+                            value={categoryFilter}
+                            onChange={setCategoryFilter}
+                            options={CATEGORIES}
+                            className="w-full sm:w-48"
+                        />
+                        <Select
+                            value={sortBy}
+                            onChange={setSortBy}
+                            options={SORT_OPTIONS}
+                            className="w-full sm:w-40"
+                        />
+                    </div>
+                </div>
                 <Button
                     variant={showReviewDueOnly ? 'primary' : 'secondary'}
                     onClick={() => setShowReviewDueOnly(!showReviewDueOnly)}
-                    className={`whitespace-nowrap ${showReviewDueOnly ? 'bg-green-600 hover:bg-green-700' : ''}`}
+                    className={`shrink-0 w-full sm:w-auto whitespace-nowrap ${showReviewDueOnly ? 'bg-status-warning hover:bg-status-warning' : ''}`}
                     leftIcon={<RefreshCw size={16} className={showReviewDueOnly ? 'animate-spin-slow' : ''} />}
                 >
                     Review Due
                 </Button>
-                <Select
-                    value={sortBy}
-                    onChange={setSortBy}
-                    options={SORT_OPTIONS}
-                    className="sm:w-40"
-                />
             </div>
 
             {/* Topics List */}
             {isLoading ? (
                 <div className="space-y-4">
                     {[1, 2, 3].map((i) => (
-                        <div key={i} className="p-4 rounded-xl bg-[#1c2128] border border-white/5 space-y-4">
+                        <div key={i} className="p-4 rounded-xl bg-console-surface border border-border-subtle space-y-4">
                             <div className="flex justify-between items-start">
                                 <div className="space-y-2 flex-1">
-                                    <Skeleton className="h-6 w-1/3 bg-gray-700/50" />
+                                    <Skeleton className="h-6 w-1/3" />
                                     <div className="flex gap-2">
-                                        <Skeleton className="h-4 w-20 bg-gray-700/50" />
-                                        <Skeleton className="h-4 w-24 bg-gray-700/50" />
+                                        <Skeleton className="h-4 w-20" />
+                                        <Skeleton className="h-4 w-24" />
                                     </div>
                                 </div>
                                 <div className="flex gap-2">
-                                    <Skeleton className="h-8 w-8 rounded-lg bg-gray-700/50" />
-                                    <Skeleton className="h-8 w-8 rounded-lg bg-gray-700/50" />
+                                    <Skeleton className="h-8 w-8 rounded-lg" />
+                                    <Skeleton className="h-8 w-8 rounded-lg" />
                                 </div>
                             </div>
-                            <Skeleton className="h-4 w-full bg-gray-700/30" />
+                            <Skeleton className="h-4 w-full" />
                         </div>
                     ))}
                 </div>
             ) : filteredTopics.length === 0 ? (
                 showReviewDueOnly ? (
                     <EmptyState
-                        icon={<CheckCircle2 size={48} className="text-green-500 mb-4" />}
+                        icon={<CheckCircle2 size={48} className="text-status-ok mb-4" />}
                         title="All Caught Up!"
                         description="You have no items due for review today. Great job keeping up with your schedule!"
                     />
                 ) : (
                     <EmptyState
-                        icon={<Server size={32} className="text-gray-300" />}
+                        icon={<Server size={32} className="text-text-disabled" />}
                         title="No topics found"
                         description={search || categoryFilter
                             ? "Try adjusting your filters"
@@ -337,128 +375,120 @@ export function BackendTopics() {
                 )
             ) : (
                 <div className="space-y-3">
-                    <AnimatePresence mode="popLayout">
-                        {filteredTopics.map((topic, index) => (
-                            <MotionCard
+                    <AnimatedList
+                        showGradients
+                        enableArrowNavigation
+                        displayScrollbar
+                        staggerDelay={40}
+                        onItemSelect={(_item, index) => {
+                            if (filteredTopics[index]) setViewModalTopicId(filteredTopics[index]._id);
+                        }}
+                        items={filteredTopics.map((topic) => (
+                            <Card
                                 key={topic._id}
-                                className={`p-4 border-l-4 ${statusColors[topic.status as keyof typeof statusColors] || 'border-l-gray-500'}`}
-                                initial={{ opacity: 0, y: 20 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                exit={{ opacity: 0, x: -20 }}
-                                transition={{ delay: index * 0.03 }}
+                                className={`p-4 bg-console-surface border border-border-subtle border-l-4 shadow-premium premium-card glow-border relative overflow-hidden ${statusColors[topic.status as keyof typeof statusColors] || 'border-l-border-strong'}`}
                                 hover={true}
                             >
-                                <div className="flex items-start justify-between gap-4">
+                                <div className="flex items-start justify-between gap-4 relative z-10">
                                     <div className="flex-1 min-w-0">
-                                        <div className="flex items-center gap-3 mb-2">
-                                            {categoryIcons[topic.category] || <Server size={18} className="text-gray-400" />}
+                                        <div className="flex flex-wrap items-center gap-2 mb-2">
+                                            <div className="p-1.5 rounded-md bg-white/5">
+                                                {(() => {
+                                                    const IconItem = categoryIconMap[topic.category] || Server;
+                                                    return <IconItem size={18} className="text-text-secondary" />;
+                                                })()}
+                                            </div>
                                             <button
-                                                onClick={() => navigate(`/backend/${topic._id}`)}
-                                                className="font-semibold text-white truncate hover:text-blue-400 hover:underline text-left"
+                                                onClick={() => setViewModalTopicId(topic._id)}
+                                                className="font-bold text-sm sm:text-base text-text-primary truncate hover:text-accent-primary transition-colors tracking-tight"
                                             >
                                                 {topic.topicName}
                                             </button>
-                                            {topic.nextReviewDate && new Date(topic.nextReviewDate) <= new Date() && (
-                                                <Badge variant="success" className="animate-pulse">Review Due</Badge>
-                                            )}
-                                            {topic.reviewStage && topic.reviewStage < 4 && (
-                                                <Badge variant="purple" size="sm">Stage {topic.reviewStage}/3</Badge>
-                                            )}
-                                            {!topic.nextReviewDate && topic.reviewStage === 4 && (
-                                                <Badge variant="default" size="sm">Mastered</Badge>
-                                            )}
-                                            <StatusBadge status={topic.status as any} />
-                                            {topic.difficulty && (
-                                                <Badge variant="outline" className="text-xs capitalize">{topic.difficulty}</Badge>
-                                            )}
+                                            <div className="flex flex-wrap items-center gap-2 ml-1">
+                                                {topic.nextReviewDate && new Date(topic.nextReviewDate) <= new Date() && (
+                                                    <Badge variant="warning" className="animate-pulse shadow-lg shadow-status-warning/10">Review Due</Badge>
+                                                )}
+                                                {topic.reviewStage && topic.reviewStage < 4 && (
+                                                    <Badge variant="purple" size="sm">Stage {topic.reviewStage}/3</Badge>
+                                                )}
+                                                {!topic.nextReviewDate && topic.reviewStage === 4 && (
+                                                    <Badge variant="purple" size="sm">Mastered</Badge>
+                                                )}
+                                                <StatusBadge status={topic.status as any} />
+                                            </div>
                                         </div>
 
-                                        <div className="flex flex-wrap items-center gap-3 text-sm text-gray-400">
-                                            <Badge variant="purple">{topic.type.replace('-', ' ')}</Badge>
+                                        <div className="flex flex-wrap items-center gap-4 text-[11px] sm:text-xs text-text-secondary font-medium uppercase tracking-wider">
+                                            <Badge variant="outline" className="opacity-70">{topic.type.replace('-', ' ')}</Badge>
+                                            <span className="opacity-30">•</span>
                                             <span className="capitalize">{topic.category.replace('-', ' ')}</span>
+                                            <span className="opacity-30">•</span>
                                             <span className="flex items-center gap-1">
                                                 <Clock size={12} />
                                                 {new Date(topic.date).toLocaleDateString()}
                                             </span>
                                             {topic.timeSpent && (
-                                                <span className="text-blue-400 text-xs bg-blue-500/10 px-2 py-0.5 rounded-full">
+                                                <span className="text-accent-primary bg-accent-soft px-2 py-0.5 rounded-full font-bold">
                                                     {topic.timeSpent}
                                                 </span>
                                             )}
                                         </div>
 
                                         {/* Progress & Resources */}
-                                        <div className="flex flex-wrap items-center gap-4 mt-3">
+                                        <div className="flex flex-wrap items-center gap-3 mt-3">
                                             {topic.subTopics && topic.subTopics.length > 0 && (
-                                                <div className="flex items-center gap-2 text-xs text-gray-400 bg-white/5 px-2 py-1 rounded-md">
-                                                    <CheckCircle2 size={12} className="text-green-400" />
+                                                <div className="flex items-center gap-2 text-[10px] font-bold text-text-secondary bg-white/5 px-2.5 py-1 rounded-lg border border-border-subtle/50">
+                                                    <CheckCircle2 size={12} className="text-status-ok" />
                                                     <span>
-                                                        {topic.subTopics.filter(t => t.isCompleted).length} / {topic.subTopics.length} Tasks
+                                                        {topic.subTopics.filter(t => t.isCompleted).length} / {topic.subTopics.length} TASKS
                                                     </span>
                                                 </div>
                                             )}
                                             {topic.resources && topic.resources.length > 0 && (
-                                                <div className="flex items-center gap-2 text-xs text-gray-400 bg-white/5 px-2 py-1 rounded-md">
-                                                    <BookOpen size={12} className="text-blue-400" />
-                                                    <span>{topic.resources.length} Resources</span>
+                                                <div className="flex items-center gap-2 text-[10px] font-bold text-text-secondary bg-white/5 px-2.5 py-1 rounded-lg border border-border-subtle/50">
+                                                    <BookOpen size={12} className="text-accent-primary" />
+                                                    <span>{topic.resources.length} RESOURCES</span>
                                                 </div>
                                             )}
                                         </div>
 
-                                        {topic.filesModified && (
-                                            <p className="mt-2 text-sm text-gray-500">
-                                                📁 {topic.filesModified}
-                                            </p>
-                                        )}
-
                                         {topic.notes && (
-                                            <p className="mt-2 text-sm text-gray-400 line-clamp-2">
-                                                {topic.notes}
+                                            <p className="mt-3 text-xs sm:text-sm text-text-secondary line-clamp-2 italic opacity-70">
+                                                "{topic.notes}"
                                             </p>
                                         )}
                                     </div>
 
-                                    <div className="flex items-center gap-1">
-                                        <button
-                                            type="button"
-                                            onClick={() => handleDuplicate(topic)}
-                                            className="p-2 rounded-lg hover:bg-white/10 text-gray-400 hover:text-blue-400 transition-colors"
-                                            title="Duplicate"
-                                        >
-                                            <Copy size={16} />
-                                        </button>
-                                        <button
-                                            type="button"
-                                            onClick={(e) => { handleReview(topic, e); }}
-                                            className={`p-2 rounded-lg transition-colors ${topic.nextReviewDate && new Date(topic.nextReviewDate) <= new Date()
-                                                ? 'bg-green-500/10 text-green-500 hover:bg-green-500/20'
-                                                : 'hover:bg-white/10 text-gray-400 hover:text-white'
-                                                }`}
-                                            title={topic.nextReviewDate ? `Review Due: ${topic.nextReviewDate}` : 'Mark Reviewed'}
-                                        >
-                                            <RefreshCw size={18} className={topic.nextReviewDate && new Date(topic.nextReviewDate) <= new Date() ? 'animate-pulse' : ''} />
-                                        </button>
-                                        <button
-                                            type="button"
-                                            onClick={() => setEditingTopic(topic)}
-                                            className="p-2 rounded-lg hover:bg-white/10 text-gray-400 hover:text-white transition-colors"
-                                            title="Edit"
-                                        >
-                                            <Edit2 size={18} />
-                                        </button>
-                                        <button
-                                            type="button"
-                                            onClick={() => handleDeleteClick(topic._id)}
-                                            className="p-2 rounded-lg hover:bg-red-500/20 text-gray-400 hover:text-red-400 transition-colors"
-                                            title="Delete"
-                                        >
-                                            <Trash2 size={18} />
-                                        </button>
+                                    <div className="flex items-center gap-1 sm:gap-2">
+                                        {[
+                                            { icon: Copy, action: () => handleDuplicate(topic), title: 'Duplicate' },
+                                            { icon: RefreshCw, action: (e: any) => handleReview(topic, e), title: 'Review', highlight: topic.nextReviewDate && new Date(topic.nextReviewDate) <= new Date() },
+                                            { icon: Edit2, action: () => setEditingTopic(topic), title: 'Edit' },
+                                            { icon: Trash2, action: () => handleDeleteClick(topic._id), title: 'Delete', danger: true },
+                                        ].map((btn, i) => (
+                                            <button
+                                                key={i}
+                                                type="button"
+                                                onClick={btn.action}
+                                                className={`p-2 rounded-xl transition-all ${btn.danger ? 'hover:bg-status-error/10 text-text-secondary hover:text-status-error' : btn.highlight ? 'bg-status-warning/10 text-status-warning border border-status-warning/20' : 'hover:bg-white/5 text-text-secondary hover:text-text-primary'}`}
+                                                title={btn.title}
+                                            >
+                                                <btn.icon size={18} className={btn.highlight ? 'animate-spin-slow' : ''} />
+                                            </button>
+                                        ))}
                                     </div>
                                 </div>
-                            </MotionCard>
+
+                                {/* Tech Watermark */}
+                                <div className="absolute -left-4 -bottom-4 opacity-[0.03] text-text-primary rotate-12 pointer-events-none group-hover:opacity-[0.07] transition-opacity duration-500">
+                                    {(() => {
+                                        const GhostIcon = categoryIconMap[topic.category] || Server;
+                                        return <GhostIcon size={120} />;
+                                    })()}
+                                </div>
+                            </Card>
                         ))}
-                    </AnimatePresence>
+                    />
 
                     {/* Pagination */}
                     {!search && pagination.pages > 1 && (
@@ -471,7 +501,7 @@ export function BackendTopics() {
                             >
                                 <ChevronLeft size={16} />
                             </Button>
-                            <span className="text-sm text-gray-400">
+                            <span className="text-sm text-text-secondary">
                                 Page {page} of {pagination.pages}
                             </span>
                             <Button
@@ -537,6 +567,13 @@ export function BackendTopics() {
                 title="Delete Topic"
                 description="Are you sure you want to delete this topic? This action cannot be undone."
                 isDeleting={isDeleting}
+            />
+
+            {/* Read-Only Study View Modal */}
+            <BackendTopicViewModal
+                isOpen={!!viewModalTopicId}
+                onClose={() => setViewModalTopicId(null)}
+                topicId={viewModalTopicId}
             />
         </div >
     );

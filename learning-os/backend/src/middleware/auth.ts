@@ -37,7 +37,7 @@ export const authenticate = async (
         const payload = verifyToken(token);
 
         // Find user
-        const user = await User.findById(payload.userId);
+        const user = await User.findById(payload.userId).select('-passwordHash');
 
         if (!user) {
             res.status(401).json({
@@ -53,7 +53,10 @@ export const authenticate = async (
 
         next();
     } catch (error) {
-        const message = error instanceof Error ? error.message : 'Authentication failed';
+        const message = error instanceof Error && error.message === 'Token expired'
+            ? 'Token expired'
+            : 'Authentication failed';
+
         res.status(401).json({
             success: false,
             error: message,

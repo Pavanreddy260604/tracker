@@ -1,6 +1,7 @@
 ﻿@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Courier+Prime:wght@400;700&display=swap');
 @import "tailwindcss";
 
+@import "./styles/performance.css";
 @import "./styles/chunk1.css";
 @import "./styles/chunk2.css";
 @import "./styles/chunk3.css";
@@ -23,3 +24,57 @@
 @import "./styles/chunk20.css";
 @import "./styles/chunk21.css";
 @import "./styles/chunk22.css";
+@import "./styles/chunk23-responsive.css";
+@import "./styles/glassmorphism.css";
+
+@layer base {
+    html {
+        scroll-behavior: smooth;
+        -webkit-tap-highlight-color: transparent;
+    }
+
+    body {
+        @apply antialiased;
+        text-rendering: optimizeLegibility;
+    }
+
+    /* Premium Scrollbar */
+    ::-webkit-scrollbar {
+        width: 8px;
+        height: 8px;
+    }
+
+    ::-webkit-scrollbar-track {
+        background: transparent;
+    }
+
+    ::-webkit-scrollbar-thumb {
+        background: rgba(255, 255, 255, 0.05);
+        border-radius: 10px;
+        border: 2px solid transparent;
+        background-clip: content-box;
+        transition: background 0.3s ease;
+    }
+
+    ::-webkit-scrollbar-thumb:hover {
+        background: rgba(255, 255, 255, 0.15);
+        background-clip: content-box;
+    }
+
+    .dark ::-webkit-scrollbar-thumb {
+        background: rgba(255, 255, 255, 0.08);
+        background-clip: content-box;
+    }
+
+    .dark ::-webkit-scrollbar-thumb:hover {
+        background: rgba(255, 255, 255, 0.2);
+        background-clip: content-box;
+    }
+}
+
+/* React Flow Customizations */
+.react-flow__selection {
+    background: rgba(59, 130, 246, 0.1) !important;
+    border: 1px solid #3b82f6 !important;
+    border-radius: 4px !important;
+}

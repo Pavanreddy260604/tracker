@@ -40,9 +40,50 @@ export const authApi = {
         return baseApi.request<{ data: any }>('/auth/export');
     },
 
+    async forgotPassword(email: string) {
+        return baseApi.request<{ message: string }>('/auth/forgot-password', {
+            method: 'POST',
+            body: JSON.stringify({ email }),
+        });
+    },
+
+    async resetPassword(token: string, password: string) {
+        return baseApi.request<{ message: string }>('/auth/reset-password', {
+            method: 'POST',
+            body: JSON.stringify({ token, password }),
+        });
+    },
+
+    async changePassword(currentPassword: string, newPassword: string) {
+        return baseApi.request<{ message: string }>('/auth/change-password', {
+            method: 'PUT',
+            body: JSON.stringify({ currentPassword, newPassword }),
+        });
+    },
+
+    async verifyEmail(code: string) {
+        const response = await baseApi.request<{ message: string; user: User }>('/auth/verify-email', {
+            method: 'POST',
+            body: JSON.stringify({ code }),
+        });
+        return response.user;
+    },
+
+    async resendVerification() {
+        return baseApi.request<{ message: string }>('/auth/resend-verification', {
+            method: 'POST',
+        });
+    },
+
     async deleteAccount() {
         return baseApi.request<{ message: string }>('/auth/account', {
             method: 'DELETE',
+        });
+    },
+
+    async logout() {
+        return baseApi.request<{ message: string }>('/auth/logout', {
+            method: 'POST',
         });
     }
 };

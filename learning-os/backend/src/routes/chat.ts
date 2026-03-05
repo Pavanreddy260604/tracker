@@ -1,10 +1,30 @@
 import express from 'express';
+import { z } from 'zod';
 import { authenticate } from '../middleware/auth.js';
 import { ChatSession } from '../models/ChatSession.js';
-import { OllamaService } from '../services/ollama.service.js';
+import { AIServiceError } from '../services/aiClient.service.js';
+import { AIChatService } from '../services/aiChat.service.js';
 
 const router = express.Router();
-const ollama = new OllamaService();
+const aiChat = new AIChatService();
+
+const modelPattern = /^[a-zA-Z0-9:._-]+$/;
+
+const createSessionSchema = z.object({
+    message: z.string().trim().min(1).max(4000).optional(),
+    model: z.string().trim().min(1).max(64).regex(modelPattern, 'Invalid model identifier').optional(),
+}).strict();
+
+const messageSchema = z.object({
+    message: z.string().trim().min(1).max(4000),
+}).strict();
+
+const updateSessionSchema = z.object({
+    title: z.string().trim().min(1).max(120),
+}).strict();
+
+const toSessionTitle = (message?: string) =>
+    message ? message.substring(0, 30) + (message.length > 30 ? '...' : '') : 'New Chat';
 
 // GET /api/chat/history
 // List recent chat sessions (sidebar)
@@ -39,7 +59,11 @@ router.get('/:id', authenticate, async (req: any, res) => {
 // Start NEW session
 router.post('/', authenticate, async (req: any, res) => {
     try {
-        const { message, model } = req.body; // Optional initial message
+        const parsed = createSessionSchema.safeParse(req.body ?? {});
+        if (!parsed.success) {
+            return res.status(400).json({ success: false, error: parsed.error.errors[0].message });
+        }
+        const { message, model } = parsed.data;
 
         // INFRA: Cleanup empty sessions for this user before creating a new one
         // This prevents accumulating "New Chat" orphans that were never used.
@@ -51,7 +75,7 @@ router.post('/', authenticate, async (req: any, res) => {
 
         const session = new ChatSession({
             userId: req.userId,
-            title: message ? message.substring(0, 30) + (message.length > 30 ? '...' : '') : 'New Chat',
+            title: toSessionTitle(message),
             messages: [],
             metadata: { model: model || 'mistral' }
         });
@@ -71,7 +95,11 @@ router.post('/', authenticate, async (req: any, res) => {
 // Send message & Stream response
 router.post('/:id/message', authenticate, async (req: any, res) => {
     try {
-        const { message } = req.body;
+        const parsed = messageSchema.safeParse(req.body ?? {});
+        if (!parsed.success) {
+            return res.status(400).json({ success: false, error: parsed.error.errors[0].message });
+        }
+        const { message } = parsed.data;
         const sessionId = req.params.id;
 
         // 1. ATOMIC: Save User Message
@@ -91,7 +119,7 @@ router.post('/:id/message', authenticate, async (req: any, res) => {
         if (session.messages.length === 1 && session.title === 'New Chat') {
             await ChatSession.updateOne(
                 { _id: sessionId },
-                { $set: { title: message.substring(0, 30) + (message.length > 30 ? '...' : '') } }
+                { $set: { title: toSessionTitle(message) } }
             );
         }
 
@@ -107,21 +135,45 @@ router.post('/:id/message', authenticate, async (req: any, res) => {
 
         try {
             // User requested Ollama (local) usage.
-            // We now initialize OllamaService with userId to enable "System Awareness" tools.
-            const ollamaService = new OllamaService('mistral', req.userId);
+            // We now initialize AIChatService with userId to enable "System Awareness" tools.
+            const sessionModel = typeof session.metadata?.model === 'string' && session.metadata.model.trim().length > 0
+                ? session.metadata.model
+                : undefined;
+            const chatService = new AIChatService(sessionModel, req.userId);
 
-            // Our upgraded OllamaService.chat() now handles Tools automatically and returns full text.
-            // (We simulate streaming for the frontend for now, or we could update frontend to handle non-stream)
-            const responseText = await ollamaService.chat(message, contextMessages);
+            let assistantText = '';
 
-            if (responseText) {
-                res.write(responseText);
+            const systemPrompt = `You are the "Learning OS Copilot", a specialized AI assistant in this workspace. 
+            Identify as the Learning OS Copilot. Be a senior software engineer and mentor. 
+            You have access to tools to see the user's roadmap, logs, and DSA progress—use them if the user asks about their state.`;
 
+            try {
+                for await (const chunk of chatService.generateChatStream(contextMessages, systemPrompt)) {
+                    if (!chunk) continue;
+                    assistantText += chunk;
+                    res.write(chunk);
+                }
+            } catch (streamingError) {
+                console.warn('[chat] Streaming API unavailable, falling back to buffered response:', streamingError);
+                const responseText = await chatService.chat(message, contextMessages);
+                if (responseText) {
+                    // Keep fallback chunks small so the UI still gets incremental feedback.
+                    const chunkSize = 8;
+                    for (let i = 0; i < responseText.length; i += chunkSize) {
+                        const chunk = responseText.slice(i, i + chunkSize);
+                        assistantText += chunk;
+                        res.write(chunk);
+                        await new Promise(resolve => setTimeout(resolve, 4));
+                    }
+                }
+            }
+
+            if (assistantText.trim().length > 0) {
                 // Save Assistant Response
                 await ChatSession.updateOne(
                     { _id: sessionId },
                     {
-                        $push: { messages: { role: 'assistant', content: responseText, timestamp: new Date() } },
+                        $push: { messages: { role: 'assistant', content: assistantText, timestamp: new Date() } },
                         $set: { updatedAt: new Date() }
                     }
                 );
@@ -130,7 +182,13 @@ router.post('/:id/message', authenticate, async (req: any, res) => {
 
         } catch (streamError) {
             console.error("Chat processing failed:", streamError);
-            if (!res.writableEnded) res.end();
+            if (!res.writableEnded) {
+                const message = streamError instanceof AIServiceError
+                    ? streamError.message
+                    : 'AI chat processing failed.';
+                res.write(message);
+                res.end();
+            }
         }
 
     } catch (error) {
@@ -143,13 +201,14 @@ router.post('/:id/message', authenticate, async (req: any, res) => {
 // Update session (e.g. title)
 router.patch('/:id', authenticate, async (req: any, res) => {
     try {
-        const { title } = req.body;
-        const updateData: any = {};
-        if (title) updateData.title = title;
+        const parsed = updateSessionSchema.safeParse(req.body ?? {});
+        if (!parsed.success) {
+            return res.status(400).json({ success: false, error: parsed.error.errors[0].message });
+        }
 
         const session = await ChatSession.findOneAndUpdate(
             { _id: req.params.id, userId: req.userId },
-            { $set: updateData },
+            { $set: parsed.data },
             { new: true }
         );
 

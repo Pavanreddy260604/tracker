@@ -1,36 +1,26 @@
 import mongoose from 'mongoose';
-import dotenv from 'dotenv';
+import { getRequiredEnv } from './env.js';
 
-dotenv.config();
-
-// Security: Require MongoDB URI in production - no localhost fallback
-if (process.env.NODE_ENV === 'production' && !process.env.MONGODB_URI) {
-    throw new Error(
-        '❌ CRITICAL: MONGODB_URI environment variable is required in production.'
-    );
-}
-
-const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/learning-os';
+const MONGODB_URI = getRequiredEnv('MONGODB_URI');
 
 export const connectDB = async (): Promise<void> => {
     try {
         const conn = await mongoose.connect(MONGODB_URI, {
-            maxPoolSize: 50, // INFRA: Limit concurrent connections per instance (Scale horizontally for more)
+            maxPoolSize: 50,
         });
-        console.log(`✅ MongoDB connected: ${conn.connection.host}`);
+        console.log(`[db] MongoDB connected: ${conn.connection.host}`);
     } catch (error) {
-        console.error('❌ MongoDB connection error:', error);
+        console.error('[db] MongoDB connection error:', error);
         process.exit(1);
     }
 };
 
-// Handle connection events
 mongoose.connection.on('disconnected', () => {
-    console.log('⚠️ MongoDB disconnected');
+    console.log('[db] MongoDB disconnected');
 });
 
 mongoose.connection.on('error', (err) => {
-    console.error('❌ MongoDB error:', err);
+    console.error('[db] MongoDB error:', err);
 });
 
 export default mongoose;

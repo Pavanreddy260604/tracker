@@ -51,7 +51,7 @@ button:disabled,
 button:focus-visible,
 a:focus-visible,
 input:focus-visible,
-textarea:focus-visible,
+textarea:focus-visible:not(.chat-input),
 select:focus-visible {
   box-shadow: var(--focus-ring);
 }

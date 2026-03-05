@@ -6,7 +6,6 @@ import { useScriptWriterGenerator } from '../useScriptWriterGenerator';
 import { useScriptWriterTreatments } from '../useScriptWriterTreatments';
 import { GeneratorPanel } from '../GeneratorPanel';
 import type { CritiqueResult } from '../../../services/project.api';
-
 import { scriptWriterApi } from '../../../services/scriptWriter.api';
 
 interface ContextPanelProps {
@@ -56,9 +55,8 @@ export function ContextPanel({
     const activeProject = propActiveProject || contextActiveProject;
     const { activeTool, rightPanelOpen } = uiState;
 
-    const {
-        characters
-    } = useScriptWriterCharacters({
+    // hook unused characters
+    useScriptWriterCharacters({
         activeProjectId: activeProject?._id || null,
         setError: () => { }
     });
@@ -81,16 +79,10 @@ export function ContextPanel({
         scriptFormat,
         scriptStyle,
         scriptOutput,
-        scriptHistory,
-        activeHistoryId,
         isScriptGenerating,
-        selectedScriptCharacterIds,
         setScriptIdea,
         setScriptFormat,
-        setScriptStyle,
-        handleScriptGenerate,
-        handleScriptHistorySelect,
-        toggleScriptCharacter
+        setScriptStyle
     } = useScriptWriterGenerator({
         activeProject,
         activeProjectId: activeProject?._id || null,
@@ -129,11 +121,7 @@ export function ContextPanel({
                 {tabs.map(tab => (
                     <button
                         key={tab.id}
-                        onClick={() => {
-                            setRightPanelTool(tab.id as any);
-                            // If closed, setRightPanelTool should open it, but loop logic might need check.
-                            // Actually context setRightPanelTool handles opening.
-                        }}
+                        onClick={() => setRightPanelTool(tab.id as any)}
                         className={`
                             p-2 mb-2 rounded hover:bg-zinc-800 transition-colors
                             ${activeTool === tab.id ? 'text-blue-400' : 'text-zinc-500'}
@@ -183,7 +171,6 @@ export function ContextPanel({
 
             {/* Content Area */}
             <div className="flex-1 overflow-y-auto custom-scrollbar p-3">
-
                 {activeTool === 'generator' && (
                     <div className="space-y-4">
                         <div className="flex items-center justify-between">
@@ -200,14 +187,8 @@ export function ContextPanel({
                             scriptStyle={scriptStyle}
                             onScriptStyleChange={setScriptStyle}
                             scriptOutput={scriptOutput}
-                            scriptHistory={scriptHistory}
-                            activeHistoryId={activeHistoryId}
-                            onScriptHistorySelect={handleScriptHistorySelect}
-                            onGenerateScript={handleScriptGenerate}
-                            isScriptGenerating={isScriptGenerating}
-                            characters={characters}
-                            selectedScriptCharacterIds={selectedScriptCharacterIds}
-                            onToggleScriptCharacter={toggleScriptCharacter}
+                            onGenerateScript={onGenerate ?? (() => { })}
+                            isScriptGenerating={isGenerating || isScriptGenerating}
                         />
                     </div>
                 )}
@@ -256,7 +237,7 @@ export function ContextPanel({
                                         <p className="text-xs text-zinc-600 max-w-[180px] mx-auto">Analyze your scene to detect dialogue issues, pacing flaws, and formatting errors.</p>
                                     </div>
                                     <button
-                                        onClick={onCritique}
+                                        onClick={onCritique ?? (() => { })}
                                         disabled={isCritiquing}
                                         className="px-6 py-2 bg-blue-600 hover:bg-blue-500 disabled:bg-zinc-800 text-white text-xs font-black rounded-lg transition-all uppercase tracking-tighter"
                                     >
@@ -315,7 +296,7 @@ export function ContextPanel({
                                             disabled={isCritiquing || isGenerating}
                                             className={`flex-1 py-2 border rounded-lg text-[10px] font-bold transition-all uppercase tracking-widest
                                                 ${(critique && canRefreshCritique === false)
-                                                    ? 'border-amber-900/30 hover:bg-amber-900/10 text-zinc-400' // Warn-ish style
+                                                    ? 'border-amber-900/30 hover:bg-amber-900/10 text-zinc-400'
                                                     : 'border-zinc-800 hover:bg-zinc-900 text-zinc-400 hover:text-zinc-300'
                                                 }
                                             `}
@@ -342,7 +323,7 @@ export function ContextPanel({
 
                         <div className="h-px bg-zinc-800/50" />
 
-                        {/* Section: Scene Tools (Real Backend Features) */}
+                        {/* Section: Scene Tools */}
                         <div className="space-y-6">
                             <div className="flex items-center justify-between">
                                 <h3 className="text-xs font-bold uppercase tracking-wider text-zinc-500">Scene Intelligence</h3>
@@ -401,10 +382,6 @@ export function ContextPanel({
                                     {isGenerating ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />}
                                     {isGenerating ? 'Generating Scene...' : 'Draft Full Scene'}
                                 </button>
-
-                                <p className="text-[10px] text-zinc-600 text-center px-2">
-                                    Uses context from your Bible and previous scenes to maintain narrative continuity.
-                                </p>
                             </div>
                         </div>
 
@@ -581,11 +558,6 @@ export function ContextPanel({
                                         Groq (Cloud)
                                     </button>
                                 </div>
-                                <p className="text-[10px] text-zinc-600 px-1">
-                                    {aiProvider === 'ollama'
-                                        ? 'Running locally. Private, free, but relies on your hardware.'
-                                        : 'Running on Google Cloud. Faster, smarter, requires internet.'}
-                                </p>
                             </div>
 
                             <div className="space-y-1.5 pt-2">
@@ -607,7 +579,7 @@ export function ContextPanel({
                             </div>
 
                             <div className="space-y-1.5">
-                                <label className="text-[10px] font-bold text-zinc-500 uppercase px-1 focus:border-blue-500 outline-none">Project Name</label>
+                                <label className="text-[10px] font-bold text-zinc-500 uppercase px-1">Project Name</label>
                                 <div className="flex gap-2">
                                     <input
                                         className="flex-1 bg-zinc-950 border border-zinc-800 rounded px-3 py-2 text-sm text-zinc-100 focus:border-blue-500 outline-none"

@@ -75,7 +75,39 @@ router.put('/:id', async (req, res) => {
     try {
         const { id } = req.params;
         await assertCharacterAccess(id, req.userId);
-        const character = await characterService.updateCharacter(id, req.body);
+
+        // Whitelist allowed fields to prevent mass assignment
+        const allowedFields = ['name', 'age', 'role', 'voice', 'traits', 'motivation'];
+        const updateData: Record<string, unknown> = {};
+
+        for (const field of allowedFields) {
+            if (req.body[field] !== undefined) {
+                updateData[field] = req.body[field];
+            }
+        }
+
+        // Validate role enum
+        const validRoles = ['protagonist', 'antagonist', 'supporting', 'minor'];
+        if (updateData.role && !validRoles.includes(updateData.role as string)) {
+            return res.status(400).json({ success: false, error: `Invalid role. Allowed: ${validRoles.join(', ')}` });
+        }
+
+        // Validate age is positive
+        if (updateData.age !== undefined && (typeof updateData.age !== 'number' || updateData.age < 0)) {
+            return res.status(400).json({ success: false, error: 'Age must be a positive number' });
+        }
+
+        // Validate name is not empty
+        if (updateData.name === '') {
+            return res.status(400).json({ success: false, error: 'Name cannot be empty' });
+        }
+
+        // Validate traits is an array
+        if (updateData.traits && !Array.isArray(updateData.traits)) {
+            return res.status(400).json({ success: false, error: 'Traits must be an array' });
+        }
+
+        const character = await characterService.updateCharacter(id, updateData);
         if (!character) {
             return res.status(404).json({ success: false, error: 'Character not found' });
         }

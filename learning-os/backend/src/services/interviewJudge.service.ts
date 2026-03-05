@@ -1,4 +1,5 @@
 import { ExecutionService } from './execution.service.js';
+import { AIJudgeService } from './aiJudge.service.js';
 
 export type TechnicalQuestionType = 'coding' | 'sql' | 'system-design' | 'behavioral';
 
@@ -289,6 +290,11 @@ export const getSystemDesignQuestionTemplate = (difficulty: 'easy' | 'medium' | 
 
 export class InterviewJudgeService {
     private readonly execution = new ExecutionService();
+    private aiJudge: AIJudgeService;
+
+    constructor() {
+        this.aiJudge = new AIJudgeService();
+    }
 
     private normalizeQuestionType(questionType: TechnicalQuestionType): 'coding' | 'sql' | 'system-design' {
         if (questionType === 'behavioral') {
@@ -317,12 +323,33 @@ export class InterviewJudgeService {
     }): Promise<JudgeSubmitResult> {
         const normalizedType = this.normalizeQuestionType(params.questionType);
         if (normalizedType === 'coding') {
-            return this.evaluateCoding(params.code || '', this.normalizeRuntimeLanguage(params.language), params.testCases);
+            const result = await this.evaluateCoding(params.code || '', this.normalizeRuntimeLanguage(params.language), params.testCases);
+            const analysis = await this.aiJudge.analyzeCode(
+                'Coding Problem',
+                params.code || '',
+                params.language ?? 'javascript',
+                result.score
+            );
+            return { ...result, feedback: `${result.feedback}\n\nAI Feedback:\n${analysis}` };
         }
         if (normalizedType === 'sql') {
-            return this.evaluateSql(params.code || '', params.testCases);
+            const result = await this.evaluateSql(params.code || '', params.testCases);
+            const analysis = await this.aiJudge.analyzeCode(
+                'SQL Problem',
+                params.code || '',
+                'sql',
+                result.score
+            );
+            return { ...result, feedback: `${result.feedback}\n\nAI Feedback:\n${analysis}` };
         }
-        return this.evaluateSystemDesign(params.answer || '', params.testCases);
+        const result = await this.evaluateSystemDesign(params.answer || '', params.testCases);
+        const analysis = await this.aiJudge.analyzeCode(
+            'System Design Problem',
+            params.answer || '',
+            'text',
+            result.score
+        );
+        return { ...result, feedback: `${result.feedback}\n\nAI Feedback:\n${analysis}` };
     }
 
     async runSubmission(params: {

@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { BackendTopic } from '../models/BackendTopic.js';
 import { authenticate } from '../middleware/auth.js';
 import { writeLimiter } from '../middleware/rateLimiter.js';
+import { knowledgeSync } from '../services/knowledgeSync.service.js';
 
 const router = Router();
 router.use(authenticate);
@@ -83,6 +84,10 @@ router.post('/', writeLimiter, async (req: Request, res: Response) => {
         }
 
         const topic = await BackendTopic.create({ ...result.data, userId: req.userId });
+
+        // Asynchronously sync the new topic to ChromaDB for Universal RAG Search
+        knowledgeSync.syncBackendTopic(topic).catch(err => console.error('[BackendTopic] RAG Sync Error:', err));
+
         res.status(201).json({ success: true, data: { topic } });
     } catch (error) {
         console.error('Create topic error:', error);
@@ -109,6 +114,9 @@ router.put('/:id', writeLimiter, async (req: Request, res: Response) => {
             return;
         }
 
+        // Asynchronously sync the updated topic to ChromaDB
+        knowledgeSync.syncBackendTopic(topic).catch(err => console.error('[BackendTopic] RAG Sync Error:', err));
+
         res.json({ success: true, data: { topic } });
     } catch (error) {
         console.error('Update topic error:', error);
@@ -123,6 +131,10 @@ router.delete('/:id', writeLimiter, async (req: Request, res: Response) => {
             res.status(404).json({ success: false, error: 'Topic not found' });
             return;
         }
+
+        // Asynchronously delete the topic from ChromaDB
+        knowledgeSync.deleteFromVector(req.params.id as string).catch(err => console.error('[BackendTopic] RAG Delete Error:', err));
+
         res.json({ success: true, data: { message: 'Topic deleted' } });
     } catch (error) {
         console.error('Delete topic error:', error);

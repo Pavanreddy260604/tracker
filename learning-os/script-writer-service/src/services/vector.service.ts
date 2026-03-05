@@ -12,6 +12,7 @@ export interface ScoredSample {
     content: string;
     contentHash?: string;
     speaker?: string;
+    era?: string;
     chunkType?: 'dialogue' | 'action' | 'narration';
     chunkIndex?: number;
     embedding?: number[];
@@ -24,6 +25,7 @@ export interface FindSimilarOptions {
     minSimilarity?: number;      // Minimum cosine similarity (0-1), default 0.5
     maxLength?: number;          // Max content length to include
     dedupe?: boolean;            // Deduplicate by content hash, default true
+    era?: string;                // Filter by specific era/age context
 }
 
 /**
@@ -45,8 +47,10 @@ export class VectorService {
 
     constructor() {
         // ChromaDB v3.x uses 'path' for HTTP server connection
+        // Use environment variable with fallback for flexibility
+        const chromaUrl = process.env.CHROMA_URL || 'http://localhost:8000';
         this.client = new ChromaClient({
-            path: "http://localhost:8000"
+            path: chromaUrl
         });
     }
 
@@ -110,6 +114,10 @@ export class VectorService {
             metadata.speaker = sample.speaker;
         }
 
+        if (sample.era) {
+            metadata.era = sample.era;
+        }
+
         if (sample.chunkType) {
             metadata.chunkType = sample.chunkType;
         }
@@ -157,6 +165,10 @@ export class VectorService {
 
         if (characterIds && characterIds.length > 0) {
             conditions.push({ characterId: { "$in": characterIds } });
+        }
+
+        if (options?.era) {
+            conditions.push({ era: options.era });
         }
 
         let where: any = undefined;
@@ -259,6 +271,7 @@ export class VectorService {
                     content: obj.content,
                     contentHash: obj.contentHash,
                     speaker: obj.speaker,
+                    era: obj.era,
                     chunkType: obj.chunkType,
                     chunkIndex: obj.chunkIndex,
                     tags: obj.tags,

@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from 'react';
 
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import {
     Plus,
     Search,
@@ -9,6 +9,9 @@ import {
     ChevronRight,
     CheckCircle2,
     Code2,
+    SlidersHorizontal,
+    Award,
+    BrainCircuit,
 } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { Skeleton } from '../components/ui/Skeleton';
@@ -22,11 +25,11 @@ import { DSAProblemForm } from '../components/forms/DSAProblemForm';
 import { ViewProblemModal } from '../components/modals/ViewProblemModal';
 import { SRSInfoModal } from '../components/ui/SRSInfoModal';
 import { DeleteModal } from '../components/ui/DeleteModal';
+import { AnimatedList } from '../components/ui/AnimatedList';
 import { api, type DSAProblem } from '../services/api';
 import { toast } from '../stores/toastStore';
 import { TOPICS, DIFFICULTIES, difficultyColors } from '../lib/constants';
-
-const MotionCard = motion(Card);
+import { useAI } from '../contexts/AIContext';
 
 export function DSATracking() {
     const [problems, setProblems] = useState<DSAProblem[]>([]);
@@ -39,6 +42,7 @@ export function DSATracking() {
     const [topicFilter, setTopicFilter] = useState('');
     const [difficultyFilter, setDifficultyFilter] = useState('');
     const [showReviewDueOnly, setShowReviewDueOnly] = useState(false);
+    const [showMobileFilters, setShowMobileFilters] = useState(false);
     const [page, setPage] = useState(1);
     const [pagination, setPagination] = useState({ total: 0, pages: 1 });
 
@@ -46,6 +50,7 @@ export function DSATracking() {
     const [deleteModalOpen, setDeleteModalOpen] = useState(false);
     const [problemToDelete, setProblemToDelete] = useState<string | null>(null);
     const [isDeleting, setIsDeleting] = useState(false);
+    const { toggleOpen } = useAI();
     // const navigate = useNavigate();
 
     const fetchProblems = useCallback(async () => {
@@ -135,103 +140,133 @@ export function DSATracking() {
     };
 
     return (
-        <div className="space-y-6">
+        <div className="space-y-4 sm:space-y-6">
             {/* Header */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="flex items-center justify-between gap-3 sm:gap-4">
                 <div>
-                    <h1 className="text-2xl font-bold text-white">DSA Problems</h1>
-                    <p className="text-sm text-gray-400 mt-1">Track your problem-solving journey</p>
+                    <h1 className="text-xl sm:text-2xl font-bold text-text-primary">DSA Problems</h1>
+                    <p className="hidden sm:block text-sm text-text-secondary mt-1">Track your problem-solving journey</p>
                 </div>
-                <Button onClick={() => setShowAddModal(true)} leftIcon={<Plus size={18} />}>
-                    Add Problem
-                </Button>
+                <div className="flex items-center gap-2">
+                    <button
+                        onClick={toggleOpen}
+                        className="p-2 rounded-full hover:bg-accent-primary/10 text-accent-primary transition-colors active:scale-95"
+                        title="Ask AI about DSA"
+                    >
+                        <BrainCircuit size={20} />
+                    </button>
+                    <Button size="sm" onClick={() => setShowAddModal(true)} leftIcon={<Plus size={16} />} className="shrink-0">
+                        <span className="hidden sm:inline">Add Problem</span>
+                        <span className="sm:hidden">Add</span>
+                    </Button>
+                </div>
             </div>
 
             {/* Stats Cards */}
-            <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+            <div className="flex gap-3 sm:gap-4 overflow-x-auto pb-4 scrollbar-hide -mx-1 px-1 sm:mx-0 sm:px-0 sm:grid sm:grid-cols-5 sm:overflow-visible">
                 {[
-                    { label: 'Total', value: stats.total, color: 'text-white' },
-                    { label: 'Solved', value: stats.solved, color: 'text-green-400' },
-                    { label: 'Easy', value: stats.easy, color: 'text-green-400' },
-                    { label: 'Medium', value: stats.medium, color: 'text-amber-400' },
-                    { label: 'Hard', value: stats.hard, color: 'text-red-400' },
-                ].map(stat => (
+                    { label: 'Total', value: stats.total, color: 'text-text-primary', icon: Code2 },
+                    { label: 'Solved', value: stats.solved, color: 'text-status-ok', icon: CheckCircle2 },
+                    { label: 'Easy', value: stats.easy, color: 'text-status-ok', icon: Award },
+                    { label: 'Medium', value: stats.medium, color: 'text-status-warning', icon: Award },
+                    { label: 'Hard', value: stats.hard, color: 'text-status-error', icon: Award },
+                ].map((stat, i) => (
                     <motion.div
                         key={stat.label}
-                        className="p-4 rounded-xl bg-[var(--sw-surface)] border border-[var(--sw-border)]"
-                        initial={{ opacity: 0, y: 10 }}
+                        className="flex-shrink-0 min-w-[100px] sm:min-w-0 p-4 rounded-xl bg-console-surface border border-border-subtle shadow-premium premium-card glow-border"
+                        initial={{ opacity: 0, y: 15 }}
                         animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: i * 0.05 }}
                     >
-                        <p className="text-xs text-[var(--sw-text-muted)] uppercase tracking-wide">{stat.label}</p>
-                        <p className={`text-2xl font-bold ${stat.color}`}>{stat.value}</p>
+                        <div className="flex items-center gap-2 mb-2 opacity-60">
+                            <stat.icon size={12} className={stat.color} />
+                            <p className="text-[10px] text-text-secondary uppercase tracking-[0.15em] font-bold">{stat.label}</p>
+                        </div>
+                        <p className={`text-2xl sm:text-3xl font-black ${stat.color} text-glow`}>{stat.value}</p>
                     </motion.div>
                 ))}
             </div>
 
             {/* Filters */}
-            <div className="flex flex-col sm:flex-row gap-4">
-                <div className="relative flex-1">
-                    <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-[var(--sw-text-muted)]" />
-                    <Input
-                        placeholder="Search problems..."
-                        value={search}
-                        onChange={(e) => setSearch(e.target.value)}
-                        className="pl-11"
-                    />
+            <div className="flex flex-col gap-3 sm:flex-row sm:gap-4">
+                <div className="flex gap-2 w-full sm:flex-1">
+                    <div className="relative flex-1">
+                        <Search size={18} className="absolute left-3 sm:left-4 top-1/2 -translate-y-1/2 text-text-secondary" />
+                        <Input
+                            placeholder="Search problems..."
+                            value={search}
+                            onChange={(e) => setSearch(e.target.value)}
+                            className="pl-9 sm:pl-11"
+                        />
+                    </div>
+                    <Button
+                        variant="secondary"
+                        onClick={() => setShowMobileFilters(!showMobileFilters)}
+                        className="sm:hidden shrink-0 px-3 w-[40px] border border-border-strong hover:bg-console-surface"
+                    >
+                        <SlidersHorizontal size={16} className={showMobileFilters ? "text-accent-primary" : "text-text-secondary"} />
+                    </Button>
                 </div>
-                <Select
-                    value={topicFilter}
-                    onChange={(v) => { setTopicFilter(v); setPage(1); }}
-                    options={TOPICS}
-                    className="sm:w-48"
-                />
-                <Select
-                    value={difficultyFilter}
-                    onChange={(v) => { setDifficultyFilter(v); setPage(1); }}
-                    options={DIFFICULTIES}
-                    className="sm:w-40"
-                />
-                <Button
-                    variant={showReviewDueOnly ? 'primary' : 'secondary'}
-                    onClick={() => setShowReviewDueOnly(!showReviewDueOnly)}
-                    className={`whitespace-nowrap ${showReviewDueOnly ? 'bg-green-600 hover:bg-green-700' : ''}`}
-                    leftIcon={<RefreshCw size={16} className={showReviewDueOnly ? 'animate-spin-slow' : ''} />}
-                >
-                    Review Due
-                </Button>
+
+                {/* Mobile Collapsible / Desktop Flex Selects Grid */}
+                <div className={`${showMobileFilters ? "flex" : "hidden"} flex-col sm:flex sm:flex-row gap-3 sm:gap-4 animate-in fade-in slide-in-from-top-2 duration-200`}>
+                    <div className="grid grid-cols-2 gap-3 sm:flex sm:gap-4">
+                        <Select
+                            value={topicFilter}
+                            onChange={(v) => { setTopicFilter(v); setPage(1); }}
+                            options={TOPICS}
+                            className="w-full sm:w-48"
+                        />
+                        <Select
+                            value={difficultyFilter}
+                            onChange={(v) => { setDifficultyFilter(v); setPage(1); }}
+                            options={DIFFICULTIES}
+                            className="w-full sm:w-40"
+                        />
+                    </div>
+
+                    <Button
+                        variant={showReviewDueOnly ? 'primary' : 'secondary'}
+                        onClick={() => setShowReviewDueOnly(!showReviewDueOnly)}
+                        className={`shrink-0 w-full sm:w-auto whitespace-nowrap ${showReviewDueOnly ? 'bg-status-warning hover:bg-status-warning' : ''}`}
+                        leftIcon={<RefreshCw size={16} className={showReviewDueOnly ? 'animate-spin-slow' : ''} />}
+                    >
+                        Review Due
+                    </Button>
+                </div>
             </div>
 
             {/* Problems List */}
             {isLoading ? (
                 <div className="space-y-4">
                     {[1, 2, 3].map((i) => (
-                        <div key={i} className="p-4 rounded-xl bg-[var(--sw-surface)] border border-[var(--sw-border)] space-y-4">
+                        <div key={i} className="p-4 rounded-xl bg-console-surface border border-border-subtle space-y-4">
                             <div className="flex justify-between items-start">
                                 <div className="space-y-2 flex-1">
-                                    <Skeleton className="h-6 w-1/3 bg-gray-700/50" />
+                                    <Skeleton className="h-6 w-1/3" />
                                     <div className="flex gap-2">
-                                        <Skeleton className="h-4 w-20 bg-gray-700/50" />
-                                        <Skeleton className="h-4 w-24 bg-gray-700/50" />
+                                        <Skeleton className="h-4 w-20" />
+                                        <Skeleton className="h-4 w-24" />
                                     </div>
                                 </div>
                                 <div className="flex gap-2">
-                                    <Skeleton className="h-8 w-8 rounded-lg bg-gray-700/50" />
-                                    <Skeleton className="h-8 w-8 rounded-lg bg-gray-700/50" />
-                                    <Skeleton className="h-8 w-8 rounded-lg bg-gray-700/50" />
+                                    <Skeleton className="h-8 w-8 rounded-lg" />
+                                    <Skeleton className="h-8 w-8 rounded-lg" />
+                                    <Skeleton className="h-8 w-8 rounded-lg" />
                                 </div>
                             </div>
-                            <Skeleton className="h-4 w-full bg-gray-700/30" />
+                            <Skeleton className="h-4 w-full" />
                         </div>
                     ))}
                 </div>
             ) : filteredProblems.length === 0 ? (
                 showReviewDueOnly ? (
                     <div className="flex flex-col items-center justify-center py-20 text-center">
-                        <div className="bg-green-500/10 p-6 rounded-full mb-4">
-                            <CheckCircle2 size={48} className="text-green-500" />
+                        <div className="bg-status-ok/10 p-6 rounded-full mb-4">
+                            <CheckCircle2 size={48} className="text-status-ok" />
                         </div>
-                        <h3 className="text-xl font-bold text-[var(--sw-text)] mb-2">All Caught Up!</h3>
-                        <p className="text-[var(--sw-text-muted)] max-w-sm">
+                        <h3 className="text-xl font-bold text-text-primary mb-2">All Caught Up!</h3>
+                        <p className="text-text-secondary max-w-sm">
                             You have no problem reviews due today. Feel free to solve new problems!
                         </p>
                         <Button
@@ -244,7 +279,7 @@ export function DSATracking() {
                     </div>
                 ) : (
                     <EmptyState
-                        icon={<Code2 size={32} className="text-gray-300" />}
+                        icon={<Code2 size={32} className="text-text-disabled" />}
                         title="No problems found"
                         description={search || topicFilter || difficultyFilter
                             ? "Try adjusting your filters"
@@ -258,45 +293,53 @@ export function DSATracking() {
                 )
             ) : (
                 <div className="space-y-3">
-                    <AnimatePresence mode="popLayout">
-                        {filteredProblems.map((problem, index) => (
-                            <MotionCard
+                    <AnimatedList
+                        showGradients
+                        enableArrowNavigation
+                        displayScrollbar
+                        staggerDelay={40}
+                        onItemSelect={(_item, index) => {
+                            if (filteredProblems[index]) setViewingProblem(filteredProblems[index]);
+                        }}
+                        items={filteredProblems.map((problem) => (
+                            <Card
                                 key={problem._id}
-                                className={`p-4 border-l-4 ${difficultyColors[problem.difficulty as keyof typeof difficultyColors] || 'border-l-gray-500'}`}
-                                initial={{ opacity: 0, y: 20 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                exit={{ opacity: 0, x: -20 }}
-                                transition={{ delay: index * 0.03 }}
+                                className={`p-4 border-l-4 premium-card glow-border ${difficultyColors[problem.difficulty as keyof typeof difficultyColors] || 'border-l-border-subtle'} relative overflow-hidden`}
                                 hover={true}
                                 onClick={() => setViewingProblem(problem)}
                             >
-                                <div className="flex items-center justify-between gap-4 cursor-pointer">
+                                <div className="flex items-center justify-between gap-4 cursor-pointer relative z-10">
                                     <div className="flex-1 min-w-0">
-                                        <div className="flex items-center gap-3 mb-1">
-                                            <h3 className="font-semibold text-white truncate hover:text-blue-400 transition-colors">
+                                        <div className="flex items-center gap-3 mb-2">
+                                            <h3 className="font-bold text-text-primary truncate hover:text-accent-primary transition-colors text-sm sm:text-base tracking-tight">
                                                 {problem.problemName}
                                             </h3>
                                             {problem.nextReviewDate && new Date(problem.nextReviewDate) <= new Date() && (
-                                                <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse" title="Review Due" />
+                                                <motion.div
+                                                    initial={{ scale: 0.8 }}
+                                                    animate={{ scale: [1, 1.2, 1] }}
+                                                    transition={{ repeat: Infinity, duration: 2 }}
+                                                    className="w-2.5 h-2.5 rounded-full bg-status-error shadow-[0_0_10px_rgba(239,68,68,0.5)]"
+                                                    title="Review Due"
+                                                />
                                             )}
                                         </div>
 
-                                        <div className="flex items-center gap-2 text-xs text-gray-400">
+                                        <div className="flex flex-wrap items-center gap-3 text-[11px] sm:text-xs text-text-secondary font-medium uppercase tracking-wider">
                                             <DifficultyBadge difficulty={problem.difficulty} />
-                                            <span className="text-gray-600">•</span>
+                                            <span className="opacity-30">•</span>
                                             <StatusBadge status={problem.status} />
-                                            <span className="text-gray-600">•</span>
-                                            <span className="capitalize">{problem.platform}</span>
+                                            <span className="opacity-30">•</span>
+                                            <span className="bg-console-surface-2 px-2 py-0.5 rounded-md border border-border-subtle">{problem.platform}</span>
                                             {problem.reviewStage && problem.reviewStage > 0 && (
                                                 <>
-                                                    <span className="text-gray-600">•</span>
-                                                    <span>Stage {problem.reviewStage}</span>
+                                                    <span className="opacity-30">•</span>
+                                                    <span className="text-accent-primary bg-accent-soft px-2 py-0.5 rounded-md">Stage {problem.reviewStage}</span>
                                                 </>
                                             )}
                                         </div>
                                     </div>
 
-                                    {/* Action - Just the View Button */}
                                     <Button
                                         size="sm"
                                         variant="ghost"
@@ -304,14 +347,18 @@ export function DSATracking() {
                                             e.stopPropagation();
                                             setViewingProblem(problem);
                                         }}
-                                        className="text-gray-500 hover:text-white"
+                                        className="text-text-secondary hover:text-text-primary hover:bg-white/5 rounded-full w-10 h-10 p-0"
                                     >
-                                        <ChevronRight size={18} />
+                                        <ChevronRight size={20} />
                                     </Button>
                                 </div>
-                            </MotionCard>
+                                {/* Subtle difficulty-themed background glow */}
+                                <div className={`absolute -right-4 -bottom-4 w-24 h-24 blur-3xl opacity-10 pointer-events-none rounded-full
+                                    ${problem.difficulty === 'easy' ? 'bg-status-ok' : problem.difficulty === 'medium' ? 'bg-status-warning' : 'bg-status-error'}`}
+                                />
+                            </Card>
                         ))}
-                    </AnimatePresence>
+                    />
 
                     {/* Pagination */}
                     {pagination.pages > 1 && (
@@ -324,7 +371,7 @@ export function DSATracking() {
                             >
                                 <ChevronLeft size={16} />
                             </Button>
-                            <span className="text-sm text-gray-400">
+                            <span className="text-sm text-text-secondary">
                                 Page {page} of {pagination.pages}
                             </span>
                             <Button

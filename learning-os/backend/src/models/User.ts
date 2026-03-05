@@ -12,6 +12,10 @@ export interface IUser extends Document {
         backend: number;
         project: number;
     };
+    emailVerified?: boolean;
+    verificationToken?: string;
+    verificationExpiry?: Date;
+    subscriptionId?: mongoose.Types.ObjectId;
     geminiApiKey?: string;
     encryptionIV?: string;
     createdAt: Date;
@@ -49,6 +53,23 @@ const userSchema = new Schema<IUser>(
             dsa: { type: Number, default: 6, min: 0, max: 24 },
             backend: { type: Number, default: 4, min: 0, max: 24 },
             project: { type: Number, default: 1, min: 0, max: 24 },
+        },
+        emailVerified: {
+            type: Boolean,
+            default: false,
+        },
+        verificationToken: {
+            type: String, // Stored as a hash
+            default: null,
+        },
+        verificationExpiry: {
+            type: Date,
+            default: null,
+        },
+        subscriptionId: {
+            type: Schema.Types.ObjectId,
+            ref: 'Subscription',
+            default: null,
         },
         geminiApiKey: {
             type: String,
@@ -94,7 +115,7 @@ userSchema.methods.comparePassword = async function (
 // Remove sensitive fields when converting to JSON
 userSchema.set('toJSON', {
     transform: (_doc, ret) => {
-        const { passwordHash, geminiApiKey, encryptionIV, __v, ...rest } = ret;
+        const { passwordHash, geminiApiKey, encryptionIV, verificationToken, verificationExpiry, __v, ...rest } = ret;
         return rest;
     },
 });

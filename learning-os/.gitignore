@@ -13,6 +13,16 @@ node_modules
 dist/
 build/
 coverage/
+frontend/dist/
+backend/dist/
+script-writer-service/dist/
+
+# Local vector/chroma runtime data
+chroma/
+chroma_data/
+
+# Local service logs
+error_log.txt
 
 # IDEs
 .vscode/

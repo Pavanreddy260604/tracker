@@ -27,6 +27,13 @@ export const projectsApi = {
         });
     },
 
+    async updateProjectStudyStatus(id: string, flowUnderstood: boolean) {
+        return baseApi.request<{ study: ProjectStudy }>(`/project-studies/${id}/status`, {
+            method: 'PATCH',
+            body: JSON.stringify({ flowUnderstood }),
+        });
+    },
+
     async deleteProjectStudy(id: string) {
         return baseApi.request<{ message: string }>(`/project-studies/${id}`, {
             method: 'DELETE',

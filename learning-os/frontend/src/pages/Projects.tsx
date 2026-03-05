@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
     Plus,
@@ -10,21 +11,20 @@ import {
     ChevronRight,
     ExternalLink,
     CheckCircle2,
-    XCircle,
     Database,
-    HelpCircle
+    HelpCircle,
+    BrainCircuit
 } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { Skeleton } from '../components/ui/Skeleton';
 import { Input } from '../components/ui/Input';
-import { Modal } from '../components/ui/Modal';
 import { EmptyState } from '../components/ui/EmptyState';
 import { Badge } from '../components/ui/Badge';
 import { Card } from '../components/ui/Card';
-import { ProjectStudyForm } from '../components/forms/ProjectStudyForm';
 import { DeleteModal } from '../components/ui/DeleteModal';
 import { api, type ProjectStudy } from '../services/api';
 import { toast } from '../stores/toastStore';
+import { useAI } from '../contexts/AIContext';
 
 const SAMPLE_PROJECTS = [
     {
@@ -72,13 +72,12 @@ const SAMPLE_PROJECTS = [
     }
 ] as const;
 
-const MotionCard = motion(Card);
+const MotionCard = motion.create(Card);
 
 export function Projects() {
+    const navigate = useNavigate();
     const [studies, setStudies] = useState<ProjectStudy[]>([]);
     const [isLoading, setIsLoading] = useState(true);
-    const [showAddModal, setShowAddModal] = useState(false);
-    const [editingStudy, setEditingStudy] = useState<ProjectStudy | null>(null);
     const [search, setSearch] = useState('');
     const [page, setPage] = useState(1);
     const [pagination, setPagination] = useState({ total: 0, pages: 1 });
@@ -88,6 +87,7 @@ export function Projects() {
     const [studyToDelete, setStudyToDelete] = useState<string | null>(null);
     const [isDeleting, setIsDeleting] = useState(false);
     const [isSeeding, setIsSeeding] = useState(false);
+    const { toggleOpen } = useAI();
 
     const fetchStudies = useCallback(async () => {
         setIsLoading(true);
@@ -173,24 +173,35 @@ export function Projects() {
     return (
         <div className="space-y-6">
             {/* Header */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="flex items-center justify-between gap-3 sm:gap-4">
                 <div>
-                    <h1 className="text-2xl font-bold text-white">Project Studies</h1>
-                    <p className="text-sm text-gray-400 mt-1">Track code reading and project understanding</p>
+                    <h1 className="text-xl sm:text-2xl font-bold text-text-primary">Project Studies</h1>
+                    <p className="hidden sm:block text-sm text-text-secondary mt-1">Track code reading and project understanding</p>
                 </div>
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2 sm:gap-3">
+                    <button
+                        onClick={toggleOpen}
+                        className="p-2 rounded-full hover:bg-accent-primary/10 text-accent-primary transition-colors active:scale-95"
+                        title="Ask AI about Projects"
+                    >
+                        <BrainCircuit size={20} />
+                    </button>
                     {studies.length === 0 && (
                         <Button
                             variant="secondary"
+                            size="sm"
                             onClick={handleSeedData}
                             isLoading={isSeeding}
                             leftIcon={<Database size={16} />}
+                            className="shrink-0"
                         >
-                            Load Sample Data
+                            <span className="hidden sm:inline">Load Sample</span>
+                            <span className="sm:hidden">Load</span>
                         </Button>
                     )}
-                    <Button onClick={() => setShowAddModal(true)} leftIcon={<Plus size={18} />}>
-                        Add Study
+                    <Button size="sm" onClick={() => navigate('/projects/new')} leftIcon={<Plus size={16} />} className="shrink-0">
+                        <span className="hidden sm:inline">Add Study</span>
+                        <span className="sm:hidden">Add</span>
                     </Button>
                 </div>
             </div>
@@ -198,29 +209,30 @@ export function Projects() {
             {/* Stats */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 {[
-                    { label: 'Total Sessions', value: pagination.total, icon: FolderGit2, color: 'text-cyan-400' },
-                    { label: 'Projects', value: Object.keys(projectGroups).length, icon: FolderGit2, color: 'text-purple-400' },
-                    { label: 'Understood', value: studies.filter(s => s.flowUnderstanding).length, icon: CheckCircle2, color: 'text-green-400' },
-                    { label: 'To Revisit', value: studies.filter(s => !s.flowUnderstanding).length, icon: XCircle, color: 'text-amber-400' },
-                ].map(stat => (
+                    { label: 'Total Sessions', value: pagination.total, icon: FolderGit2, color: 'text-accent-primary' },
+                    { label: 'Projects', value: Object.keys(projectGroups).length, icon: FolderGit2, color: 'text-accent-secondary' },
+                    { label: 'Understood', value: studies.filter(s => s.flowUnderstanding).length, icon: CheckCircle2, color: 'text-status-ok' },
+                    { label: 'To Revisit', value: studies.filter(s => !s.flowUnderstanding).length, icon: HelpCircle, color: 'text-status-warning' },
+                ].map((stat, i) => (
                     <motion.div
                         key={stat.label}
-                        className="p-4 rounded-xl bg-[#1c2128] border border-white/10"
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
+                        initial={{ opacity: 0, scale: 0.95 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        transition={{ delay: i * 0.05 }}
+                        className="py-3 px-4 rounded-xl bg-console-surface border border-border-subtle shadow-premium premium-card glow-border"
                     >
-                        <div className="flex items-center gap-2 mb-2">
-                            <stat.icon size={16} className={stat.color} />
-                            <p className="text-xs text-gray-500 uppercase tracking-wide">{stat.label}</p>
+                        <div className="flex items-center gap-2 mb-2 opacity-60">
+                            <stat.icon size={12} className={stat.color} />
+                            <p className="text-[10px] text-text-secondary uppercase tracking-[0.1em] font-bold">{stat.label}</p>
                         </div>
-                        <p className={`text-2xl font-bold ${stat.color}`}>{stat.value}</p>
+                        <p className="text-2xl sm:text-3xl font-black text-text-primary leading-none text-glow">{stat.value}</p>
                     </motion.div>
                 ))}
             </div>
 
             {/* Search */}
             <div className="relative">
-                <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500" />
+                <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-text-secondary" />
                 <Input
                     placeholder="Search projects or modules..."
                     value={search}
@@ -235,22 +247,22 @@ export function Projects() {
                     {[1, 2].map((i) => (
                         <div key={i} className="space-y-3">
                             <div className="flex items-center gap-3 mb-3">
-                                <Skeleton className="h-5 w-5 rounded bg-gray-700/50" />
-                                <Skeleton className="h-6 w-40 bg-gray-700/50" />
-                                <Skeleton className="h-5 w-20 rounded-full bg-gray-700/30" />
+                                <Skeleton className="h-5 w-5 rounded" />
+                                <Skeleton className="h-6 w-40" />
+                                <Skeleton className="h-5 w-20 rounded-full" />
                             </div>
                             <div className="ml-7 space-y-3">
-                                <div className="p-4 rounded-xl bg-[#1c2128] border border-white/5 space-y-4">
+                                <div className="p-4 rounded-xl bg-console-surface border border-border-subtle space-y-4">
                                     <div className="flex justify-between items-start">
                                         <div className="space-y-2 flex-1">
-                                            <Skeleton className="h-6 w-1/3 bg-gray-700/50" />
+                                            <Skeleton className="h-6 w-1/3" />
                                             <div className="flex gap-2">
-                                                <Skeleton className="h-4 w-24 bg-gray-700/50" />
-                                                <Skeleton className="h-4 w-32 bg-gray-700/50" />
+                                                <Skeleton className="h-4 w-24" />
+                                                <Skeleton className="h-4 w-32" />
                                             </div>
                                         </div>
                                     </div>
-                                    <Skeleton className="h-4 w-3/4 bg-gray-700/30" />
+                                    <Skeleton className="h-4 w-3/4" />
                                 </div>
                             </div>
                         </div>
@@ -258,7 +270,7 @@ export function Projects() {
                 </div>
             ) : filteredStudies.length === 0 ? (
                 <EmptyState
-                    icon={<FolderGit2 size={32} className="text-gray-300" />}
+                    icon={<FolderGit2 size={32} className="text-text-disabled" />}
                     title="No study sessions found"
                     description={search
                         ? "Try a different search term"
@@ -266,7 +278,7 @@ export function Projects() {
                     }
                     action={!search ? {
                         label: 'Add First Study',
-                        onClick: () => setShowAddModal(true),
+                        onClick: () => navigate('/projects/new'),
                     } : undefined}
                 />
             ) : (
@@ -280,10 +292,10 @@ export function Projects() {
                                 transition={{ delay: groupIndex * 0.05 }}
                             >
                                 {/* Project Header */}
-                                <div className="flex items-center gap-3 mb-3">
-                                    <FolderGit2 size={20} className="text-gray-300" />
-                                    <h2 className="text-lg font-semibold text-white">{projectName}</h2>
-                                    <Badge variant="info">{projectStudies.length} sessions</Badge>
+                                <div className="flex wrap items-center gap-2 sm:gap-3 mb-2 sm:mb-3">
+                                    <FolderGit2 size={20} className="text-text-secondary sm:w-5 sm:h-5 w-4 h-4" />
+                                    <h2 className="text-base sm:text-lg font-bold text-text-primary">{projectName}</h2>
+                                    <Badge variant="info" className="uppercase text-[10px] tracking-wider">{projectStudies.length} sessions</Badge>
                                 </div>
 
                                 {/* Project Studies */}
@@ -291,19 +303,22 @@ export function Projects() {
                                     {projectStudies.map((study, index) => (
                                         <MotionCard
                                             key={study._id}
-                                            className={`p-4 border-l-4 ${study.flowUnderstanding ? 'border-l-green-500' : 'border-l-amber-500'} rounded-xl bg-[#1c2128] border border-white/10 hover:border-white/20 transition-colors`}
+                                            className={`p-4 border-l-4 premium-card glow-border ${study.flowUnderstanding ? 'border-l-status-ok' : 'border-l-status-warning'} relative overflow-hidden`}
                                             initial={{ opacity: 0, y: 20 }}
                                             animate={{ opacity: 1, y: 0 }}
                                             exit={{ opacity: 0, x: -20 }}
                                             transition={{ delay: index * 0.03 }}
                                             hover={true}
                                         >
-                                            <div className="flex items-start justify-between gap-4">
+                                            <div className="flex items-start justify-between gap-3 sm:gap-4">
                                                 <div className="flex-1 min-w-0">
-                                                    <div className="flex items-center gap-3 mb-2">
-                                                        <h3 className="font-semibold text-white truncate">
+                                                    <div className="flex flex-wrap items-center gap-2 sm:gap-3 mb-1.5 sm:mb-2 flex-grow">
+                                                        <button
+                                                            onClick={() => navigate(`/projects/${study._id}`)}
+                                                            className="font-semibold sm:font-bold text-sm sm:text-base text-text-primary text-left hover:text-accent-primary hover:underline"
+                                                        >
                                                             {study.moduleStudied}
-                                                        </h3>
+                                                        </button>
                                                         {study.flowUnderstanding ? (
                                                             <Badge variant="success">
                                                                 <CheckCircle2 size={12} className="mr-1" />
@@ -317,49 +332,49 @@ export function Projects() {
                                                         )}
                                                     </div>
 
-                                                    <div className="flex flex-wrap items-center gap-3 text-sm text-gray-400">
+                                                    <div className="flex flex-wrap items-center gap-3 text-sm text-text-secondary">
                                                         <span>{new Date(study.date).toLocaleDateString()}</span>
-                                                        {study.involvedTables && (
+                                                        {study.coreComponents && (
                                                             <span className="flex items-center gap-1">
                                                                 <Database size={14} />
-                                                                {study.involvedTables}
+                                                                {study.coreComponents}
                                                             </span>
                                                         )}
                                                     </div>
 
                                                     {study.questions && (
-                                                        <p className="mt-2 text-sm text-amber-400/80">
+                                                        <p className="mt-2 text-sm text-status-warning font-medium">
                                                             ❓ {study.questions}
                                                         </p>
                                                     )}
 
                                                     {study.notes && (
-                                                        <p className="mt-2 text-sm text-gray-400 line-clamp-2">
+                                                        <p className="mt-2 text-sm text-text-primary opacity-80 line-clamp-2 italic">
                                                             {study.notes}
                                                         </p>
                                                     )}
                                                 </div>
 
-                                                <div className="flex items-center gap-2">
+                                                <div className="flex items-center gap-1 sm:gap-2">
                                                     {study.repoUrl && (
                                                         <a
                                                             href={study.repoUrl}
                                                             target="_blank"
                                                             rel="noopener noreferrer"
-                                                            className="p-2 rounded-lg hover:bg-white/10 text-gray-400 hover:text-gray-900 transition-colors"
+                                                            className="p-2.5 sm:p-2 min-w-[44px] min-h-[44px] sm:min-w-0 sm:min-h-0 rounded-lg hover:bg-console-surface-2 text-text-secondary hover:text-text-primary transition-colors"
                                                         >
                                                             <ExternalLink size={18} />
                                                         </a>
                                                     )}
                                                     <button
-                                                        onClick={() => setEditingStudy(study)}
-                                                        className="p-2 rounded-lg hover:bg-white/10 text-gray-400 hover:text-gray-900 transition-colors"
+                                                        onClick={() => navigate(`/projects/${study._id}`)}
+                                                        className="p-2.5 sm:p-2 min-w-[44px] min-h-[44px] sm:min-w-0 sm:min-h-0 rounded-lg hover:bg-console-surface-2 text-text-secondary hover:text-text-primary transition-colors"
                                                     >
                                                         <Edit2 size={18} />
                                                     </button>
                                                     <button
                                                         onClick={() => handleDeleteClick(study._id)}
-                                                        className="p-2 rounded-lg hover:bg-red-500/20 text-gray-400 hover:text-red-400 transition-colors"
+                                                        className="p-2.5 sm:p-2 min-w-[44px] min-h-[44px] sm:min-w-0 sm:min-h-0 rounded-lg hover:bg-status-error/10 text-text-secondary hover:text-status-error transition-colors"
                                                     >
                                                         <Trash2 size={18} />
                                                     </button>
@@ -383,7 +398,7 @@ export function Projects() {
                             >
                                 <ChevronLeft size={16} />
                             </Button>
-                            <span className="text-sm text-gray-400">
+                            <span className="text-sm text-text-secondary font-medium">
                                 Page {page} of {pagination.pages}
                             </span>
                             <Button
@@ -400,47 +415,12 @@ export function Projects() {
             )
             }
 
-            {/* Add Modal */}
-            <Modal
-                isOpen={showAddModal}
-                onClose={() => setShowAddModal(false)}
-                title="Add Study Session"
-                size="lg"
-            >
-                <ProjectStudyForm
-                    onSuccess={() => {
-                        setShowAddModal(false);
-                        fetchStudies();
-                    }}
-                    onCancel={() => setShowAddModal(false)}
-                />
-            </Modal>
 
-            {/* Edit Modal */}
-            <Modal
-                isOpen={!!editingStudy}
-                onClose={() => setEditingStudy(null)}
-                title="Edit Study"
-                size="lg"
-            >
-                {editingStudy && (
-                    <ProjectStudyForm
-                        initialValues={editingStudy}
-                        onSuccess={() => {
-                            setEditingStudy(null);
-                            fetchStudies();
-                        }}
-                        onCancel={() => setEditingStudy(null)}
-                    />
-                )}
-            </Modal>
-
-            {/* Delete Modal */}
             <DeleteModal
                 isOpen={deleteModalOpen}
                 onClose={() => setDeleteModalOpen(false)}
                 onConfirm={handleConfirmDelete}
-                title="Delete Study"
+                title="Delete Study Session"
                 description="Are you sure you want to delete this study session? This action cannot be undone."
                 isDeleting={isDeleting}
             />

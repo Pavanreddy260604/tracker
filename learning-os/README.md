@@ -1,113 +1,129 @@
-# Learning OS 📚
+# Learning OS
 
-A premium, developer-centric **Personal Learning Operating System** for serious software engineering students.
+Learning OS is a monorepo for a personal learning platform with a modern React UI, a TypeScript backend API, and a dedicated script-writer microservice.
 
-![Dark themed dashboard](https://via.placeholder.com/800x400?text=Premium+Dark+Dashboard)
+## Services
 
-## Features
-
-- ⚡ **Zero-friction daily logging** - Track hours in under 10 seconds
-- 🔥 **Streak tracking** - Current, longest, and at-risk warnings
-- 📊 **Visual progress** - Circular progress rings, weekly charts, heatmaps
-- 🧠 **Smart insights** - Strongest/weakest topics, consistency metrics
-- 🎯 **Goal targets** - DSA (6h), Backend (4h), Project (1h) daily targets
-- 🌙 **Premium dark UI** - Inspired by Linear, Vercel, and GitHub
+| Service | Default Port | Purpose |
+| --- | --- | --- |
+| `frontend` | `5173` | Main web app (Vite + React + Tailwind v4) |
+| `backend` | `5000` | Core API, auth, learning data, interview features |
+| `script-writer-service` | `5003` | AI script writer endpoints |
+| `chroma` | `8000` | Vector store used by script-writer flows |
 
 ## Tech Stack
 
-### Backend
-- Node.js + Express + TypeScript
-- MongoDB + Mongoose
-- JWT Authentication + bcrypt
-- Rate limiting + Helmet security
+- Frontend: React 19, TypeScript, Vite, Tailwind CSS v4, Zustand, Framer Motion
+- Backend: Node.js, Express, TypeScript, MongoDB (Mongoose), JWT, Zod
+- Script Writer Service: Express + TypeScript, LLM integrations, ChromaDB
 
-### Frontend
-- React 18 + TypeScript + Vite
-- TailwindCSS + Framer Motion
-- Recharts + Zustand
-- React Hook Form + Zod
+## Prerequisites
 
-## Quick Start
-
-### Prerequisites
 - Node.js 18+
+- npm
 - MongoDB (local or Atlas)
+- Chroma CLI (if running full script-writer workflow locally)
 
-### 1. Clone & Install
+## Setup
+
+1. Install root tooling:
 
 ```bash
-cd learning-os
-
-# Backend
-cd backend
-npm install
-cp .env .env.local  # Edit with your MongoDB URI
-
-# Frontend
-cd ../frontend
 npm install
 ```
 
-### 2. Configure Environment
-
-Edit `backend/.env`:
-```env
-MONGODB_URI=mongodb://localhost:27017/learning-os
-JWT_SECRET=your-super-secret-key-minimum-32-characters
-PORT=5000
-```
-
-### 3. Start Development
+2. Install service dependencies:
 
 ```bash
-# Terminal 1 - Backend
-cd backend
-npm run dev
+cd backend && npm install
+cd ../frontend && npm install
+cd ../script-writer-service && npm install
+```
 
-# Terminal 2 - Frontend
-cd frontend
+3. Create environment files:
+
+- Backend:
+
+```bash
+cp backend/.env.example backend/.env
+```
+
+- Frontend:
+
+```bash
+cp frontend/.env.example frontend/.env
+```
+
+- Script writer:
+
+```bash
+cp script-writer-service/.env.example script-writer-service/.env
+```
+
+## Environment Variables
+
+### `backend/.env`
+
+Required:
+- `MONGODB_URI`
+- `JWT_SECRET`
+- `JWT_ISSUER`
+- `ENCRYPTION_KEY` (must be exactly 32 characters)
+
+Optional:
+- `PORT` (default `5000`)
+- `FRONTEND_URL` (default `http://localhost:5173`)
+
+### `frontend/.env`
+
+- `VITE_API_URL=/api`
+- `VITE_SCRIPT_SERVICE_URL=http://localhost:5003/api`
+
+### `script-writer-service/.env`
+
+- `PORT=5003`
+- `MONGODB_URI=...`
+- `JWT_SECRET=...` (must match backend)
+- `OLLAMA_URL=...`
+- `OLLAMA_MODEL=...`
+
+## Run Locally
+
+### Full stack (root command)
+
+```bash
 npm run dev
 ```
 
-Open http://localhost:5173
+This starts:
+- backend
+- frontend
+- script-writer-service
+- chroma
 
-## API Endpoints
+### Manual (separate terminals)
 
-| Endpoint | Method | Description |
-|----------|--------|-------------|
-| `/api/auth/register` | POST | Register user |
-| `/api/auth/login` | POST | Login user |
-| `/api/daily-logs` | POST | Upsert daily log |
-| `/api/dashboard/summary?range=today\|week\|month` | GET | Dashboard data |
-| `/api/dashboard/streak` | GET | Streak info |
-| `/api/dashboard/insights` | GET | Analytics |
+```bash
+cd backend && npm run dev
+cd frontend && npm run dev
+cd script-writer-service && npm run dev
+chroma run --host localhost --port 8000
+```
+
+## Build and Test
+
+```bash
+cd backend && npm test && npm run build
+cd frontend && npm run build
+cd script-writer-service && npm run build
+```
 
 ## Project Structure
 
-```
+```text
 learning-os/
-├── backend/
-│   └── src/
-│       ├── config/       # DB connection
-│       ├── middleware/   # Auth, error handling
-│       ├── models/       # Mongoose schemas
-│       ├── routes/       # API routes
-│       └── services/     # Streak, stats, aggregation
-└── frontend/
-    └── src/
-        ├── components/   # UI components
-        ├── pages/        # Login, Register, Dashboard
-        ├── services/     # API client
-        └── stores/       # Zustand state
+  backend/                 # Core API
+  frontend/                # Web client
+  script-writer-service/   # AI script-writer microservice
+  chroma/                  # Chroma-related assets
 ```
-
-## Design Philosophy
-
-- **Engineering focus mode** - Calm but premium aesthetics
-- **Zero friction** - Log progress in seconds
-- **Motivation through visibility** - See your progress everywhere
-- **Built for years** - Scales to millions of records
-
-## License
-
-MIT

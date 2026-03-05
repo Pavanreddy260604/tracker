@@ -10,14 +10,14 @@ interface BadgeProps {
 }
 
 const variantStyles: Record<BadgeVariant, string> = {
-    default: 'bg-gray-500/20 text-gray-300 border-gray-500/30',
-    secondary: 'bg-gray-500/10 text-gray-400 border-gray-500/20',
-    outline: 'bg-transparent text-gray-400 border-gray-500/30',
-    success: 'bg-green-500/20 text-green-400 border-green-500/30',
-    warning: 'bg-amber-500/20 text-amber-400 border-amber-500/30',
-    error: 'bg-red-500/20 text-red-400 border-red-500/30',
-    info: 'bg-blue-500/20 text-blue-300 border-blue-500/30',
-    purple: 'bg-purple-500/20 text-purple-400 border-purple-500/30',
+    default: 'bg-console-surface-2 text-text-secondary border-border-subtle',
+    secondary: 'bg-console-surface-2 text-text-secondary border-border-subtle',
+    outline: 'bg-transparent text-text-secondary border-border-subtle',
+    success: 'bg-status-ok/10 text-status-ok border-status-ok/20',
+    warning: 'bg-status-warning/10 text-status-warning border-status-warning/20',
+    error: 'bg-status-error/10 text-status-error border-status-error/20',
+    info: 'bg-accent-soft text-accent-primary border-accent-soft',
+    purple: 'bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/20',
 };
 
 export function Badge({ children, variant = 'default', size = 'sm', className }: BadgeProps) {

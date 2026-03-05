@@ -1,6 +1,5 @@
 
 import { baseApi } from './base.api';
-import type { ApiResponse } from './base.api';
 
 export interface ActivityLog {
     type: 'navigation' | 'click' | 'edit' | 'create' | 'delete' | 'search' | 'command';

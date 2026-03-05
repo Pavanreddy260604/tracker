@@ -1,0 +1,5 @@
+
+> learning-os-backend@1.0.0 dev
+> tsx watch src/index.ts
+
+[db] MongoDB connected: localhost

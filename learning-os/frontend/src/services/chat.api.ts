@@ -1,5 +1,5 @@
 // Chat API Service
-import { baseApi, API_BASE } from './base.api';
+import { baseApi } from './base.api';
 import type { ChatSession } from './types';
 
 export const chatApi = {
@@ -31,30 +31,12 @@ export const chatApi = {
             });
         }
 
-        const token = baseApi.getToken();
-        const response = await fetch(`${API_BASE}/chat/${sessionId}/message`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                ...(token && { Authorization: `Bearer ${token}` })
-            },
-            body: JSON.stringify({ message }),
+        await baseApi.streamRequest(
+            `/chat/${sessionId}/message`,
+            { message },
+            onChunk,
             signal
-        });
-
-        if (!response.ok) throw new Error('Message failed');
-
-        const reader = response.body?.getReader();
-        const decoder = new TextDecoder();
-
-        if (!reader) return;
-
-        while (true) {
-            const { done, value } = await reader.read();
-            if (done) break;
-            const chunk = decoder.decode(value, { stream: true });
-            onChunk(chunk);
-        }
+        );
     },
 
     async updateChatSession(id: string, updates: { title?: string }) {

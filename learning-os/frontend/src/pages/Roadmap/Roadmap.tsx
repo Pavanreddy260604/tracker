@@ -1,4 +1,5 @@
-import { useState, useCallback, useEffect, memo, useRef } from 'react';
+import { useState, useCallback, useEffect, memo, useRef, useMemo } from 'react';
+import dagre from 'dagre';
 import {
     ReactFlow,
     MiniMap,
@@ -9,6 +10,9 @@ import {
     addEdge,
     Handle,
     Position,
+    useReactFlow,
+    ReactFlowProvider,
+    SelectionMode,
     type Connection,
     type Edge,
     type Node,
@@ -19,34 +23,36 @@ import {
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import { api } from '../../services/api';
+import { useMobile } from '../../hooks/useMobile';
+import { useThemeStore } from '../../stores/themeStore';
 import {
-    Plus, Save, CheckCircle2, Clock, Circle, Trash2, X,
-    Code2, Server, Database, Globe, Lightbulb,
+    Plus, Save, CheckCircle2, Trash2, X, Circle, Clock,
+    Filter, Code2, Server, Database, Globe, Lightbulb,
     Layers, Cpu, Shield, Zap, FileCode, Terminal, Wrench,
     Pencil, Search, Link, Timer, Flag, Download, Upload,
-    ChevronDown, ExternalLink
+    ExternalLink, Wand2, MousePointer2, Hand
 } from 'lucide-react';
 
 // Professional category icons
 const CATEGORY_ICONS = {
-    general: { icon: Lightbulb, label: 'General', color: 'text-gray-400' },
-    dsa: { icon: Code2, label: 'DSA', color: 'text-blue-400' },
-    backend: { icon: Server, label: 'Backend', color: 'text-purple-400' },
-    database: { icon: Database, label: 'Database', color: 'text-green-400' },
-    frontend: { icon: Globe, label: 'Frontend', color: 'text-cyan-400' },
-    devops: { icon: Layers, label: 'DevOps', color: 'text-orange-400' },
-    system: { icon: Cpu, label: 'System Design', color: 'text-pink-400' },
-    security: { icon: Shield, label: 'Security', color: 'text-red-400' },
-    api: { icon: Zap, label: 'API', color: 'text-yellow-400' },
-    language: { icon: FileCode, label: 'Language', color: 'text-indigo-400' },
-    tools: { icon: Wrench, label: 'Tools', color: 'text-teal-400' },
-    terminal: { icon: Terminal, label: 'CLI', color: 'text-lime-400' },
+    general: { icon: Lightbulb, label: 'General', color: 'text-text-disabled' },
+    dsa: { icon: Code2, label: 'DSA', color: 'text-accent-primary' },
+    backend: { icon: Server, label: 'Backend', color: 'text-accent-secondary' },
+    database: { icon: Database, label: 'Database', color: 'text-status-ok' },
+    frontend: { icon: Globe, label: 'Frontend', color: 'text-accent-primary' },
+    devops: { icon: Layers, label: 'DevOps', color: 'text-status-warning' },
+    system: { icon: Cpu, label: 'System Design', color: 'text-accent-primary' },
+    security: { icon: Shield, label: 'Security', color: 'text-status-error' },
+    api: { icon: Zap, label: 'API', color: 'text-status-warning' },
+    language: { icon: FileCode, label: 'Language', color: 'text-accent-primary' },
+    tools: { icon: Wrench, label: 'Tools', color: 'text-status-ok' },
+    terminal: { icon: Terminal, label: 'CLI', color: 'text-status-ok' },
 };
 
 const PRIORITY_CONFIG = {
-    low: { label: 'Low', color: 'text-gray-400', bg: 'bg-gray-500/20' },
-    medium: { label: 'Medium', color: 'text-yellow-400', bg: 'bg-yellow-500/20' },
-    high: { label: 'High', color: 'text-red-400', bg: 'bg-red-500/20' },
+    low: { label: 'Low', color: 'text-text-disabled', bg: 'bg-console-surface-2' },
+    medium: { label: 'Medium', color: 'text-status-warning', bg: 'bg-status-warning/10' },
+    high: { label: 'High', color: 'text-status-error', bg: 'bg-status-error/10' },
 };
 
 type CategoryType = keyof typeof CATEGORY_ICONS;
@@ -70,19 +76,29 @@ const RoadmapNode = memo(({ data, selected }: NodeProps<Node<RoadmapNodeData>>) 
     const priority = nodeData.priority ? PRIORITY_CONFIG[nodeData.priority] : null;
 
     const statusStyles = {
-        'todo': 'border-gray-300 dark:border-white/10',
-        'in-progress': 'border-blue-400 dark:border-blue-500/50',
-        'done': 'border-green-400 dark:border-green-500/50'
+        'todo': 'border-border-subtle',
+        'in-progress': 'border-accent-primary/50',
+        'done': 'border-status-ok/50'
     };
 
     return (
         <div className={`
-            bg-white dark:bg-[#1c2128] rounded-xl border-2 ${statusStyles[nodeData.status]}
-            shadow-sm hover:shadow-md transition-all min-w-[180px] max-w-[240px]
-            ${selected ? 'ring-2 ring-blue-500/50 shadow-lg' : ''}
+            rounded-xl border-2 ${statusStyles[nodeData.status]}
+            bg-console-surface/60 backdrop-blur-xl shadow-premium transition-all min-w-[180px] max-w-[240px]
+            relative overflow-visible hover:border-accent-primary/50
+            ${selected ? 'ring-2 ring-accent-primary shadow-[0_0_20px_rgba(59,130,246,0.2)]' : ''}
         `}>
-            <Handle type="target" position={Position.Top} className="!w-2 !h-2 !bg-gray-400 dark:!bg-gray-500 !border-0 !-top-1" />
-            <Handle type="source" position={Position.Bottom} className="!w-2 !h-2 !bg-gray-400 dark:!bg-gray-500 !border-0 !-bottom-1" />
+            {/* Optimized handles for visibility and connection */}
+            <Handle
+                type="target"
+                position={Position.Top}
+                className="!w-3 !h-3 !bg-accent-primary !border-2 !border-white dark:!border-console-surface !-top-1.5 hover:!scale-125 transition-transform"
+            />
+            <Handle
+                type="source"
+                position={Position.Bottom}
+                className="!w-3 !h-3 !bg-accent-primary !border-2 !border-white dark:!border-console-surface !-bottom-1.5 hover:!scale-125 transition-transform"
+            />
 
             <div className="px-3 py-2.5">
                 <div className="flex items-start gap-2">
@@ -110,7 +126,7 @@ const RoadmapNode = memo(({ data, selected }: NodeProps<Node<RoadmapNodeData>>) 
                     </div>
                 </div>
                 {nodeData.description && (
-                    <p className="text-[11px] text-gray-500 mt-1.5 line-clamp-2 pl-6">{nodeData.description}</p>
+                    <p className="text-[11px] text-text-secondary mt-1.5 line-clamp-2 pl-6">{nodeData.description}</p>
                 )}
             </div>
         </div>
@@ -120,11 +136,14 @@ const RoadmapNode = memo(({ data, selected }: NodeProps<Node<RoadmapNodeData>>) 
 RoadmapNode.displayName = 'RoadmapNode';
 const nodeTypes = { roadmap: RoadmapNode };
 
-export function Roadmap() {
+function RoadmapContent() {
+    const { isMobile } = useMobile();
+    const { theme } = useThemeStore();
     const [nodes, setNodes, onNodesChange] = useNodesState<Node<RoadmapNodeData>>([]);
     const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
     const [isSaving, setIsSaving] = useState(false);
     const [selectedNode, setSelectedNode] = useState<Node | null>(null);
+    const [selectedNodes, setSelectedNodes] = useState<Node[]>([]);
     const [showModal, setShowModal] = useState(false);
     const [saveSuccess, setSaveSuccess] = useState(false);
     const [contextMenu, setContextMenu] = useState<{ x: number; y: number; node: Node } | null>(null);
@@ -134,13 +153,27 @@ export function Roadmap() {
     // Search & Filter state
     const [searchQuery, setSearchQuery] = useState('');
     const [filterCategory, setFilterCategory] = useState<CategoryType | 'all'>('all');
-    const [filterStatus, setFilterStatus] = useState<'all' | 'todo' | 'in-progress' | 'done'>('all');
+    const [filterStatus] = useState<'all' | 'todo' | 'in-progress' | 'done'>('all');
+    const [showAddMenu, setShowAddMenu] = useState(false);
+    const [showFilterMenu, setShowFilterMenu] = useState(false);
+    const [confirmDelete, setConfirmDelete] = useState<{ type: 'node' | 'edge'; id: string } | null>(null);
+    const [roadmapTool, setRoadmapTool] = useState<'pan' | 'select'>('pan');
+
+    const { getViewport } = useReactFlow();
+
+    // Close menus when clicking anywhere on canvas
+    const closeMenus = useCallback(() => {
+        setShowAddMenu(false);
+        setShowFilterMenu(false);
+        setContextMenu(null);
+    }, []);
 
     // Load roadmap
     useEffect(() => {
         const loadRoadmap = async () => {
             try {
-                const data = await api.getRoadmap();
+                const response = await api.getRoadmap();
+                const data = response; // Now we directly use the response since we fixed the API service
                 if (data.nodes?.length > 0) {
                     setNodes(data.nodes.map((n: any) => ({
                         id: n.nodeId, type: 'roadmap', position: n.position,
@@ -165,7 +198,25 @@ export function Roadmap() {
         loadRoadmap();
     }, [setNodes, setEdges]);
 
-    // Keyboard shortcuts
+    // Refs for stable access in event listeners
+    const nodesRef = useRef(nodes);
+    const selectedNodeRef = useRef(selectedNode);
+    nodesRef.current = nodes;
+    selectedNodeRef.current = selectedNode;
+
+    const deleteNode = useCallback((nodeId?: string) => {
+        const id = nodeId || selectedNodeRef.current?.id || confirmDelete?.id;
+        if (!id) return;
+        setNodes((nds) => nds.filter((n) => n.id !== id));
+        setEdges((eds) => eds.filter((e) => e.source !== id && e.target !== id));
+        setShowModal(false);
+        setSelectedNode(null);
+        setContextMenu(null);
+        setConfirmDelete(null);
+        setHasUnsavedChanges(true);
+    }, [confirmDelete, setNodes, setEdges]);
+
+    // Keyboard shortcuts - use ref-based listener to avoid re-binding during drags
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
             // Ctrl+S to save
@@ -179,18 +230,32 @@ export function Roadmap() {
                 setContextMenu(null);
             }
             // Delete to remove selected node
-            if (e.key === 'Delete' && selectedNode && !showModal) {
-                deleteNode(selectedNode.id);
+            if (e.key === 'Delete' && selectedNodeRef.current && !showModal) {
+                deleteNode(selectedNodeRef.current.id);
             }
             // Ctrl+F to focus search
             if ((e.ctrlKey || e.metaKey) && e.key === 'f') {
                 e.preventDefault();
                 document.getElementById('roadmap-search')?.focus();
             }
+            // Arrow Keys for navigation
+            if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key) && !showModal) {
+                e.preventDefault();
+                navigateNodes(e.key.replace('Arrow', '').toLowerCase() as any);
+            }
+            // Enter to edit
+            if (e.key === 'Enter' && selectedNodeRef.current && !showModal) {
+                setShowModal(true);
+            }
+            // Tool Shortcuts
+            if (!showModal && !e.ctrlKey && !e.metaKey) {
+                if (e.key.toLowerCase() === 'v') setRoadmapTool('pan');
+                if (e.key.toLowerCase() === 's') setRoadmapTool('select');
+            }
         };
         window.addEventListener('keydown', handleKeyDown);
         return () => window.removeEventListener('keydown', handleKeyDown);
-    }, [selectedNode, showModal]);
+    }, [showModal]); // Only re-bind when modal state changes
 
     // Auto-save with debounce
     useEffect(() => {
@@ -209,19 +274,21 @@ export function Roadmap() {
     }, [nodes, edges, hasUnsavedChanges]);
 
     // Filter nodes based on search and filters
-    const filteredNodes = nodes.map(node => {
-        const data = node.data as RoadmapNodeData;
-        const matchesSearch = !searchQuery ||
-            data.label.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            (data.description?.toLowerCase().includes(searchQuery.toLowerCase()));
-        const matchesCategory = filterCategory === 'all' || data.category === filterCategory;
-        const matchesStatus = filterStatus === 'all' || data.status === filterStatus;
+    const filteredNodes = useMemo(() => {
+        return nodes.map(node => {
+            const data = node.data as RoadmapNodeData;
+            const matchesSearch = !searchQuery ||
+                data.label.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                (data.description?.toLowerCase().includes(searchQuery.toLowerCase()));
+            const matchesCategory = filterCategory === 'all' || data.category === filterCategory;
+            const matchesStatus = filterStatus === 'all' || data.status === filterStatus;
 
-        return {
-            ...node,
-            hidden: !(matchesSearch && matchesCategory && matchesStatus)
-        };
-    });
+            return {
+                ...node,
+                hidden: !(matchesSearch && matchesCategory && matchesStatus)
+            };
+        });
+    }, [nodes, searchQuery, filterCategory, filterStatus]);
 
     const onConnect = useCallback((params: Connection) => {
         setEdges((eds) => addEdge({
@@ -231,9 +298,16 @@ export function Roadmap() {
         setHasUnsavedChanges(true);
     }, [setEdges]);
 
+    const handleEdgesChange = useCallback((changes: any) => {
+        onEdgesChange(changes);
+        if (changes.some((c: any) => c.type === 'remove')) {
+            setHasUnsavedChanges(true);
+        }
+    }, [onEdgesChange]);
+
     const handleNodesChange = useCallback((changes: any) => {
         onNodesChange(changes);
-        if (changes.some((c: any) => c.type === 'position' && c.dragging === false)) {
+        if (changes.some((c: any) => (c.type === 'position' && c.dragging === false) || c.type === 'remove')) {
             setHasUnsavedChanges(true);
         }
     }, [onNodesChange]);
@@ -249,45 +323,186 @@ export function Roadmap() {
         finally { setIsSaving(false); }
     };
 
-    const addNode = (category: CategoryType = 'general') => {
-        setNodes((nds) => nds.concat({
-            id: `node_${Date.now()}`, type: 'roadmap',
-            position: { x: 100 + Math.random() * 300, y: 100 + Math.random() * 200 },
-            data: { label: 'New Topic', status: 'todo', category, description: '', priority: 'medium', estimatedHours: 0, resourceUrl: '' },
-        }));
-        setHasUnsavedChanges(true);
-    };
+    const addNode = useCallback((category: CategoryType = 'general') => {
+        let position = { x: 100, y: 100 };
 
-    const onNodeClick = (_: any, node: Node) => { setSelectedNode(node); setShowModal(true); };
+        try {
+            if (selectedNodeRef.current) {
+                // Place below selected node
+                position = {
+                    x: selectedNodeRef.current.position.x,
+                    y: selectedNodeRef.current.position.y + 160
+                };
+            } else {
+                // Place in center of current viewport
+                const viewport = getViewport();
+                const cw = window.innerWidth;
+                const ch = window.innerHeight - 100;
+                position = {
+                    x: (cw / 2 - viewport.x) / viewport.zoom - 100,
+                    y: (ch / 2 - viewport.y) / viewport.zoom - 40
+                };
+            }
+        } catch (e) {
+            console.warn('Failed to calculate intelligent position, using fallback', e);
+        }
+
+        // Add subtle jitter to prevent stacking
+        position.x += (Math.random() - 0.5) * 30;
+        position.y += (Math.random() - 0.5) * 30;
+
+        const newNode: Node<RoadmapNodeData> = {
+            id: `node-${Date.now()}`,
+            type: 'roadmap',
+            position,
+            data: { label: 'New Topic', status: 'todo', category, description: '', priority: 'medium', estimatedHours: 0, resourceUrl: '' },
+        };
+
+        setNodes((nds) => [...nds, newNode]);
+        setHasUnsavedChanges(true);
+        setShowAddMenu(false);
+        setShowFilterMenu(false);
+        setFilterCategory('all');
+    }, [setNodes, getViewport]);
+
+    const onNodeClick = useCallback((_: any, node: Node) => {
+        setSelectedNode(node);
+    }, []);
+
+    const navigateNodes = useCallback((direction: 'up' | 'down' | 'left' | 'right') => {
+        const currentNodes = nodesRef.current;
+        if (currentNodes.length === 0) return;
+        const current = selectedNodeRef.current || currentNodes[0];
+        const currentPos = current.position;
+
+        let bestNode = null;
+        let minDistance = Infinity;
+
+        currentNodes.forEach(node => {
+            if (node.id === current.id || node.hidden) return;
+            const nodePos = node.position;
+            const dx = nodePos.x - currentPos.x;
+            const dy = nodePos.y - currentPos.y;
+
+            let isMatch = false;
+            switch (direction) {
+                case 'up': isMatch = dy < -20; break;
+                case 'down': isMatch = dy > 20; break;
+                case 'left': isMatch = dx < -20; break;
+                case 'right': isMatch = dx > 20; break;
+            }
+
+            if (isMatch) {
+                const distance = Math.sqrt(dx * dx + dy * dy);
+                if (distance < minDistance) {
+                    minDistance = distance;
+                    bestNode = node;
+                }
+            }
+        });
+
+        if (bestNode) {
+            setSelectedNode(bestNode);
+            setSelectedNodes([bestNode]);
+        }
+    }, [setSelectedNodes]);
+
+    // Dagre Auto-Layout Logic
+    const onLayout = useCallback(() => {
+        const dagreGraph = new dagre.graphlib.Graph();
+        dagreGraph.setDefaultEdgeLabel(() => ({}));
+
+        // Set up the graph layout parameters
+        dagreGraph.setGraph({
+            rankdir: 'TB', // Top to Bottom
+            nodesep: 50,
+            ranksep: 100,
+            marginx: 50,
+            marginy: 50
+        });
+
+        nodes.forEach((node) => {
+            dagreGraph.setNode(node.id, { width: 220, height: 120 });
+        });
+
+        edges.forEach((edge) => {
+            dagreGraph.setEdge(edge.source, edge.target);
+        });
+
+        dagre.layout(dagreGraph);
+
+        const newNodes = nodes.map((node) => {
+            const nodeWithPosition = dagreGraph.node(node.id);
+            return {
+                ...node,
+                position: {
+                    x: nodeWithPosition.x - 110,
+                    y: nodeWithPosition.y - 60,
+                },
+            };
+        });
+
+        setNodes(newNodes);
+        setHasUnsavedChanges(true);
+        // Fit view after a small timeout to allow ReactFlow to update
+        setTimeout(() => getViewport(), 100);
+    }, [nodes, edges, setNodes, getViewport]);
+
+    const onSelectionChange = useCallback(({ nodes: selectedNodes }: { nodes: Node[]; edges: Edge[] }) => {
+        setSelectedNodes(selectedNodes);
+        if (selectedNodes.length === 1) {
+            setSelectedNode(selectedNodes[0]);
+        } else if (selectedNodes.length === 0) {
+            setSelectedNode(null);
+        }
+    }, []);
+
+    const bulkUpdateStatus = useCallback((status: 'todo' | 'in-progress' | 'done') => {
+        if (selectedNodes.length === 0) return;
+        setNodes((nds) => nds.map((n) =>
+            selectedNodes.some(sn => sn.id === n.id)
+                ? { ...n, data: { ...n.data, status } }
+                : n
+        ));
+        setHasUnsavedChanges(true);
+    }, [selectedNodes, setNodes]);
+
+    const bulkDelete = useCallback(() => {
+        if (selectedNodes.length === 0) return;
+        setConfirmDelete({ type: 'node', id: 'bulk' });
+    }, [selectedNodes]);
 
     const onNodeContextMenu = useCallback((event: React.MouseEvent, node: Node) => {
         event.preventDefault();
         setContextMenu({ x: event.clientX, y: event.clientY, node });
     }, []);
 
-    const updateNodeData = (updates: Partial<RoadmapNodeData>) => {
+    const updateNodeData = useCallback((updates: Partial<RoadmapNodeData>) => {
         if (!selectedNode) return;
         setNodes((nds) => nds.map((n) => n.id === selectedNode.id ? { ...n, data: { ...n.data, ...updates } as RoadmapNodeData } : n));
-        setSelectedNode({ ...selectedNode, data: { ...selectedNode.data, ...updates } });
+        setSelectedNode((prev) => prev ? ({ ...prev, data: { ...prev.data, ...updates } }) : null);
         setHasUnsavedChanges(true);
-    };
+    }, [selectedNode, setNodes]);
 
-    const cycleStatus = (node: Node) => {
+    const cycleStatus = useCallback((node: Node) => {
         const statuses: Array<'todo' | 'in-progress' | 'done'> = ['todo', 'in-progress', 'done'];
         const currentData = node.data as RoadmapNodeData;
         const nextIndex = (statuses.indexOf(currentData.status) + 1) % statuses.length;
         setNodes((nds) => nds.map((n) => n.id === node.id ? { ...n, data: { ...n.data, status: statuses[nextIndex] } } : n));
         setHasUnsavedChanges(true);
-    };
+    }, [setNodes]);
 
-    const deleteNode = (nodeId?: string) => {
-        const id = nodeId || selectedNode?.id;
+    const deleteEdge = useCallback((edgeId?: string) => {
+        const id = edgeId || confirmDelete?.id;
         if (!id) return;
-        setNodes((nds) => nds.filter((n) => n.id !== id));
-        setEdges((eds) => eds.filter((e) => e.source !== id && e.target !== id));
-        setShowModal(false); setSelectedNode(null); setContextMenu(null);
+        setEdges((eds) => eds.filter((e) => e.id !== id));
+        setConfirmDelete(null);
         setHasUnsavedChanges(true);
-    };
+    }, [confirmDelete, setEdges]);
+
+    const onEdgeClick = useCallback((_: any, edge: Edge) => {
+        setConfirmDelete({ type: 'edge', id: edge.id });
+    }, []);
 
     // Export roadmap as JSON
     const exportRoadmap = () => {
@@ -325,280 +540,459 @@ export function Roadmap() {
         e.target.value = '';
     };
 
-    // Calculate progress stats
-    const stats = {
+    // Calculate progress stats - Memoized for performance
+    const stats = useMemo(() => ({
         total: nodes.length,
         done: nodes.filter(n => (n.data as RoadmapNodeData).status === 'done').length,
         inProgress: nodes.filter(n => (n.data as RoadmapNodeData).status === 'in-progress').length,
         totalHours: nodes.reduce((sum, n) => sum + ((n.data as RoadmapNodeData).estimatedHours || 0), 0),
         completedHours: nodes.filter(n => (n.data as RoadmapNodeData).status === 'done').reduce((sum, n) => sum + ((n.data as RoadmapNodeData).estimatedHours || 0), 0),
-    };
-    const progressPercent = stats.total > 0 ? Math.round((stats.done / stats.total) * 100) : 0;
+    }), [nodes]);
+
+    const progressPercent = useMemo(() =>
+        stats.total > 0 ? Math.round((stats.done / stats.total) * 100) : 0
+        , [stats]);
 
     return (
-        <div className="h-[calc(100vh-80px)] w-full rounded-2xl overflow-hidden bg-gray-50 dark:bg-[#0d1117] border border-gray-200 dark:border-white/10" onClick={() => setContextMenu(null)}>
+        <div
+            className="h-[calc(100dvh-140px)] sm:h-[calc(100dvh-100px)] w-full sm:rounded-2xl overflow-hidden bg-console-bg block sm:border border-border-subtle relative"
+        >
             <ReactFlow
-                nodes={filteredNodes} edges={edges} onNodesChange={handleNodesChange} onEdgesChange={onEdgesChange}
+                nodes={filteredNodes} edges={edges} onNodesChange={handleNodesChange} onEdgesChange={handleEdgesChange}
                 onConnect={onConnect} onNodeClick={onNodeClick} onNodeContextMenu={onNodeContextMenu}
+                onEdgeClick={onEdgeClick}
+                onSelectionChange={onSelectionChange}
+                onPaneClick={closeMenus}
+                colorMode={theme}
+                selectionOnDrag={roadmapTool === 'select'}
+                panOnDrag={roadmapTool === 'pan'}
+                selectionMode={SelectionMode.Partial}
+                selectionKeyCode="Shift"
+                multiSelectionKeyCode="Shift"
+                className={`transition-all duration-300 ${roadmapTool === 'select' ? 'cursor-crosshair' : 'cursor-grab active:cursor-grabbing'}`}
                 nodeTypes={nodeTypes} fitView snapToGrid snapGrid={[15, 15]}
+                proOptions={{ hideAttribution: true }}
                 defaultEdgeOptions={{ type: 'smoothstep', style: { stroke: '#6b7280', strokeWidth: 2 }, markerEnd: { type: MarkerType.ArrowClosed, color: '#6b7280' } }}
             >
-                <Background variant={BackgroundVariant.Dots} gap={20} size={1} className="!bg-gray-50 dark:!bg-[#0d1117]" color="#d1d5db" />
-                <Controls className="!bg-white dark:!bg-[#1c2128] !border-gray-200 dark:!border-white/10 !rounded-xl [&>button]:!bg-white dark:[&>button]:!bg-[#1c2128] [&>button]:!border-gray-200 dark:[&>button]:!border-white/10" />
+                <Background
+                    variant={BackgroundVariant.Dots}
+                    gap={20}
+                    size={1}
+                    className={`!bg-console-bg transition-colors duration-500 ${roadmapTool === 'select' ? '!opacity-80' : ''}`}
+                    color={roadmapTool === 'select' ? 'var(--accent-primary)' : 'var(--border-subtle)'}
+                />
+                {roadmapTool === 'select' && (
+                    <div className="absolute inset-0 pointer-events-none bg-accent-primary/[0.02] z-0 animate-in fade-in duration-500" />
+                )}
+                <Controls
+                    className="flex !bg-console-surface/80 !backdrop-blur-xl !border-border-subtle !rounded-lg sm:!rounded-xl overflow-hidden shadow-premium !mb-8 sm:!mb-4 [&>button]:!bg-transparent [&>button]:!border-b [&>button]:!border-border-subtle last:[&>button]:!border-b-0 [&>button]:!w-7 [&>button]:!h-7 [&>button>svg]:!w-3.5 [&>button>svg]:!h-3.5 sm:[&>button]:!w-8 sm:[&>button]:!h-8 sm:[&>button>svg]:!w-4 sm:[&>button>svg]:!h-4 transition-all"
+                />
                 <MiniMap
                     nodeColor={(n) => {
                         const data = n.data as RoadmapNodeData;
                         if (data.status === 'done') return '#22c55e';
                         if (data.status === 'in-progress') return '#3b82f6';
-                        return '#6b7280';
+                        return theme === 'dark' ? '#6b7280' : '#d1d5db';
                     }}
-                    maskColor="rgba(0,0,0,0.6)"
-                    className="!bg-white dark:!bg-[#1c2128] !border-gray-200 dark:!border-white/10 !rounded-xl"
+                    maskColor={theme === 'dark' ? "rgba(0,0,0,0.6)" : "rgba(0,0,0,0.15)"}
+                    maskStrokeColor="transparent"
+                    maskStrokeWidth={0}
+                    className="!bg-transparent !border-none !shadow-none !mb-8 sm:!m-4 transition-all"
+                    style={isMobile ? { height: 7 * 4 * 4, width: 100 } : undefined} // 4 buttons * 7 (28px) = 112px height to match the controls pile perfectly
                 />
 
-                {/* Top Bar - Single row without overlap */}
-                <Panel position="top-center">
-                    <div className="flex items-center gap-2 px-3 py-2 bg-white dark:bg-[#1c2128] border border-gray-200 dark:border-white/10 rounded-xl shadow-sm">
-                        {/* Search */}
-                        <div className="relative">
-                            <Search size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400" />
-                            <input
-                                id="roadmap-search"
-                                type="text"
-                                value={searchQuery}
-                                onChange={(e) => setSearchQuery(e.target.value)}
-                                placeholder="Search..."
-                                className="w-32 pl-8 pr-2 py-1.5 text-xs bg-gray-100 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-lg text-gray-900 dark:text-white placeholder-gray-400 outline-none focus:border-blue-500"
-                            />
+                {/* Top Controls - Floating Pill on Mobile, Bar on Desktop */}
+                <Panel position="top-center" className="w-full sm:max-w-fit px-2 sm:px-0 pointer-events-none mt-2 sm:mt-4">
+                    <div className="pointer-events-auto flex items-center justify-center sm:justify-start gap-1.5 sm:gap-2 p-1.5 sm:p-2 bg-console-surface/40 backdrop-blur-2xl border border-border-subtle rounded-full sm:rounded-xl shadow-premium w-max mx-auto sm:mx-0 transition-all liquid-glass">
+
+                        {/* Mobile: Filter Icon Button */}
+                        <div className="relative shrink-0 sm:hidden">
+                            <button
+                                onClick={(e) => { e.stopPropagation(); setShowFilterMenu(!showFilterMenu); setShowAddMenu(false); }}
+                                className={`flex items-center justify-center p-2 rounded-full transition-colors ${filterCategory !== 'all' ? 'bg-accent-primary/20 text-accent-primary' : 'bg-console-surface-2 text-text-secondary hover:bg-console-surface-3'}`}
+                            >
+                                <Filter size={16} />
+                            </button>
+                            {/* Mobile Filter Menu */}
+                            {showFilterMenu && (
+                                <div
+                                    className="absolute left-1/2 -translate-x-1/2 top-full mt-2 w-40 bg-console-surface border border-border-subtle rounded-xl shadow-premium z-[100] py-1 max-h-60 overflow-y-auto pointer-events-auto"
+                                    onClick={(e) => e.stopPropagation()}
+                                    onPointerDown={(e) => e.stopPropagation()}
+                                >
+                                    <button onClick={() => { setFilterCategory('all'); setShowFilterMenu(false); }}
+                                        className={`w-full text-left px-3 py-2 text-xs transition-colors ${filterCategory === 'all' ? 'text-accent-primary bg-accent-primary/5' : 'text-text-secondary hover:bg-console-surface-2'}`}>
+                                        All Categories
+                                    </button>
+                                    <div className="h-px bg-border-subtle my-1 w-full" />
+                                    {Object.entries(CATEGORY_ICONS).map(([key, { icon: Icon, label, color }]) => (
+                                        <button key={key} onClick={() => { setFilterCategory(key as CategoryType); setShowFilterMenu(false); }}
+                                            className={`w-full flex items-center gap-2 px-3 py-2 text-xs transition-colors ${filterCategory === key ? 'bg-console-surface-2' : 'hover:bg-console-surface-2'}`}>
+                                            <Icon size={12} className={color} /> <span className={filterCategory === key ? 'text-text-primary' : 'text-text-secondary'}>{label}</span>
+                                        </button>
+                                    ))}
+                                </div>
+                            )}
                         </div>
 
-                        {/* Inline Filters */}
-                        <select value={filterCategory} onChange={(e) => setFilterCategory(e.target.value as any)}
-                            className="text-xs bg-gray-100 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-lg px-2 py-1.5 text-gray-700 dark:text-gray-300 outline-none">
-                            <option value="all">All Categories</option>
-                            {Object.entries(CATEGORY_ICONS).map(([key, { label }]) => (
-                                <option key={key} value={key}>{label}</option>
-                            ))}
-                        </select>
-                        <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value as any)}
-                            className="text-xs bg-gray-100 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-lg px-2 py-1.5 text-gray-700 dark:text-gray-300 outline-none">
-                            <option value="all">All Status</option>
-                            <option value="todo">Todo</option>
-                            <option value="in-progress">In Progress</option>
-                            <option value="done">Done</option>
-                        </select>
-
-                        <div className="w-px h-4 bg-gray-200 dark:bg-white/10" />
-
-                        {/* Add */}
-                        <div className="relative group">
-                            <button className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-lg hover:bg-gray-200 dark:hover:bg-white/10">
-                                <Plus size={12} /> Add <ChevronDown size={10} />
-                            </button>
-                            <div className="absolute left-0 top-full mt-1 w-40 bg-white dark:bg-[#1c2128] border border-gray-200 dark:border-white/10 rounded-xl shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50 py-1 max-h-52 overflow-y-auto">
-                                {Object.entries(CATEGORY_ICONS).map(([key, { icon: Icon, label, color }]) => (
-                                    <button key={key} onClick={() => addNode(key as CategoryType)}
-                                        className="w-full flex items-center gap-2 px-3 py-1.5 text-xs text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-white/5">
-                                        <Icon size={12} className={color} /> {label}
-                                    </button>
+                        {/* Desktop: Search & Inline Filter */}
+                        <div className="hidden sm:flex items-center gap-2 shrink-0">
+                            <div className="relative shrink-0">
+                                <Search size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-text-disabled" />
+                                <input id="roadmap-search" type="text" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder="Search..."
+                                    className="w-40 pl-8 pr-3 h-[32px] text-xs bg-console-surface-2 border border-border-subtle rounded-lg text-text-primary placeholder-text-disabled outline-none focus:border-accent-primary transition-colors" />
+                            </div>
+                            <div className="w-px h-5 bg-border-subtle mx-1" />
+                            <select value={filterCategory} onChange={(e) => setFilterCategory(e.target.value as any)}
+                                className="shrink-0 text-xs bg-console-surface-2 border border-border-subtle rounded-lg px-3 h-[32px] text-text-secondary outline-none transition-colors cursor-pointer">
+                                <option value="all">All Categories</option>
+                                {Object.entries(CATEGORY_ICONS).map(([key, { label }]) => (
+                                    <option key={key} value={key}>{label}</option>
                                 ))}
+                            </select>
+                            <div className="w-px h-5 bg-border-subtle mx-1" />
+                        </div>
+
+                        {/* Tool Switcher */}
+                        <div className="flex bg-console-surface-2 p-1 rounded-xl border border-border-subtle mr-1.5 shadow-sm">
+                            <button
+                                onClick={() => setRoadmapTool('pan')}
+                                className={`flex items-center gap-2 px-3 py-1.5 rounded-lg transition-all ${roadmapTool === 'pan' ? 'bg-console-surface shadow-sm text-accent-primary ring-1 ring-accent-primary/20' : 'text-text-disabled hover:text-text-secondary'}`}
+                            >
+                                <Hand size={14} className={roadmapTool === 'pan' ? 'animate-pulse' : ''} />
+                                <span className="text-[10px] font-bold uppercase tracking-wider hidden sm:inline">Move</span>
+                            </button>
+                            <button
+                                onClick={() => setRoadmapTool('select')}
+                                className={`flex items-center gap-2 px-3 py-1.5 rounded-lg transition-all ${roadmapTool === 'select' ? 'bg-console-surface shadow-sm text-accent-primary ring-1 ring-accent-primary/20' : 'text-text-disabled hover:text-text-secondary'}`}
+                            >
+                                <MousePointer2 size={14} className={roadmapTool === 'select' ? 'animate-pulse' : ''} />
+                                <span className="text-[10px] font-bold uppercase tracking-wider hidden sm:inline">Select</span>
+                            </button>
+                        </div>
+
+                        {/* Universal: Add Button */}
+                        <div className="relative shrink-0">
+                            <button
+                                onClick={(e) => { e.stopPropagation(); setShowAddMenu(!showAddMenu); setShowFilterMenu(false); }}
+                                onPointerDown={(e) => e.stopPropagation()}
+                                className="flex items-center justify-center p-2 sm:px-3 sm:py-1.5 sm:h-[32px] rounded-full sm:rounded-lg bg-accent-primary text-white shadow-[0_0_15px_rgba(59,130,246,0.3)] hover:shadow-[0_0_20px_rgba(59,130,246,0.5)] transition-all"
+                            >
+                                <Plus size={16} className="sm:mr-1.5" /> <span className="hidden sm:inline text-xs font-semibold">Add Topic</span>
+                            </button>
+                            {/* Add Menu */}
+                            {showAddMenu && (
+                                <div
+                                    className="absolute left-1/2 -translate-x-1/2 sm:left-0 sm:translate-x-0 top-full mt-2 w-44 bg-console-surface border border-border-subtle rounded-xl shadow-premium z-[100] py-1 max-h-60 overflow-y-auto pointer-events-auto"
+                                    onClick={(e) => e.stopPropagation()}
+                                    onPointerDown={(e) => e.stopPropagation()}
+                                >
+                                    <div className="px-3 py-1.5 text-[10px] uppercase font-bold text-text-disabled tracking-wider">Select Theme</div>
+                                    <button onClick={() => addNode('general')} className="w-full flex items-center gap-2 px-3 py-2 text-xs text-text-secondary hover:bg-console-surface-2 transition-colors"><Layers size={14} className="text-text-disabled" /> Generic Topic</button>
+                                    <div className="h-px bg-border-subtle my-1 w-full" />
+                                    {Object.entries(CATEGORY_ICONS).map(([key, { icon: Icon, label, color }]) => (
+                                        <button key={key} onClick={() => addNode(key as CategoryType)} className="w-full flex items-center gap-2 px-3 py-2 text-xs text-text-secondary hover:bg-console-surface-2 transition-colors">
+                                            <Icon size={14} className={color} /> {label}
+                                        </button>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Universal: Save Button */}
+                        <div className="shrink-0 flex items-center">
+                            <div className="w-px h-6 bg-border-subtle mx-1.5 sm:hidden" />
+                            <button onClick={onSave} disabled={isSaving} className={`flex items-center justify-center p-2 sm:px-3 sm:py-1.5 sm:h-[32px] rounded-full sm:rounded-lg transition-all ${saveSuccess ? 'bg-status-ok text-white' : hasUnsavedChanges ? 'bg-[#ff9800] text-white shadow-[0_0_10px_rgba(255,152,0,0.3)]' : 'bg-console-surface-2 text-text-secondary hover:text-text-primary hover:bg-console-surface-3'}`}>
+                                {saveSuccess ? <CheckCircle2 size={16} className="sm:mr-1.5" /> : isSaving ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin sm:mr-1.5" /> : <Save size={16} className="sm:mr-1.5" />}
+                                <span className="hidden sm:inline text-xs font-medium">{saveSuccess ? 'Saved' : hasUnsavedChanges ? 'Unsaved' : 'Saved'}</span>
+                                {hasUnsavedChanges && !saveSuccess && !isSaving && <div className="absolute top-0 right-0 w-2.5 h-2.5 bg-status-error border-2 border-console-surface rounded-full sm:hidden" />}
+                            </button>
+                        </div>
+
+                        {!isMobile && (
+                            <>
+                                <button onClick={exportRoadmap} className="p-1 text-text-secondary hover:text-text-primary transition-colors shrink-0" title="Export JSON">
+                                    <Download size={14} />
+                                </button>
+                                <label className="p-1 text-text-secondary hover:text-text-primary cursor-pointer transition-colors shrink-0" title="Import JSON">
+                                    <Upload size={14} />
+                                    <input type="file" accept=".json" onChange={importRoadmap} className="hidden" />
+                                </label>
+                            </>
+                        )}
+
+                        <div className="w-px h-6 bg-border-subtle mx-1" />
+
+                        <button
+                            onClick={onLayout}
+                            className="flex items-center justify-center p-2 sm:px-3 sm:py-1.5 sm:h-[32px] rounded-full sm:rounded-lg bg-console-surface-2 text-accent-primary hover:bg-accent-primary/10 transition-all"
+                            title="Auto-Layout (Magic Organize)"
+                        >
+                            <Wand2 size={16} className="sm:mr-1.5" />
+                            <span className="hidden sm:inline text-xs font-semibold">Magic Layout</span>
+                        </button>
+                    </div>
+                </Panel>
+
+                {/* Progress Stats - Mobile pushes to bottom-center */}
+                < Panel position={isMobile ? 'bottom-center' : 'top-right'} >
+                    <div className="flex items-center gap-1 sm:gap-2 px-1.5 py-0.5 sm:px-3 sm:py-1.5 h-[20px] sm:h-auto bg-console-surface border border-border-subtle rounded-lg sm:rounded-xl shadow-premium mb-2 sm:mb-0">
+                        <span className="text-[10px] font-bold text-text-primary leading-none">{progressPercent}%</span>
+                        <div className="w-10 sm:w-12 h-1 bg-console-surface-2 rounded-full overflow-hidden">
+                            <div className="h-full bg-status-ok transition-all" style={{ width: `${progressPercent}%` }} />
+                        </div>
+                        <span className="text-[9px] text-text-disabled leading-none">{stats.done}/{stats.total}</span>
+                    </div>
+                </Panel >
+
+
+
+                {/* Legend - Desktop only */}
+                {
+                    !isMobile && (
+                        <Panel position="bottom-left">
+                            <div className="flex items-center gap-2 px-3 py-1.5 bg-console-surface border border-border-subtle rounded-xl text-[10px] text-text-secondary shadow-premium">
+                                <span className="flex items-center gap-1"><Circle size={8} className="text-text-disabled" /> Todo</span>
+                                <span className="flex items-center gap-1"><Clock size={8} className="text-accent-primary" /> Progress</span>
+                                <span className="flex items-center gap-1"><CheckCircle2 size={8} className="text-status-ok" /> Done</span>
+                                <span className="text-text-disabled">|</span>
+                                <span className="text-text-disabled">Click edge to delete • Del remove • Right-click menu</span>
+                            </div>
+                        </Panel>
+                    )
+                }
+
+                {
+                    nodes.length === 0 && (
+                        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                            <div className="text-center p-6 bg-console-surface rounded-2xl border border-dashed border-border-subtle pointer-events-auto shadow-premium">
+                                <Plus size={24} className="text-text-disabled mx-auto mb-3" />
+                                <p className="text-text-primary text-sm font-medium">No topics yet</p>
+                                <p className="text-text-secondary text-xs mt-1">Click "Add" to start building your roadmap</p>
                             </div>
                         </div>
-
-                        {/* Import/Export */}
-                        <button onClick={exportRoadmap} className="p-1.5 text-gray-500 hover:text-gray-700 dark:hover:text-gray-300" title="Export JSON">
-                            <Download size={14} />
-                        </button>
-                        <label className="p-1.5 text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 cursor-pointer" title="Import JSON">
-                            <Upload size={14} />
-                            <input type="file" accept=".json" onChange={importRoadmap} className="hidden" />
-                        </label>
-
-                        <div className="w-px h-4 bg-gray-200 dark:bg-white/10" />
-
-                        {/* Save */}
-                        <button onClick={onSave} disabled={isSaving} className={`flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium rounded-lg transition-colors ${saveSuccess ? 'bg-green-500 text-white' : hasUnsavedChanges ? 'bg-blue-600 text-white' : 'bg-gray-900 dark:bg-gray-700 text-white'
-                            }`}>
-                            {saveSuccess ? <CheckCircle2 size={12} /> : isSaving ? <div className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <Save size={12} />}
-                            {hasUnsavedChanges ? 'Save*' : 'Saved'}
-                        </button>
-                    </div>
-                </Panel>
-
-                {/* Progress Stats - Top Right to avoid overlap */}
-                <Panel position="top-right">
-                    <div className="flex items-center gap-2 px-3 py-2 bg-white dark:bg-[#1c2128] border border-gray-200 dark:border-white/10 rounded-xl">
-                        <span className="text-xs text-gray-500">Progress:</span>
-                        <span className="text-xs font-bold text-gray-900 dark:text-white">{progressPercent}%</span>
-                        <div className="w-12 h-1.5 bg-gray-200 dark:bg-white/10 rounded-full overflow-hidden">
-                            <div className="h-full bg-green-500 transition-all" style={{ width: `${progressPercent}%` }} />
-                        </div>
-                        <span className="text-[10px] text-gray-400">{stats.done}/{stats.total}</span>
-                        {stats.totalHours > 0 && (
-                            <span className="text-[10px] text-gray-400 flex items-center gap-0.5">
-                                <Timer size={9} /> {stats.completedHours}/{stats.totalHours}h
-                            </span>
-                        )}
-                    </div>
-                </Panel>
-
-                {/* Legend - Bottom Left */}
-                <Panel position="bottom-left">
-                    <div className="flex items-center gap-2 px-3 py-1.5 bg-white dark:bg-[#1c2128] border border-gray-200 dark:border-white/10 rounded-xl text-[10px] text-gray-500">
-                        <span className="flex items-center gap-1"><Circle size={8} className="text-gray-400" /> Todo</span>
-                        <span className="flex items-center gap-1"><Clock size={8} className="text-blue-400" /> Progress</span>
-                        <span className="flex items-center gap-1"><CheckCircle2 size={8} className="text-green-400" /> Done</span>
-                        <span className="text-gray-300">|</span>
-                        <span className="text-gray-400">Ctrl+S save • Del remove • Right-click menu</span>
-                    </div>
-                </Panel>
-
-                {nodes.length === 0 && (
-                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                        <div className="text-center p-6 bg-white dark:bg-[#1c2128] rounded-2xl border border-dashed border-gray-300 dark:border-white/20 pointer-events-auto">
-                            <Plus size={24} className="text-gray-400 mx-auto mb-2" />
-                            <p className="text-gray-600 dark:text-gray-300 text-sm font-medium">No topics yet</p>
-                            <p className="text-gray-500 text-xs mt-1">Click "Add" to start building your roadmap</p>
-                        </div>
-                    </div>
-                )}
-            </ReactFlow>
+                    )
+                }
+            </ReactFlow >
 
             {/* Context Menu */}
-            {contextMenu && (
-                <div className="fixed bg-white dark:bg-[#1c2128] border border-gray-200 dark:border-white/10 rounded-xl shadow-xl py-1 z-50" style={{ left: contextMenu.x, top: contextMenu.y }}>
-                    <button onClick={() => { setSelectedNode(contextMenu.node); setShowModal(true); setContextMenu(null); }}
-                        className="w-full flex items-center gap-2 px-3 py-1.5 text-xs text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-white/5">
-                        <Pencil size={12} /> Edit
-                    </button>
-                    <button onClick={() => { cycleStatus(contextMenu.node); setContextMenu(null); }}
-                        className="w-full flex items-center gap-2 px-3 py-1.5 text-xs text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-white/5">
-                        <CheckCircle2 size={12} /> Cycle Status
-                    </button>
-                    {(contextMenu.node.data as RoadmapNodeData).resourceUrl && (
-                        <a href={(contextMenu.node.data as RoadmapNodeData).resourceUrl} target="_blank" rel="noopener noreferrer"
-                            className="w-full flex items-center gap-2 px-3 py-1.5 text-xs text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-500/10">
-                            <ExternalLink size={12} /> Open Link
-                        </a>
-                    )}
-                    <button onClick={() => deleteNode(contextMenu.node.id)}
-                        className="w-full flex items-center gap-2 px-3 py-1.5 text-xs text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10">
-                        <Trash2 size={12} /> Delete
-                    </button>
-                </div>
-            )}
+            {
+                contextMenu && (
+                    <div className="fixed bg-console-surface border border-border-subtle rounded-xl shadow-premium py-1 z-50 transition-all font-sans" style={{ left: contextMenu.x, top: contextMenu.y }}>
+                        <button onClick={() => { setSelectedNode(contextMenu.node); setShowModal(true); setContextMenu(null); }}
+                            className="w-full flex items-center gap-2 px-3 py-1.5 text-xs text-text-secondary hover:bg-console-surface-2 transition-colors">
+                            <Pencil size={12} /> Edit
+                        </button>
+                        <button onClick={() => { cycleStatus(contextMenu.node); setContextMenu(null); }}
+                            className="w-full flex items-center gap-2 px-3 py-1.5 text-xs text-text-secondary hover:bg-console-surface-2 transition-colors">
+                            <CheckCircle2 size={12} /> Cycle Status
+                        </button>
+                        {(contextMenu.node.data as RoadmapNodeData).resourceUrl && (
+                            <a href={(contextMenu.node.data as RoadmapNodeData).resourceUrl} target="_blank" rel="noopener noreferrer"
+                                className="w-full flex items-center gap-2 px-3 py-1.5 text-xs text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-500/10">
+                                <ExternalLink size={12} /> Open Link
+                            </a>
+                        )}
+                        <button onClick={() => deleteNode(contextMenu.node.id)}
+                            className="w-full flex items-center gap-2 px-3 py-1.5 text-xs text-status-error hover:bg-status-error/10 transition-colors">
+                            <Trash2 size={12} /> Delete
+                        </button>
+                    </div>
+                )
+            }
 
-            {/* Edit Modal */}
-            {showModal && selectedNode && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-white/80 dark:bg-black/50 backdrop-blur-sm" onClick={() => setShowModal(false)}>
-                    <div className="w-full max-w-lg p-6 rounded-2xl bg-white dark:bg-[#1c2128] border border-gray-200 dark:border-white/10 shadow-2xl max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
-                        <div className="flex items-center justify-between mb-5">
-                            <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Edit Topic</h2>
-                            <button onClick={() => setShowModal(false)} className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-white/10 text-gray-500"><X size={18} /></button>
-                        </div>
-
-                        <div className="space-y-4">
-                            {/* Name */}
-                            <div>
-                                <label className="text-xs font-medium uppercase tracking-wide text-gray-500 mb-1.5 block">Topic Name</label>
-                                <input type="text" value={(selectedNode.data as RoadmapNodeData).label}
-                                    onChange={(e) => updateNodeData({ label: e.target.value })}
-                                    className="w-full px-3 py-2.5 bg-gray-100 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl text-gray-900 dark:text-white text-sm focus:border-blue-500 outline-none" />
+            {/* Edit Modal (Bottom Sheet on Mobile, Centered on Desktop) */}
+            {
+                showModal && selectedNode && (
+                    <div className="fixed inset-0 z-50 flex flex-col justify-end sm:items-center sm:justify-center p-0 sm:p-4 bg-console-bg/60 backdrop-blur-sm" onClick={() => setShowModal(false)}>
+                        <div className="w-full sm:max-w-lg px-5 py-6 sm:p-6 rounded-t-3xl sm:rounded-2xl bg-console-surface border-t sm:border border-border-subtle shadow-[0_-8px_30px_rgba(0,0,0,0.5)] sm:shadow-premium max-h-[90vh] overflow-y-auto pointer-events-auto" onClick={(e) => e.stopPropagation()}>
+                            <div className="w-10 h-1 bg-border-subtle rounded-full mx-auto mb-5 sm:hidden" /> {/* Mobile Drag Indicator */}
+                            <div className="flex items-center justify-between mb-5 sm:mb-6">
+                                <h2 className="text-lg font-semibold text-text-primary">Edit Topic</h2>
+                                <button onClick={() => setShowModal(false)} className="p-2 -mr-2 rounded-lg hover:bg-console-surface-2 text-text-secondary transition-colors"><X size={18} /></button>
                             </div>
 
-                            {/* Description */}
-                            <div>
-                                <label className="text-xs font-medium uppercase tracking-wide text-gray-500 mb-1.5 block">Description</label>
-                                <textarea value={(selectedNode.data as RoadmapNodeData).description || ''} rows={2}
-                                    onChange={(e) => updateNodeData({ description: e.target.value })}
-                                    className="w-full px-3 py-2.5 bg-gray-100 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl text-gray-900 dark:text-white text-sm focus:border-blue-500 outline-none resize-none"
-                                    placeholder="Notes about this topic..." />
-                            </div>
-
-                            {/* Resource URL */}
-                            <div>
-                                <label className="text-xs font-medium uppercase tracking-wide text-gray-500 mb-1.5 block flex items-center gap-1">
-                                    <Link size={10} /> Resource Link
-                                </label>
-                                <input type="url" value={(selectedNode.data as RoadmapNodeData).resourceUrl || ''}
-                                    onChange={(e) => updateNodeData({ resourceUrl: e.target.value })}
-                                    className="w-full px-3 py-2.5 bg-gray-100 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl text-gray-900 dark:text-white text-sm focus:border-blue-500 outline-none"
-                                    placeholder="https://..." />
-                            </div>
-
-                            {/* Time & Priority Row */}
-                            <div className="grid grid-cols-2 gap-3">
+                            <div className="space-y-4">
+                                {/* Name */}
                                 <div>
-                                    <label className="text-xs font-medium uppercase tracking-wide text-gray-500 mb-1.5 block flex items-center gap-1">
-                                        <Timer size={10} /> Est. Hours
-                                    </label>
-                                    <input type="number" min="0" step="0.5" value={(selectedNode.data as RoadmapNodeData).estimatedHours || ''}
-                                        onChange={(e) => updateNodeData({ estimatedHours: parseFloat(e.target.value) || 0 })}
-                                        className="w-full px-3 py-2.5 bg-gray-100 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl text-gray-900 dark:text-white text-sm focus:border-blue-500 outline-none" />
+                                    <label className="text-[10px] sm:text-xs font-medium uppercase tracking-wide text-text-secondary mb-1 block">Topic Name</label>
+                                    <input type="text" value={(selectedNode.data as RoadmapNodeData).label}
+                                        onChange={(e) => updateNodeData({ label: e.target.value })}
+                                        className="w-full px-2.5 py-1.5 sm:px-3 sm:py-2.5 bg-console-surface-2 border border-border-subtle rounded-lg sm:rounded-xl text-text-primary text-[11px] sm:text-sm focus:border-accent-primary outline-none transition-colors" />
                                 </div>
+
+                                {/* Description */}
                                 <div>
-                                    <label className="text-xs font-medium uppercase tracking-wide text-gray-500 mb-1.5 block flex items-center gap-1">
-                                        <Flag size={10} /> Priority
+                                    <label className="text-[10px] sm:text-xs font-medium uppercase tracking-wide text-text-secondary mb-1 block">Description</label>
+                                    <textarea value={(selectedNode.data as RoadmapNodeData).description || ''} rows={2}
+                                        onChange={(e) => updateNodeData({ description: e.target.value })}
+                                        className="w-full px-2.5 py-1.5 sm:px-3 sm:py-2.5 bg-console-surface-2 border border-border-subtle rounded-lg sm:rounded-xl text-text-primary text-[11px] sm:text-sm focus:border-accent-primary outline-none resize-none transition-colors"
+                                        placeholder="Notes..." />
+                                </div>
+
+                                {/* Resource URL */}
+                                <div>
+                                    <label className="text-[10px] sm:text-xs font-medium uppercase tracking-wide text-text-secondary mb-1 flex items-center gap-1">
+                                        <Link size={10} /> Resource Link
                                     </label>
-                                    <div className="flex gap-1">
-                                        {(['low', 'medium', 'high'] as const).map((p) => (
-                                            <button key={p} onClick={() => updateNodeData({ priority: p })}
-                                                className={`flex-1 py-2 text-xs rounded-lg border transition-colors ${(selectedNode.data as RoadmapNodeData).priority === p
-                                                    ? `${PRIORITY_CONFIG[p].bg} ${PRIORITY_CONFIG[p].color} border-current`
-                                                    : 'bg-gray-100 dark:bg-white/5 text-gray-500 border-gray-200 dark:border-white/10 hover:bg-gray-200 dark:hover:bg-white/10'
+                                    <input type="url" value={(selectedNode.data as RoadmapNodeData).resourceUrl || ''}
+                                        onChange={(e) => updateNodeData({ resourceUrl: e.target.value })}
+                                        className="w-full px-2.5 py-1.5 sm:px-3 sm:py-2.5 bg-console-surface-2 border border-border-subtle rounded-lg sm:rounded-xl text-text-primary text-[11px] sm:text-sm focus:border-accent-primary outline-none transition-colors"
+                                        placeholder="https://..." />
+                                </div>
+
+                                {/* Time & Priority Row */}
+                                <div className="grid grid-cols-2 gap-2 sm:gap-3">
+                                    <div>
+                                        <label className="text-[10px] sm:text-xs font-medium uppercase tracking-wide text-text-secondary mb-1 flex items-center gap-1">
+                                            <Timer size={10} /> Est. Hours
+                                        </label>
+                                        <input type="number" min="0" step="0.5" value={(selectedNode.data as RoadmapNodeData).estimatedHours || ''}
+                                            onChange={(e) => updateNodeData({ estimatedHours: parseFloat(e.target.value) || 0 })}
+                                            className="w-full px-2.5 py-1.5 sm:px-3 sm:py-2.5 bg-console-surface-2 border border-border-subtle rounded-lg sm:rounded-xl text-text-primary text-[11px] sm:text-sm focus:border-accent-primary outline-none transition-colors" />
+                                    </div>
+                                    <div>
+                                        <label className="text-[10px] sm:text-xs font-medium uppercase tracking-wide text-text-secondary mb-1 flex items-center gap-1">
+                                            <Flag size={10} /> Priority
+                                        </label>
+                                        <div className="flex gap-1">
+                                            {(['low', 'medium', 'high'] as const).map((p) => (
+                                                <button key={p} onClick={() => updateNodeData({ priority: p })}
+                                                    className={`flex-1 py-1.5 sm:py-2 text-[10px] sm:text-xs rounded-lg border transition-colors ${(selectedNode.data as RoadmapNodeData).priority === p
+                                                        ? `${PRIORITY_CONFIG[p].bg} ${PRIORITY_CONFIG[p].color} border-current`
+                                                        : 'bg-console-surface-2 text-text-secondary border-border-subtle hover:bg-console-surface-3'
+                                                        }`}>
+                                                    {p.charAt(0).toUpperCase() + p.slice(1)}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Category */}
+                                <div>
+                                    <label className="text-[10px] sm:text-xs font-medium uppercase tracking-wide text-text-secondary mb-1 block">Category</label>
+                                    <div className="grid grid-cols-6 gap-1">
+                                        {Object.entries(CATEGORY_ICONS).map(([key, { icon: Icon, label, color }]) => (
+                                            <button key={key} onClick={() => updateNodeData({ category: key as CategoryType })}
+                                                title={label}
+                                                className={`flex items-center justify-center py-1.5 sm:py-2 rounded-lg border transition-colors ${(selectedNode.data as RoadmapNodeData).category === key
+                                                    ? 'bg-console-surface-3 border-accent-primary/50 ring-1 ring-accent-primary/30'
+                                                    : 'bg-console-surface-2 border-border-subtle hover:bg-console-surface-3'
                                                     }`}>
-                                                {p.charAt(0).toUpperCase() + p.slice(1)}
+                                                <Icon size={12} className={color} />
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                {/* Status */}
+                                <div>
+                                    <label className="text-[10px] sm:text-xs font-medium uppercase tracking-wide text-text-secondary mb-1 block">Status</label>
+                                    <div className="grid grid-cols-3 gap-2">
+                                        {(['todo', 'in-progress', 'done'] as const).map((s) => (
+                                            <button key={s} onClick={() => updateNodeData({ status: s })}
+                                                className={`py-1.5 sm:py-2 text-[10px] sm:text-xs font-medium rounded-lg sm:rounded-xl border transition-colors ${(selectedNode.data as RoadmapNodeData).status === s
+                                                    ? 'bg-accent-primary text-white border-transparent shadow-premium'
+                                                    : 'bg-console-surface-2 text-text-secondary border-border-subtle'
+                                                    }`}>
+                                                {s === 'todo' ? 'Todo' : s === 'in-progress' ? 'In Progress' : 'Done'}
                                             </button>
                                         ))}
                                     </div>
                                 </div>
                             </div>
 
-                            {/* Category */}
-                            <div>
-                                <label className="text-xs font-medium uppercase tracking-wide text-gray-500 mb-1.5 block">Category</label>
-                                <div className="grid grid-cols-6 gap-1">
-                                    {Object.entries(CATEGORY_ICONS).map(([key, { icon: Icon, label, color }]) => (
-                                        <button key={key} onClick={() => updateNodeData({ category: key as CategoryType })}
-                                            title={label}
-                                            className={`flex items-center justify-center py-2 rounded-lg border transition-colors ${(selectedNode.data as RoadmapNodeData).category === key
-                                                ? 'bg-white/10 border-blue-500/50 ring-1 ring-blue-500/30'
-                                                : 'bg-gray-100 dark:bg-white/5 border-gray-200 dark:border-white/10 hover:bg-gray-200 dark:hover:bg-white/10'
-                                                }`}>
-                                            <Icon size={14} className={color} />
-                                        </button>
-                                    ))}
-                                </div>
-                            </div>
-
-                            {/* Status */}
-                            <div>
-                                <label className="text-xs font-medium uppercase tracking-wide text-gray-500 mb-1.5 block">Status</label>
-                                <div className="grid grid-cols-3 gap-2">
-                                    {(['todo', 'in-progress', 'done'] as const).map((s) => (
-                                        <button key={s} onClick={() => updateNodeData({ status: s })}
-                                            className={`py-2 text-xs font-medium rounded-xl border transition-colors ${(selectedNode.data as RoadmapNodeData).status === s
-                                                ? 'bg-gray-900 dark:bg-gray-700 text-white border-transparent'
-                                                : 'bg-gray-100 dark:bg-white/5 text-gray-600 dark:text-gray-400 border-gray-200 dark:border-white/10'
-                                                }`}>
-                                            {s === 'todo' ? 'Todo' : s === 'in-progress' ? 'In Progress' : 'Done'}
-                                        </button>
-                                    ))}
-                                </div>
+                            <div className="flex items-center justify-between mt-4 sm:mt-6 pt-3 sm:pt-5 border-t border-border-subtle">
+                                <button onClick={() => deleteNode()} className="text-[11px] sm:text-sm text-status-error hover:text-status-error/80 flex items-center gap-1.5 transition-colors">
+                                    <Trash2 size={12} /> Delete
+                                </button>
+                                <button onClick={() => setShowModal(false)} className="px-4 sm:px-5 py-1.5 sm:py-2.5 bg-console-surface-3 text-text-primary text-[11px] sm:text-sm font-medium rounded-lg sm:rounded-xl shadow-premium hover:bg-console-surface-4 transition-colors">
+                                    Done
+                                </button>
                             </div>
                         </div>
+                    </div>
+                )
+            }
 
-                        <div className="flex items-center justify-between mt-5 pt-4 border-t border-gray-200 dark:border-white/10">
-                            <button onClick={() => deleteNode()} className="text-sm text-red-500 hover:text-red-600 flex items-center gap-1.5">
-                                <Trash2 size={14} /> Delete
+            {/* Bulk Actions Bar */}
+            {selectedNodes.length > 1 && (
+                <div className="fixed bottom-24 left-1/2 -translate-x-1/2 z-[90] animate-in fade-in slide-in-from-bottom-4 duration-300">
+                    <div className="flex items-center gap-2 p-2 bg-console-surface/80 backdrop-blur-xl border border-border-subtle rounded-2xl shadow-premium">
+                        <div className="px-3 py-1 border-r border-border-subtle mr-1">
+                            <span className="text-xs font-bold text-accent-primary">{selectedNodes.length}</span>
+                            <span className="text-[10px] text-text-secondary ml-1 font-medium">Selected</span>
+                        </div>
+                        <div className="flex items-center gap-1 font-sans">
+                            {(['todo', 'in-progress', 'done'] as const).map((s) => (
+                                <button
+                                    key={s}
+                                    onClick={() => bulkUpdateStatus(s)}
+                                    className="px-3 py-1.5 text-[10px] font-semibold rounded-lg bg-console-surface-2 hover:bg-console-surface-3 text-text-secondary transition-all flex items-center gap-1.5"
+                                >
+                                    {s === 'todo' ? <Circle size={10} /> : s === 'in-progress' ? <Clock size={10} /> : <CheckCircle2 size={10} />}
+                                    {s.charAt(0).toUpperCase() + s.slice(1).replace('-', ' ')}
+                                </button>
+                            ))}
+                            <div className="w-px h-6 bg-border-subtle mx-1" />
+                            <button
+                                onClick={bulkDelete}
+                                className="px-3 py-1.5 text-[10px] font-semibold rounded-lg bg-status-error/10 hover:bg-status-error/20 text-status-error transition-all flex items-center gap-1.5"
+                            >
+                                <Trash2 size={10} /> Delete
                             </button>
-                            <button onClick={() => setShowModal(false)} className="px-4 py-2 bg-gray-900 dark:bg-gray-700 text-white text-sm font-medium rounded-xl">
-                                Done
-                            </button>
+                        </div>
+                        <button
+                            onClick={() => setSelectedNodes([])}
+                            className="p-1.5 ml-1 text-text-disabled hover:text-text-primary transition-colors"
+                        >
+                            <X size={14} />
+                        </button>
+                    </div>
+                </div>
+            )}
+
+            {/* Confirmation Dialog */}
+            {confirmDelete && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-console-bg/60 backdrop-blur-sm" onClick={() => setConfirmDelete(null)}>
+                    <div className="w-full max-w-[320px] bg-console-surface border border-border-subtle rounded-2xl shadow-premium p-5 pointer-events-auto" onClick={(e) => e.stopPropagation()}>
+                        <div className="flex flex-col items-center text-center">
+                            <div className="w-12 h-12 rounded-full bg-status-error/10 flex items-center justify-center text-status-error mb-4">
+                                <Trash2 size={24} />
+                            </div>
+                            <h3 className="text-base font-semibold text-text-primary mb-2">
+                                Delete {confirmDelete.type === 'node' ? 'Topic' : 'Connection'}?
+                            </h3>
+                            <p className="text-xs text-text-secondary mb-6">
+                                This action cannot be undone. Are you sure you want to proceed?
+                            </p>
+                            <div className="flex gap-3 w-full">
+                                <button
+                                    onClick={() => setConfirmDelete(null)}
+                                    className="flex-1 px-4 py-2 bg-console-surface-2 text-text-primary text-xs font-medium rounded-xl hover:bg-console-surface-3 transition-colors"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    onClick={() => confirmDelete.type === 'node' ? (confirmDelete.id === 'bulk' ? (setNodes(nds => nds.filter(n => !selectedNodes.some(sn => sn.id === n.id))), setEdges(eds => eds.filter(e => !selectedNodes.some(sn => sn.id === e.source || sn.id === e.target))), setSelectedNodes([]), setConfirmDelete(null), setHasUnsavedChanges(true)) : (deleteNode(confirmDelete.id))) : deleteEdge(confirmDelete.id)}
+                                    className="flex-1 px-4 py-2 bg-status-error text-white text-xs font-medium rounded-xl hover:bg-status-error/80 transition-colors shadow-[0_4px_12px_rgba(239,68,68,0.2)]"
+                                >
+                                    Delete
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>
             )}
-        </div>
+        </div >
+    );
+}
+
+export function Roadmap() {
+    return (
+        <ReactFlowProvider>
+            <RoadmapContent />
+        </ReactFlowProvider>
     );
 }

@@ -1,12 +1,13 @@
-import { useRef } from 'react';
+import { useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
     X, Calendar, Clock, Code, Link as LinkIcon,
     Tag, AlertTriangle, CheckCircle2,
-    Edit2, Trash2, Brain, RefreshCw
+    Edit2, Trash2, Brain, RefreshCw, BrainCircuit
 } from 'lucide-react';
 import type { DSAProblem } from '../../services/api';
 import { difficultyColors } from '../../lib/constants';
+import { useAI } from '../../contexts/AIContext';
 import { Badge } from '../ui/Badge';
 import { Button } from '../ui/Button';
 
@@ -23,6 +24,16 @@ export function ViewProblemModal({ problem, isOpen, onClose, onEdit, onDelete, o
     if (!problem) return null;
 
     const modalRef = useRef<HTMLDivElement>(null);
+    const { setContext, toggleOpen } = useAI();
+
+    useEffect(() => {
+        if (isOpen && problem) {
+            setContext({ type: 'DSA Problem', data: problem });
+        }
+        return () => {
+            if (!isOpen) setContext(null);
+        };
+    }, [isOpen, problem, setContext]);
 
     // Close on click outside
     const handleBackdropClick = (e: React.MouseEvent) => {
@@ -56,8 +67,8 @@ export function ViewProblemModal({ problem, isOpen, onClose, onEdit, onDelete, o
                         transition={{ duration: 0.2 }}
                     >
                         {/* Header */}
-                        <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-[var(--sw-border)] bg-gray-50/50 dark:bg-white/5">
-                            <div>
+                        <div className="flex items-start justify-between p-4 sm:p-6 border-b border-gray-200 dark:border-[var(--sw-border)] bg-gray-50/50 dark:bg-white/5">
+                            <div className="flex-1 pr-4">
                                 <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-2">
                                     {problem.problemName}
                                 </h2>
@@ -87,7 +98,7 @@ export function ViewProblemModal({ problem, isOpen, onClose, onEdit, onDelete, o
                         </div>
 
                         {/* Scrollable Content */}
-                        <div className="flex-1 overflow-y-auto p-6 space-y-6 custom-scrollbar">
+                        <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4 sm:space-y-6 custom-scrollbar">
 
                             {/* Stats Grid */}
                             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -125,7 +136,7 @@ export function ViewProblemModal({ problem, isOpen, onClose, onEdit, onDelete, o
                                     <h3 className="text-sm font-semibold text-blue-900 dark:text-blue-100 mb-3 flex items-center gap-2">
                                         <Code size={16} /> Complexity Analysis
                                     </h3>
-                                    <div className="flex gap-8">
+                                    <div className="flex flex-wrap gap-4 sm:gap-8">
                                         {problem.timeComplexity && (
                                             <div>
                                                 <span className="text-xs uppercase tracking-wider text-blue-600/70 dark:text-blue-400/70 block mb-1">Time</span>
@@ -190,7 +201,7 @@ export function ViewProblemModal({ problem, isOpen, onClose, onEdit, onDelete, o
                         </div>
 
                         {/* Footer Actions */}
-                        <div className="p-6 border-t border-gray-200 dark:border-white/10 bg-gray-50/50 dark:bg-white/5 flex gap-3 justify-end">
+                        <div className="p-4 sm:p-6 border-t border-gray-200 dark:border-white/10 bg-gray-50/50 dark:bg-white/5 grid grid-cols-2 sm:flex sm:flex-row gap-2 sm:gap-3 justify-end">
                             <Button
                                 variant={problem.nextReviewDate && new Date(problem.nextReviewDate) <= new Date() ? 'primary' : 'secondary'}
                                 onClick={() => {
@@ -201,6 +212,14 @@ export function ViewProblemModal({ problem, isOpen, onClose, onEdit, onDelete, o
                                 className={problem.nextReviewDate && new Date(problem.nextReviewDate) <= new Date() ? 'bg-green-600 hover:bg-green-700' : ''}
                             >
                                 {problem.nextReviewDate && new Date(problem.nextReviewDate) <= new Date() ? 'Review Now' : 'Mark Reviewed'}
+                            </Button>
+                            <Button
+                                variant="secondary"
+                                onClick={toggleOpen}
+                                leftIcon={<BrainCircuit size={16} />}
+                                className="text-accent-primary border-accent-primary/20 hover:bg-accent-primary/5"
+                            >
+                                Ask AI
                             </Button>
                             {problem.solutionLink && (
                                 <Button

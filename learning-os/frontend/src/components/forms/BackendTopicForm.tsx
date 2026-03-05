@@ -198,28 +198,27 @@ export function BackendTopicForm({ initialValues, onSuccess, onCancel }: Backend
     return (
         <motion.form
             onSubmit={handleSubmit}
-            className="space-y-10" // Increased spacing between sections
+            className="space-y-6"
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
         >
             {error && (
-                <div className="p-4 text-base text-red-600 bg-red-50 border border-red-200 rounded-xl flex items-center gap-3">
-                    <span className="w-2 h-2 rounded-full bg-red-500 flex-shrink-0" />
+                <div className="p-4 text-base text-status-error bg-status-error/10 border border-status-error/20 rounded-xl flex items-center gap-3">
+                    <span className="w-2 h-2 rounded-full bg-status-error flex-shrink-0" />
                     {error}
                 </div>
             )}
 
             {/* Section 1: Main Information */}
             <div className="space-y-6">
-                <div className="flex items-center gap-2 border-b border-gray-200 dark:border-gray-700 pb-2">
-                    <LayoutGrid size={20} className="text-indigo-500" />
-                    <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100">
+                <div className="flex items-center gap-2 border-b border-gray-200 dark:border-white/10 pb-2">
+                    <LayoutGrid size={20} className="text-blue-500" />
+                    <h3 className="text-lg font-bold text-gray-900 dark:text-white">
                         Overview
                     </h3>
                 </div>
 
-                <div className="grid grid-cols-1 gap-8">
-                    {/* Full Width Title */}
+                <div className="grid grid-cols-1 gap-4 sm:gap-8">
                     <Input
                         name="topicName"
                         label="Topic Name"
@@ -227,10 +226,10 @@ export function BackendTopicForm({ initialValues, onSuccess, onCancel }: Backend
                         value={values.topicName}
                         onChange={(e) => handleChange('topicName', e.target.value)}
                         required
-                        className="h-14 text-lg font-medium" // Larger input height and text
+                        className="h-14 text-lg font-medium"
                     />
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-8">
                         <Select
                             label="Category"
                             value={values.category}
@@ -250,15 +249,15 @@ export function BackendTopicForm({ initialValues, onSuccess, onCancel }: Backend
             </div>
 
             {/* Section 2: Status & Metadata */}
-            <div className="space-y-6 bg-gray-50 dark:bg-white/5 p-6 rounded-2xl border border-gray-100 dark:border-white/10">
-                <div className="flex items-center gap-2 border-b border-gray-200/50 dark:border-gray-700/50 pb-2 mb-4">
-                    <Zap size={20} className="text-yellow-500" />
-                    <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100">
+            <div className="space-y-4 sm:space-y-6 bg-gray-50 dark:bg-gray-800/50 p-4 sm:p-6 rounded-2xl border border-gray-200 dark:border-white/10">
+                <div className="flex items-center gap-2 border-b border-gray-200 dark:border-white/10 pb-2 mb-4">
+                    <Zap size={20} className="text-amber-500" />
+                    <h3 className="text-lg font-bold text-gray-900 dark:text-white">
                         Progress & Meta
                     </h3>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-8">
                     <Select
                         label="Current Status"
                         value={values.status}
@@ -276,7 +275,7 @@ export function BackendTopicForm({ initialValues, onSuccess, onCancel }: Backend
                     />
 
                     <div className="relative">
-                        <Clock size={18} className="absolute left-4 top-[2.6rem] text-gray-400" />
+                        <Clock size={18} className="absolute left-4 top-[2.6rem] text-gray-400 dark:text-gray-500" />
                         <Input
                             label="Time Spent"
                             placeholder="e.g., 2h 30m"
@@ -290,15 +289,15 @@ export function BackendTopicForm({ initialValues, onSuccess, onCancel }: Backend
 
             {/* Section 3: Checklist */}
             <div className="space-y-6">
-                <div className="flex items-center gap-2 border-b border-gray-200 dark:border-gray-700 pb-2">
+                <div className="flex items-center gap-2 border-b border-gray-200 dark:border-white/10 pb-2">
                     <CheckCircle2 size={20} className="text-green-500" />
-                    <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100">
+                    <h3 className="text-lg font-bold text-gray-900 dark:text-white">
                         Checklist
                     </h3>
                 </div>
 
-                <div className="bg-gray-50 dark:bg-white/5 p-8 rounded-2xl border border-gray-100 dark:border-white/10 space-y-6">
-                    <div className="flex gap-4">
+                <div className="bg-gray-50 dark:bg-gray-800/50 p-4 sm:p-6 rounded-2xl border border-gray-200 dark:border-white/10 space-y-4 sm:space-y-6">
+                    <div className="flex gap-3 sm:gap-4">
                         <Input
                             placeholder="Add a new task or sub-topic..."
                             value={newSubTopic}
@@ -319,16 +318,16 @@ export function BackendTopicForm({ initialValues, onSuccess, onCancel }: Backend
                                     initial={{ opacity: 0, x: -10 }}
                                     animate={{ opacity: 1, x: 0 }}
                                     exit={{ opacity: 0, x: 10 }}
-                                    className="flex items-center gap-4 p-4 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 group hover:shadow-md transition-all"
+                                    className="flex items-center gap-3 sm:gap-4 p-3 sm:p-4 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-white/10 group hover:border-blue-500/30 transition-all"
                                 >
                                     <button
                                         type="button"
                                         onClick={() => toggleSubTopic(topic.id)}
-                                        className="text-gray-400 hover:text-green-500 transition-colors flex-shrink-0"
+                                        className="text-gray-400 dark:text-gray-500 hover:text-green-500 transition-colors flex-shrink-0"
                                     >
-                                        {topic.isCompleted ? <CheckCircle2 size={24} className="text-green-500 fill-green-500/20" /> : <Circle size={24} />}
+                                        {topic.isCompleted ? <CheckCircle2 size={24} className="text-green-500 fill-green-500/10" /> : <Circle size={24} />}
                                     </button>
-                                    <span className={`flex-1 text-base ${topic.isCompleted ? 'line-through text-gray-400' : 'text-gray-800 dark:text-gray-200'}`}>
+                                    <span className={`flex-1 text-base ${topic.isCompleted ? 'line-through text-gray-400 dark:text-gray-500' : 'text-gray-900 dark:text-white'}`}>
                                         {topic.text}
                                     </span>
                                     <button
@@ -342,7 +341,7 @@ export function BackendTopicForm({ initialValues, onSuccess, onCancel }: Backend
                             ))}
                         </AnimatePresence>
                         {subTopics.length === 0 && (
-                            <div className="flex flex-col items-center justify-center py-12 text-gray-400 border-2 border-dashed border-gray-200 dark:border-gray-700 rounded-xl">
+                            <div className="flex flex-col items-center justify-center py-8 sm:py-12 text-gray-400 dark:text-gray-500 border-2 border-dashed border-gray-200 dark:border-white/10 rounded-xl">
                                 <Zap size={32} className="mb-3 opacity-30" />
                                 <p className="text-sm font-medium">No tasks added yet</p>
                             </div>
@@ -353,14 +352,14 @@ export function BackendTopicForm({ initialValues, onSuccess, onCancel }: Backend
 
             {/* Section 4: Resources */}
             <div className="space-y-6">
-                <div className="flex items-center gap-2 border-b border-gray-200 dark:border-gray-700 pb-2">
+                <div className="flex items-center gap-2 border-b border-gray-200 dark:border-white/10 pb-2">
                     <BookOpen size={20} className="text-blue-500" />
-                    <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100">
+                    <h3 className="text-lg font-bold text-gray-900 dark:text-white">
                         Resources
                     </h3>
                 </div>
 
-                <div className="grid grid-cols-1 gap-6 bg-gray-50 dark:bg-white/5 p-8 rounded-2xl border border-gray-100 dark:border-white/10">
+                <div className="grid grid-cols-1 gap-4 sm:gap-6 bg-gray-50 dark:bg-gray-800/50 p-4 sm:p-6 rounded-2xl border border-gray-200 dark:border-white/10">
                     <div className="space-y-6">
                         <Input
                             placeholder="Resource Title (e.g., MDN Documentation)"
@@ -400,15 +399,15 @@ export function BackendTopicForm({ initialValues, onSuccess, onCancel }: Backend
                                     initial={{ opacity: 0, scale: 0.95 }}
                                     animate={{ opacity: 1, scale: 1 }}
                                     exit={{ opacity: 0, scale: 0.95 }}
-                                    className="flex items-center gap-4 p-4 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 group hover:shadow-md transition-all"
+                                    className="flex items-center gap-3 sm:gap-4 p-3 sm:p-4 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-white/10 group hover:border-blue-500/30 transition-all"
                                 >
-                                    <div className={`p-3 rounded-lg flex-shrink-0 ${res.type === 'video' ? 'bg-red-500/10 text-red-500' : res.type === 'course' ? 'bg-purple-500/10 text-purple-500' : 'bg-blue-500/10 text-blue-500'}`}>
+                                    <div className={`p-2 sm:p-3 rounded-lg flex-shrink-0 ${res.type === 'video' ? 'bg-red-500/10 text-red-500' : 'bg-blue-500/10 text-blue-500'}`}>
                                         {res.type === 'video' ? <PlayCircle size={24} /> :
                                             res.type === 'course' ? <BookOpen size={24} /> :
                                                 <FileText size={24} />}
                                     </div>
                                     <div className="flex-1 min-w-0 space-y-1">
-                                        <p className="font-semibold text-gray-900 dark:text-gray-100 truncate">{res.title}</p>
+                                        <p className="font-semibold text-gray-900 dark:text-white truncate">{res.title}</p>
                                         <a href={res.url} target="_blank" rel="noreferrer" className="text-sm text-blue-500 hover:underline truncate block font-medium">
                                             {res.url.replace(/^https?:\/\//, '')}
                                         </a>
@@ -425,9 +424,9 @@ export function BackendTopicForm({ initialValues, onSuccess, onCancel }: Backend
 
             {/* Section 5: Detailed Notes */}
             <div className="space-y-6">
-                <div className="flex items-center gap-2 border-b border-gray-200 dark:border-gray-700 pb-2">
-                    <FileText size={20} className="text-gray-500" />
-                    <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100">
+                <div className="flex items-center gap-2 border-b border-gray-200 dark:border-white/10 pb-2">
+                    <FileText size={20} className="text-gray-500 dark:text-gray-400" />
+                    <h3 className="text-lg font-bold text-gray-900 dark:text-white">
                         Details & Logs
                     </h3>
                 </div>
@@ -462,13 +461,13 @@ export function BackendTopicForm({ initialValues, onSuccess, onCancel }: Backend
             </div>
 
             {/* Actions */}
-            <div className="flex gap-4 pt-6 border-t border-gray-200 dark:border-gray-700 sticky bottom-0 bg-white dark:bg-[#0d1117] pb-6 z-10 rounded-b-xl">
+            <div className="flex gap-3 sm:gap-4 pt-4 sm:pt-6 mt-6 border-t border-gray-200 dark:border-white/10">
                 {onCancel && (
-                    <Button type="button" variant="ghost" onClick={onCancel} className="flex-1 h-12 text-base">
+                    <Button type="button" variant="ghost" onClick={onCancel} className="flex-1 h-12 text-base text-gray-500 dark:text-gray-400">
                         Cancel
                     </Button>
                 )}
-                <Button type="submit" isLoading={isSaving} className="flex-[2] h-12 text-base bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg shadow-indigo-500/20">
+                <Button type="submit" isLoading={isSaving} className="flex-[2] h-12 text-base bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-600/20">
                     {initialValues?._id ? 'Update Topic' : 'Save Learning Topic'}
                 </Button>
             </div>

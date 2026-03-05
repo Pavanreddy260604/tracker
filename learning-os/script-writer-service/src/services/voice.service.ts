@@ -12,6 +12,7 @@ export interface IngestionResult {
     savedCount: number;
     skippedDuplicates: number;
     skippedShort: number;
+    errorCount: number;
     characters: string[];
     sceneCount: number;
 }
@@ -31,6 +32,7 @@ export class VoiceService {
         options?: {
             minDialogueLength?: number;
             characterFilter?: string[]; // Only ingest specific characters
+            era?: string; // e.g. "childhood", "1990s"
         }
     ): Promise<IngestionResult> {
         // 1. Extract Text
@@ -43,7 +45,7 @@ export class VoiceService {
         }
 
         // 2. Intelligent Screenplay-Aware Chunking
-        const parseResult = chunkerService.parseScreenplay(fullText);
+        const parseResult = await chunkerService.parseScreenplay(fullText);
 
         console.log(`[VoiceService] Parsed ${sourceName}:`);
         console.log(`  - Scenes: ${parseResult.sceneCount}`);
@@ -51,6 +53,9 @@ export class VoiceService {
         console.log(`  - Dialogue chunks: ${parseResult.stats.dialogueCount}`);
         console.log(`  - Action chunks: ${parseResult.stats.actionCount}`);
         console.log(`  - Avg dialogue length: ${parseResult.stats.avgDialogueLength} chars`);
+        if (options?.era) {
+            console.log(`  - Era Context: ${options.era}`);
+        }
 
         // 3. Filter to dialogue only
         let dialogueChunks = chunkerService.extractDialogueForIngestion(parseResult, {
@@ -79,35 +84,48 @@ export class VoiceService {
 
         console.log(`[VoiceService] Processing ${dialogueChunks.length} dialogue chunks for ingestion`);
 
-        // 4. Process & Save with deduplication
+        // 4. Process & Save with deduplication (CONTROLLED PARALLEL PROCESSING)
+        // Using reduced concurrency to prevent memory issues and API rate limiting
         let savedCount = 0;
         let skippedDuplicates = 0;
         let skippedShort = 0;
+        let errorCount = 0;
 
-        for (const chunk of dialogueChunks) {
-            // Generate content hash for deduplication
-            const contentHash = this.generateContentHash(chunk.content);
+        const CONCURRENCY_LIMIT = 3; // Reduced from 10 to prevent memory pressure
+        const BATCH_DELAY_MS = 100; // Small delay between batches for API rate limiting
 
-            // Check for existing duplicate
-            const existing = await VoiceSample.findOne({
-                bibleId: new mongoose.Types.ObjectId(bibleId),
-                contentHash
-            });
-
-            if (existing) {
-                skippedDuplicates++;
-                continue;
-            }
-
-            // Skip very short content
-            if (chunk.content.length < 20) {
-                skippedShort++;
-                continue;
-            }
-
+        // Helper function to process a single chunk with error isolation
+        const processChunk = async (chunk: any): Promise<{ success: boolean; reason?: string }> => {
             try {
-                // Generate embedding
-                const embedding = await aiServiceManager.generateEmbedding(chunk.content);
+                // Generate content hash for deduplication
+                const contentHash = this.generateContentHash(chunk.content);
+
+                // Check for existing duplicate
+                const existing = await VoiceSample.findOne({
+                    bibleId: new mongoose.Types.ObjectId(bibleId),
+                    contentHash
+                });
+
+                if (existing) {
+                    return { success: false, reason: 'duplicate' };
+                }
+
+                // Skip very short content
+                if (chunk.content.length < 10) {
+                    return { success: false, reason: 'short' };
+                }
+
+                // SOTA TECHNIQUE: Contextual Embedding
+                // Instead of just embedding "No.", we embed "Speaker: Bhishma (Young). Previous: Father asking question. Content: No."
+                // This creates a much richer vector representation.
+                const eraContext = (chunk as any).era || options?.era || '';
+                const contextString = chunk.contextBefore ? `Context: ${chunk.contextBefore}. ` : '';
+                const speakerString = `Speaker: ${chunk.speaker}${eraContext ? ` (${eraContext})` : ''}. `;
+
+                const richTextToEmbed = `${speakerString}${contextString}Line: "${chunk.content}"`;
+
+                // Generate embedding from RICH TEXT
+                const embedding = await aiServiceManager.generateEmbedding(richTextToEmbed);
 
                 // Resolve character ID
                 const resolvedCharacterId = characterId
@@ -121,6 +139,7 @@ export class VoiceService {
                     content: chunk.content,
                     contentHash,
                     speaker: chunk.speaker,
+                    era: (chunk as any).era || options?.era,
                     chunkType: chunk.type,
                     chunkIndex: chunk.chunkIndex,
                     embedding,
@@ -130,16 +149,48 @@ export class VoiceService {
 
                 // Index in ChromaDB
                 await vectorService.upsertSample(newSample as any);
-
-                savedCount++;
-
-                // Log progress every 10 samples
-                if (savedCount % 10 === 0) {
-                    console.log(`[VoiceService] Progress: ${savedCount} samples saved...`);
-                }
+                return { success: true };
 
             } catch (err: any) {
-                console.error(`[VoiceService] Failed to embed chunk from ${chunk.speaker}: ${err.message}`);
+                console.error(`[VoiceService] Failed to process chunk from ${chunk.speaker}: ${err.message}`);
+                return { success: false, reason: 'error' };
+            }
+        };
+
+        // Process chunks with controlled concurrency
+        for (let i = 0; i < dialogueChunks.length; i += CONCURRENCY_LIMIT) {
+            const batch = dialogueChunks.slice(i, i + CONCURRENCY_LIMIT);
+
+            // Process batch with Promise.allSettled for error isolation
+            const results = await Promise.allSettled(
+                batch.map(chunk => processChunk(chunk))
+            );
+
+            // Tally results
+            for (const result of results) {
+                if (result.status === 'fulfilled') {
+                    if (result.value.success) {
+                        savedCount++;
+                    } else if (result.value.reason === 'duplicate') {
+                        skippedDuplicates++;
+                    } else if (result.value.reason === 'short') {
+                        skippedShort++;
+                    } else {
+                        errorCount++;
+                    }
+                } else {
+                    errorCount++;
+                }
+            }
+
+            // Log progress every 50 chunks
+            if ((i + CONCURRENCY_LIMIT) % 50 === 0) {
+                console.log(`[VoiceService] Batch Update: Processed ${Math.min(i + CONCURRENCY_LIMIT, dialogueChunks.length)} / ${dialogueChunks.length} chunks...`);
+            }
+
+            // Small delay between batches to prevent API rate limiting
+            if (i + CONCURRENCY_LIMIT < dialogueChunks.length) {
+                await new Promise(resolve => setTimeout(resolve, BATCH_DELAY_MS));
             }
         }
 
@@ -147,11 +198,13 @@ export class VoiceService {
         console.log(`  - Saved: ${savedCount}`);
         console.log(`  - Skipped (duplicates): ${skippedDuplicates}`);
         console.log(`  - Skipped (too short): ${skippedShort}`);
+        console.log(`  - Errors: ${errorCount}`);
 
         return {
             savedCount,
             skippedDuplicates,
             skippedShort,
+            errorCount,
             characters: parseResult.characters,
             sceneCount: parseResult.sceneCount
         };
@@ -199,8 +252,8 @@ export class VoiceService {
      * Legacy method for backward compatibility.
      * @deprecated Use chunkerService.parseScreenplay() directly for more control.
      */
-    private splitIntoDialogueChunks(text: string): string[] {
-        const result = chunkerService.parseScreenplay(text);
+    private async splitIntoDialogueChunks(text: string): Promise<string[]> {
+        const result = await chunkerService.parseScreenplay(text);
         return result.chunks
             .filter(c => c.type === 'dialogue')
             .map(c => c.content);

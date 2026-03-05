@@ -14,24 +14,29 @@ interface CircularProgressProps {
 
 const colors = {
     blue: {
-        stroke: '#3b82f6',
-        glow: 'drop-shadow(0 0 8px rgba(59, 130, 246, 0.5))',
+        start: '#3b82f6',
+        end: '#1d4ed8',
+        glow: 'rgba(59, 130, 246, 0.4)',
     },
     purple: {
-        stroke: '#8b5cf6',
-        glow: 'drop-shadow(0 0 8px rgba(139, 92, 246, 0.5))',
+        start: '#8b5cf6',
+        end: '#6d28d9',
+        glow: 'rgba(139, 92, 246, 0.4)',
     },
     cyan: {
-        stroke: '#06b6d4',
-        glow: 'drop-shadow(0 0 8px rgba(6, 182, 212, 0.5))',
+        start: '#06b6d4',
+        end: '#0e7490',
+        glow: 'rgba(6, 182, 212, 0.4)',
     },
     green: {
-        stroke: '#22c55e',
-        glow: 'drop-shadow(0 0 8px rgba(34, 197, 94, 0.5))',
+        start: '#22c55e',
+        end: '#15803d',
+        glow: 'rgba(34, 197, 94, 0.4)',
     },
     amber: {
-        stroke: '#f59e0b',
-        glow: 'drop-shadow(0 0 8px rgba(245, 158, 11, 0.5))',
+        start: '#f59e0b',
+        end: '#b45309',
+        glow: 'rgba(245, 158, 11, 0.4)',
     },
 };
 
@@ -55,16 +60,25 @@ export function CircularProgress({
             <svg
                 width={size}
                 height={size}
-                className="transform -rotate-90"
-                style={{ filter: value > 0 ? colorConfig.glow : undefined }}
+                className="transform -rotate-90 overflow-visible"
             >
+                <defs>
+                    <linearGradient id={`gradient-${color}`} x1="0%" y1="0%" x2="100%" y2="100%">
+                        <stop offset="0%" stopColor={colorConfig.start} />
+                        <stop offset="100%" stopColor={colorConfig.end} />
+                    </linearGradient>
+                    <filter id={`glow-${color}`}>
+                        <feGaussianBlur stdDeviation="2.5" result="blur" />
+                        <feComposite in="SourceGraphic" in2="blur" operator="over" />
+                    </filter>
+                </defs>
                 {/* Background circle */}
                 <circle
                     cx={size / 2}
                     cy={size / 2}
                     r={radius}
                     fill="none"
-                    stroke="rgba(255, 255, 255, 0.08)"
+                    stroke="rgba(255, 255, 255, 0.05)"
                     strokeWidth={strokeWidth}
                 />
                 {/* Progress circle */}
@@ -73,13 +87,14 @@ export function CircularProgress({
                     cy={size / 2}
                     r={radius}
                     fill="none"
-                    stroke={colorConfig.stroke}
+                    stroke={`url(#gradient-${color})`}
                     strokeWidth={strokeWidth}
                     strokeLinecap="round"
                     strokeDasharray={circumference}
                     initial={{ strokeDashoffset: circumference }}
                     animate={{ strokeDashoffset: offset }}
-                    transition={{ duration: 1, ease: 'easeOut' }}
+                    transition={{ duration: 1.2, ease: [0.34, 1.56, 0.64, 1] }}
+                    style={{ filter: value > 0 ? `drop-shadow(0 0 6px ${colorConfig.glow})` : undefined }}
                 />
             </svg>
 
@@ -87,7 +102,7 @@ export function CircularProgress({
             <div className="absolute inset-0 flex flex-col items-center justify-center">
                 {showValue && (
                     <motion.span
-                        className="text-2xl font-bold text-white"
+                        className="text-2xl font-bold text-text-primary"
                         initial={{ opacity: 0, scale: 0.5 }}
                         animate={{ opacity: 1, scale: 1 }}
                         transition={{ delay: 0.3 }}
@@ -96,13 +111,13 @@ export function CircularProgress({
                     </motion.span>
                 )}
                 {sublabel && (
-                    <span className="text-xs text-gray-500 mt-0.5">{sublabel}</span>
+                    <span className="text-xs text-text-secondary mt-0.5">{sublabel}</span>
                 )}
             </div>
 
             {/* Label below */}
             {label && (
-                <span className="mt-3 text-sm font-medium text-gray-400">{label}</span>
+                <span className="mt-3 text-sm font-medium text-text-secondary">{label}</span>
             )}
         </div>
     );

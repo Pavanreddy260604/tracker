@@ -3,17 +3,22 @@ import { z } from 'zod';
 import { ProjectStudy } from '../models/ProjectStudy.js';
 import { authenticate } from '../middleware/auth.js';
 import { writeLimiter } from '../middleware/rateLimiter.js';
+import { knowledgeSync } from '../services/knowledgeSync.service.js';
 
 const router = Router();
 router.use(authenticate);
 
 const projectStudySchema = z.object({
     projectName: z.string().min(1).max(200),
-    repoUrl: z.string().max(500).default(''),
+    repoUrl: z.string().max(500).refine(val => {
+        if (!val) return true;
+        return val.includes('github.com');
+    }, { message: 'Must be a valid GitHub URL' }).default(''),
     moduleStudied: z.string().min(1).max(200),
     flowUnderstood: z.boolean().default(false), // Optional boolean flag
     flowUnderstanding: z.string().default(''), // The detailed explanation
     involvedTables: z.string().default(''),
+    coreComponents: z.string().default(''),
     questions: z.string().max(3000).default(''),
     notes: z.string().max(5000).default(''),
     date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
@@ -56,6 +61,20 @@ router.get('/', async (req: Request, res: Response) => {
     }
 });
 
+router.get('/:id', async (req: Request, res: Response) => {
+    try {
+        const study = await ProjectStudy.findOne({ _id: req.params.id, user: req.userId }).lean();
+        if (!study) {
+            res.status(404).json({ success: false, error: 'Study not found' });
+            return;
+        }
+        res.json({ success: true, data: { study } });
+    } catch (error) {
+        console.error('Get study error:', error);
+        res.status(500).json({ success: false, error: 'Failed to fetch study' });
+    }
+});
+
 router.post('/', writeLimiter, async (req: Request, res: Response) => {
     try {
         const result = projectStudySchema.safeParse(req.body);
@@ -65,10 +84,42 @@ router.post('/', writeLimiter, async (req: Request, res: Response) => {
         }
 
         const study = await ProjectStudy.create({ ...result.data, user: req.userId });
+
+        // Sync to RAG
+        knowledgeSync.syncProjectStudy(study).catch(err => console.error('[ProjectStudy] RAG Sync Error:', err));
+
         res.status(201).json({ success: true, data: { study } });
     } catch (error) {
         console.error('Create study error:', error);
         res.status(500).json({ success: false, error: 'Failed to create study' });
+    }
+});
+
+router.patch('/:id/status', async (req: Request, res: Response) => {
+    try {
+        const { flowUnderstood } = req.body;
+        if (typeof flowUnderstood !== 'boolean') {
+            res.status(400).json({ success: false, error: 'flowUnderstood must be a boolean' });
+            return;
+        }
+
+        const study = await ProjectStudy.findOneAndUpdate(
+            { _id: req.params.id, user: req.userId },
+            { $set: { flowUnderstood } },
+            { new: true, runValidators: true }
+        );
+
+        if (!study) {
+            res.status(404).json({ success: false, error: 'Study not found' });
+            return;
+        }
+
+        knowledgeSync.syncProjectStudy(study).catch(err => console.error('[ProjectStudy] RAG Sync Error:', err));
+
+        res.json({ success: true, data: { study } });
+    } catch (error) {
+        console.error('Update status error:', error);
+        res.status(500).json({ success: false, error: 'Failed to update status' });
     }
 });
 
@@ -91,6 +142,9 @@ router.put('/:id', writeLimiter, async (req: Request, res: Response) => {
             return;
         }
 
+        // Sync to RAG
+        knowledgeSync.syncProjectStudy(study).catch(err => console.error('[ProjectStudy] RAG Sync Error:', err));
+
         res.json({ success: true, data: { study } });
     } catch (error) {
         console.error('Update study error:', error);
@@ -105,6 +159,10 @@ router.delete('/:id', writeLimiter, async (req: Request, res: Response) => {
             res.status(404).json({ success: false, error: 'Study not found' });
             return;
         }
+
+        // Delete from RAG Vector Store
+        knowledgeSync.deleteFromVector(req.params.id as string).catch(err => console.error('[ProjectStudy] RAG Delete Error:', err));
+
         res.json({ success: true, data: { message: 'Study deleted' } });
     } catch (error) {
         console.error('Delete study error:', error);

@@ -17,7 +17,7 @@ export class TreatmentService {
 
         try {
             // Use non-streaming chat with JSON mode enabled for reliability
-            const response = await aiServiceManager.chat(prompt, [], true);
+            const response = await aiServiceManager.chat(prompt, { format: 'json' });
 
             let jsonStr = response.trim();
 

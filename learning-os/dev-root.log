@@ -1,0 +1,1054 @@
+
+> learning-os-monorepo@1.0.0 dev
+> npx concurrently --kill-others-on-fail -c "bgBlue.bold,bgMagenta.bold,bgCyan.bold,bgYellow.bold" "npm:backend" "npm:frontend" "npm:script-writer" "npm:chroma"
+
+[backend] 
+[backend] > learning-os-monorepo@1.0.0 backend
+[backend] > cd backend && npm run dev
+[backend] 
+[frontend] 
+[frontend] > learning-os-monorepo@1.0.0 frontend
+[frontend] > cd frontend && npm run dev
+[frontend] 
+[script-writer] 
+[script-writer] > learning-os-monorepo@1.0.0 script-writer
+[script-writer] > cd script-writer-service && npm run dev
+[script-writer] 
+[chroma] 
+[chroma] > learning-os-monorepo@1.0.0 chroma
+[chroma] > chroma run --host localhost --port 8000
+[chroma] 
+[frontend] 
+[frontend] > frontend@0.0.0 dev
+[frontend] > vite
+[frontend] 
+[backend] 
+[backend] > learning-os-backend@1.0.0 dev
+[backend] > tsx watch src/index.ts
+[backend] 
+[script-writer] 
+[script-writer] > script-writer-service@1.0.0 dev
+[script-writer] > tsx watch src/index.ts
+[script-writer] 
+[frontend] 
+[frontend]   [32m[1mVITE[22m v7.3.1[39m  [2mready in [0m[1m670[22m[2m[0m ms[22m
+[frontend] 
+[frontend]   [32m➜[39m  [1mLocal[22m:   [36mhttp://localhost:[1m5173[22m/[39m
+[frontend] [2m  [32m➜[39m  [1mNetwork[22m[2m: use [22m[1m--host[22m[2m to expose[22m
+[script-writer] [AIServiceManager] Initialized with default provider: ollama
+[chroma] 
+[chroma] 
+[chroma]                 [38;5;069m(((((((((    [38;5;203m((((([38;5;220m####
+[chroma]              [38;5;069m((((((((((((([38;5;203m((((((((([38;5;220m#########
+[chroma]            [38;5;069m((((((((((((([38;5;203m((((((((((([38;5;220m###########
+[chroma]          [38;5;069m(((((((((((((([38;5;203m(((((((((((([38;5;220m############
+[chroma]         [38;5;069m((((((((((((([38;5;203m(((((((((((((([38;5;220m#############
+[chroma]         [38;5;069m((((((((((((([38;5;203m(((((((((((((([38;5;220m#############
+[chroma]          [38;5;069m(((((((((((([38;5;203m((((((((((((([38;5;220m##############
+[chroma]          [38;5;069m(((((((((((([38;5;203m(((((((((((([38;5;220m##############
+[chroma]            [38;5;069m(((((((((([38;5;203m((((((((((([38;5;220m#############
+[chroma]              [38;5;069m(((((((([38;5;203m(((((((([38;5;220m##############
+[chroma]                 [38;5;069m((((([38;5;203m((((    [38;5;220m#########[0m
+[chroma] 
+[script-writer] The 'path' argument is deprecated. Please use 'ssl', 'host', and 'port' instead
+[chroma] Saving data to: ./chroma
+[chroma] Connect to Chroma at: http://localhost:8000
+[chroma] Getting started guide: https://docs.trychroma.com/docs/overview/getting-started
+[chroma] 
+[chroma] ☁️ To deploy your DB - try Chroma Cloud!
+[chroma] - Sign up: https://trychroma.com/signup
+[chroma] - Docs: https://docs.trychroma.com/cloud/getting-started
+[chroma] - Copy your data to Cloud: chroma copy --to-cloud --all
+[chroma] 
+[chroma] OpenTelemetry is not enabled because it is missing from the config.
+[backend] [db] MongoDB connected: localhost
+[backend] [server] Learning OS backend running on http://localhost:5000
+[backend] [server] Health check: http://localhost:5000/health
+[script-writer] ✅ Script Writer DB connected: localhost
+[script-writer] 
+[script-writer] ╔════════════════════════════════════════════════════════════╗
+[script-writer] ║                                                            ║
+[script-writer] ║   🎬 Script Writer AI Service                              ║
+[script-writer] ║                                                            ║
+[script-writer] ║   Server:     http://localhost:5003                      ║
+[script-writer] ║   Health:     http://localhost:5003/health               ║
+[script-writer] ║   API Base:   http://localhost:5003/api/script           ║
+[script-writer] ║                                                            ║
+[script-writer] ║   Ready to write Hollywood-standard scripts! 🎥            ║
+[script-writer] ║                                                            ║
+[script-writer] ╚════════════════════════════════════════════════════════════╝
+[script-writer]         
+[frontend] [2m4:22:54 pm[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32m✨ new dependencies optimized: [33mreact-syntax-highlighter/dist/esm/languages/prism/javascript, react-syntax-highlighter/dist/esm/languages/prism/jsx, react-syntax-highlighter/dist/esm/languages/prism/typescript, react-syntax-highlighter/dist/esm/languages/prism/tsx, react-syntax-highlighter/dist/esm/languages/prism/python, react-syntax-highlighter/dist/esm/languages/prism/json, react-syntax-highlighter/dist/esm/languages/prism/bash[32m[39m
+[frontend] [2m4:22:54 pm[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32m✨ optimized dependencies changed. reloading[39m
+[backend] Starting interview for 696da2938ca947fda22fc8d8 with 1 custom questions.
+[backend] Piston Execution Error: Request failed with status code 401
+[backend] Run Code Error: Error: Code execution unavailable. Please try again.
+[backend]     at ExecutionService.execute (P:\Time pass\New folder\learning-os\backend\src\services\execution.service.ts:60:19)
+[backend]     at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+[backend]     at async ExecutionService.executeWithInput (P:\Time pass\New folder\learning-os\backend\src\services\execution.service.ts:74:24)
+[backend]     at async ExecutionService.runTest (P:\Time pass\New folder\learning-os\backend\src\services\execution.service.ts:98:24)
+[backend]     at async <anonymous> (P:\Time pass\New folder\learning-os\backend\src\routes\interview.ts:366:28)
+[backend] Piston Execution Error: Request failed with status code 401
+[backend] Submit Code Error: Error: Code execution unavailable. Please try again.
+[backend]     at ExecutionService.execute (P:\Time pass\New folder\learning-os\backend\src\services\execution.service.ts:60:19)
+[backend]     at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+[backend]     at async ExecutionService.executeWithInput (P:\Time pass\New folder\learning-os\backend\src\services\execution.service.ts:74:24)
+[backend]     at async ExecutionService.runTest (P:\Time pass\New folder\learning-os\backend\src\services\execution.service.ts:98:24)
+[backend]     at async <anonymous> (P:\Time pass\New folder\learning-os\backend\src\routes\interview.ts:163:29)
+[frontend] [2m4:27:19 pm[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/App.tsx, /src/contexts/AIContext.tsx, /src/components/layout/Layout.tsx, /src/pages/Login.tsx, /src/pages/Dashboard.tsx, /src/components/forms/QuickLog.tsx, /src/pages/Interview/InterviewHistory.tsx, /src/pages/Interview/InterviewSetup.tsx, /src/pages/Interview/InterviewRoom.tsx, /src/pages/ChatPage.tsx, /src/pages/DSATracking.tsx, /src/components/forms/DSAProblemForm.tsx, /src/index.css[22m
+[frontend] [2m4:27:19 pm[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [33mhmr invalidate [39m[2m/src/contexts/AIContext.tsx[22m Could not Fast Refresh ("GEMINI_MODELS" export is incompatible). Learn more at https://github.com/vitejs/vite-plugin-react/tree/main/packages/plugin-react#consistent-components-exports
+[frontend] [2m4:27:19 pm[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/App.tsx, /src/components/layout/Layout.tsx, /src/components/GlobalAIWidget.tsx, /src/pages/Interview/InterviewRoom.tsx, /src/pages/ChatPage.tsx[22m
+[frontend] [2m4:27:31 pm[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/App.tsx, /src/contexts/AIContext.tsx, /src/components/layout/Layout.tsx, /src/pages/Login.tsx, /src/index.css[22m
+[frontend] [2m4:27:31 pm[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [33mhmr invalidate [39m[2m/src/contexts/AIContext.tsx[22m Could not Fast Refresh ("GEMINI_MODELS" export is incompatible). Learn more at https://github.com/vitejs/vite-plugin-react/tree/main/packages/plugin-react#consistent-components-exports
+[frontend] [2m4:27:31 pm[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/App.tsx, /src/components/layout/Layout.tsx, /src/components/GlobalAIWidget.tsx, /src/pages/Interview/InterviewRoom.tsx, /src/pages/ChatPage.tsx[22m
+[frontend] [2m4:27:39 pm[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/ChatPage.tsx, /src/index.css[22m
+[frontend] [2m4:27:50 pm[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/Dashboard.tsx, /src/index.css[22m
+[frontend] [2m4:27:54 pm[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/DSATracking.tsx, /src/index.css[22m
+[frontend] [2m4:28:00 pm[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/index.css[22m
+[frontend] [2m4:28:06 pm[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/index.css[22m
+[backend] 4:28:19 pm [tsx] change in ./src\services\execution.service.ts Restarting...
+[backend] c[db] MongoDB connected: localhost
+[backend] [server] Learning OS backend running on http://localhost:5000
+[backend] [server] Health check: http://localhost:5000/health
+[backend] 4:28:27 pm [tsx] change in ./src\routes\interview.ts Restarting...
+[backend] c[db] MongoDB connected: localhost
+[backend] [server] Learning OS backend running on http://localhost:5000
+[backend] [server] Health check: http://localhost:5000/health
+[frontend] [2m4:31:16 pm[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/index.css[22m
+[script-writer] ::1 - GET /api/bible HTTP/1.1 304 - - 87.408 ms
+[script-writer] ::1 - GET /api/bible HTTP/1.1 304 - - 5.646 ms
+[script-writer] ::1 - GET /api/bible HTTP/1.1 304 - - 5.418 ms
+[script-writer] ::1 - GET /api/bible HTTP/1.1 304 - - 5.813 ms
+[script-writer] ::1 - OPTIONS /api/character/bible/698ade51cc10eade9be42fa2 HTTP/1.1 204 0 - 1.238 ms
+[script-writer] ::1 - OPTIONS /api/character/bible/698ade51cc10eade9be42fa2 HTTP/1.1 204 0 - 0.493 ms
+[script-writer] ::1 - GET /api/bible HTTP/1.1 304 - - 16.231 ms
+[script-writer] ::1 - GET /api/bible HTTP/1.1 304 - - 6.076 ms
+[script-writer] ::1 - GET /api/character/bible/698ade51cc10eade9be42fa2 HTTP/1.1 304 - - 65.645 ms
+[script-writer] ::1 - OPTIONS /api/ai/provider HTTP/1.1 204 0 - 0.536 ms
+[script-writer] ::1 - OPTIONS /api/script/templates HTTP/1.1 204 0 - 0.488 ms
+[script-writer] ::1 - OPTIONS /api/script/history HTTP/1.1 204 0 - 0.420 ms
+[script-writer] ::1 - GET /api/character/bible/698ade51cc10eade9be42fa2 HTTP/1.1 304 - - 16.721 ms
+[script-writer] ::1 - OPTIONS /api/treatment/bible/698ade51cc10eade9be42fa2 HTTP/1.1 204 0 - 0.479 ms
+[script-writer] ::1 - GET /api/ai/provider HTTP/1.1 304 - - 2.471 ms
+[script-writer] ::1 - OPTIONS /api/script/templates HTTP/1.1 204 0 - 0.417 ms
+[script-writer] ::1 - OPTIONS /api/script/history HTTP/1.1 204 0 - 0.288 ms
+[script-writer] ::1 - GET /api/script/templates HTTP/1.1 304 - - 3.132 ms
+[script-writer] ::1 - OPTIONS /api/treatment/bible/698ade51cc10eade9be42fa2 HTTP/1.1 204 0 - 0.588 ms
+[script-writer] ::1 - GET /api/ai/provider HTTP/1.1 304 - - 1.910 ms
+[script-writer] ::1 - GET /api/script/templates HTTP/1.1 304 - - 2.472 ms
+[script-writer] ::1 - GET /api/scene/bible/698ade51cc10eade9be42fa2 HTTP/1.1 200 - - 95.325 ms
+[script-writer] ::1 - GET /api/character/bible/698ade51cc10eade9be42fa2 HTTP/1.1 304 - - 25.635 ms
+[script-writer] ::1 - GET /api/scene/bible/698ade51cc10eade9be42fa2 HTTP/1.1 304 - - 9.485 ms
+[script-writer] ::1 - GET /api/character/bible/698ade51cc10eade9be42fa2 HTTP/1.1 304 - - 9.767 ms
+[script-writer] ::1 - GET /api/treatment/bible/698ade51cc10eade9be42fa2 HTTP/1.1 304 - - 47.689 ms
+[script-writer] ::1 - GET /api/treatment/bible/698ade51cc10eade9be42fa2 HTTP/1.1 304 - - 6.539 ms
+[script-writer] ::1 - GET /api/script/history HTTP/1.1 200 - - 98.803 ms
+[script-writer] ::1 - GET /api/script/history HTTP/1.1 304 - - 13.028 ms
+[script-writer] ::1 - OPTIONS /api/script/generate HTTP/1.1 204 0 - 0.506 ms
+[script-writer] [API] Generating script: film/nolan for user 696da2938ca947fda22fc8d8
+[script-writer] [ScriptGen] Building prompt for: film / nolan
+[backend] 4:39:27 pm [tsx] change in ./src\services\execution.service.ts Restarting...
+[backend] c
+[frontend] [2m4:39:28 pm[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/activity[39m
+[frontend] AggregateError [ECONNREFUSED]: 
+[frontend]     at internalConnectMultiple (node:net:1139:18)
+[frontend]     at afterConnectMultiple (node:net:1712:7)
+[frontend] [2m4:39:28 pm[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/chat/history[39m
+[frontend] AggregateError [ECONNREFUSED]: 
+[frontend]     at internalConnectMultiple (node:net:1139:18)
+[frontend]     at afterConnectMultiple (node:net:1712:7)
+[frontend] [2m4:39:28 pm[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/chat/history[39m
+[frontend] AggregateError [ECONNREFUSED]: 
+[frontend]     at internalConnectMultiple (node:net:1139:18)
+[frontend]     at afterConnectMultiple (node:net:1712:7)
+[backend] [db] MongoDB connected: localhost
+[backend] [server] Learning OS backend running on http://localhost:5000
+[backend] [server] Health check: http://localhost:5000/health
+[script-writer] [VectorService] Connected to ChromaDB collection: voice_samples
+[script-writer] [豆ScriptGenerator] RAG: No samples met relevance threshold
+[script-writer] [ScriptGenerator] Injected 1 characters into prompt
+[script-writer] [ScriptGen] DEBUG PROMPT SNIPPET:
+[script-writer]  You are a professional Hollywood screenwriter. Your scripts follow industry-standard formatting:
+[script-writer] 
+[script-writer] ## SCREENPLAY FORMAT RULES
+[script-writer] 
+[script-writer] ### Scene Headers (Slug Lines)
+[script-writer] - Always start with INT. (interior) or EXT. (exterior)
+[script-writer] - Include location and time of day
+[script-writer] - Format: INT./EXT. LOCATION - TIME
+[script-writer] - Examples:
+[script-writer]   - INT. COFFEE SHOP - DAY
+[script-writer]   - EXT. CITY STREET - NIGHT
+[script-writer]   - INT./EXT. CAR (MOVING) - CONTINUOUS
+[script-writer] 
+[script-writer] ### Action/Description
+[script-writer] - Written in present tense
+[script-writer] - Brief, visual descriptions
+[script-writer] - Single-spaced, no indentati
+[script-writer] ...
+[script-writer]  HALLUCINATIONS: If a character is not in this list, do not give them a name or significant lines.
+[script-writer] 
+[script-writer] **Genre:** Drama
+[script-writer] **Tone:** Cinematic
+[script-writer] 
+[script-writer] ## THE STORY TO WRITE
+[script-writer] 
+[script-writer] Cursed with the power to choose his own death, Bhīṣma lived not in freedom but in bondage—repenting through centuries of loyalty, guarding a vow made to his father and step-mother, even when that vow destroyed everything he loved.
+[script-writer] 
+[script-writer] ---
+[script-writer] 
+[script-writer] Now write the complete screenplay. Begin with FADE IN: and use proper Hollywood formatting throughout.
+[script-writer] [ScriptGen] DEBUG LANGUAGE OPTION: English
+[script-writer] [ScriptWriterStream] Attempting generation with model: deepseek-v3.1:671b-cloud
+[script-writer] [ScriptWriterStream] Success with model: deepseek-v3.1:671b-cloud
+[backend] 4:39:36 pm [tsx] change in ./src\routes\interview.ts Restarting...
+[frontend] [2m4:39:36 pm[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/chat/69944c6fe382a2eb7ca625a8/message[39m
+[frontend] Error: read ECONNRESET
+[frontend]     at TCP.onStreamRead (node:internal/stream_base_commons:216:20)
+[frontend] [2m4:39:36 pm[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/chat/history[39m
+[frontend] AggregateError [ECONNREFUSED]: 
+[frontend]     at internalConnectMultiple (node:net:1139:18)
+[frontend]     at afterConnectMultiple (node:net:1712:7)
+[backend] c[db] MongoDB connected: localhost
+[backend] [server] Learning OS backend running on http://localhost:5000
+[backend] [server] Health check: http://localhost:5000/health
+[frontend] [2m4:39:42 pm[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/index.css[22m
+[frontend] [2m4:39:47 pm[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/Interview/InterviewRoom.tsx, /src/index.css[22m
+[backend] 4:39:57 pm [tsx] change in ./src\config\env.ts Restarting...
+[backend] c[db] MongoDB connected: localhost
+[backend] [server] Learning OS backend running on http://localhost:5000
+[backend] [server] Health check: http://localhost:5000/health
+[backend] Starting interview for 69944ce070ea70174c111a4b with 1 custom questions.
+[backend] Piston Execution Error: 401 https://emkc.org/api/v2/piston/execute Public Piston API is now whitelist only as of 2/15/2026. Please contact EngineerMan on Discord with use case justification or consider hosting your own Piston instance.
+[backend] Run Code Error: Error: Code execution provider rejected request (401) at https://emkc.org/api/v2/piston/execute. Configure PISTON_BASE_URL/PISTON_API_KEY.
+[backend]     at ExecutionService.execute (P:\Time pass\New folder\learning-os\backend\src\services\execution.service.ts:188:15)
+[backend]     at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+[backend]     at async ExecutionService.executeWithInput (P:\Time pass\New folder\learning-os\backend\src\services\execution.service.ts:201:24)
+[backend]     at async ExecutionService.runTest (P:\Time pass\New folder\learning-os\backend\src\services\execution.service.ts:225:24)
+[backend]     at async <anonymous> (P:\Time pass\New folder\learning-os\backend\src\routes\interview.ts:384:28)
+[backend] Piston Execution Error: 401 https://emkc.org/api/v2/piston/execute Public Piston API is now whitelist only as of 2/15/2026. Please contact EngineerMan on Discord with use case justification or consider hosting your own Piston instance.
+[backend] Submit Code Error: Error: Code execution provider rejected request (401) at https://emkc.org/api/v2/piston/execute. Configure PISTON_BASE_URL/PISTON_API_KEY.
+[backend]     at ExecutionService.execute (P:\Time pass\New folder\learning-os\backend\src\services\execution.service.ts:188:15)
+[backend]     at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+[backend]     at async ExecutionService.executeWithInput (P:\Time pass\New folder\learning-os\backend\src\services\execution.service.ts:201:24)
+[backend]     at async ExecutionService.runTest (P:\Time pass\New folder\learning-os\backend\src\services\execution.service.ts:225:24)
+[backend]     at async <anonymous> (P:\Time pass\New folder\learning-os\backend\src\routes\interview.ts:168:29)
+[script-writer] ::1 - POST /api/script/generate HTTP/1.1 200 - - 6650.168 ms
+[script-writer] ::1 - OPTIONS /api/script/history HTTP/1.1 204 0 - 0.509 ms
+[script-writer] ::1 - GET /api/script/history HTTP/1.1 200 - - 12.524 ms
+[backend] Starting interview for 69944d1270ea70174c111a7c with 1 custom questions.
+[backend] Piston Execution Error: 401 https://emkc.org/api/v2/piston/execute Public Piston API is now whitelist only as of 2/15/2026. Please contact EngineerMan on Discord with use case justification or consider hosting your own Piston instance.
+[backend] Run Code Error: Error: Code execution provider rejected request (401) at https://emkc.org/api/v2/piston/execute. Configure PISTON_BASE_URL/PISTON_API_KEY.
+[backend]     at ExecutionService.execute (P:\Time pass\New folder\learning-os\backend\src\services\execution.service.ts:188:15)
+[backend]     at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+[backend]     at async ExecutionService.executeWithInput (P:\Time pass\New folder\learning-os\backend\src\services\execution.service.ts:201:24)
+[backend]     at async ExecutionService.runTest (P:\Time pass\New folder\learning-os\backend\src\services\execution.service.ts:225:24)
+[backend]     at async <anonymous> (P:\Time pass\New folder\learning-os\backend\src\routes\interview.ts:384:28)
+[backend] Piston Execution Error: 401 https://emkc.org/api/v2/piston/execute Public Piston API is now whitelist only as of 2/15/2026. Please contact EngineerMan on Discord with use case justification or consider hosting your own Piston instance.
+[backend] Submit Code Error: Error: Code execution provider rejected request (401) at https://emkc.org/api/v2/piston/execute. Configure PISTON_BASE_URL/PISTON_API_KEY.
+[backend]     at ExecutionService.execute (P:\Time pass\New folder\learning-os\backend\src\services\execution.service.ts:188:15)
+[backend]     at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+[backend]     at async ExecutionService.executeWithInput (P:\Time pass\New folder\learning-os\backend\src\services\execution.service.ts:201:24)
+[backend]     at async ExecutionService.runTest (P:\Time pass\New folder\learning-os\backend\src\services\execution.service.ts:225:24)
+[backend]     at async <anonymous> (P:\Time pass\New folder\learning-os\backend\src\routes\interview.ts:168:29)
+[frontend] [2m4:51:05 pm[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/index.css, /src/pages/Settings.tsx[22m
+[frontend] [2m4:51:11 pm[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mpage reload [39m[2msrc/main.tsx[22m
+[script-writer] ::1 - OPTIONS /api/character/bible/698ade51cc10eade9be42fa2 HTTP/1.1 204 0 - 0.932 ms
+[script-writer] ::1 - OPTIONS /api/character/bible/698ade51cc10eade9be42fa2 HTTP/1.1 204 0 - 0.427 ms
+[script-writer] ::1 - GET /api/bible HTTP/1.1 304 - - 16.892 ms
+[script-writer] ::1 - GET /api/scene/bible/698ade51cc10eade9be42fa2 HTTP/1.1 304 - - 17.302 ms
+[script-writer] ::1 - GET /api/character/bible/698ade51cc10eade9be42fa2 HTTP/1.1 304 - - 18.203 ms
+[script-writer] ::1 - GET /api/bible HTTP/1.1 304 - - 5.461 ms
+[script-writer] ::1 - GET /api/scene/bible/698ade51cc10eade9be42fa2 HTTP/1.1 304 - - 15.885 ms
+[script-writer] ::1 - GET /api/bible HTTP/1.1 304 - - 7.080 ms
+[script-writer] ::1 - GET /api/character/bible/698ade51cc10eade9be42fa2 HTTP/1.1 304 - - 15.880 ms
+[script-writer] ::1 - GET /api/bible HTTP/1.1 304 - - 7.554 ms
+[script-writer] ::1 - GET /api/character/bible/698ade51cc10eade9be42fa2 HTTP/1.1 304 - - 18.825 ms
+[script-writer] ::1 - GET /api/scene/bible/698ade51cc10eade9be42fa2 HTTP/1.1 304 - - 17.572 ms
+[script-writer] ::1 - GET /api/character/bible/698ade51cc10eade9be42fa2 HTTP/1.1 304 - - 10.638 ms
+[script-writer] ::1 - GET /api/scene/bible/698ade51cc10eade9be42fa2 HTTP/1.1 304 - - 7.643 ms
+[script-writer] ::1 - OPTIONS /api/ai/provider HTTP/1.1 204 0 - 0.555 ms
+[script-writer] ::1 - OPTIONS /api/script/templates HTTP/1.1 204 0 - 0.531 ms
+[script-writer] ::1 - OPTIONS /api/script/history HTTP/1.1 204 0 - 0.362 ms
+[script-writer] ::1 - OPTIONS /api/treatment/bible/698ade51cc10eade9be42fa2 HTTP/1.1 204 0 - 0.385 ms
+[script-writer] ::1 - GET /api/ai/provider HTTP/1.1 304 - - 1.738 ms
+[script-writer] ::1 - OPTIONS /api/script/history HTTP/1.1 204 0 - 1.371 ms
+[script-writer] ::1 - OPTIONS /api/treatment/bible/698ade51cc10eade9be42fa2 HTTP/1.1 204 0 - 0.423 ms
+[script-writer] ::1 - GET /api/script/templates HTTP/1.1 304 - - 1.953 ms
+[script-writer] ::1 - GET /api/ai/provider HTTP/1.1 304 - - 2.191 ms
+[script-writer] ::1 - GET /api/character/bible/698ade51cc10eade9be42fa2 HTTP/1.1 304 - - 27.572 ms
+[script-writer] ::1 - GET /api/script/history HTTP/1.1 304 - - 21.980 ms
+[script-writer] ::1 - GET /api/script/templates HTTP/1.1 304 - - 1.326 ms
+[script-writer] ::1 - GET /api/treatment/bible/698ade51cc10eade9be42fa2 HTTP/1.1 304 - - 31.179 ms
+[script-writer] ::1 - GET /api/script/history HTTP/1.1 304 - - 10.887 ms
+[script-writer] ::1 - GET /api/character/bible/698ade51cc10eade9be42fa2 HTTP/1.1 304 - - 21.136 ms
+[script-writer] ::1 - GET /api/treatment/bible/698ade51cc10eade9be42fa2 HTTP/1.1 304 - - 9.150 ms
+[frontend] [2m4:51:34 pm[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mpage reload [39m[2msrc/stores/themeStore.ts[22m
+[script-writer] ::1 - OPTIONS /api/character/bible/698ade51cc10eade9be42fa2 HTTP/1.1 204 0 - 0.405 ms
+[script-writer] ::1 - OPTIONS /api/character/bible/698ade51cc10eade9be42fa2 HTTP/1.1 204 0 - 0.694 ms
+[script-writer] ::1 - GET /api/bible HTTP/1.1 304 - - 11.646 ms
+[script-writer] ::1 - GET /api/character/bible/698ade51cc10eade9be42fa2 HTTP/1.1 304 - - 17.362 ms
+[script-writer] ::1 - GET /api/scene/bible/698ade51cc10eade9be42fa2 HTTP/1.1 304 - - 12.803 ms
+[script-writer] ::1 - GET /api/bible HTTP/1.1 304 - - 6.492 ms
+[script-writer] ::1 - GET /api/character/bible/698ade51cc10eade9be42fa2 HTTP/1.1 304 - - 16.739 ms
+[script-writer] ::1 - GET /api/scene/bible/698ade51cc10eade9be42fa2 HTTP/1.1 304 - - 12.478 ms
+[script-writer] ::1 - GET /api/bible HTTP/1.1 304 - - 7.046 ms
+[script-writer] ::1 - GET /api/character/bible/698ade51cc10eade9be42fa2 HTTP/1.1 304 - - 9.128 ms
+[script-writer] ::1 - GET /api/bible HTTP/1.1 304 - - 7.161 ms
+[script-writer] ::1 - GET /api/scene/bible/698ade51cc10eade9be42fa2 HTTP/1.1 304 - - 15.269 ms
+[script-writer] ::1 - GET /api/character/bible/698ade51cc10eade9be42fa2 HTTP/1.1 304 - - 18.554 ms
+[script-writer] ::1 - GET /api/scene/bible/698ade51cc10eade9be42fa2 HTTP/1.1 304 - - 8.046 ms
+[script-writer] ::1 - OPTIONS /api/script/history HTTP/1.1 204 0 - 0.366 ms
+[script-writer] ::1 - OPTIONS /api/ai/provider HTTP/1.1 204 0 - 0.532 ms
+[script-writer] ::1 - OPTIONS /api/script/templates HTTP/1.1 204 0 - 0.334 ms
+[script-writer] ::1 - OPTIONS /api/treatment/bible/698ade51cc10eade9be42fa2 HTTP/1.1 204 0 - 0.370 ms
+[script-writer] ::1 - OPTIONS /api/ai/provider HTTP/1.1 204 0 - 0.354 ms
+[script-writer] ::1 - GET /api/ai/provider HTTP/1.1 304 - - 1.985 ms
+[script-writer] ::1 - OPTIONS /api/treatment/bible/698ade51cc10eade9be42fa2 HTTP/1.1 204 0 - 0.356 ms
+[script-writer] ::1 - GET /api/script/templates HTTP/1.1 304 - - 1.934 ms
+[script-writer] ::1 - GET /api/script/history HTTP/1.1 304 - - 20.612 ms
+[script-writer] ::1 - GET /api/ai/provider HTTP/1.1 304 - - 2.283 ms
+[script-writer] ::1 - GET /api/script/templates HTTP/1.1 304 - - 1.952 ms
+[script-writer] ::1 - GET /api/character/bible/698ade51cc10eade9be42fa2 HTTP/1.1 304 - - 32.552 ms
+[script-writer] ::1 - GET /api/script/history HTTP/1.1 304 - - 10.757 ms
+[script-writer] ::1 - GET /api/treatment/bible/698ade51cc10eade9be42fa2 HTTP/1.1 304 - - 26.453 ms
+[script-writer] ::1 - GET /api/character/bible/698ade51cc10eade9be42fa2 HTTP/1.1 304 - - 11.344 ms
+[script-writer] ::1 - GET /api/treatment/bible/698ade51cc10eade9be42fa2 HTTP/1.1 304 - - 6.782 ms
+[frontend] [2m4:53:30 pm[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/Projects.tsx, /src/index.css[22m
+[frontend] [2m4:53:34 pm[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/Dashboard.tsx, /src/index.css[22m
+[frontend] [2m4:53:40 pm[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/components/ui/Modal.tsx, /src/index.css[22m
+[frontend] [2m4:53:44 pm[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/components/ui/Toast.tsx, /src/index.css[22m
+[script-writer] ::1 - OPTIONS /api/character/bible/698ade51cc10eade9be42fa2 HTTP/1.1 204 0 - 2.380 ms
+[script-writer] ::1 - OPTIONS /api/character/bible/698ade51cc10eade9be42fa2 HTTP/1.1 204 0 - 0.279 ms
+[script-writer] ::1 - OPTIONS /api/character/bible/698ade51cc10eade9be42fa2 HTTP/1.1 204 0 - 0.285 ms
+[script-writer] ::1 - OPTIONS /api/character/bible/698ade51cc10eade9be42fa2 HTTP/1.1 204 0 - 0.365 ms
+[script-writer] ::1 - GET /api/bible HTTP/1.1 304 - - 45.205 ms
+[script-writer] ::1 - GET /api/scene/bible/698ade51cc10eade9be42fa2 HTTP/1.1 304 - - 30.833 ms
+[script-writer] ::1 - GET /api/character/bible/698ade51cc10eade9be42fa2 HTTP/1.1 304 - - 25.740 ms
+[script-writer] ::1 - GET /api/bible HTTP/1.1 304 - - 8.367 ms
+[script-writer] ::1 - GET /api/bible HTTP/1.1 304 - - 6.871 ms
+[script-writer] ::1 - GET /api/character/bible/698ade51cc10eade9be42fa2 HTTP/1.1 304 - - 15.962 ms
+[script-writer] ::1 - GET /api/scene/bible/698ade51cc10eade9be42fa2 HTTP/1.1 304 - - 13.918 ms
+[script-writer] ::1 - GET /api/bible HTTP/1.1 304 - - 10.272 ms
+[script-writer] ::1 - GET /api/character/bible/698ade51cc10eade9be42fa2 HTTP/1.1 304 - - 16.045 ms
+[script-writer] ::1 - GET /api/scene/bible/698ade51cc10eade9be42fa2 HTTP/1.1 304 - - 13.752 ms
+[script-writer] ::1 - GET /api/character/bible/698ade51cc10eade9be42fa2 HTTP/1.1 304 - - 7.384 ms
+[script-writer] ::1 - GET /api/scene/bible/698ade51cc10eade9be42fa2 HTTP/1.1 304 - - 8.666 ms
+[script-writer] ::1 - OPTIONS /api/ai/provider HTTP/1.1 204 0 - 0.574 ms
+[script-writer] ::1 - OPTIONS /api/script/templates HTTP/1.1 204 0 - 0.316 ms
+[script-writer] ::1 - OPTIONS /api/script/history HTTP/1.1 204 0 - 0.500 ms
+[script-writer] ::1 - GET /api/ai/provider HTTP/1.1 304 - - 2.176 ms
+[script-writer] ::1 - OPTIONS /api/treatment/bible/698ade51cc10eade9be42fa2 HTTP/1.1 204 0 - 0.580 ms
+[script-writer] ::1 - GET /api/script/templates HTTP/1.1 304 - - 2.654 ms
+[script-writer] ::1 - OPTIONS /api/treatment/bible/698ade51cc10eade9be42fa2 HTTP/1.1 204 0 - 0.258 ms
+[script-writer] ::1 - OPTIONS /api/script/history HTTP/1.1 204 0 - 2.133 ms
+[script-writer] ::1 - GET /api/ai/provider HTTP/1.1 304 - - 1.932 ms
+[script-writer] ::1 - GET /api/character/bible/698ade51cc10eade9be42fa2 HTTP/1.1 304 - - 31.261 ms
+[script-writer] ::1 - GET /api/script/templates HTTP/1.1 304 - - 2.037 ms
+[script-writer] ::1 - GET /api/script/history HTTP/1.1 304 - - 21.420 ms
+[script-writer] ::1 - GET /api/treatment/bible/698ade51cc10eade9be42fa2 HTTP/1.1 304 - - 24.230 ms
+[script-writer] ::1 - GET /api/character/bible/698ade51cc10eade9be42fa2 HTTP/1.1 304 - - 9.317 ms
+[script-writer] ::1 - GET /api/script/history HTTP/1.1 304 - - 14.976 ms
+[script-writer] ::1 - GET /api/treatment/bible/698ade51cc10eade9be42fa2 HTTP/1.1 304 - - 11.165 ms
+[script-writer] ::1 - OPTIONS /api/character/bible/698ade51cc10eade9be42fa2 HTTP/1.1 204 0 - 22.475 ms
+[script-writer] ::1 - OPTIONS /api/character/bible/698ade51cc10eade9be42fa2 HTTP/1.1 204 0 - 0.479 ms
+[script-writer] ::1 - OPTIONS /api/character/bible/698ade51cc10eade9be42fa2 HTTP/1.1 204 0 - 0.443 ms
+[script-writer] ::1 - OPTIONS /api/character/bible/698ade51cc10eade9be42fa2 HTTP/1.1 204 0 - 0.386 ms
+[script-writer] ::1 - GET /api/bible HTTP/1.1 304 - - 43.581 ms
+[script-writer] ::1 - GET /api/character/bible/698ade51cc10eade9be42fa2 HTTP/1.1 304 - - 112.579 ms
+[script-writer] ::1 - GET /api/scene/bible/698ade51cc10eade9be42fa2 HTTP/1.1 304 - - 48.582 ms
+[script-writer] ::1 - GET /api/bible HTTP/1.1 304 - - 14.705 ms
+[script-writer] ::1 - GET /api/character/bible/698ade51cc10eade9be42fa2 HTTP/1.1 304 - - 20.872 ms
+[script-writer] ::1 - GET /api/scene/bible/698ade51cc10eade9be42fa2 HTTP/1.1 304 - - 17.185 ms
+[script-writer] ::1 - GET /api/bible HTTP/1.1 304 - - 19.630 ms
+[script-writer] ::1 - GET /api/character/bible/698ade51cc10eade9be42fa2 HTTP/1.1 304 - - 30.053 ms
+[script-writer] ::1 - GET /api/scene/bible/698ade51cc10eade9be42fa2 HTTP/1.1 304 - - 29.049 ms
+[script-writer] ::1 - GET /api/bible HTTP/1.1 304 - - 12.609 ms
+[script-writer] ::1 - GET /api/character/bible/698ade51cc10eade9be42fa2 HTTP/1.1 304 - - 21.046 ms
+[script-writer] ::1 - GET /api/scene/bible/698ade51cc10eade9be42fa2 HTTP/1.1 304 - - 10.891 ms
+[script-writer] ::1 - OPTIONS /api/ai/provider HTTP/1.1 204 0 - 0.452 ms
+[script-writer] ::1 - OPTIONS /api/script/templates HTTP/1.1 204 0 - 0.548 ms
+[script-writer] ::1 - GET /api/ai/provider HTTP/1.1 304 - - 8.213 ms
+[script-writer] ::1 - OPTIONS /api/script/history HTTP/1.1 204 0 - 0.417 ms
+[script-writer] ::1 - GET /api/script/templates HTTP/1.1 304 - - 5.558 ms
+[script-writer] ::1 - OPTIONS /api/treatment/bible/698ade51cc10eade9be42fa2 HTTP/1.1 204 0 - 0.575 ms
+[script-writer] ::1 - OPTIONS /api/script/history HTTP/1.1 204 0 - 1.090 ms
+[script-writer] ::1 - GET /api/character/bible/698ade51cc10eade9be42fa2 HTTP/1.1 304 - - 59.842 ms
+[script-writer] ::1 - OPTIONS /api/treatment/bible/698ade51cc10eade9be42fa2 HTTP/1.1 204 0 - 0.626 ms
+[script-writer] ::1 - GET /api/ai/provider HTTP/1.1 304 - - 5.669 ms
+[script-writer] ::1 - GET /api/script/templates HTTP/1.1 304 - - 7.004 ms
+[script-writer] ::1 - GET /api/treatment/bible/698ade51cc10eade9be42fa2 HTTP/1.1 304 - - 50.906 ms
+[script-writer] ::1 - GET /api/character/bible/698ade51cc10eade9be42fa2 HTTP/1.1 304 - - 12.492 ms
+[script-writer] ::1 - GET /api/script/history HTTP/1.1 304 - - 57.851 ms
+[script-writer] ::1 - GET /api/treatment/bible/698ade51cc10eade9be42fa2 HTTP/1.1 304 - - 32.306 ms
+[script-writer] ::1 - GET /api/script/history HTTP/1.1 304 - - 15.945 ms
+[script-writer] ::1 - GET /api/bible HTTP/1.1 200 518 - 27.745 ms
+[script-writer] ::1 - GET /api/bible HTTP/1.1 304 - - 4.592 ms
+[script-writer] ::1 - GET /api/bible HTTP/1.1 304 - - 4.309 ms
+[script-writer] ::1 - GET /api/bible HTTP/1.1 304 - - 4.224 ms
+[script-writer] ::1 - OPTIONS /api/character/bible/698ade51cc10eade9be42fa2 HTTP/1.1 204 0 - 0.532 ms
+[script-writer] ::1 - OPTIONS /api/character/bible/698ade51cc10eade9be42fa2 HTTP/1.1 204 0 - 0.491 ms
+[script-writer] ::1 - GET /api/bible HTTP/1.1 304 - - 9.489 ms
+[script-writer] ::1 - GET /api/character/bible/698ade51cc10eade9be42fa2 HTTP/1.1 200 427 - 23.263 ms
+[script-writer] ::1 - GET /api/bible HTTP/1.1 304 - - 8.381 ms
+[script-writer] ::1 - GET /api/character/bible/698ade51cc10eade9be42fa2 HTTP/1.1 304 - - 8.550 ms
+[script-writer] ::1 - GET /api/scene/bible/698ade51cc10eade9be42fa2 HTTP/1.1 200 - - 21.947 ms
+[script-writer] ::1 - GET /api/scene/bible/698ade51cc10eade9be42fa2 HTTP/1.1 304 - - 4.785 ms
+[script-writer] ::1 - OPTIONS /api/ai/provider HTTP/1.1 204 0 - 0.513 ms
+[script-writer] ::1 - OPTIONS /api/script/templates HTTP/1.1 204 0 - 0.322 ms
+[script-writer] ::1 - OPTIONS /api/script/history HTTP/1.1 204 0 - 0.359 ms
+[script-writer] ::1 - OPTIONS /api/treatment/bible/698ade51cc10eade9be42fa2 HTTP/1.1 204 0 - 0.423 ms
+[script-writer] ::1 - OPTIONS /api/ai/provider HTTP/1.1 204 0 - 0.384 ms
+[script-writer] ::1 - OPTIONS /api/script/templates HTTP/1.1 204 0 - 0.404 ms
+[script-writer] ::1 - OPTIONS /api/script/history HTTP/1.1 204 0 - 0.406 ms
+[script-writer] ::1 - GET /api/character/bible/698ade51cc10eade9be42fa2 HTTP/1.1 304 - - 17.283 ms
+[script-writer] ::1 - OPTIONS /api/treatment/bible/698ade51cc10eade9be42fa2 HTTP/1.1 204 0 - 0.292 ms
+[script-writer] ::1 - GET /api/ai/provider HTTP/1.1 200 45 - 1.436 ms
+[script-writer] ::1 - GET /api/script/templates HTTP/1.1 304 - - 2.416 ms
+[script-writer] ::1 - GET /api/ai/provider HTTP/1.1 304 - - 1.310 ms
+[script-writer] ::1 - GET /api/script/templates HTTP/1.1 304 - - 2.469 ms
+[script-writer] ::1 - GET /api/treatment/bible/698ade51cc10eade9be42fa2 HTTP/1.1 200 26 - 56.728 ms
+[script-writer] ::1 - GET /api/character/bible/698ade51cc10eade9be42fa2 HTTP/1.1 304 - - 54.667 ms
+[script-writer] ::1 - GET /api/script/history HTTP/1.1 200 - - 28.222 ms
+[script-writer] ::1 - GET /api/treatment/bible/698ade51cc10eade9be42fa2 HTTP/1.1 304 - - 16.641 ms
+[script-writer] ::1 - GET /api/script/history HTTP/1.1 304 - - 16.030 ms
+[frontend] [2m8:19:03 pm[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/index.css[22m
+[frontend] [2m8:19:45 pm[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/index.css[22m
+[frontend] [2m8:20:25 pm[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/components/layout/Layout.tsx, /src/index.css[22m
+[frontend] [2m8:20:32 pm[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32m✨ new dependencies optimized: [33mreact-swipeable, react-device-detect[32m[39m
+[frontend] [2m8:20:32 pm[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32m✨ optimized dependencies changed. reloading[39m
+[script-writer] ::1 - OPTIONS /api/character/bible/698ade51cc10eade9be42fa2 HTTP/1.1 204 0 - 4.460 ms
+[script-writer] ::1 - OPTIONS /api/character/bible/698ade51cc10eade9be42fa2 HTTP/1.1 204 0 - 0.639 ms
+[script-writer] ::1 - OPTIONS /api/character/bible/698ade51cc10eade9be42fa2 HTTP/1.1 204 0 - 1.920 ms
+[script-writer] ::1 - OPTIONS /api/character/bible/698ade51cc10eade9be42fa2 HTTP/1.1 204 0 - 0.791 ms
+[script-writer] ::1 - GET /api/bible HTTP/1.1 304 - - 250.804 ms
+[script-writer] ::1 - GET /api/scene/bible/698ade51cc10eade9be42fa2 HTTP/1.1 304 - - 90.962 ms
+[script-writer] ::1 - GET /api/character/bible/698ade51cc10eade9be42fa2 HTTP/1.1 304 - - 75.076 ms
+[script-writer] ::1 - GET /api/bible HTTP/1.1 304 - - 20.000 ms
+[script-writer] ::1 - GET /api/scene/bible/698ade51cc10eade9be42fa2 HTTP/1.1 304 - - 21.513 ms
+[script-writer] ::1 - GET /api/bible HTTP/1.1 304 - - 13.825 ms
+[script-writer] ::1 - GET /api/character/bible/698ade51cc10eade9be42fa2 HTTP/1.1 304 - - 23.315 ms
+[script-writer] ::1 - GET /api/character/bible/698ade51cc10eade9be42fa2 HTTP/1.1 304 - - 33.149 ms
+[script-writer] ::1 - GET /api/bible HTTP/1.1 304 - - 29.153 ms
+[script-writer] ::1 - GET /api/scene/bible/698ade51cc10eade9be42fa2 HTTP/1.1 304 - - 41.553 ms
+[script-writer] ::1 - GET /api/character/bible/698ade51cc10eade9be42fa2 HTTP/1.1 304 - - 17.155 ms
+[script-writer] ::1 - GET /api/scene/bible/698ade51cc10eade9be42fa2 HTTP/1.1 304 - - 8.563 ms
+[script-writer] ::1 - OPTIONS /api/ai/provider HTTP/1.1 204 0 - 0.481 ms
+[script-writer] ::1 - OPTIONS /api/script/templates HTTP/1.1 204 0 - 0.370 ms
+[script-writer] ::1 - OPTIONS /api/script/history HTTP/1.1 204 0 - 0.376 ms
+[script-writer] ::1 - OPTIONS /api/treatment/bible/698ade51cc10eade9be42fa2 HTTP/1.1 204 0 - 0.379 ms
+[script-writer] ::1 - GET /api/ai/provider HTTP/1.1 304 - - 4.223 ms
+[script-writer] ::1 - GET /api/script/templates HTTP/1.1 304 - - 3.244 ms
+[script-writer] ::1 - OPTIONS /api/script/history HTTP/1.1 204 0 - 0.545 ms
+[script-writer] ::1 - OPTIONS /api/treatment/bible/698ade51cc10eade9be42fa2 HTTP/1.1 204 0 - 0.510 ms
+[script-writer] ::1 - OPTIONS /api/script/templates HTTP/1.1 204 0 - 0.430 ms
+[script-writer] ::1 - GET /api/character/bible/698ade51cc10eade9be42fa2 HTTP/1.1 304 - - 49.787 ms
+[script-writer] ::1 - GET /api/ai/provider HTTP/1.1 304 - - 2.371 ms
+[script-writer] ::1 - GET /api/script/templates HTTP/1.1 304 - - 2.500 ms
+[script-writer] ::1 - GET /api/script/history HTTP/1.1 304 - - 52.209 ms
+[script-writer] ::1 - GET /api/treatment/bible/698ade51cc10eade9be42fa2 HTTP/1.1 304 - - 46.660 ms
+[script-writer] ::1 - GET /api/character/bible/698ade51cc10eade9be42fa2 HTTP/1.1 304 - - 36.671 ms
+[script-writer] ::1 - GET /api/script/history HTTP/1.1 304 - - 23.025 ms
+[script-writer] ::1 - GET /api/treatment/bible/698ade51cc10eade9be42fa2 HTTP/1.1 304 - - 23.758 ms
+[frontend] [2m8:20:42 pm[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/index.css[22m
+[frontend] [2m8:21:04 pm[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/index.css, /src/components/ui/Button.tsx[22m
+[frontend] [2m8:21:12 pm[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/index.css, /src/components/ui/Input.tsx[22m
+[frontend] [2m8:21:19 pm[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/index.css, /src/components/ui/Select.tsx[22m
+[frontend] [2m8:21:29 pm[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/components/ui/Modal.tsx, /src/index.css[22m
+[frontend] [2m8:21:38 pm[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/index.css[22m
+[frontend] [2m8:22:07 pm[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/index.css[22m
+[frontend] [2m8:22:20 pm[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/components/layout/Layout.tsx, /src/index.css[22m
+[frontend] [2m8:29:36 pm[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/DSATracking.tsx, /src/index.css[22m
+[frontend] [2m8:29:37 pm[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/DSATracking.tsx, /src/index.css[22m
+[frontend] [2m8:29:49 pm[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/BackendTopics.tsx, /src/index.css[22m
+[frontend] [2m8:29:54 pm[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/BackendTopics.tsx, /src/index.css[22m
+[frontend] [2m8:30:08 pm[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/Projects.tsx, /src/index.css[22m
+[frontend] [2m8:30:13 pm[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/index.css[22m
+[frontend] [2m8:30:20 pm[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/Dashboard.tsx, /src/index.css[22m
+[frontend] [2m8:30:27 pm[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/Interview/InterviewHistory.tsx, /src/index.css[22m
+[frontend] [2m8:30:35 pm[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/Interview/InterviewSetup.tsx, /src/index.css[22m
+[frontend] [2m8:30:56 pm[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/Interview/InterviewRoom.tsx, /src/index.css[22m
+[frontend] [2m8:31:18 pm[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/ChatPage.tsx, /src/index.css[22m
+[frontend] [2m8:31:24 pm[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/ChatPage.tsx, /src/index.css[22m
+[frontend] [2m8:32:03 pm[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/Settings.tsx, /src/index.css[22m
+[frontend] [2m8:32:10 pm[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/Settings.tsx, /src/index.css[22m
+[frontend] [2m8:32:59 pm[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/index.css, /src/components/forms/QuickLog.tsx[22m
+[frontend] [2m8:33:13 pm[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/index.css, /src/components/forms/QuickLog.tsx[22m
+[frontend] [2m8:33:26 pm[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/index.css, /src/components/forms/BackendTopicForm.tsx[22m
+[frontend] [2m8:33:34 pm[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/index.css, /src/components/forms/DSAProblemForm.tsx[22m
+[frontend] [2m8:33:45 pm[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/index.css, /src/components/forms/ProjectStudyForm.tsx[22m
+[frontend] [2m8:33:52 pm[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/index.css, /src/components/forms/ProjectStudyForm.tsx[22m
+[frontend] [2m8:34:08 pm[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/index.css, /src/components/modals/ViewProblemModal.tsx[22m
+[frontend] [2m8:34:22 pm[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/components/GlobalAIWidget.tsx, /src/index.css[22m
+[frontend] [2m8:34:31 pm[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/index.css, /src/components/ui/DeleteModal.tsx[22m
+[frontend] [2m8:34:40 pm[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/index.css, /src/components/ui/AlertDialog.tsx[22m
+[frontend] [2m8:34:49 pm[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/index.css, /src/components/ui/ConfirmDialog.tsx[22m
+[frontend] [2m8:35:22 pm[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/Roadmap/Roadmap.tsx, /src/index.css[22m
+[frontend] [2m8:35:33 pm[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/Roadmap/Roadmap.tsx, /src/index.css[22m
+[frontend] [2m8:36:23 pm[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/index.css[22m
+[frontend] [2m8:36:35 pm[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/index.css[22m
+[frontend] [2m8:36:56 pm[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/index.css[22m
+[frontend] [2m8:37:07 pm[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/index.css[22m
+[frontend] [2m8:37:19 pm[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/index.css[22m
+[frontend] [2m8:37:31 pm[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/index.css[22m
+[frontend] [2m8:37:41 pm[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/index.css[22m
+[frontend] [2m8:37:58 pm[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/index.css[22m
+[frontend] [2m8:38:25 pm[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/index.css[22m
+[frontend] [2m8:38:40 pm[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/index.css[22m
+[frontend] [2m8:38:57 pm[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/index.css[22m
+[frontend] [2m8:44:45 pm[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/index.css[22m
+[frontend] [2m8:48:44 pm[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/index.css, /src/components/layout/Layout.tsx, /src/pages/ChatPage.tsx, /src/pages/Roadmap/Roadmap.tsx[22m
+[frontend] [2m8:48:49 pm[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32m✨ new dependencies optimized: [33m@use-gesture/react[32m[39m
+[frontend] [2m8:48:49 pm[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32m✨ optimized dependencies changed. reloading[39m
+[frontend] [2m8:56:34 pm[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/index.css[22m
+[frontend] [2m9:04:18 pm[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/index.css, /src/components/layout/BottomNav.tsx[22m
+[frontend] [2m9:13:04 pm[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/components/layout/Layout.tsx, /src/index.css[22m
+[frontend] [2m9:17:22 pm[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/index.css[22m
+[frontend] [2m9:20:19 pm[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/index.css, /src/components/ui/Button.tsx[22m
+[frontend] [2m9:20:20 pm[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [33mhmr invalidate [39m[2m/src/components/ui/Button.tsx[22m Could not Fast Refresh (new export)
+[frontend] [2m9:20:20 pm[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/components/forms/QuickLog.tsx, /src/components/ui/DeleteModal.tsx, /src/components/ui/AlertDialog.tsx, /src/pages/DSATracking.tsx, /src/components/ui/EmptyState.tsx, /src/components/forms/DSAProblemForm.tsx, /src/components/modals/ViewProblemModal.tsx, /src/pages/BackendTopics.tsx, /src/components/forms/BackendTopicForm.tsx, /src/pages/Projects.tsx, /src/components/forms/ProjectStudyForm.tsx, /src/components/ui/ConfirmDialog.tsx, /src/pages/Settings.tsx[22m
+[frontend] [2m9:23:01 pm[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/index.css, /src/components/ui/Input.tsx[22m
+[frontend] [2m9:28:47 pm[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/index.css, /src/components/ui/Select.tsx[22m
+[frontend] [2m9:30:24 pm[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/index.css, /src/components/ui/Button.tsx[22m
+[frontend] [2m9:31:33 pm[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/index.css[22m
+[frontend] [2m9:33:38 pm[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/components/ui/Modal.tsx, /src/index.css[22m
+[frontend] [2m9:33:39 pm[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [33mhmr invalidate [39m[2m/src/components/ui/Modal.tsx[22m Could not Fast Refresh (new export)
+[frontend] [2m9:33:39 pm[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/components/ui/ShortcutsModal.tsx, /src/components/ui/DeleteModal.tsx, /src/components/ui/AlertDialog.tsx, /src/pages/DSATracking.tsx, /src/components/ui/SRSInfoModal.tsx, /src/pages/BackendTopics.tsx, /src/pages/Projects.tsx, /src/components/ui/ConfirmDialog.tsx[22m
+[frontend] [2m9:58:33 pm[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/index.css[22m
+[frontend] [2m10:28:41 pm[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/components/layout/Layout.tsx, /src/index.css[22m
+[frontend] [2m10:28:55 pm[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/components/layout/Layout.tsx, /src/index.css[22m
+[frontend] [2m10:30:06 pm[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/index.css[22m
+[frontend] [2m10:31:23 pm[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/index.css[22m
+[frontend] [2m10:31:55 pm[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/index.css[22m
+[frontend] [2m10:32:34 pm[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/index.css, /src/components/layout/Layout.tsx, /src/pages/ChatPage.tsx, /src/pages/Roadmap/Roadmap.tsx, /src/components/layout/BottomNav.tsx, /src/components/ui/Button.tsx, /src/components/ui/Modal.tsx, /src/components/ui/Input.tsx, /src/components/ui/Select.tsx[22m
+[frontend] [2m10:32:56 pm[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/index.css, /src/components/ui/Select.tsx[22m
+[frontend] [2m10:33:18 pm[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/components/ui/Modal.tsx, /src/index.css[22m
+[frontend] [2m10:34:55 pm[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/index.css[22m
+[frontend] [2m10:36:51 pm[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/index.css[22m
+[frontend] [2m10:41:38 pm[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/index.css[22m
+[frontend] [2m10:43:10 pm[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/index.css, /src/components/ui/Select.tsx[22m
+[frontend] [2m10:44:54 pm[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/index.css[22m
+[frontend] [2m10:45:35 pm[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/index.css[22m
+[backend] 11:05:44 pm [tsx] change in ./src\routes\chat.ts Restarting...
+[backend] c[db] MongoDB connected: localhost
+[backend] [server] Learning OS backend running on http://localhost:5000
+[backend] [server] Health check: http://localhost:5000/health
+[frontend] [2m11:18:01 pm[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/components/ui/Toast.tsx, /src/index.css[22m
+[frontend] [2m11:18:10 pm[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/index.css, /src/components/ui/Input.tsx[22m
+[frontend] [2m11:18:51 pm[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/components/layout/Layout.tsx, /src/index.css[22m
+[frontend] [2m11:18:58 pm[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/components/layout/Layout.tsx, /src/index.css[22m
+[frontend] [2m11:19:46 pm[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/ChatPage.tsx, /src/index.css[22m
+[frontend] [2m11:20:03 pm[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/index.css[22m
+[frontend] [2m11:20:11 pm[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/index.css[22m
+[frontend] [2m11:27:40 pm[22m [36m[1m[vite][22m[39m [32mvite.config.ts changed, restarting server...[39m
+[frontend] [2m11:27:40 pm[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m Re-optimizing dependencies because vite config has changed
+[frontend] [2m11:27:40 pm[22m [36m[1m[vite][22m[39m server restarted.
+[frontend] [2m11:27:48 pm[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/App.tsx, /src/index.css[22m
+[frontend] [2m11:29:16 pm[22m [36m[1m[vite][22m[39m [32mvite.config.ts changed, restarting server...[39m
+[frontend] [2m11:29:16 pm[22m [36m[1m[vite][22m[39m server restarted.
+[frontend] [2m11:30:11 pm[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/App.tsx, /src/index.css[22m
+[frontend] [2m11:30:56 pm[22m [36m[1m[vite][22m[39m [32mvite.config.ts changed, restarting server...[39m
+[frontend] [2m11:30:56 pm[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m Re-optimizing dependencies because vite config has changed
+[frontend] [2m11:30:56 pm[22m [36m[1m[vite][22m[39m server restarted.
+[script-writer] ::1 - GET /api/bible HTTP/1.1 304 - - 46.543 ms
+[script-writer] ::1 - GET /api/bible HTTP/1.1 304 - - 4.756 ms
+[script-writer] ::1 - GET /api/bible HTTP/1.1 304 - - 4.167 ms
+[script-writer] ::1 - GET /api/bible HTTP/1.1 304 - - 5.086 ms
+[script-writer] ::1 - OPTIONS /api/character/bible/698ade51cc10eade9be42fa2 HTTP/1.1 204 0 - 0.456 ms
+[script-writer] ::1 - OPTIONS /api/character/bible/698ade51cc10eade9be42fa2 HTTP/1.1 204 0 - 0.354 ms
+[script-writer] ::1 - GET /api/bible HTTP/1.1 304 - - 8.788 ms
+[script-writer] ::1 - GET /api/character/bible/698ade51cc10eade9be42fa2 HTTP/1.1 304 - - 14.991 ms
+[script-writer] ::1 - GET /api/scene/bible/698ade51cc10eade9be42fa2 HTTP/1.1 304 - - 11.295 ms
+[script-writer] ::1 - GET /api/bible HTTP/1.1 304 - - 5.282 ms
+[script-writer] ::1 - GET /api/character/bible/698ade51cc10eade9be42fa2 HTTP/1.1 304 - - 11.433 ms
+[script-writer] ::1 - GET /api/scene/bible/698ade51cc10eade9be42fa2 HTTP/1.1 304 - - 7.681 ms
+[script-writer] ::1 - OPTIONS /api/ai/provider HTTP/1.1 204 0 - 0.579 ms
+[script-writer] ::1 - OPTIONS /api/script/templates HTTP/1.1 204 0 - 0.374 ms
+[script-writer] ::1 - OPTIONS /api/script/history HTTP/1.1 204 0 - 0.570 ms
+[script-writer] ::1 - GET /api/script/templates HTTP/1.1 304 - - 1.999 ms
+[script-writer] ::1 - OPTIONS /api/treatment/bible/698ade51cc10eade9be42fa2 HTTP/1.1 204 0 - 2.031 ms
+[script-writer] ::1 - GET /api/ai/provider HTTP/1.1 304 - - 1.641 ms
+[script-writer] ::1 - OPTIONS /api/script/history HTTP/1.1 204 0 - 0.289 ms
+[script-writer] ::1 - OPTIONS /api/treatment/bible/698ade51cc10eade9be42fa2 HTTP/1.1 204 0 - 0.243 ms
+[script-writer] ::1 - GET /api/script/templates HTTP/1.1 304 - - 1.932 ms
+[script-writer] ::1 - GET /api/ai/provider HTTP/1.1 304 - - 2.016 ms
+[script-writer] ::1 - GET /api/character/bible/698ade51cc10eade9be42fa2 HTTP/1.1 304 - - 33.946 ms
+[script-writer] ::1 - GET /api/script/history HTTP/1.1 304 - - 22.556 ms
+[script-writer] ::1 - GET /api/treatment/bible/698ade51cc10eade9be42fa2 HTTP/1.1 304 - - 29.192 ms
+[script-writer] ::1 - GET /api/script/history HTTP/1.1 304 - - 12.884 ms
+[script-writer] ::1 - GET /api/character/bible/698ade51cc10eade9be42fa2 HTTP/1.1 304 - - 19.768 ms
+[script-writer] ::1 - GET /api/treatment/bible/698ade51cc10eade9be42fa2 HTTP/1.1 304 - - 8.271 ms
+[frontend] [2m11:46:17 pm[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/components/ui/Toast.tsx, /src/index.css[22m
+[frontend] [2m11:46:23 pm[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/index.css[22m
+[frontend] [2m11:46:29 pm[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/components/layout/Layout.tsx, /src/index.css[22m
+[frontend] [2m11:46:40 pm[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/index.css, /src/components/ui/Input.tsx[22m
+[frontend] [2m11:46:55 pm[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/ChatPage.tsx, /src/index.css[22m
+[frontend] [2m11:47:07 pm[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/ChatPage.tsx, /src/index.css[22m
+[frontend] [2m11:47:12 pm[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/index.css[22m
+[frontend] [2m11:47:23 pm[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/index.css, /src/components/layout/BottomNav.tsx[22m
+[backend] 11:47:43 pm [tsx] change in ./src\routes\chat.ts Restarting...
+[backend] c[db] MongoDB connected: localhost
+[backend] [server] Learning OS backend running on http://localhost:5000
+[backend] [server] Health check: http://localhost:5000/health
+[frontend] [2m11:48:25 pm[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/index.css, /src/components/ui/Input.tsx[22m
+[frontend] [2m11:48:53 pm[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/index.css, /src/components/ui/Input.tsx[22m
+[frontend] [2m11:59:52 pm[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/index.css[22m
+[frontend] [2m12:00:36 am[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/ChatPage.tsx, /src/index.css[22m
+[frontend] [2m12:12:03 am[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/index.css, /src/components/layout/BottomNav.tsx[22m
+[frontend] [2m12:12:10 am[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/index.css[22m
+[frontend] [2m12:13:09 am[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/components/layout/Layout.tsx, /src/index.css[22m
+[frontend] [2m12:13:09 am[22m [31m[1m[vite][22m[39m [31mInternal server error: P:\Time pass\New folder\learning-os\frontend\src\components\layout\Layout.tsx: Unexpected token, expected "," (451:16)
+[frontend] 
+[frontend] [0m [90m 449 |[31m                 [33m<[31m[33m/[31m[33maside[31m[33m>[31m
+[frontend]  [90m 450 |[31m
+[frontend] [31m[1m>[22m[31m[90m 451 |[31m                 {[90m/* Drawer Overlay for Mobile */[31m}
+[frontend]  [90m     |[31m                 [31m[1m^[22m[31m
+[frontend]  [90m 452 |[31m                 [33m<[31m[33mAnimatePresence[31m initial[33m=[31m{[36mfalse[31m}[33m>[31m
+[frontend]  [90m 453 |[31m                     {isMobile [33m&&[31m isDrawerOpen [33m&&[31m (
+[frontend]  [90m 454 |[31m                         [33m<[31m[33mmotion[31m[33m.[31mdiv[0m[39m
+[frontend]   Plugin: [35mvite:react-babel[39m
+[frontend]   File: [36mP:/Time pass/New folder/learning-os/frontend/src/components/layout/Layout.tsx[39m:451:16
+[frontend] [33m  449 |                  </aside>
+[frontend]   450 |  
+[frontend]   451 |                  {/* Drawer Overlay for Mobile */}
+[frontend]       |                  ^
+[frontend]   452 |                  <AnimatePresence initial={false}>
+[frontend]   453 |                      {isMobile && isDrawerOpen && ([39m
+[frontend]       at constructor (P:\Time pass\New folder\learning-os\frontend\node_modules\@babel\parser\lib\index.js:365:19)
+[frontend]       at TypeScriptParserMixin.raise (P:\Time pass\New folder\learning-os\frontend\node_modules\@babel\parser\lib\index.js:6599:19)
+[frontend]       at TypeScriptParserMixin.unexpected (P:\Time pass\New folder\learning-os\frontend\node_modules\@babel\parser\lib\index.js:6619:16)
+[frontend]       at TypeScriptParserMixin.expect (P:\Time pass\New folder\learning-os\frontend\node_modules\@babel\parser\lib\index.js:6899:12)
+[frontend]       at TypeScriptParserMixin.parseParenAndDistinguishExpression (P:\Time pass\New folder\learning-os\frontend\node_modules\@babel\parser\lib\index.js:11651:14)
+[frontend]       at TypeScriptParserMixin.parseExprAtom (P:\Time pass\New folder\learning-os\frontend\node_modules\@babel\parser\lib\index.js:11321:23)
+[frontend]       at TypeScriptParserMixin.parseExprAtom (P:\Time pass\New folder\learning-os\frontend\node_modules\@babel\parser\lib\index.js:4764:20)
+[frontend]       at TypeScriptParserMixin.parseExprSubscripts (P:\Time pass\New folder\learning-os\frontend\node_modules\@babel\parser\lib\index.js:11071:23)
+[frontend]       at TypeScriptParserMixin.parseUpdate (P:\Time pass\New folder\learning-os\frontend\node_modules\@babel\parser\lib\index.js:11056:21)
+[frontend]       at TypeScriptParserMixin.parseMaybeUnary (P:\Time pass\New folder\learning-os\frontend\node_modules\@babel\parser\lib\index.js:11036:23)
+[frontend]       at TypeScriptParserMixin.parseMaybeUnary (P:\Time pass\New folder\learning-os\frontend\node_modules\@babel\parser\lib\index.js:9827:18)
+[frontend]       at TypeScriptParserMixin.parseMaybeUnaryOrPrivate (P:\Time pass\New folder\learning-os\frontend\node_modules\@babel\parser\lib\index.js:10889:61)
+[frontend]       at TypeScriptParserMixin.parseExprOpBaseRightExpr (P:\Time pass\New folder\learning-os\frontend\node_modules\@babel\parser\lib\index.js:10976:34)
+[frontend]       at TypeScriptParserMixin.parseExprOpRightExpr (P:\Time pass\New folder\learning-os\frontend\node_modules\@babel\parser\lib\index.js:10971:21)
+[frontend]       at TypeScriptParserMixin.parseExprOp (P:\Time pass\New folder\learning-os\frontend\node_modules\@babel\parser\lib\index.js:10937:27)
+[frontend]       at TypeScriptParserMixin.parseExprOp (P:\Time pass\New folder\learning-os\frontend\node_modules\@babel\parser\lib\index.js:9306:18)
+[frontend]       at TypeScriptParserMixin.parseExprOps (P:\Time pass\New folder\learning-os\frontend\node_modules\@babel\parser\lib\index.js:10898:17)
+[frontend]       at TypeScriptParserMixin.parseMaybeConditional (P:\Time pass\New folder\learning-os\frontend\node_modules\@babel\parser\lib\index.js:10871:23)
+[frontend]       at TypeScriptParserMixin.parseMaybeAssign (P:\Time pass\New folder\learning-os\frontend\node_modules\@babel\parser\lib\index.js:10821:21)
+[frontend]       at TypeScriptParserMixin.parseMaybeAssign (P:\Time pass\New folder\learning-os\frontend\node_modules\@babel\parser\lib\index.js:9776:20)
+[frontend]       at TypeScriptParserMixin.parseExpressionBase (P:\Time pass\New folder\learning-os\frontend\node_modules\@babel\parser\lib\index.js:10774:23)
+[frontend]       at P:\Time pass\New folder\learning-os\frontend\node_modules\@babel\parser\lib\index.js:10770:39
+[frontend]       at TypeScriptParserMixin.allowInAnd (P:\Time pass\New folder\learning-os\frontend\node_modules\@babel\parser\lib\index.js:12416:12)
+[frontend]       at TypeScriptParserMixin.parseExpression (P:\Time pass\New folder\learning-os\frontend\node_modules\@babel\parser\lib\index.js:10770:17)
+[frontend]       at TypeScriptParserMixin.jsxParseExpressionContainer (P:\Time pass\New folder\learning-os\frontend\node_modules\@babel\parser\lib\index.js:4632:31)
+[frontend]       at TypeScriptParserMixin.jsxParseElementAt (P:\Time pass\New folder\learning-os\frontend\node_modules\@babel\parser\lib\index.js:4711:36)
+[frontend]       at TypeScriptParserMixin.jsxParseElementAt (P:\Time pass\New folder\learning-os\frontend\node_modules\@babel\parser\lib\index.js:4698:32)
+[frontend]       at TypeScriptParserMixin.jsxParseElement (P:\Time pass\New folder\learning-os\frontend\node_modules\@babel\parser\lib\index.js:4749:17)
+[frontend]       at TypeScriptParserMixin.parseExprAtom (P:\Time pass\New folder\learning-os\frontend\node_modules\@babel\parser\lib\index.js:4759:19)
+[frontend]       at TypeScriptParserMixin.parseExprSubscripts (P:\Time pass\New folder\learning-os\frontend\node_modules\@babel\parser\lib\index.js:11071:23)
+[frontend]       at TypeScriptParserMixin.parseUpdate (P:\Time pass\New folder\learning-os\frontend\node_modules\@babel\parser\lib\index.js:11056:21)
+[frontend]       at TypeScriptParserMixin.parseMaybeUnary (P:\Time pass\New folder\learning-os\frontend\node_modules\@babel\parser\lib\index.js:11036:23)
+[frontend]       at TypeScriptParserMixin.parseMaybeUnary (P:\Time pass\New folder\learning-os\frontend\node_modules\@babel\parser\lib\index.js:9827:18)
+[frontend]       at TypeScriptParserMixin.parseMaybeUnaryOrPrivate (P:\Time pass\New folder\learning-os\frontend\node_modules\@babel\parser\lib\index.js:10889:61)
+[frontend]       at TypeScriptParserMixin.parseExprOps (P:\Time pass\New folder\learning-os\frontend\node_modules\@babel\parser\lib\index.js:10894:23)
+[frontend]       at TypeScriptParserMixin.parseMaybeConditional (P:\Time pass\New folder\learning-os\frontend\node_modules\@babel\parser\lib\index.js:10871:23)
+[frontend]       at TypeScriptParserMixin.parseMaybeAssign (P:\Time pass\New folder\learning-os\frontend\node_modules\@babel\parser\lib\index.js:10821:21)
+[frontend]       at P:\Time pass\New folder\learning-os\frontend\node_modules\@babel\parser\lib\index.js:9765:39
+[frontend]       at TypeScriptParserMixin.tryParse (P:\Time pass\New folder\learning-os\frontend\node_modules\@babel\parser\lib\index.js:6907:20)
+[frontend]       at TypeScriptParserMixin.parseMaybeAssign (P:\Time pass\New folder\learning-os\frontend\node_modules\@babel\parser\lib\index.js:9765:18)
+[frontend]       at P:\Time pass\New folder\learning-os\frontend\node_modules\@babel\parser\lib\index.js:10790:39
+[frontend]       at TypeScriptParserMixin.allowInAnd (P:\Time pass\New folder\learning-os\frontend\node_modules\@babel\parser\lib\index.js:12416:12)
+[frontend]       at TypeScriptParserMixin.parseMaybeAssignAllowIn (P:\Time pass\New folder\learning-os\frontend\node_modules\@babel\parser\lib\index.js:10790:17)
+[frontend]       at TypeScriptParserMixin.parseMaybeAssignAllowInOrVoidPattern (P:\Time pass\New folder\learning-os\frontend\node_modules\@babel\parser\lib\index.js:12483:17)
+[frontend]       at TypeScriptParserMixin.parseParenAndDistinguishExpression (P:\Time pass\New folder\learning-os\frontend\node_modules\@babel\parser\lib\index.js:11665:28)
+[frontend]       at TypeScriptParserMixin.parseExprAtom (P:\Time pass\New folder\learning-os\frontend\node_modules\@babel\parser\lib\index.js:11321:23)
+[frontend]       at TypeScriptParserMixin.parseExprAtom (P:\Time pass\New folder\learning-os\frontend\node_modules\@babel\parser\lib\index.js:4764:20)
+[frontend]       at TypeScriptParserMixin.parseExprSubscripts (P:\Time pass\New folder\learning-os\frontend\node_modules\@babel\parser\lib\index.js:11071:23)
+[frontend]       at TypeScriptParserMixin.parseUpdate (P:\Time pass\New folder\learning-os\frontend\node_modules\@babel\parser\lib\index.js:11056:21)
+[frontend]       at TypeScriptParserMixin.parseMaybeUnary (P:\Time pass\New folder\learning-os\frontend\node_modules\@babel\parser\lib\index.js:11036:23)
+[frontend] [2m12:13:09 am[22m [31m[1m[vite][22m[39m [31mInternal server error: P:\Time pass\New folder\learning-os\frontend\src\components\layout\Layout.tsx: Unexpected token, expected "," (451:16)
+[frontend] 
+[frontend] [0m [90m 449 |[31m                 [33m<[31m[33m/[31m[33maside[31m[33m>[31m
+[frontend]  [90m 450 |[31m
+[frontend] [31m[1m>[22m[31m[90m 451 |[31m                 {[90m/* Drawer Overlay for Mobile */[31m}
+[frontend]  [90m     |[31m                 [31m[1m^[22m[31m
+[frontend]  [90m 452 |[31m                 [33m<[31m[33mAnimatePresence[31m initial[33m=[31m{[36mfalse[31m}[33m>[31m
+[frontend]  [90m 453 |[31m                     {isMobile [33m&&[31m isDrawerOpen [33m&&[31m (
+[frontend]  [90m 454 |[31m                         [33m<[31m[33mmotion[31m[33m.[31mdiv[0m[39m
+[frontend]   Plugin: [35mvite:react-babel[39m
+[frontend]   File: [36mP:/Time pass/New folder/learning-os/frontend/src/components/layout/Layout.tsx[39m:451:16
+[frontend] [33m  449 |                  </aside>
+[frontend]   450 |  
+[frontend]   451 |                  {/* Drawer Overlay for Mobile */}
+[frontend]       |                  ^
+[frontend]   452 |                  <AnimatePresence initial={false}>
+[frontend]   453 |                      {isMobile && isDrawerOpen && ([39m
+[frontend]       at constructor (P:\Time pass\New folder\learning-os\frontend\node_modules\@babel\parser\lib\index.js:365:19)
+[frontend]       at TypeScriptParserMixin.raise (P:\Time pass\New folder\learning-os\frontend\node_modules\@babel\parser\lib\index.js:6599:19)
+[frontend]       at TypeScriptParserMixin.unexpected (P:\Time pass\New folder\learning-os\frontend\node_modules\@babel\parser\lib\index.js:6619:16)
+[frontend]       at TypeScriptParserMixin.expect (P:\Time pass\New folder\learning-os\frontend\node_modules\@babel\parser\lib\index.js:6899:12)
+[frontend]       at TypeScriptParserMixin.parseParenAndDistinguishExpression (P:\Time pass\New folder\learning-os\frontend\node_modules\@babel\parser\lib\index.js:11651:14)
+[frontend]       at TypeScriptParserMixin.parseExprAtom (P:\Time pass\New folder\learning-os\frontend\node_modules\@babel\parser\lib\index.js:11321:23)
+[frontend]       at TypeScriptParserMixin.parseExprAtom (P:\Time pass\New folder\learning-os\frontend\node_modules\@babel\parser\lib\index.js:4764:20)
+[frontend]       at TypeScriptParserMixin.parseExprSubscripts (P:\Time pass\New folder\learning-os\frontend\node_modules\@babel\parser\lib\index.js:11071:23)
+[frontend]       at TypeScriptParserMixin.parseUpdate (P:\Time pass\New folder\learning-os\frontend\node_modules\@babel\parser\lib\index.js:11056:21)
+[frontend]       at TypeScriptParserMixin.parseMaybeUnary (P:\Time pass\New folder\learning-os\frontend\node_modules\@babel\parser\lib\index.js:11036:23)
+[frontend]       at TypeScriptParserMixin.parseMaybeUnary (P:\Time pass\New folder\learning-os\frontend\node_modules\@babel\parser\lib\index.js:9827:18)
+[frontend]       at TypeScriptParserMixin.parseMaybeUnaryOrPrivate (P:\Time pass\New folder\learning-os\frontend\node_modules\@babel\parser\lib\index.js:10889:61)
+[frontend]       at TypeScriptParserMixin.parseExprOpBaseRightExpr (P:\Time pass\New folder\learning-os\frontend\node_modules\@babel\parser\lib\index.js:10976:34)
+[frontend]       at TypeScriptParserMixin.parseExprOpRightExpr (P:\Time pass\New folder\learning-os\frontend\node_modules\@babel\parser\lib\index.js:10971:21)
+[frontend]       at TypeScriptParserMixin.parseExprOp (P:\Time pass\New folder\learning-os\frontend\node_modules\@babel\parser\lib\index.js:10937:27)
+[frontend]       at TypeScriptParserMixin.parseExprOp (P:\Time pass\New folder\learning-os\frontend\node_modules\@babel\parser\lib\index.js:9306:18)
+[frontend]       at TypeScriptParserMixin.parseExprOps (P:\Time pass\New folder\learning-os\frontend\node_modules\@babel\parser\lib\index.js:10898:17)
+[frontend]       at TypeScriptParserMixin.parseMaybeConditional (P:\Time pass\New folder\learning-os\frontend\node_modules\@babel\parser\lib\index.js:10871:23)
+[frontend]       at TypeScriptParserMixin.parseMaybeAssign (P:\Time pass\New folder\learning-os\frontend\node_modules\@babel\parser\lib\index.js:10821:21)
+[frontend]       at TypeScriptParserMixin.parseMaybeAssign (P:\Time pass\New folder\learning-os\frontend\node_modules\@babel\parser\lib\index.js:9776:20)
+[frontend]       at TypeScriptParserMixin.parseExpressionBase (P:\Time pass\New folder\learning-os\frontend\node_modules\@babel\parser\lib\index.js:10774:23)
+[frontend]       at P:\Time pass\New folder\learning-os\frontend\node_modules\@babel\parser\lib\index.js:10770:39
+[frontend]       at TypeScriptParserMixin.allowInAnd (P:\Time pass\New folder\learning-os\frontend\node_modules\@babel\parser\lib\index.js:12416:12)
+[frontend]       at TypeScriptParserMixin.parseExpression (P:\Time pass\New folder\learning-os\frontend\node_modules\@babel\parser\lib\index.js:10770:17)
+[frontend]       at TypeScriptParserMixin.jsxParseExpressionContainer (P:\Time pass\New folder\learning-os\frontend\node_modules\@babel\parser\lib\index.js:4632:31)
+[frontend]       at TypeScriptParserMixin.jsxParseElementAt (P:\Time pass\New folder\learning-os\frontend\node_modules\@babel\parser\lib\index.js:4711:36)
+[frontend]       at TypeScriptParserMixin.jsxParseElementAt (P:\Time pass\New folder\learning-os\frontend\node_modules\@babel\parser\lib\index.js:4698:32)
+[frontend]       at TypeScriptParserMixin.jsxParseElement (P:\Time pass\New folder\learning-os\frontend\node_modules\@babel\parser\lib\index.js:4749:17)
+[frontend]       at TypeScriptParserMixin.parseExprAtom (P:\Time pass\New folder\learning-os\frontend\node_modules\@babel\parser\lib\index.js:4759:19)
+[frontend]       at TypeScriptParserMixin.parseExprSubscripts (P:\Time pass\New folder\learning-os\frontend\node_modules\@babel\parser\lib\index.js:11071:23)
+[frontend]       at TypeScriptParserMixin.parseUpdate (P:\Time pass\New folder\learning-os\frontend\node_modules\@babel\parser\lib\index.js:11056:21)
+[frontend]       at TypeScriptParserMixin.parseMaybeUnary (P:\Time pass\New folder\learning-os\frontend\node_modules\@babel\parser\lib\index.js:11036:23)
+[frontend]       at TypeScriptParserMixin.parseMaybeUnary (P:\Time pass\New folder\learning-os\frontend\node_modules\@babel\parser\lib\index.js:9827:18)
+[frontend]       at TypeScriptParserMixin.parseMaybeUnaryOrPrivate (P:\Time pass\New folder\learning-os\frontend\node_modules\@babel\parser\lib\index.js:10889:61)
+[frontend]       at TypeScriptParserMixin.parseExprOps (P:\Time pass\New folder\learning-os\frontend\node_modules\@babel\parser\lib\index.js:10894:23)
+[frontend]       at TypeScriptParserMixin.parseMaybeConditional (P:\Time pass\New folder\learning-os\frontend\node_modules\@babel\parser\lib\index.js:10871:23)
+[frontend]       at TypeScriptParserMixin.parseMaybeAssign (P:\Time pass\New folder\learning-os\frontend\node_modules\@babel\parser\lib\index.js:10821:21)
+[frontend]       at P:\Time pass\New folder\learning-os\frontend\node_modules\@babel\parser\lib\index.js:9765:39
+[frontend]       at TypeScriptParserMixin.tryParse (P:\Time pass\New folder\learning-os\frontend\node_modules\@babel\parser\lib\index.js:6907:20)
+[frontend]       at TypeScriptParserMixin.parseMaybeAssign (P:\Time pass\New folder\learning-os\frontend\node_modules\@babel\parser\lib\index.js:9765:18)
+[frontend]       at P:\Time pass\New folder\learning-os\frontend\node_modules\@babel\parser\lib\index.js:10790:39
+[frontend]       at TypeScriptParserMixin.allowInAnd (P:\Time pass\New folder\learning-os\frontend\node_modules\@babel\parser\lib\index.js:12416:12)
+[frontend]       at TypeScriptParserMixin.parseMaybeAssignAllowIn (P:\Time pass\New folder\learning-os\frontend\node_modules\@babel\parser\lib\index.js:10790:17)
+[frontend]       at TypeScriptParserMixin.parseMaybeAssignAllowInOrVoidPattern (P:\Time pass\New folder\learning-os\frontend\node_modules\@babel\parser\lib\index.js:12483:17)
+[frontend]       at TypeScriptParserMixin.parseParenAndDistinguishExpression (P:\Time pass\New folder\learning-os\frontend\node_modules\@babel\parser\lib\index.js:11665:28)
+[frontend]       at TypeScriptParserMixin.parseExprAtom (P:\Time pass\New folder\learning-os\frontend\node_modules\@babel\parser\lib\index.js:11321:23)
+[frontend]       at TypeScriptParserMixin.parseExprAtom (P:\Time pass\New folder\learning-os\frontend\node_modules\@babel\parser\lib\index.js:4764:20)
+[frontend]       at TypeScriptParserMixin.parseExprSubscripts (P:\Time pass\New folder\learning-os\frontend\node_modules\@babel\parser\lib\index.js:11071:23)
+[frontend]       at TypeScriptParserMixin.parseUpdate (P:\Time pass\New folder\learning-os\frontend\node_modules\@babel\parser\lib\index.js:11056:21)
+[frontend]       at TypeScriptParserMixin.parseMaybeUnary (P:\Time pass\New folder\learning-os\frontend\node_modules\@babel\parser\lib\index.js:11036:23)
+[frontend] [2m12:13:09 am[22m [31m[1m[vite][22m[39m [31mInternal server error: P:\Time pass\New folder\learning-os\frontend\src\components\layout\Layout.tsx: Unexpected token, expected "," (451:16)
+[frontend] 
+[frontend] [0m [90m 449 |[31m                 [33m<[31m[33m/[31m[33maside[31m[33m>[31m
+[frontend]  [90m 450 |[31m
+[frontend] [31m[1m>[22m[31m[90m 451 |[31m                 {[90m/* Drawer Overlay for Mobile */[31m}
+[frontend]  [90m     |[31m                 [31m[1m^[22m[31m
+[frontend]  [90m 452 |[31m                 [33m<[31m[33mAnimatePresence[31m initial[33m=[31m{[36mfalse[31m}[33m>[31m
+[frontend]  [90m 453 |[31m                     {isMobile [33m&&[31m isDrawerOpen [33m&&[31m (
+[frontend]  [90m 454 |[31m                         [33m<[31m[33mmotion[31m[33m.[31mdiv[0m[39m
+[frontend]   Plugin: [35mvite:react-babel[39m
+[frontend]   File: [36mP:/Time pass/New folder/learning-os/frontend/src/components/layout/Layout.tsx[39m:451:16
+[frontend] [33m  449 |                  </aside>
+[frontend]   450 |  
+[frontend]   451 |                  {/* Drawer Overlay for Mobile */}
+[frontend]       |                  ^
+[frontend]   452 |                  <AnimatePresence initial={false}>
+[frontend]   453 |                      {isMobile && isDrawerOpen && ([39m
+[frontend]       at constructor (P:\Time pass\New folder\learning-os\frontend\node_modules\@babel\parser\lib\index.js:365:19)
+[frontend]       at TypeScriptParserMixin.raise (P:\Time pass\New folder\learning-os\frontend\node_modules\@babel\parser\lib\index.js:6599:19)
+[frontend]       at TypeScriptParserMixin.unexpected (P:\Time pass\New folder\learning-os\frontend\node_modules\@babel\parser\lib\index.js:6619:16)
+[frontend]       at TypeScriptParserMixin.expect (P:\Time pass\New folder\learning-os\frontend\node_modules\@babel\parser\lib\index.js:6899:12)
+[frontend]       at TypeScriptParserMixin.parseParenAndDistinguishExpression (P:\Time pass\New folder\learning-os\frontend\node_modules\@babel\parser\lib\index.js:11651:14)
+[frontend]       at TypeScriptParserMixin.parseExprAtom (P:\Time pass\New folder\learning-os\frontend\node_modules\@babel\parser\lib\index.js:11321:23)
+[frontend]       at TypeScriptParserMixin.parseExprAtom (P:\Time pass\New folder\learning-os\frontend\node_modules\@babel\parser\lib\index.js:4764:20)
+[frontend]       at TypeScriptParserMixin.parseExprSubscripts (P:\Time pass\New folder\learning-os\frontend\node_modules\@babel\parser\lib\index.js:11071:23)
+[frontend]       at TypeScriptParserMixin.parseUpdate (P:\Time pass\New folder\learning-os\frontend\node_modules\@babel\parser\lib\index.js:11056:21)
+[frontend]       at TypeScriptParserMixin.parseMaybeUnary (P:\Time pass\New folder\learning-os\frontend\node_modules\@babel\parser\lib\index.js:11036:23)
+[frontend]       at TypeScriptParserMixin.parseMaybeUnary (P:\Time pass\New folder\learning-os\frontend\node_modules\@babel\parser\lib\index.js:9827:18)
+[frontend]       at TypeScriptParserMixin.parseMaybeUnaryOrPrivate (P:\Time pass\New folder\learning-os\frontend\node_modules\@babel\parser\lib\index.js:10889:61)
+[frontend]       at TypeScriptParserMixin.parseExprOpBaseRightExpr (P:\Time pass\New folder\learning-os\frontend\node_modules\@babel\parser\lib\index.js:10976:34)
+[frontend]       at TypeScriptParserMixin.parseExprOpRightExpr (P:\Time pass\New folder\learning-os\frontend\node_modules\@babel\parser\lib\index.js:10971:21)
+[frontend]       at TypeScriptParserMixin.parseExprOp (P:\Time pass\New folder\learning-os\frontend\node_modules\@babel\parser\lib\index.js:10937:27)
+[frontend]       at TypeScriptParserMixin.parseExprOp (P:\Time pass\New folder\learning-os\frontend\node_modules\@babel\parser\lib\index.js:9306:18)
+[frontend]       at TypeScriptParserMixin.parseExprOps (P:\Time pass\New folder\learning-os\frontend\node_modules\@babel\parser\lib\index.js:10898:17)
+[frontend]       at TypeScriptParserMixin.parseMaybeConditional (P:\Time pass\New folder\learning-os\frontend\node_modules\@babel\parser\lib\index.js:10871:23)
+[frontend]       at TypeScriptParserMixin.parseMaybeAssign (P:\Time pass\New folder\learning-os\frontend\node_modules\@babel\parser\lib\index.js:10821:21)
+[frontend]       at TypeScriptParserMixin.parseMaybeAssign (P:\Time pass\New folder\learning-os\frontend\node_modules\@babel\parser\lib\index.js:9776:20)
+[frontend]       at TypeScriptParserMixin.parseExpressionBase (P:\Time pass\New folder\learning-os\frontend\node_modules\@babel\parser\lib\index.js:10774:23)
+[frontend]       at P:\Time pass\New folder\learning-os\frontend\node_modules\@babel\parser\lib\index.js:10770:39
+[frontend]       at TypeScriptParserMixin.allowInAnd (P:\Time pass\New folder\learning-os\frontend\node_modules\@babel\parser\lib\index.js:12416:12)
+[frontend]       at TypeScriptParserMixin.parseExpression (P:\Time pass\New folder\learning-os\frontend\node_modules\@babel\parser\lib\index.js:10770:17)
+[frontend]       at TypeScriptParserMixin.jsxParseExpressionContainer (P:\Time pass\New folder\learning-os\frontend\node_modules\@babel\parser\lib\index.js:4632:31)
+[frontend]       at TypeScriptParserMixin.jsxParseElementAt (P:\Time pass\New folder\learning-os\frontend\node_modules\@babel\parser\lib\index.js:4711:36)
+[frontend]       at TypeScriptParserMixin.jsxParseElementAt (P:\Time pass\New folder\learning-os\frontend\node_modules\@babel\parser\lib\index.js:4698:32)
+[frontend]       at TypeScriptParserMixin.jsxParseElement (P:\Time pass\New folder\learning-os\frontend\node_modules\@babel\parser\lib\index.js:4749:17)
+[frontend]       at TypeScriptParserMixin.parseExprAtom (P:\Time pass\New folder\learning-os\frontend\node_modules\@babel\parser\lib\index.js:4759:19)
+[frontend]       at TypeScriptParserMixin.parseExprSubscripts (P:\Time pass\New folder\learning-os\frontend\node_modules\@babel\parser\lib\index.js:11071:23)
+[frontend]       at TypeScriptParserMixin.parseUpdate (P:\Time pass\New folder\learning-os\frontend\node_modules\@babel\parser\lib\index.js:11056:21)
+[frontend]       at TypeScriptParserMixin.parseMaybeUnary (P:\Time pass\New folder\learning-os\frontend\node_modules\@babel\parser\lib\index.js:11036:23)
+[frontend]       at TypeScriptParserMixin.parseMaybeUnary (P:\Time pass\New folder\learning-os\frontend\node_modules\@babel\parser\lib\index.js:9827:18)
+[frontend]       at TypeScriptParserMixin.parseMaybeUnaryOrPrivate (P:\Time pass\New folder\learning-os\frontend\node_modules\@babel\parser\lib\index.js:10889:61)
+[frontend]       at TypeScriptParserMixin.parseExprOps (P:\Time pass\New folder\learning-os\frontend\node_modules\@babel\parser\lib\index.js:10894:23)
+[frontend]       at TypeScriptParserMixin.parseMaybeConditional (P:\Time pass\New folder\learning-os\frontend\node_modules\@babel\parser\lib\index.js:10871:23)
+[frontend]       at TypeScriptParserMixin.parseMaybeAssign (P:\Time pass\New folder\learning-os\frontend\node_modules\@babel\parser\lib\index.js:10821:21)
+[frontend]       at P:\Time pass\New folder\learning-os\frontend\node_modules\@babel\parser\lib\index.js:9765:39
+[frontend]       at TypeScriptParserMixin.tryParse (P:\Time pass\New folder\learning-os\frontend\node_modules\@babel\parser\lib\index.js:6907:20)
+[frontend]       at TypeScriptParserMixin.parseMaybeAssign (P:\Time pass\New folder\learning-os\frontend\node_modules\@babel\parser\lib\index.js:9765:18)
+[frontend]       at P:\Time pass\New folder\learning-os\frontend\node_modules\@babel\parser\lib\index.js:10790:39
+[frontend]       at TypeScriptParserMixin.allowInAnd (P:\Time pass\New folder\learning-os\frontend\node_modules\@babel\parser\lib\index.js:12416:12)
+[frontend]       at TypeScriptParserMixin.parseMaybeAssignAllowIn (P:\Time pass\New folder\learning-os\frontend\node_modules\@babel\parser\lib\index.js:10790:17)
+[frontend]       at TypeScriptParserMixin.parseMaybeAssignAllowInOrVoidPattern (P:\Time pass\New folder\learning-os\frontend\node_modules\@babel\parser\lib\index.js:12483:17)
+[frontend]       at TypeScriptParserMixin.parseParenAndDistinguishExpression (P:\Time pass\New folder\learning-os\frontend\node_modules\@babel\parser\lib\index.js:11665:28)
+[frontend]       at TypeScriptParserMixin.parseExprAtom (P:\Time pass\New folder\learning-os\frontend\node_modules\@babel\parser\lib\index.js:11321:23)
+[frontend]       at TypeScriptParserMixin.parseExprAtom (P:\Time pass\New folder\learning-os\frontend\node_modules\@babel\parser\lib\index.js:4764:20)
+[frontend]       at TypeScriptParserMixin.parseExprSubscripts (P:\Time pass\New folder\learning-os\frontend\node_modules\@babel\parser\lib\index.js:11071:23)
+[frontend]       at TypeScriptParserMixin.parseUpdate (P:\Time pass\New folder\learning-os\frontend\node_modules\@babel\parser\lib\index.js:11056:21)
+[frontend]       at TypeScriptParserMixin.parseMaybeUnary (P:\Time pass\New folder\learning-os\frontend\node_modules\@babel\parser\lib\index.js:11036:23)
+[frontend] [2m12:13:09 am[22m [31m[1m[vite][22m[39m [31mInternal server error: P:\Time pass\New folder\learning-os\frontend\src\components\layout\Layout.tsx: Unexpected token, expected "," (451:16)
+[frontend] 
+[frontend] [0m [90m 449 |[31m                 [33m<[31m[33m/[31m[33maside[31m[33m>[31m
+[frontend]  [90m 450 |[31m
+[frontend] [31m[1m>[22m[31m[90m 451 |[31m                 {[90m/* Drawer Overlay for Mobile */[31m}
+[frontend]  [90m     |[31m                 [31m[1m^[22m[31m
+[frontend]  [90m 452 |[31m                 [33m<[31m[33mAnimatePresence[31m initial[33m=[31m{[36mfalse[31m}[33m>[31m
+[frontend]  [90m 453 |[31m                     {isMobile [33m&&[31m isDrawerOpen [33m&&[31m (
+[frontend]  [90m 454 |[31m                         [33m<[31m[33mmotion[31m[33m.[31mdiv[0m[39m
+[frontend]   Plugin: [35mvite:react-babel[39m
+[frontend]   File: [36mP:/Time pass/New folder/learning-os/frontend/src/components/layout/Layout.tsx[39m:451:16
+[frontend] [33m  449 |                  </aside>
+[frontend]   450 |  
+[frontend]   451 |                  {/* Drawer Overlay for Mobile */}
+[frontend]       |                  ^
+[frontend]   452 |                  <AnimatePresence initial={false}>
+[frontend]   453 |                      {isMobile && isDrawerOpen && ([39m
+[frontend]       at constructor (P:\Time pass\New folder\learning-os\frontend\node_modules\@babel\parser\lib\index.js:365:19)
+[frontend]       at TypeScriptParserMixin.raise (P:\Time pass\New folder\learning-os\frontend\node_modules\@babel\parser\lib\index.js:6599:19)
+[frontend]       at TypeScriptParserMixin.unexpected (P:\Time pass\New folder\learning-os\frontend\node_modules\@babel\parser\lib\index.js:6619:16)
+[frontend]       at TypeScriptParserMixin.expect (P:\Time pass\New folder\learning-os\frontend\node_modules\@babel\parser\lib\index.js:6899:12)
+[frontend]       at TypeScriptParserMixin.parseParenAndDistinguishExpression (P:\Time pass\New folder\learning-os\frontend\node_modules\@babel\parser\lib\index.js:11651:14)
+[frontend]       at TypeScriptParserMixin.parseExprAtom (P:\Time pass\New folder\learning-os\frontend\node_modules\@babel\parser\lib\index.js:11321:23)
+[frontend]       at TypeScriptParserMixin.parseExprAtom (P:\Time pass\New folder\learning-os\frontend\node_modules\@babel\parser\lib\index.js:4764:20)
+[frontend]       at TypeScriptParserMixin.parseExprSubscripts (P:\Time pass\New folder\learning-os\frontend\node_modules\@babel\parser\lib\index.js:11071:23)
+[frontend]       at TypeScriptParserMixin.parseUpdate (P:\Time pass\New folder\learning-os\frontend\node_modules\@babel\parser\lib\index.js:11056:21)
+[frontend]       at TypeScriptParserMixin.parseMaybeUnary (P:\Time pass\New folder\learning-os\frontend\node_modules\@babel\parser\lib\index.js:11036:23)
+[frontend]       at TypeScriptParserMixin.parseMaybeUnary (P:\Time pass\New folder\learning-os\frontend\node_modules\@babel\parser\lib\index.js:9827:18)
+[frontend]       at TypeScriptParserMixin.parseMaybeUnaryOrPrivate (P:\Time pass\New folder\learning-os\frontend\node_modules\@babel\parser\lib\index.js:10889:61)
+[frontend]       at TypeScriptParserMixin.parseExprOpBaseRightExpr (P:\Time pass\New folder\learning-os\frontend\node_modules\@babel\parser\lib\index.js:10976:34)
+[frontend]       at TypeScriptParserMixin.parseExprOpRightExpr (P:\Time pass\New folder\learning-os\frontend\node_modules\@babel\parser\lib\index.js:10971:21)
+[frontend]       at TypeScriptParserMixin.parseExprOp (P:\Time pass\New folder\learning-os\frontend\node_modules\@babel\parser\lib\index.js:10937:27)
+[frontend]       at TypeScriptParserMixin.parseExprOp (P:\Time pass\New folder\learning-os\frontend\node_modules\@babel\parser\lib\index.js:9306:18)
+[frontend]       at TypeScriptParserMixin.parseExprOps (P:\Time pass\New folder\learning-os\frontend\node_modules\@babel\parser\lib\index.js:10898:17)
+[frontend]       at TypeScriptParserMixin.parseMaybeConditional (P:\Time pass\New folder\learning-os\frontend\node_modules\@babel\parser\lib\index.js:10871:23)
+[frontend]       at TypeScriptParserMixin.parseMaybeAssign (P:\Time pass\New folder\learning-os\frontend\node_modules\@babel\parser\lib\index.js:10821:21)
+[frontend]       at TypeScriptParserMixin.parseMaybeAssign (P:\Time pass\New folder\learning-os\frontend\node_modules\@babel\parser\lib\index.js:9776:20)
+[frontend]       at TypeScriptParserMixin.parseExpressionBase (P:\Time pass\New folder\learning-os\frontend\node_modules\@babel\parser\lib\index.js:10774:23)
+[frontend]       at P:\Time pass\New folder\learning-os\frontend\node_modules\@babel\parser\lib\index.js:10770:39
+[frontend]       at TypeScriptParserMixin.allowInAnd (P:\Time pass\New folder\learning-os\frontend\node_modules\@babel\parser\lib\index.js:12416:12)
+[frontend]       at TypeScriptParserMixin.parseExpression (P:\Time pass\New folder\learning-os\frontend\node_modules\@babel\parser\lib\index.js:10770:17)
+[frontend]       at TypeScriptParserMixin.jsxParseExpressionContainer (P:\Time pass\New folder\learning-os\frontend\node_modules\@babel\parser\lib\index.js:4632:31)
+[frontend]       at TypeScriptParserMixin.jsxParseElementAt (P:\Time pass\New folder\learning-os\frontend\node_modules\@babel\parser\lib\index.js:4711:36)
+[frontend]       at TypeScriptParserMixin.jsxParseElementAt (P:\Time pass\New folder\learning-os\frontend\node_modules\@babel\parser\lib\index.js:4698:32)
+[frontend]       at TypeScriptParserMixin.jsxParseElement (P:\Time pass\New folder\learning-os\frontend\node_modules\@babel\parser\lib\index.js:4749:17)
+[frontend]       at TypeScriptParserMixin.parseExprAtom (P:\Time pass\New folder\learning-os\frontend\node_modules\@babel\parser\lib\index.js:4759:19)
+[frontend]       at TypeScriptParserMixin.parseExprSubscripts (P:\Time pass\New folder\learning-os\frontend\node_modules\@babel\parser\lib\index.js:11071:23)
+[frontend]       at TypeScriptParserMixin.parseUpdate (P:\Time pass\New folder\learning-os\frontend\node_modules\@babel\parser\lib\index.js:11056:21)
+[frontend]       at TypeScriptParserMixin.parseMaybeUnary (P:\Time pass\New folder\learning-os\frontend\node_modules\@babel\parser\lib\index.js:11036:23)
+[frontend]       at TypeScriptParserMixin.parseMaybeUnary (P:\Time pass\New folder\learning-os\frontend\node_modules\@babel\parser\lib\index.js:9827:18)
+[frontend]       at TypeScriptParserMixin.parseMaybeUnaryOrPrivate (P:\Time pass\New folder\learning-os\frontend\node_modules\@babel\parser\lib\index.js:10889:61)
+[frontend]       at TypeScriptParserMixin.parseExprOps (P:\Time pass\New folder\learning-os\frontend\node_modules\@babel\parser\lib\index.js:10894:23)
+[frontend]       at TypeScriptParserMixin.parseMaybeConditional (P:\Time pass\New folder\learning-os\frontend\node_modules\@babel\parser\lib\index.js:10871:23)
+[frontend]       at TypeScriptParserMixin.parseMaybeAssign (P:\Time pass\New folder\learning-os\frontend\node_modules\@babel\parser\lib\index.js:10821:21)
+[frontend]       at P:\Time pass\New folder\learning-os\frontend\node_modules\@babel\parser\lib\index.js:9765:39
+[frontend]       at TypeScriptParserMixin.tryParse (P:\Time pass\New folder\learning-os\frontend\node_modules\@babel\parser\lib\index.js:6907:20)
+[frontend]       at TypeScriptParserMixin.parseMaybeAssign (P:\Time pass\New folder\learning-os\frontend\node_modules\@babel\parser\lib\index.js:9765:18)
+[frontend]       at P:\Time pass\New folder\learning-os\frontend\node_modules\@babel\parser\lib\index.js:10790:39
+[frontend]       at TypeScriptParserMixin.allowInAnd (P:\Time pass\New folder\learning-os\frontend\node_modules\@babel\parser\lib\index.js:12416:12)
+[frontend]       at TypeScriptParserMixin.parseMaybeAssignAllowIn (P:\Time pass\New folder\learning-os\frontend\node_modules\@babel\parser\lib\index.js:10790:17)
+[frontend]       at TypeScriptParserMixin.parseMaybeAssignAllowInOrVoidPattern (P:\Time pass\New folder\learning-os\frontend\node_modules\@babel\parser\lib\index.js:12483:17)
+[frontend]       at TypeScriptParserMixin.parseParenAndDistinguishExpression (P:\Time pass\New folder\learning-os\frontend\node_modules\@babel\parser\lib\index.js:11665:28)
+[frontend]       at TypeScriptParserMixin.parseExprAtom (P:\Time pass\New folder\learning-os\frontend\node_modules\@babel\parser\lib\index.js:11321:23)
+[frontend]       at TypeScriptParserMixin.parseExprAtom (P:\Time pass\New folder\learning-os\frontend\node_modules\@babel\parser\lib\index.js:4764:20)
+[frontend]       at TypeScriptParserMixin.parseExprSubscripts (P:\Time pass\New folder\learning-os\frontend\node_modules\@babel\parser\lib\index.js:11071:23)
+[frontend]       at TypeScriptParserMixin.parseUpdate (P:\Time pass\New folder\learning-os\frontend\node_modules\@babel\parser\lib\index.js:11056:21)
+[frontend]       at TypeScriptParserMixin.parseMaybeUnary (P:\Time pass\New folder\learning-os\frontend\node_modules\@babel\parser\lib\index.js:11036:23)
+[frontend] [2m12:13:09 am[22m [31m[1m[vite][22m[39m [31mInternal server error: P:\Time pass\New folder\learning-os\frontend\src\components\layout\Layout.tsx: Unexpected token, expected "," (451:16)
+[frontend] 
+[frontend] [0m [90m 449 |[31m                 [33m<[31m[33m/[31m[33maside[31m[33m>[31m
+[frontend]  [90m 450 |[31m
+[frontend] [31m[1m>[22m[31m[90m 451 |[31m                 {[90m/* Drawer Overlay for Mobile */[31m}
+[frontend]  [90m     |[31m                 [31m[1m^[22m[31m
+[frontend]  [90m 452 |[31m                 [33m<[31m[33mAnimatePresence[31m initial[33m=[31m{[36mfalse[31m}[33m>[31m
+[frontend]  [90m 453 |[31m                     {isMobile [33m&&[31m isDrawerOpen [33m&&[31m (
+[frontend]  [90m 454 |[31m                         [33m<[31m[33mmotion[31m[33m.[31mdiv[0m[39m
+[frontend]   Plugin: [35mvite:react-babel[39m
+[frontend]   File: [36mP:/Time pass/New folder/learning-os/frontend/src/components/layout/Layout.tsx[39m:451:16
+[frontend] [33m  449 |                  </aside>
+[frontend]   450 |  
+[frontend]   451 |                  {/* Drawer Overlay for Mobile */}
+[frontend]       |                  ^
+[frontend]   452 |                  <AnimatePresence initial={false}>
+[frontend]   453 |                      {isMobile && isDrawerOpen && ([39m
+[frontend]       at constructor (P:\Time pass\New folder\learning-os\frontend\node_modules\@babel\parser\lib\index.js:365:19)
+[frontend]       at TypeScriptParserMixin.raise (P:\Time pass\New folder\learning-os\frontend\node_modules\@babel\parser\lib\index.js:6599:19)
+[frontend]       at TypeScriptParserMixin.unexpected (P:\Time pass\New folder\learning-os\frontend\node_modules\@babel\parser\lib\index.js:6619:16)
+[frontend]       at TypeScriptParserMixin.expect (P:\Time pass\New folder\learning-os\frontend\node_modules\@babel\parser\lib\index.js:6899:12)
+[frontend]       at TypeScriptParserMixin.parseParenAndDistinguishExpression (P:\Time pass\New folder\learning-os\frontend\node_modules\@babel\parser\lib\index.js:11651:14)
+[frontend]       at TypeScriptParserMixin.parseExprAtom (P:\Time pass\New folder\learning-os\frontend\node_modules\@babel\parser\lib\index.js:11321:23)
+[frontend]       at TypeScriptParserMixin.parseExprAtom (P:\Time pass\New folder\learning-os\frontend\node_modules\@babel\parser\lib\index.js:4764:20)
+[frontend]       at TypeScriptParserMixin.parseExprSubscripts (P:\Time pass\New folder\learning-os\frontend\node_modules\@babel\parser\lib\index.js:11071:23)
+[frontend]       at TypeScriptParserMixin.parseUpdate (P:\Time pass\New folder\learning-os\frontend\node_modules\@babel\parser\lib\index.js:11056:21)
+[frontend]       at TypeScriptParserMixin.parseMaybeUnary (P:\Time pass\New folder\learning-os\frontend\node_modules\@babel\parser\lib\index.js:11036:23)
+[frontend]       at TypeScriptParserMixin.parseMaybeUnary (P:\Time pass\New folder\learning-os\frontend\node_modules\@babel\parser\lib\index.js:9827:18)
+[frontend]       at TypeScriptParserMixin.parseMaybeUnaryOrPrivate (P:\Time pass\New folder\learning-os\frontend\node_modules\@babel\parser\lib\index.js:10889:61)
+[frontend]       at TypeScriptParserMixin.parseExprOpBaseRightExpr (P:\Time pass\New folder\learning-os\frontend\node_modules\@babel\parser\lib\index.js:10976:34)
+[frontend]       at TypeScriptParserMixin.parseExprOpRightExpr (P:\Time pass\New folder\learning-os\frontend\node_modules\@babel\parser\lib\index.js:10971:21)
+[frontend]       at TypeScriptParserMixin.parseExprOp (P:\Time pass\New folder\learning-os\frontend\node_modules\@babel\parser\lib\index.js:10937:27)
+[frontend]       at TypeScriptParserMixin.parseExprOp (P:\Time pass\New folder\learning-os\frontend\node_modules\@babel\parser\lib\index.js:9306:18)
+[frontend]       at TypeScriptParserMixin.parseExprOps (P:\Time pass\New folder\learning-os\frontend\node_modules\@babel\parser\lib\index.js:10898:17)
+[frontend]       at TypeScriptParserMixin.parseMaybeConditional (P:\Time pass\New folder\learning-os\frontend\node_modules\@babel\parser\lib\index.js:10871:23)
+[frontend]       at TypeScriptParserMixin.parseMaybeAssign (P:\Time pass\New folder\learning-os\frontend\node_modules\@babel\parser\lib\index.js:10821:21)
+[frontend]       at TypeScriptParserMixin.parseMaybeAssign (P:\Time pass\New folder\learning-os\frontend\node_modules\@babel\parser\lib\index.js:9776:20)
+[frontend]       at TypeScriptParserMixin.parseExpressionBase (P:\Time pass\New folder\learning-os\frontend\node_modules\@babel\parser\lib\index.js:10774:23)
+[frontend]       at P:\Time pass\New folder\learning-os\frontend\node_modules\@babel\parser\lib\index.js:10770:39
+[frontend]       at TypeScriptParserMixin.allowInAnd (P:\Time pass\New folder\learning-os\frontend\node_modules\@babel\parser\lib\index.js:12416:12)
+[frontend]       at TypeScriptParserMixin.parseExpression (P:\Time pass\New folder\learning-os\frontend\node_modules\@babel\parser\lib\index.js:10770:17)
+[frontend]       at TypeScriptParserMixin.jsxParseExpressionContainer (P:\Time pass\New folder\learning-os\frontend\node_modules\@babel\parser\lib\index.js:4632:31)
+[frontend]       at TypeScriptParserMixin.jsxParseElementAt (P:\Time pass\New folder\learning-os\frontend\node_modules\@babel\parser\lib\index.js:4711:36)
+[frontend]       at TypeScriptParserMixin.jsxParseElementAt (P:\Time pass\New folder\learning-os\frontend\node_modules\@babel\parser\lib\index.js:4698:32)
+[frontend]       at TypeScriptParserMixin.jsxParseElement (P:\Time pass\New folder\learning-os\frontend\node_modules\@babel\parser\lib\index.js:4749:17)
+[frontend]       at TypeScriptParserMixin.parseExprAtom (P:\Time pass\New folder\learning-os\frontend\node_modules\@babel\parser\lib\index.js:4759:19)
+[frontend]       at TypeScriptParserMixin.parseExprSubscripts (P:\Time pass\New folder\learning-os\frontend\node_modules\@babel\parser\lib\index.js:11071:23)
+[frontend]       at TypeScriptParserMixin.parseUpdate (P:\Time pass\New folder\learning-os\frontend\node_modules\@babel\parser\lib\index.js:11056:21)
+[frontend]       at TypeScriptParserMixin.parseMaybeUnary (P:\Time pass\New folder\learning-os\frontend\node_modules\@babel\parser\lib\index.js:11036:23)
+[frontend]       at TypeScriptParserMixin.parseMaybeUnary (P:\Time pass\New folder\learning-os\frontend\node_modules\@babel\parser\lib\index.js:9827:18)
+[frontend]       at TypeScriptParserMixin.parseMaybeUnaryOrPrivate (P:\Time pass\New folder\learning-os\frontend\node_modules\@babel\parser\lib\index.js:10889:61)
+[frontend]       at TypeScriptParserMixin.parseExprOps (P:\Time pass\New folder\learning-os\frontend\node_modules\@babel\parser\lib\index.js:10894:23)
+[frontend]       at TypeScriptParserMixin.parseMaybeConditional (P:\Time pass\New folder\learning-os\frontend\node_modules\@babel\parser\lib\index.js:10871:23)
+[frontend]       at TypeScriptParserMixin.parseMaybeAssign (P:\Time pass\New folder\learning-os\frontend\node_modules\@babel\parser\lib\index.js:10821:21)
+[frontend]       at P:\Time pass\New folder\learning-os\frontend\node_modules\@babel\parser\lib\index.js:9765:39
+[frontend]       at TypeScriptParserMixin.tryParse (P:\Time pass\New folder\learning-os\frontend\node_modules\@babel\parser\lib\index.js:6907:20)
+[frontend]       at TypeScriptParserMixin.parseMaybeAssign (P:\Time pass\New folder\learning-os\frontend\node_modules\@babel\parser\lib\index.js:9765:18)
+[frontend]       at P:\Time pass\New folder\learning-os\frontend\node_modules\@babel\parser\lib\index.js:10790:39
+[frontend]       at TypeScriptParserMixin.allowInAnd (P:\Time pass\New folder\learning-os\frontend\node_modules\@babel\parser\lib\index.js:12416:12)
+[frontend]       at TypeScriptParserMixin.parseMaybeAssignAllowIn (P:\Time pass\New folder\learning-os\frontend\node_modules\@babel\parser\lib\index.js:10790:17)
+[frontend]       at TypeScriptParserMixin.parseMaybeAssignAllowInOrVoidPattern (P:\Time pass\New folder\learning-os\frontend\node_modules\@babel\parser\lib\index.js:12483:17)
+[frontend]       at TypeScriptParserMixin.parseParenAndDistinguishExpression (P:\Time pass\New folder\learning-os\frontend\node_modules\@babel\parser\lib\index.js:11665:28)
+[frontend]       at TypeScriptParserMixin.parseExprAtom (P:\Time pass\New folder\learning-os\frontend\node_modules\@babel\parser\lib\index.js:11321:23)
+[frontend]       at TypeScriptParserMixin.parseExprAtom (P:\Time pass\New folder\learning-os\frontend\node_modules\@babel\parser\lib\index.js:4764:20)
+[frontend]       at TypeScriptParserMixin.parseExprSubscripts (P:\Time pass\New folder\learning-os\frontend\node_modules\@babel\parser\lib\index.js:11071:23)
+[frontend]       at TypeScriptParserMixin.parseUpdate (P:\Time pass\New folder\learning-os\frontend\node_modules\@babel\parser\lib\index.js:11056:21)
+[frontend]       at TypeScriptParserMixin.parseMaybeUnary (P:\Time pass\New folder\learning-os\frontend\node_modules\@babel\parser\lib\index.js:11036:23)
+[frontend] [2m12:13:37 am[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/components/layout/Layout.tsx, /src/index.css[22m
+[frontend] [2m12:14:14 am[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/components/layout/Layout.tsx, /src/index.css[22m
+[frontend] [2m12:15:10 am[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/components/layout/Layout.tsx, /src/index.css[22m
+[frontend] [2m12:16:03 am[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/components/layout/Layout.tsx, /src/index.css[22m
+[frontend] [2m12:16:43 am[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/components/layout/Layout.tsx, /src/index.css[22m
+[frontend] [2m12:17:56 am[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/components/layout/Layout.tsx, /src/index.css[22m
+[frontend] [2m12:18:24 am[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/components/layout/Layout.tsx, /src/index.css[22m
+[frontend] [2m12:18:59 am[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/components/layout/Layout.tsx, /src/index.css[22m
+[frontend] [2m12:19:47 am[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/components/layout/Layout.tsx, /src/index.css[22m
+[frontend] [2m12:34:00 am[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/index.css[22m
+[frontend] [2m12:35:08 am[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/ChatPage.tsx, /src/index.css[22m
+[frontend] [2m12:35:15 am[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/index.css[22m
+[frontend] [2m12:47:34 am[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/index.css[22m
+[frontend] [2m12:47:38 am[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/ChatPage.tsx, /src/index.css[22m
+[frontend] [2m12:47:50 am[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/index.css[22m
+[frontend] [2m12:48:03 am[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/index.css[22m
+[frontend] [2m12:48:11 am[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/App.tsx, /src/index.css[22m
+[script-writer] ::1 - OPTIONS /api/character/bible/698ade51cc10eade9be42fa2 HTTP/1.1 204 0 - 8.044 ms
+[script-writer] ::1 - OPTIONS /api/ai/provider HTTP/1.1 204 0 - 0.388 ms
+[script-writer] ::1 - OPTIONS /api/script/templates HTTP/1.1 204 0 - 0.305 ms
+[script-writer] ::1 - OPTIONS /api/script/history HTTP/1.1 204 0 - 0.312 ms
+[script-writer] ::1 - OPTIONS /api/treatment/bible/698ade51cc10eade9be42fa2 HTTP/1.1 204 0 - 0.347 ms
+[script-writer] ::1 - OPTIONS /api/character/bible/698ade51cc10eade9be42fa2 HTTP/1.1 204 0 - 0.432 ms
+[script-writer] ::1 - GET /api/ai/provider HTTP/1.1 304 - - 2.831 ms
+[script-writer] ::1 - GET /api/script/templates HTTP/1.1 304 - - 2.147 ms
+[script-writer] ::1 - GET /api/bible HTTP/1.1 304 - - 25.898 ms
+[script-writer] ::1 - GET /api/character/bible/698ade51cc10eade9be42fa2 HTTP/1.1 304 - - 58.765 ms
+[script-writer] ::1 - GET /api/script/history HTTP/1.1 304 - - 20.720 ms
+[script-writer] ::1 - GET /api/treatment/bible/698ade51cc10eade9be42fa2 HTTP/1.1 304 - - 27.022 ms
+[script-writer] ::1 - GET /api/character/bible/698ade51cc10eade9be42fa2 HTTP/1.1 304 - - 6.303 ms
+[script-writer] ::1 - GET /api/bible HTTP/1.1 304 - - 7.207 ms
+[script-writer] ::1 - GET /api/character/bible/698ade51cc10eade9be42fa2 HTTP/1.1 304 - - 16.148 ms
+[script-writer] ::1 - GET /api/scene/bible/698ade51cc10eade9be42fa2 HTTP/1.1 304 - - 12.025 ms
+[script-writer] ::1 - GET /api/bible HTTP/1.1 304 - - 7.411 ms
+[script-writer] ::1 - GET /api/character/bible/698ade51cc10eade9be42fa2 HTTP/1.1 304 - - 13.758 ms
+[script-writer] ::1 - GET /api/scene/bible/698ade51cc10eade9be42fa2 HTTP/1.1 304 - - 10.376 ms
+[script-writer] ::1 - GET /api/bible HTTP/1.1 304 - - 5.944 ms
+[script-writer] ::1 - GET /api/character/bible/698ade51cc10eade9be42fa2 HTTP/1.1 304 - - 10.937 ms
+[script-writer] ::1 - GET /api/bible HTTP/1.1 304 - - 12.616 ms
+[script-writer] ::1 - GET /api/scene/bible/698ade51cc10eade9be42fa2 HTTP/1.1 304 - - 18.259 ms
+[script-writer] ::1 - GET /api/character/bible/698ade51cc10eade9be42fa2 HTTP/1.1 304 - - 8.831 ms
+[script-writer] ::1 - GET /api/scene/bible/698ade51cc10eade9be42fa2 HTTP/1.1 304 - - 5.693 ms
+[script-writer] ::1 - GET /api/ai/provider HTTP/1.1 304 - - 1.603 ms
+[script-writer] ::1 - GET /api/script/templates HTTP/1.1 304 - - 1.906 ms
+[script-writer] ::1 - GET /api/ai/provider HTTP/1.1 304 - - 1.525 ms
+[script-writer] ::1 - GET /api/script/templates HTTP/1.1 304 - - 1.709 ms
+[script-writer] ::1 - GET /api/script/history HTTP/1.1 304 - - 15.345 ms
+[script-writer] ::1 - GET /api/character/bible/698ade51cc10eade9be42fa2 HTTP/1.1 304 - - 24.604 ms
+[script-writer] ::1 - GET /api/treatment/bible/698ade51cc10eade9be42fa2 HTTP/1.1 304 - - 24.990 ms
+[script-writer] ::1 - GET /api/script/history HTTP/1.1 304 - - 13.932 ms
+[script-writer] ::1 - GET /api/character/bible/698ade51cc10eade9be42fa2 HTTP/1.1 304 - - 16.004 ms
+[script-writer] ::1 - GET /api/treatment/bible/698ade51cc10eade9be42fa2 HTTP/1.1 304 - - 6.091 ms
+[frontend] [2m12:59:25 am[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/index.css[22m
+[frontend] [2m1:00:23 am[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/index.css[22m
+[frontend] [2m1:02:28 am[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/index.css[22m
+[frontend] [33m[vite:css][postcss] Unable to find uri in '@import url(''https://fonts.googleapis.com/css2?family=Inter:wght@400;
+[frontend] @layer properties;
+[frontend] 500;600;700&family=Courier+Prime: wght@400;700&display=swap'')'
+[frontend] 1  |  /*! tailwindcss v4.1.18 | MIT License | https://tailwindcss.com */
+[frontend] 2  |  @import url(''https://fonts.googleapis.com/css2?family=Inter:wght@400;
+[frontend]    |  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+[frontend] 3  |  @layer properties;
+[frontend]    |  ^^^^^^^^^^^^^^^^^^
+[frontend] 4  |  500;600;700&family=Courier+Prime: wght@400;700&display=swap'');
+[frontend]    |  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[39m
+[frontend] [2m1:02:41 am[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/index.css[22m
+[frontend] [2m1:02:49 am[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/index.css[22m
+[frontend] [2m1:03:15 am[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/index.css[22m
+[frontend] [2m1:03:37 am[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/index.css[22m
+[frontend] [2m1:03:39 am[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/index.css[22m
+[frontend] [2m1:04:15 am[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/index.css[22m
+[frontend] [2m1:04:30 am[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/index.css[22m
+[frontend] [2m1:04:36 am[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/index.css[22m
+[frontend] [2m1:04:58 am[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/ChatPage.tsx, /src/index.css[22m
+[frontend] [2m1:05:14 am[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/Roadmap/Roadmap.tsx, /src/index.css[22m
+[frontend] [2m1:05:28 am[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/pages/Roadmap/Roadmap.tsx, /src/index.css[22m
+[frontend] [2m1:05:47 am[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/index.css, /src/components/ui/Input.tsx[22m
+[frontend] [2m1:06:04 am[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/components/ui/Toast.tsx, /src/index.css[22m
+[frontend] [2m1:06:30 am[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/index.css[22m
+[frontend] [2m1:06:38 am[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/index.css[22m
+[frontend] [2m1:06:54 am[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/index.css[22m
+[frontend] [2m1:07:13 am[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mhmr update [39m[2m/src/components/layout/Layout.tsx, /src/index.css[22m
+[script-writer] ::1 - OPTIONS /api/character/bible/698ade51cc10eade9be42fa2 HTTP/1.1 204 0 - 3.105 ms
+[script-writer] ::1 - OPTIONS /api/character/bible/698ade51cc10eade9be42fa2 HTTP/1.1 204 0 - 0.314 ms
+[script-writer] ::1 - OPTIONS /api/character/bible/698ade51cc10eade9be42fa2 HTTP/1.1 204 0 - 0.267 ms
+[script-writer] ::1 - OPTIONS /api/character/bible/698ade51cc10eade9be42fa2 HTTP/1.1 204 0 - 0.344 ms
+[script-writer] ::1 - GET /api/bible HTTP/1.1 304 - - 16.817 ms
+[script-writer] ::1 - GET /api/scene/bible/698ade51cc10eade9be42fa2 HTTP/1.1 304 - - 38.282 ms
+[script-writer] ::1 - GET /api/character/bible/698ade51cc10eade9be42fa2 HTTP/1.1 304 - - 17.309 ms
+[script-writer] ::1 - GET /api/bible HTTP/1.1 304 - - 12.640 ms
+[script-writer] ::1 - GET /api/character/bible/698ade51cc10eade9be42fa2 HTTP/1.1 304 - - 11.823 ms
+[script-writer] ::1 - GET /api/scene/bible/698ade51cc10eade9be42fa2 HTTP/1.1 304 - - 7.795 ms
+[script-writer] ::1 - GET /api/bible HTTP/1.1 304 - - 8.357 ms
+[script-writer] ::1 - GET /api/character/bible/698ade51cc10eade9be42fa2 HTTP/1.1 304 - - 12.939 ms
+[script-writer] ::1 - GET /api/scene/bible/698ade51cc10eade9be42fa2 HTTP/1.1 304 - - 11.880 ms
+[script-writer] ::1 - GET /api/bible HTTP/1.1 304 - - 5.516 ms
+[script-writer] ::1 - GET /api/character/bible/698ade51cc10eade9be42fa2 HTTP/1.1 304 - - 18.137 ms
+[script-writer] ::1 - GET /api/scene/bible/698ade51cc10eade9be42fa2 HTTP/1.1 304 - - 7.078 ms
+[script-writer] ::1 - OPTIONS /api/ai/provider HTTP/1.1 204 0 - 0.344 ms
+[script-writer] ::1 - OPTIONS /api/script/templates HTTP/1.1 204 0 - 0.346 ms
+[script-writer] ::1 - OPTIONS /api/script/history HTTP/1.1 204 0 - 0.341 ms
+[script-writer] ::1 - OPTIONS /api/treatment/bible/698ade51cc10eade9be42fa2 HTTP/1.1 204 0 - 0.338 ms
+[script-writer] ::1 - GET /api/ai/provider HTTP/1.1 304 - - 1.873 ms
+[script-writer] ::1 - GET /api/script/templates HTTP/1.1 304 - - 3.955 ms
+[script-writer] ::1 - OPTIONS /api/script/history HTTP/1.1 204 0 - 0.636 ms
+[script-writer] ::1 - OPTIONS /api/treatment/bible/698ade51cc10eade9be42fa2 HTTP/1.1 204 0 - 0.331 ms
+[script-writer] ::1 - GET /api/ai/provider HTTP/1.1 304 - - 1.753 ms
+[script-writer] ::1 - GET /api/script/templates HTTP/1.1 304 - - 2.088 ms
+[script-writer] ::1 - GET /api/character/bible/698ade51cc10eade9be42fa2 HTTP/1.1 304 - - 30.840 ms
+[script-writer] ::1 - GET /api/script/history HTTP/1.1 304 - - 22.095 ms
+[script-writer] ::1 - GET /api/treatment/bible/698ade51cc10eade9be42fa2 HTTP/1.1 304 - - 20.863 ms
+[script-writer] ::1 - GET /api/character/bible/698ade51cc10eade9be42fa2 HTTP/1.1 304 - - 9.750 ms
+[script-writer] ::1 - GET /api/script/history HTTP/1.1 304 - - 9.907 ms
+[script-writer] ::1 - GET /api/treatment/bible/698ade51cc10eade9be42fa2 HTTP/1.1 304 - - 10.373 ms
+[script-writer] npm run script-writer exited with code 1073807364
+--> Sending SIGTERM to other processes..
+[backend] npm run backend exited with code 1073807364
+--> Sending SIGTERM to other processes..
+[frontend] npm run frontend exited with code 1073807364
+--> Sending SIGTERM to other processes..

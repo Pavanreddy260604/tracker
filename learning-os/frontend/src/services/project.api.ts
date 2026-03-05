@@ -37,152 +37,84 @@ export interface Scene {
     };
 }
 
-const API_URL = '/api';
-
-// Auth helper - pulls token from persisted auth store
-const getToken = () => {
-    const raw = localStorage.getItem('auth-storage');
-    if (raw) {
-        try {
-            const parsed = JSON.parse(raw);
-            if (parsed?.state?.token) return parsed.state.token as string;
-        } catch {
-            // ignore parse errors
-        }
-    }
-    return localStorage.getItem('token');
-};
-
-const getAuthHeaders = (): HeadersInit => {
-    const token = getToken();
-    return {
-        'Content-Type': 'application/json',
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    };
-};
-
-const assertOk = async (res: Response, fallback: string) => {
-    if (res.ok) return;
-    const payload = await res.json().catch(() => ({}));
-    throw new Error(payload.error || payload.message || fallback);
-};
+import { baseApi } from './base.api';
 
 export const projectApi = {
     // Projects (Bibles)
     listProjects: async (_userId?: string): Promise<Bible[]> => {
-        const res = await fetch(`${API_URL}/bible`, {
-            headers: getAuthHeaders(),
-        });
-        await assertOk(res, 'Failed to fetch projects');
-        const json = await res.json();
-        return json.data;
+        return baseApi.request<Bible[]>('/script/bible');
     },
 
     createProject: async (_userId: string, data: Partial<Bible>): Promise<Bible> => {
-        const res = await fetch(`${API_URL}/bible`, {
+        return baseApi.request<Bible>('/script/bible', {
             method: 'POST',
-            headers: getAuthHeaders(),
-            body: JSON.stringify({ ...data }),
+            body: JSON.stringify(data),
         });
-        await assertOk(res, 'Failed to create project');
-        const json = await res.json();
-        return json.data;
     },
 
     getProject: async (id: string): Promise<Bible> => {
-        const res = await fetch(`${API_URL}/bible/${id}`, {
-            headers: getAuthHeaders(),
-        });
-        await assertOk(res, 'Failed to fetch project');
-        const json = await res.json();
-        return json.data;
+        return baseApi.request<Bible>(`/script/bible/${id}`);
     },
 
     // Scenes
     listScenes: async (bibleId: string): Promise<Scene[]> => {
-        const res = await fetch(`${API_URL}/scene/bible/${bibleId}`, {
-            headers: getAuthHeaders(),
-        });
-        await assertOk(res, 'Failed to fetch scenes');
-        const json = await res.json();
-        return json.data;
+        return baseApi.request<Scene[]>(`/script/scene/bible/${bibleId}`);
     },
 
     createScene: async (bibleId: string, data: Partial<Scene>): Promise<Scene> => {
-        const res = await fetch(`${API_URL}/scene`, {
+        return baseApi.request<Scene>('/script/scene', {
             method: 'POST',
-            headers: getAuthHeaders(),
             body: JSON.stringify({ bibleId, ...data }),
         });
-        await assertOk(res, 'Failed to create scene');
-        const json = await res.json();
-        return json.data;
     },
 
     updateScene: async (sceneId: string, data: Partial<Scene>): Promise<Scene> => {
-        const res = await fetch(`${API_URL}/scene/${sceneId}`, {
+        return baseApi.request<Scene>(`/script/scene/${sceneId}`, {
             method: 'PUT',
-            headers: getAuthHeaders(),
             body: JSON.stringify(data),
         });
-        await assertOk(res, 'Failed to update scene');
-        const json = await res.json();
-        return json.data;
     },
 
     // Delete a scene
     deleteScene: async (sceneId: string): Promise<void> => {
-        const res = await fetch(`${API_URL}/scene/${sceneId}`, {
+        await baseApi.request(`/script/scene/${sceneId}`, {
             method: 'DELETE',
-            headers: getAuthHeaders(),
         });
-        await assertOk(res, 'Failed to delete scene');
     },
 
     // Update a project
     updateProject: async (projectId: string, data: Partial<Bible>): Promise<Bible> => {
-        const res = await fetch(`${API_URL}/bible/${projectId}`, {
+        return baseApi.request<Bible>(`/script/bible/${projectId}`, {
             method: 'PUT',
-            headers: getAuthHeaders(),
             body: JSON.stringify(data),
         });
-        await assertOk(res, 'Failed to update project');
-        const json = await res.json();
-        return json.data;
     },
 
     // Delete a project (and all its scenes)
     deleteProject: async (projectId: string): Promise<void> => {
-        const res = await fetch(`${API_URL}/bible/${projectId}`, {
+        await baseApi.request(`/script/bible/${projectId}`, {
             method: 'DELETE',
-            headers: getAuthHeaders(),
         });
-        await assertOk(res, 'Failed to delete project');
     },
 
     // Generation
     generateScene: async (sceneId: string, _userId: string, options: any): Promise<ReadableStream> => {
-        const res = await fetch(`${API_URL}/scene/${sceneId}/generate`, {
+        const res = await baseApi.requestRaw(`/script/scene/${sceneId}/generate`, {
             method: 'POST',
-            headers: getAuthHeaders(),
             body: JSON.stringify({ ...options }),
         });
-        await assertOk(res, 'Generation failed');
-        if (!res.body) throw new Error('Generation failed');
+        if (!res.body) throw new Error('Generation failed: No response body');
         return res.body;
     },
 
     // Critique
     critiqueScene: async (sceneId: string, content?: string): Promise<CritiqueResult> => {
         console.log('[API] critiqueScene payload:', { sceneId, contentLength: content?.length, contentPreview: content?.slice(0, 50) });
-        const res = await fetch(`${API_URL}/scene/${sceneId}/critique`, {
+        const data = await baseApi.request<CritiqueResult>(`/script/scene/${sceneId}/critique`, {
             method: 'POST',
-            headers: getAuthHeaders(),
             body: JSON.stringify({ content }),
         });
-        await assertOk(res, 'Critique failed');
-        const json = await res.json();
-        return json.data;
+        return data;
     },
 
     fixScene: async (sceneId: string): Promise<{
@@ -192,21 +124,21 @@ export const projectApi = {
         isSuperior: boolean;
         benchmarkScore: number;
     }> => {
-        const res = await fetch(`${API_URL}/scene/${sceneId}/fix`, {
+        const data = await baseApi.request<{
+            content: string;
+            critique: any;
+            auditNotes: string;
+            isSuperior: boolean;
+            benchmarkScore: number;
+        }>(`/script/scene/${sceneId}/fix`, {
             method: 'POST',
-            headers: getAuthHeaders(),
         });
-        await assertOk(res, 'Fix failed');
-        const json = await res.json();
-        return json.data;
+        return data;
     },
 
     // Export
     exportProject: async (bibleId: string, format: 'fountain' | 'txt' | 'json'): Promise<void> => {
-        const res = await fetch(`${API_URL}/bible/${bibleId}/export?format=${format}`, {
-            headers: getAuthHeaders(),
-        });
-        await assertOk(res, 'Export failed');
+        const res = await baseApi.requestRaw(`/script/bible/${bibleId}/export?format=${format}`);
 
         const blob = await res.blob();
         const url = window.URL.createObjectURL(blob);
@@ -219,3 +151,4 @@ export const projectApi = {
         document.body.removeChild(a);
     },
 };
+

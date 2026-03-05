@@ -52,12 +52,12 @@ import { aiRoutes } from './routes/ai.routes';
 
 // Routes
 app.use('/api/script', scriptRoutes);
-app.use('/api/voice', voiceRoutes);
-app.use('/api/bible', bibleRoutes);
-app.use('/api/scene', sceneRoutes);
-app.use('/api/character', characterRoutes);
-app.use('/api/treatment', treatmentRoutes);
-app.use('/api/ai', aiRoutes);
+app.use('/api/script/voice', voiceRoutes);
+app.use('/api/script/bible', bibleRoutes);
+app.use('/api/script/scene', sceneRoutes);
+app.use('/api/script/character', characterRoutes);
+app.use('/api/script/treatment', treatmentRoutes);
+app.use('/api/script/ai', aiRoutes); // Switch provider, etc.
 
 
 // Start server

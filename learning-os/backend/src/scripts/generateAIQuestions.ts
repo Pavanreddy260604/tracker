@@ -1,13 +1,13 @@
 import mongoose from 'mongoose';
 import dotenv from 'dotenv';
-import { OllamaService } from '../services/ollama.service.js';
+import { QuestionGenerationService } from '../services/questionGeneration.service.js';
 import { Question } from '../models/Question.js';
 
 dotenv.config();
 
 const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/learning-os';
 
-const ollama = new OllamaService();
+const questionGenerator = new QuestionGenerationService();
 
 const TOPICS = [
     'Array', 'String', 'HashTable', 'DynamicProgramming',
@@ -51,7 +51,7 @@ async function generateAndSaveQuestions() {
 
                 while (attempts < MAX_RETRIES && !success) {
                     attempts++;
-                    const data = await ollama.generateCuratedQuestion(difficulty, [topic]);
+                    const data = await questionGenerator.generateCuratedQuestion(difficulty, [topic]);
 
                     if (!data || !data.title || !data.slug) {
                         process.stdout.write('❌ (Invalid JSON) ');

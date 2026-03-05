@@ -1,5 +1,4 @@
-﻿
-.interview-meta {
+﻿.interview-meta {
   color: var(--text-secondary);
   font-size: 13px;
 }
@@ -14,8 +13,8 @@
 
 .interview-progress-bar {
   height: 100%;
-  background: linear-gradient(90deg, rgba(168, 85, 247, 0.9), rgba(124, 58, 237, 0.9));
-  box-shadow: 0 0 14px rgba(168, 85, 247, 0.45);
+  background: linear-gradient(90deg, var(--accent-primary), var(--accent-secondary));
+  box-shadow: 0 0 14px var(--accent-soft);
 }
 
 html.light .interview-hero {
@@ -95,7 +94,7 @@ html.light .interview-progress-bar {
   justify-content: space-between;
   padding: 0 20px;
   background: color-mix(in srgb, var(--console-surface) 90%, transparent);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.18);
+  border-bottom: 1px solid var(--border-subtle);
   backdrop-filter: blur(16px);
   box-shadow: var(--elevation-1);
 }
@@ -147,7 +146,7 @@ html.light .interview-progress-bar {
 
 .interview-pane-tabs {
   display: flex;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.18);
+  border-bottom: 1px solid var(--border-subtle);
   background: color-mix(in srgb, var(--console-surface-2) 90%, transparent);
 }
 
@@ -180,7 +179,8 @@ html.light .interview-progress-bar {
   align-items: center;
   justify-content: space-between;
   padding: 8px 12px;
-  border-top: 1px solid rgba(255, 255, 255, 0.18);
+  padding-bottom: calc(8px + env(safe-area-inset-bottom, 0px));
+  border-top: 1px solid var(--border-subtle);
   background: color-mix(in srgb, var(--console-surface-2) 90%, transparent);
 }
 
@@ -249,6 +249,7 @@ html.light .interview-progress-bar {
   width: 100%;
   height: 100%;
   padding: 16px;
+  padding-bottom: calc(16px + env(safe-area-inset-bottom, 0px));
   overflow-y: auto;
   overscroll-behavior: contain;
   background: inherit;
@@ -272,17 +273,17 @@ html.light .interview-progress-bar {
 }
 
 .interview-case.is-success {
-  border-color: rgba(52, 168, 83, 0.4);
+  border-color: var(--status-ok-border, rgba(34, 197, 94, 0.4));
   color: var(--status-ok);
 }
 
 .interview-case.is-danger {
-  border-color: rgba(234, 67, 53, 0.4);
+  border-color: var(--status-error-border, rgba(239, 68, 68, 0.4));
   color: var(--status-error);
 }
 
 .interview-case.is-warning {
-  border-color: rgba(251, 188, 4, 0.4);
+  border-color: var(--status-warning-border, rgba(245, 158, 11, 0.4));
   color: var(--status-warning);
 }
 
@@ -294,20 +295,20 @@ html.light .interview-progress-bar {
 }
 
 .interview-result.is-success {
-  border-color: rgba(52, 168, 83, 0.3);
-  background: rgba(52, 168, 83, 0.12);
+  border-color: var(--status-ok-border, rgba(34, 197, 94, 0.3));
+  background: var(--status-ok-soft, rgba(34, 197, 94, 0.12));
   color: var(--status-ok);
 }
 
 .interview-result.is-warning {
-  border-color: rgba(251, 188, 4, 0.3);
-  background: rgba(251, 188, 4, 0.12);
+  border-color: var(--status-warning-border, rgba(245, 158, 11, 0.3));
+  background: var(--status-warning-soft, rgba(245, 158, 11, 0.12));
   color: var(--status-warning);
 }
 
 .interview-result.is-danger {
-  border-color: rgba(234, 67, 53, 0.3);
-  background: rgba(234, 67, 53, 0.12);
+  border-color: var(--status-error-border, rgba(239, 68, 68, 0.3));
+  background: var(--status-error-soft, rgba(239, 68, 68, 0.12));
   color: var(--status-error);
 }
 
@@ -355,4 +356,3 @@ html:not(.dark) .interview-console-body {
   background: #fdfefe;
   overscroll-behavior: contain;
 }
-

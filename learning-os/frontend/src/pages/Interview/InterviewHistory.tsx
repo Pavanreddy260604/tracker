@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Calendar, Clock, Trophy, ArrowRight, Play } from 'lucide-react';
+import { Calendar, Clock, Trophy, Play, History } from 'lucide-react';
 import { api } from '../../services/api';
 import type { InterviewSession } from '../../services/api';
 
@@ -26,17 +26,15 @@ export function InterviewHistory() {
 
     const stats = useMemo(() => {
         const total = sessions.length || 1;
-        const completed = sessions.filter(s => s.status === 'completed').length;
+        const submitted = sessions.filter(s => s.status === 'submitted').length;
         const avgScore = Math.round(
             sessions.reduce((acc, s) => acc + (s.totalScore || 0), 0) / total
         );
         const avgDuration = Math.round(
             sessions.reduce((acc, s) => acc + (s.config?.duration || 0), 0) / total
         );
-        return { completed, avgScore, avgDuration };
+        return { submitted, avgScore, avgDuration };
     }, [sessions]);
-
-    const activeSession = sessions.find(s => s.status === 'in-progress');
 
     if (isLoading) return <div className="sw-page text-center sw-muted">Loading your interviews…</div>;
 
@@ -59,21 +57,19 @@ export function InterviewHistory() {
                             >
                                 <Play size={16} /> Start New Interview
                             </button>
-                            {activeSession && (
-                                <button
-                                    onClick={() => navigate(`/interview/${activeSession._id}`)}
-                                    className="sw-btn sw-btn-ghost"
-                                >
-                                    Resume Last Session
-                                </button>
-                            )}
+                            <button
+                                onClick={() => navigate('/interview/history')}
+                                className="sw-btn sw-btn-secondary interview-cta"
+                            >
+                                <History size={16} /> Manage History
+                            </button>
                         </div>
                     </div>
 
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 min-w-[280px] w-full sm:w-auto">
                         <div className="interview-stat-card">
-                            <p className="interview-stat-label">Completed</p>
-                            <p className="interview-stat-value">{stats.completed}</p>
+                            <p className="interview-stat-label">Submitted</p>
+                            <p className="interview-stat-value">{stats.submitted}</p>
                         </div>
                         <div className="interview-stat-card">
                             <p className="interview-stat-label">Avg Score</p>
@@ -99,9 +95,15 @@ export function InterviewHistory() {
                     <div className="mt-6">
                         <button
                             onClick={() => navigate('/interview/setup')}
-                            className="sw-btn sw-btn-primary interview-cta"
+                            className="sw-btn sw-btn-primary interview-cta mr-3"
                         >
                             <Play size={16} /> Start Now
+                        </button>
+                        <button
+                            onClick={() => navigate('/interview/history')}
+                            className="sw-btn sw-btn-secondary interview-cta"
+                        >
+                            <History size={16} /> View History
                         </button>
                     </div>
                 </div>
@@ -109,10 +111,8 @@ export function InterviewHistory() {
                 <div className="grid gap-4 md:grid-cols-2">
                     {sessions.map((session) => {
                         const statusClass =
-                            session.status === 'completed'
+                            session.status === 'submitted'
                                 ? 'is-success'
-                                : session.status === 'aborted'
-                                ? 'is-danger'
                                 : 'is-info';
                         const score = Math.max(0, session.totalScore || 0);
                         return (
@@ -134,7 +134,7 @@ export function InterviewHistory() {
                                                 <Clock size={14} />
                                                 {session.config.duration}m
                                             </span>
-                                            <span className="interview-meta">Q{session.config.questionCount}</span>
+                                            <span className="interview-meta">Q{session.config.sectionCount}</span>
                                         </div>
                                         <div className="flex flex-wrap gap-2">
                                             <span className="interview-pill">{session.config.difficulty} level</span>
@@ -149,13 +149,6 @@ export function InterviewHistory() {
                                             {score}
                                             <span className="text-base text-[color:var(--text-secondary)]">%</span>
                                         </p>
-                                        <button
-                                            onClick={() => navigate(`/interview/${session._id}`)}
-                                            className="sw-icon-button"
-                                            aria-label="Open session"
-                                        >
-                                            <ArrowRight size={20} />
-                                        </button>
                                     </div>
                                 </div>
                                 <div className="interview-progress mt-4">

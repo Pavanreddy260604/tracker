@@ -26,7 +26,7 @@ const seedExtensive = async () => {
             process.exit(1);
         }
 
-        console.log(`👤 Seeding EXTENSIVE data for: ${user.username}`);
+        console.log(`👤 Seeding EXTENSIVE data for: ${user.name}`);
 
         // === Seeding Backend Topics ===
         console.log('📚 Generating Backend Topics...');

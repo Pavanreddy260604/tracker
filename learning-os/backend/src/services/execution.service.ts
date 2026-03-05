@@ -12,9 +12,102 @@ interface PistonResponse {
     };
 }
 
+interface ProviderAttemptError {
+    endpoint: string;
+    statusCode?: number;
+    message: string;
+}
+
+interface ExecutionProviderConfig {
+    baseUrls: string[];
+    timeoutMs: number;
+    apiKey?: string;
+    apiKeyHeader: string;
+    apiKeyPrefix?: string;
+}
+
 export class ExecutionService {
-    private baseUrl = 'https://emkc.org/api/v2/piston';
+    private static readonly DEFAULT_BASE_URL = 'https://emkc.org/api/v2/piston';
+    private static readonly DEFAULT_TIMEOUT_MS = 10000;
     private resultMarker = '__RESULT__';
+    private providerConfig: ExecutionProviderConfig;
+
+    constructor() {
+        this.providerConfig = this.readProviderConfigFromEnv();
+    }
+
+    private normalizeProviderBaseUrl(url: string): string {
+        const trimmed = url.trim().replace(/\/+$/, '');
+        if (!trimmed) return '';
+        if (trimmed.endsWith('/execute')) {
+            return trimmed.slice(0, -'/execute'.length);
+        }
+        return trimmed;
+    }
+
+    private readProviderConfigFromEnv(): ExecutionProviderConfig {
+        const primaryUrl = this.normalizeProviderBaseUrl(
+            process.env.PISTON_BASE_URL || ExecutionService.DEFAULT_BASE_URL
+        );
+        const fallbackUrls = (process.env.PISTON_FALLBACK_BASE_URLS || '')
+            .split(',')
+            .map((url) => this.normalizeProviderBaseUrl(url))
+            .filter((url) => url.length > 0);
+
+        const baseUrls = Array.from(new Set([primaryUrl, ...fallbackUrls].filter((url) => url.length > 0)));
+
+        const timeoutRaw = Number(process.env.PISTON_TIMEOUT_MS);
+        const timeoutMs =
+            Number.isFinite(timeoutRaw) && timeoutRaw >= 1000 && timeoutRaw <= 120000
+                ? Math.floor(timeoutRaw)
+                : ExecutionService.DEFAULT_TIMEOUT_MS;
+
+        const apiKey = process.env.PISTON_API_KEY?.trim();
+        const apiKeyHeader = process.env.PISTON_API_KEY_HEADER?.trim() || 'Authorization';
+        const apiKeyPrefix = process.env.PISTON_API_KEY_PREFIX?.trim() || 'Bearer';
+
+        return {
+            baseUrls: baseUrls.length > 0 ? baseUrls : [ExecutionService.DEFAULT_BASE_URL],
+            timeoutMs,
+            apiKey: apiKey && apiKey.length > 0 ? apiKey : undefined,
+            apiKeyHeader,
+            apiKeyPrefix,
+        };
+    }
+
+    private buildProviderHeaders(): Record<string, string> {
+        if (!this.providerConfig.apiKey) {
+            return {};
+        }
+
+        const headerValue =
+            this.providerConfig.apiKeyPrefix && this.providerConfig.apiKeyPrefix.length > 0
+                ? `${this.providerConfig.apiKeyPrefix} ${this.providerConfig.apiKey}`
+                : this.providerConfig.apiKey;
+
+        return {
+            [this.providerConfig.apiKeyHeader]: headerValue,
+        };
+    }
+
+    private shouldRetryWithNextProvider(statusCode?: number): boolean {
+        if (statusCode === undefined) return true;
+        if (statusCode >= 500) return true;
+        return statusCode === 401 || statusCode === 429;
+    }
+
+    private toProviderErrorMessage(lastError: ProviderAttemptError, attempts: number): string {
+        if (lastError.statusCode === 401) {
+            return `Code execution provider rejected request (401) at ${lastError.endpoint}. Configure PISTON_BASE_URL/PISTON_API_KEY.`;
+        }
+
+        if (lastError.statusCode === 429) {
+            return 'Code execution provider rate limit exceeded. Please retry in a few seconds.';
+        }
+
+        const suffix = attempts > 1 ? ` after trying ${attempts} providers` : '';
+        return `Code execution unavailable${suffix}. ${lastError.message || 'Please try again.'}`;
+    }
 
     /**
      * Map internal language names to Piston runtime names
@@ -45,20 +138,54 @@ export class ExecutionService {
             throw new Error('Code payload too large (50k char limit).');
         }
 
-        try {
-            const response = await axios.post(`${this.baseUrl}/execute`, {
-                language: runtime.language,
-                version: runtime.version,
-                files: [
-                    { content: code }
-                ],
-                stdin: stdin
-            }, { timeout: 10000 }); // INFRA: 10s Timeout limit to prevent hanging processes
-            return response.data;
-        } catch (error: any) {
-            console.error('Piston Execution Error:', error.message);
-            throw new Error('Code execution unavailable. Please try again.');
+        const providerHeaders = this.buildProviderHeaders();
+        let lastError: ProviderAttemptError = {
+            endpoint: '',
+            message: 'Unknown execution provider failure.',
+        };
+
+        for (const baseUrl of this.providerConfig.baseUrls) {
+            const endpoint = `${baseUrl}/execute`;
+            try {
+                const response = await axios.post(
+                    endpoint,
+                    {
+                        language: runtime.language,
+                        version: runtime.version,
+                        files: [{ content: code }],
+                        stdin: stdin,
+                    },
+                    {
+                        timeout: this.providerConfig.timeoutMs,
+                        headers: providerHeaders,
+                    }
+                );
+                return response.data;
+            } catch (error: any) {
+                const statusCode = error?.response?.status as number | undefined;
+                const responseData = error?.response?.data;
+                const providerMessage =
+                    (typeof responseData === 'string' && responseData) ||
+                    responseData?.message ||
+                    responseData?.error ||
+                    error?.message ||
+                    'Unknown provider error';
+
+                console.error('Piston Execution Error:', statusCode ?? 'unknown', endpoint, providerMessage);
+
+                lastError = {
+                    endpoint,
+                    statusCode,
+                    message: providerMessage,
+                };
+
+                if (!this.shouldRetryWithNextProvider(statusCode)) {
+                    break;
+                }
+            }
         }
+
+        throw new Error(this.toProviderErrorMessage(lastError, this.providerConfig.baseUrls.length));
     }
 
     /**

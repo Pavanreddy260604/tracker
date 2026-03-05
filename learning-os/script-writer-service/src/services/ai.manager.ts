@@ -1,12 +1,12 @@
 
 import { IAIService } from './ai.interface';
 import { ollamaService } from './ollama.service';
-import { geminiService } from './gemini.service';
+
 import { groqService } from './groq.service';
 import fs from 'fs';
 import path from 'path';
 
-export type AIProvider = 'ollama' | 'gemini' | 'groq';
+export type AIProvider = 'ollama' | 'groq';
 
 export class AIServiceManager implements IAIService {
     private activeProvider: AIProvider = 'ollama'; // Default to Ollama (Local)
@@ -16,7 +16,6 @@ export class AIServiceManager implements IAIService {
     constructor() {
         this.providers = {
             ollama: ollamaService,
-            gemini: geminiService,
             groq: groqService
         };
 
@@ -62,8 +61,8 @@ export class AIServiceManager implements IAIService {
         return this.activeProvider;
     }
 
-    async chat(message: string, history: any[] = [], jsonMode: boolean = false): Promise<string> {
-        return this.providers[this.activeProvider].chat(message, history, jsonMode);
+    async chat(message: string, options?: import('./ai.interface').ChatOptions): Promise<string> {
+        return this.providers[this.activeProvider].chat(message, options);
     }
 
     async *chatStream(messages: { role: string; content: string }[], systemPrompt?: string): AsyncGenerator<string, void, unknown> {

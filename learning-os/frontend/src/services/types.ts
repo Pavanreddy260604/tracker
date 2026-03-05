@@ -11,6 +11,7 @@ export interface User {
         backend: number;
         project: number;
     };
+    emailVerified?: boolean;
     createdAt: string;
 }
 

@@ -31,16 +31,6 @@ export function ScriptWriterDashboard() {
         navigate(`/script-writer/${projectId}`);
     };
 
-    const handleProjectCreated = async () => {
-        await handleNewProject();
-        // optionally navigate to the new project? 
-        // handleNewProject updates the list. 
-        // We might want to find the latest project and navigate to it?
-        // For now, staying on dashboard is fine, user can click it.
-        // Or we can modify handleNewProject to return the project, but that requires changing the hook.
-        // Let's just let them see it in the list for now.
-    };
-
     if (error) {
         return (
             <div className="flex items-center justify-center h-screen bg-zinc-950 text-red-500">

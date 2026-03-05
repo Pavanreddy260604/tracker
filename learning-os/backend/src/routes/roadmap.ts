@@ -1,9 +1,55 @@
 import express from 'express';
+import { z } from 'zod';
 import { authenticate } from '../middleware/auth.js';
 import { RoadmapNode } from '../models/RoadmapNode.js';
 import { RoadmapEdge } from '../models/RoadmapEdge.js';
 
 const router = express.Router();
+
+const ROADMAP_STATUSES = ['todo', 'in-progress', 'done'] as const;
+const ROADMAP_CATEGORIES = ['general', 'dsa', 'backend', 'database', 'frontend', 'devops', 'system', 'security', 'api', 'language', 'tools', 'terminal'] as const;
+const ROADMAP_PRIORITIES = ['low', 'medium', 'high'] as const;
+
+const roadmapSyncSchema = z.object({
+    nodes: z.array(z.object({
+        id: z.string().optional(),
+        nodeId: z.string().optional(),
+        roadmapId: z.string().optional(),
+        type: z.string().optional(),
+        data: z.object({
+            label: z.string().min(1).max(200).optional(),
+            status: z.enum(ROADMAP_STATUSES).optional(),
+            description: z.string().max(5000).optional(),
+            category: z.enum(ROADMAP_CATEGORIES).optional(),
+            priority: z.enum(ROADMAP_PRIORITIES).optional(),
+            estimatedHours: z.number().min(0).max(10000).optional(),
+            resourceUrl: z.string().max(2000).optional()
+        }).optional(),
+        position: z.object({
+            x: z.number().finite(),
+            y: z.number().finite()
+        }).optional()
+    }).passthrough()).max(500),
+    edges: z.array(z.object({
+        id: z.string().optional(),
+        edgeId: z.string().optional(),
+        roadmapId: z.string().optional(),
+        source: z.string().min(1).max(200),
+        target: z.string().min(1).max(200)
+    }).passthrough()).max(2000)
+}).strict();
+
+const patchNodeSchema = z.object({
+    status: z.enum(ROADMAP_STATUSES).optional(),
+    label: z.string().min(1).max(200).optional(),
+    description: z.string().max(5000).optional(),
+    category: z.enum(ROADMAP_CATEGORIES).optional(),
+    priority: z.enum(ROADMAP_PRIORITIES).optional(),
+    estimatedHours: z.number().min(0).max(10000).optional(),
+    resourceUrl: z.string().max(2000).optional()
+}).strict().refine((value) => Object.keys(value).length > 0, {
+    message: 'At least one field is required.'
+});
 
 // GET /api/roadmap
 // Fetch all nodes and edges for the user
@@ -23,7 +69,15 @@ router.get('/', authenticate, async (req, res) => {
 // Batch update/save nodes and edges
 router.post('/sync', authenticate, async (req, res) => {
     try {
-        const { nodes, edges } = req.body;
+        const parsed = roadmapSyncSchema.safeParse(req.body);
+        if (!parsed.success) {
+            return res.status(400).json({
+                success: false,
+                error: parsed.error.errors[0].message
+            });
+        }
+
+        const { nodes, edges } = parsed.data;
 
         // Clear and re-insert for the user
         await Promise.all([
@@ -75,7 +129,15 @@ router.post('/sync', authenticate, async (req, res) => {
 // Update single node (supports all fields)
 router.patch('/node/:nodeId', authenticate, async (req, res) => {
     try {
-        const { status, label, description, category, priority, estimatedHours, resourceUrl } = req.body;
+        const parsed = patchNodeSchema.safeParse(req.body);
+        if (!parsed.success) {
+            return res.status(400).json({
+                success: false,
+                error: parsed.error.errors[0].message
+            });
+        }
+
+        const { status, label, description, category, priority, estimatedHours, resourceUrl } = parsed.data;
 
         const updateFields: Record<string, any> = {};
         if (status !== undefined) updateFields['data.status'] = status;

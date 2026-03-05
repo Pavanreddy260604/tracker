@@ -9,7 +9,7 @@ const Card = React.forwardRef<HTMLDivElement, CardProps>(({ className, hover = f
     <div
         ref={ref}
         className={cn(
-            "surface-card backdrop-blur-sm transition-all duration-300",
+            "surface-card md:backdrop-blur-sm transition-[border-color,box-shadow,transform] duration-200 contain-content gpu-accelerated",
             hover && "hover:border-[color:var(--border-strong)] hover:shadow-[var(--elevation-2)] hover:-translate-y-0.5",
             className
         )}

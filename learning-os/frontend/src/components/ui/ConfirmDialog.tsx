@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Modal } from './Modal';
 import { Button } from './Button';
 import { AlertTriangle, Info } from 'lucide-react';
@@ -13,6 +13,9 @@ interface ConfirmDialogProps {
     cancelLabel?: string;
     variant?: 'danger' | 'primary';
     isLoading?: boolean;
+    verificationText?: string;
+    verificationLabel?: string;
+    verificationPlaceholder?: string;
 }
 
 export function ConfirmDialog({
@@ -24,9 +27,23 @@ export function ConfirmDialog({
     confirmLabel = 'Confirm',
     cancelLabel = 'Cancel',
     variant = 'primary',
-    isLoading = false
+    isLoading = false,
+    verificationText,
+    verificationLabel = 'Type the confirmation text to continue',
+    verificationPlaceholder = ''
 }: ConfirmDialogProps) {
     const [internalLoading, setInternalLoading] = useState(false);
+    const [verificationInput, setVerificationInput] = useState('');
+    const isVerificationRequired = Boolean(verificationText);
+    const isVerificationValid = !isVerificationRequired || verificationInput.trim() === verificationText;
+
+    useEffect(() => {
+        if (!isOpen) {
+            setVerificationInput('');
+            setInternalLoading(false);
+        }
+    }, [isOpen]);
+
     return (
         <Modal
             isOpen={isOpen}
@@ -49,6 +66,23 @@ export function ConfirmDialog({
                     </p>
                 </div>
 
+                {isVerificationRequired && (
+                    <div className="space-y-2">
+                        <p className="text-xs text-text-secondary">
+                            {verificationLabel}
+                        </p>
+                        <input
+                            value={verificationInput}
+                            onChange={(event) => setVerificationInput(event.target.value)}
+                            placeholder={verificationPlaceholder || verificationText}
+                            className="w-full px-3 py-2 rounded-lg border border-border-subtle bg-console-surface-2 text-text-primary focus:outline-none focus:ring-2 focus:ring-status-warning/40"
+                        />
+                        <p className="text-xs text-text-secondary">
+                            Confirmation text: <span className="font-semibold text-text-primary">{verificationText}</span>
+                        </p>
+                    </div>
+                )}
+
                 <div className="flex items-center justify-end gap-3 mt-4">
                     <Button
                         variant="secondary"
@@ -59,6 +93,7 @@ export function ConfirmDialog({
                     </Button>
                     <Button
                         variant={variant === 'danger' ? 'danger' : 'primary'}
+                        disabled={!isVerificationValid}
                         onClick={async () => {
                             setInternalLoading(true);
                             try {

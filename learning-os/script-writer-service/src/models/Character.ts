@@ -16,22 +16,61 @@ export interface ICharacter extends Document {
     updatedAt: Date;
 }
 
+// Valid role options
+const VALID_ROLES = ['protagonist', 'antagonist', 'supporting', 'minor'] as const;
+
 const CharacterSchema: Schema = new Schema({
-    bibleId: { type: Schema.Types.ObjectId, ref: 'Bible', required: true },
-    name: { type: String, required: true },
-    age: { type: Number },
+    bibleId: {
+        type: Schema.Types.ObjectId,
+        ref: 'Bible',
+        required: [true, 'Bible ID is required'],
+        index: true
+    },
+    name: {
+        type: String,
+        required: [true, 'Character name is required'],
+        trim: true,
+        maxlength: [100, 'Character name cannot exceed 100 characters'],
+        minlength: [1, 'Character name cannot be empty']
+    },
+    age: {
+        type: Number,
+        min: [0, 'Age cannot be negative'],
+        max: [150, 'Age cannot exceed 150']
+    },
     role: {
         type: String,
-        enum: ['protagonist', 'antagonist', 'supporting', 'minor'],
+        enum: {
+            values: [...VALID_ROLES],
+            message: 'Invalid role. Allowed: ' + VALID_ROLES.join(', ')
+        },
         default: 'supporting'
     },
     voice: {
-        description: { type: String },
-        sampleLines: [{ type: String }],
-        accent: { type: String }
+        description: {
+            type: String,
+            maxlength: [500, 'Voice description cannot exceed 500 characters']
+        },
+        sampleLines: [{
+            type: String,
+            maxlength: [500, 'Each sample line cannot exceed 500 characters']
+        }],
+        accent: {
+            type: String,
+            maxlength: [100, 'Accent cannot exceed 100 characters']
+        }
     },
-    traits: [{ type: String }],
-    motivation: { type: String }
+    traits: [{
+        type: String,
+        maxlength: [100, 'Each trait cannot exceed 100 characters']
+    }],
+    motivation: {
+        type: String,
+        maxlength: [1000, 'Motivation cannot exceed 1000 characters']
+    }
 }, { timestamps: true });
+
+// Index for efficient queries
+CharacterSchema.index({ bibleId: 1, name: 1 });
 
 export const Character = mongoose.model<ICharacter>('Character', CharacterSchema);

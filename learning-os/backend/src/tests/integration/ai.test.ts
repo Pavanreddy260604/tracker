@@ -2,13 +2,14 @@ import request from 'supertest';
 import express from 'express';
 import { jest } from '@jest/globals';
 import aiRoutes from '../../routes/ai';
-import { AIService } from '../../services/ai.service';
+import { AIClientService } from '../../services/aiClient.service';
 
 const app = express();
 app.use(express.json());
 // Mock auth
 app.use((req: any, res, next) => {
-    req.user = { _id: 'user123' }; // Fix: match router's req.user usage
+    req.user = { _id: 'user123' };
+    req.userId = 'user123';
     next();
 });
 
@@ -23,15 +24,21 @@ jest.mock('../../middleware/auth', () => ({
 
 app.use('/api/ai', aiRoutes);
 
-// Mock AIService class
-const mockChat = jest.fn();
-jest.mock('../../services/ai.service', () => {
+// Mock AIClientService
+const mockGenerateResponse = jest.fn();
+const mockGenerateChatStream = jest.fn();
+jest.mock('../../services/aiClient.service', () => {
     return {
-        AIService: jest.fn().mockImplementation(() => {
+        AIClientService: jest.fn().mockImplementation(() => {
             return {
-                chat: mockChat
+                generateResponse: mockGenerateResponse,
+                generateChatStream: mockGenerateChatStream,
+                chat: mockGenerateResponse,
             };
-        })
+        }),
+        AIServiceError: class AIServiceError extends Error {
+            recoverable = true;
+        }
     };
 });
 
@@ -41,34 +48,28 @@ describe('AI Routes Integration', () => {
     });
 
     describe('POST /api/ai/chat', () => {
-        it('should return AI response successfully', async () => {
-            const mockResponse = {
-                text: 'Hello! I can help you with your learning.',
-                toolCalls: []
-            };
-
-            mockChat.mockResolvedValue(mockResponse as never);
+        it('should return AI response via streaming', async () => {
+            // Stream mock: yields one chunk then returns
+            mockGenerateChatStream.mockImplementation(async function* () {
+                yield 'Hello! ';
+                yield 'I can help.';
+            });
 
             const res = await request(app)
                 .post('/api/ai/chat')
                 .send({
                     message: 'Hi there',
-                    history: '[]',
-                    model: 'gemini-pro'
                 });
 
             expect(res.status).toBe(200);
-            expect(res.body.success).toBe(true);
-            expect(res.body.response).toEqual(mockResponse);
-            expect(mockChat).toHaveBeenCalledWith(
-                'Hi there',
-                expect.any(Array),
-                expect.any(Array) // image parts
-            );
+            expect(res.text).toContain('Hello!');
         });
 
         it('should handle API errors gracefully', async () => {
-            mockChat.mockRejectedValue(new Error('API Quota Exceeded') as never);
+            mockGenerateChatStream.mockImplementation(async function* () {
+                throw new Error('Ollama connection refused');
+            });
+            mockGenerateResponse.mockRejectedValue(new Error('All models failed') as never);
 
             const res = await request(app)
                 .post('/api/ai/chat')
@@ -76,9 +77,9 @@ describe('AI Routes Integration', () => {
                     message: 'Hi'
                 });
 
-            expect(res.status).toBe(500);
-            expect(res.body.success).toBe(false);
-            expect(res.body.error).toBe('API Quota Exceeded');
+            // The route writes an error message to the stream response
+            expect(res.status).toBe(200); // Streaming always starts with 200
+            expect(res.text).toBeTruthy();
         });
     });
 });

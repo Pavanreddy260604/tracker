@@ -1,0 +1,17 @@
+PAGE LOG: [vite] connecting...
+PAGE LOG: %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+PAGE LOG: [vite] connected.
+Login page loaded
+Clicked login
+PAGE LOG: [Activity] navigation: Navigated to / {path: /}
+PAGE LOG: motion() is deprecated. Use motion.create() instead.
+Is dashboard: false
+PAGE LOG: [vite] connecting...
+PAGE LOG: [vite] connected.
+PAGE LOG: %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+PAGE LOG: [Activity] navigation: Navigated to /chat {path: /chat}
+PAGE LOG: [Activity] navigation: Navigated to /chat {path: /chat}
+Chat page loaded
+Chat shell found: true
+Chat shell dimensions: {"x":0,"y":0,"width":1280,"height":720}
+Chat shell HTML: <div class="chat-shell bg-console-bg"><div class="chat-sidebar flex flex-col overflow-hidden shrink-0 relative transition-[width] duration-300 ease-in-out opacity-100" style="width: 260px;"><div class="p-3 mb-2"><button class="chat-new-button w-full flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-left transition-colors"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-plus" aria-hidden="true"><path d="M5 12h14"></path><path d="M12 5v14"></path></svg> <span class="flex-1">New chat</span></button></div><div class="flex-1 overflow-y-auto p-2 space-y-1"></div></div><div class="chat-main flex-1 flex flex-col relative"><div class="chat-header sticky top-0 z-10 px-4 flex items-center justify-between shrink-0"><div class="flex items-center gap-2"><button class="chat-icon-button p-2 rounded-lg" aria-label="Close sidebar"

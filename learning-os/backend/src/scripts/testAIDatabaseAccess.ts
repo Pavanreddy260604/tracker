@@ -1,7 +1,7 @@
 
 import mongoose from 'mongoose';
 import dotenv from 'dotenv';
-import { OllamaService } from '../services/ollama.service.js';
+import { AIChatService } from '../services/aiChat.service.js';
 import { UserActivity } from '../models/UserActivity.js';
 import { User } from '../models/User.js';
 
@@ -59,7 +59,7 @@ async function testAccess() {
     console.log("3. Initializing AI with Database Access...");
     // Use 'mistral' or whatever model is available locally. 
     // If 'mistral' fails, try 'llama3' or check what user has.
-    const ai = new OllamaService('mistral', user._id.toString());
+    const ai = new AIChatService('mistral', user._id.toString());
 
     // Ask question
     const question = "What was my last recorded activity on the system? Be specific.";

@@ -1,12 +1,13 @@
 import mongoose from 'mongoose';
 import dotenv from 'dotenv';
 import path from 'path';
-import { fileURLToPath } from 'url';
 import fs from 'fs';
 import { Question } from '../models/Question.js';
+import { fileURLToPath } from 'url';
 
 // Setup dirname equivalent for ESM
-const __filename = fileURLToPath(import.meta.url);
+// @ts-ignore - import.meta.url is handled by module resolution
+const __filename = fileURLToPath((import.meta as { url: string }).url);
 const __dirname = path.dirname(__filename);
 
 // Load env vars

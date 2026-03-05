@@ -37,28 +37,13 @@ export class CharacterService {
      * Delete a character and unlink their voice samples.
      */
     async deleteCharacter(id: string): Promise<boolean> {
-        // Try to use a transaction if possible, but fall back if standalone instance
-        const client = mongoose.connection.getClient();
-        const supportsTransactions = client.topology?.description?.type !== 'Single';
-
-        if (!supportsTransactions) {
-            // Standalone instance: Delete sequentially without session
-            const result = await Character.findByIdAndDelete(id);
-            if (!result) return false;
-            await VoiceSample.updateMany(
-                { characterId: id },
-                { $unset: { characterId: "" } }
-            );
-            return true;
-        }
-
-        // Replica set or Mongos: Use transaction
+        // Prefer transaction, but gracefully fall back for standalone MongoDB.
         const session = await mongoose.startSession();
-        session.startTransaction();
 
         try {
-            const result = await Character.findByIdAndDelete(id).session(session);
+            session.startTransaction();
 
+            const result = await Character.findByIdAndDelete(id).session(session);
             if (!result) {
                 await session.abortTransaction();
                 return false;
@@ -71,13 +56,31 @@ export class CharacterService {
 
             await session.commitTransaction();
             return true;
-
         } catch (error) {
-            await session.abortTransaction();
+            await session.abortTransaction().catch(() => undefined);
+
+            if (this.isTransactionUnsupported(error)) {
+                const result = await Character.findByIdAndDelete(id);
+                if (!result) return false;
+                await VoiceSample.updateMany(
+                    { characterId: id },
+                    { $unset: { characterId: "" } }
+                );
+                return true;
+            }
+
             throw error;
         } finally {
             session.endSession();
         }
+    }
+
+    private isTransactionUnsupported(error: unknown): boolean {
+        if (!(error instanceof Error)) return false;
+        return (
+            error.message.includes('Transaction numbers are only allowed on a replica set member') ||
+            error.message.includes('Transaction support is not available')
+        );
     }
 }
 

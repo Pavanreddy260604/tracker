@@ -1,4 +1,3 @@
-import { memo } from 'react';
 import { Check, X, Info, Layout, Brain, Sparkles, TrendingUp, TrendingDown, AlertTriangle } from 'lucide-react';
 import type { CritiqueResult } from '../../../services/project.api';
 

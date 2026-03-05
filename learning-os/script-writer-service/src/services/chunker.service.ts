@@ -16,6 +16,7 @@ export interface DialogueChunk {
     chunkIndex: number;
     contextBefore?: string;        // Previous chunk for continuity
     raw: string;                   // Original unprocessed text
+    era?: string;                  // DETECTED ERA CONTEXT
 }
 
 export interface ParseResult {
@@ -34,10 +35,11 @@ const PATTERNS = {
     // Scene headers: INT./EXT. LOCATION - TIME
     sceneHeader: /^(INT\.|EXT\.|INT\.\/EXT\.|I\/E\.)\s+.+$/i,
 
-    // Character cue: ALL CAPS name, optionally with parenthetical, or Name: format
-    // Must be on its own line, followed by dialogue.
-    // Enhanced to support simple scripts: "Name:" "Name -" "NAME"
-    characterCue: /^(([A-Z][A-Z\s\-'\.]+[A-Z])|([A-Z][a-z]+(?::|\s*-))|([A-Za-z]+:))(\s*\([\w\s\.\-']+\))?$/,
+    // Character cue: 
+    // 1. English ALL CAPS name (Standard)
+    // 2. Name ending with colon (Script style)
+    // 3. Unicode/Non-Latin Name (No punctuation at end, short length) - For local languages like Telugu/Hindi
+    characterCue: /^(?:(?:[A-Z][A-Z\s\d\-\.']*[A-Z])|(?:.*:)|(?:[\p{L}\p{M}][\p{L}\p{M}\s\d\-\.']{0,50}[^\s\.,!\?]))(?:[\s]*\([^\)]+\))?$/u,
 
     // Parenthetical: (beat), (quietly), (V.O.), (O.S.), etc.
     parenthetical: /^\([\w\s\.\-',]+\)$/,
@@ -49,180 +51,133 @@ const PATTERNS = {
     pageBreak: /^(CONTINUED|MORE|\(MORE\)|Page \d+)$/i,
 
     // Common parentheticals that indicate voice type
-    voiceTypes: /\((V\.O\.|O\.S\.|O\.C\.|CONT'D|CONTINUING|PRE-LAP|FILTERED|INTO PHONE)\)/i
+    voiceTypes: /\((V\.O\.|O\.S\.|O\.C\.|CONT'D|CONTINUING|PRE-LAP|FILTERED|INTO PHONE)\)/i,
+
+    // ERA HEADER DETECTION: # ERA: [NAME]
+    eraHeader: /^#\s*ERA:\s*(.+)$/i
 };
+
+import { aiServiceManager } from './ai.manager';
 
 export class ChunkerService {
 
     /**
      * Parse a full screenplay text into structured chunks.
+     * NOW USES AI for robust multilingual support.
+     * Note: This returns a Promise now.
      */
-    parseScreenplay(text: string): ParseResult {
-        const lines = text.split(/\r?\n/);
-        const chunks: DialogueChunk[] = [];
-        const characters = new Set<string>();
+    async parseScreenplay(text: string): Promise<ParseResult> {
+        console.log('[ChunkerService] Starting AI-powered script parsing...');
 
-        let currentSpeaker: string | null = null;
-        let currentParenthetical: string | undefined = undefined;
-        let currentDialogue: string[] = [];
-        let chunkIndex = 0;
-        let sceneCount = 0;
-        let lastChunkContent = '';
-
-        const flushDialogue = (lineNum: number) => {
-            if (currentSpeaker && currentDialogue.length > 0) {
-                const content = currentDialogue.join('\n').trim();
-                if (content.length > 0) {
-                    chunks.push({
-                        type: 'dialogue',
-                        content,
-                        speaker: currentSpeaker,
-                        parenthetical: currentParenthetical,
-                        lineNumber: lineNum,
-                        chunkIndex: chunkIndex++,
-                        contextBefore: lastChunkContent.slice(0, 100),
-                        raw: `${currentSpeaker}${currentParenthetical ? ' ' + currentParenthetical : ''}\n${content}`
-                    });
-                    lastChunkContent = content;
-                    characters.add(currentSpeaker);
-                }
-            }
-            currentDialogue = [];
-            currentParenthetical = undefined;
-        };
-
-        for (let i = 0; i < lines.length; i++) {
-            const line = lines[i];
-            const trimmed = line.trim();
-            const lineNum = i + 1;
-
-            // Skip empty lines
-            if (trimmed.length === 0) {
-                // Empty line might end a dialogue block
-                if (currentDialogue.length > 0) {
-                    flushDialogue(lineNum);
-                    currentSpeaker = null;
-                }
-                continue;
-            }
-
-            // Skip page break indicators
-            if (PATTERNS.pageBreak.test(trimmed)) {
-                continue;
-            }
-
-            // Scene header (slug line)
-            if (PATTERNS.sceneHeader.test(trimmed)) {
-                flushDialogue(lineNum);
-                currentSpeaker = null;
-                sceneCount++;
-
-                chunks.push({
-                    type: 'slug',
-                    content: trimmed,
-                    lineNumber: lineNum,
-                    chunkIndex: chunkIndex++,
-                    contextBefore: lastChunkContent.slice(0, 100),
-                    raw: trimmed
-                });
-                lastChunkContent = trimmed;
-                continue;
-            }
-
-            // Transition
-            if (PATTERNS.transition.test(trimmed)) {
-                flushDialogue(lineNum);
-                currentSpeaker = null;
-
-                chunks.push({
-                    type: 'transition',
-                    content: trimmed,
-                    lineNumber: lineNum,
-                    chunkIndex: chunkIndex++,
-                    contextBefore: lastChunkContent.slice(0, 100),
-                    raw: trimmed
-                });
-                lastChunkContent = trimmed;
-                continue;
-            }
-
-            // Character cue (starts dialogue block)
-            const charMatch = trimmed.match(PATTERNS.characterCue);
-            if (charMatch) {
-                // Flush any previous dialogue
-                flushDialogue(lineNum);
-
-                currentSpeaker = this.normalizeCharacterName(charMatch[1]);
-                currentParenthetical = charMatch[2]?.trim();
-                continue;
-            }
-
-            // Parenthetical within dialogue
-            if (currentSpeaker && PATTERNS.parenthetical.test(trimmed)) {
-                // Append parenthetical to dialogue or update current
-                currentDialogue.push(trimmed);
-                continue;
-            }
-
-            // If we have a current speaker, this is dialogue
-            if (currentSpeaker) {
-                currentDialogue.push(trimmed);
-                continue;
-            }
-
-            // Otherwise it's action/description
-            // Accumulate action lines until we hit something else
-            const actionContent = trimmed;
-
-            // Look ahead to see if more action follows
-            let actionBlock = [actionContent];
-            let j = i + 1;
-            while (j < lines.length) {
-                const nextLine = lines[j].trim();
-                if (nextLine.length === 0) break;
-                if (PATTERNS.sceneHeader.test(nextLine)) break;
-                if (PATTERNS.characterCue.test(nextLine)) break;
-                if (PATTERNS.transition.test(nextLine)) break;
-                actionBlock.push(nextLine);
-                j++;
-            }
-
-            const fullAction = actionBlock.join(' ').trim();
-            if (fullAction.length > 0) {
-                chunks.push({
-                    type: 'action',
-                    content: fullAction,
-                    lineNumber: lineNum,
-                    chunkIndex: chunkIndex++,
-                    contextBefore: lastChunkContent.slice(0, 100),
-                    raw: actionBlock.join('\n')
-                });
-                lastChunkContent = fullAction;
-            }
-
-            // Skip the lines we consumed
-            i = j - 1;
+        // Validate input
+        if (!text || typeof text !== 'string') {
+            throw new Error('Invalid input: text must be a non-empty string');
         }
 
-        // Flush any remaining dialogue
-        flushDialogue(lines.length);
+        // Split long texts to avoid context window limits
+        // Simple chunking by lines for now, assuming file < 30k tokens usually.
+        // For production, we should chunk by pages or scenes.
+        const SLICE_SIZE = 25000;
+        const textSlice = text.slice(0, SLICE_SIZE);
+        if (text.length > SLICE_SIZE) {
+            console.warn(`[ChunkerService] Text too long (${text.length}), truncating to ${SLICE_SIZE} chars for AI analysis.`);
+        }
 
-        // Calculate stats
-        const dialogueChunks = chunks.filter(c => c.type === 'dialogue');
-        const actionChunks = chunks.filter(c => c.type === 'action');
+        const prompt = `
+        You are an expert Screenplay Parser for a RAG system.
+        Your job is to read the following script segment (which may be in English, Telugu, Hindi, etc.) and extract every single dialogue line into a structured JSON format.
+        
+        CRITICAL RULES:
+        1. Identify the ERA context if lines are under a header like "# ERA: [Name]". Apply this era to all subsequent chunks until a new era is found.
+        2. Identify the Speaker Name (e.g. "DEVAVRATA", "దేవవ్రతుడు").
+        3. Extract the Dialogue content exactly as written.
+        4. Ignore empty lines or page numbers.
+        5. Return a valid JSON object with a "chunks" array.
 
-        return {
-            chunks,
-            characters: Array.from(characters),
-            sceneCount,
-            stats: {
-                dialogueCount: dialogueChunks.length,
-                actionCount: actionChunks.length,
-                avgDialogueLength: dialogueChunks.length > 0
-                    ? Math.round(dialogueChunks.reduce((sum, c) => sum + c.content.length, 0) / dialogueChunks.length)
-                    : 0
+        Input Text:
+        """
+        ${textSlice} 
+        """
+
+        Output Format:
+        {
+            "chunks": [
+                {
+                    "type": "dialogue" | "action" | "slug",
+                    "speaker": "Name" (or null for action/slug),
+                    "content": "Line of text",
+                    "era": "Era Name" (or null if none)
+                }
+            ]
+        }
+        
+        Respond ONLY with the RAW JSON string. Do not use markdown blocks.
+        `;
+
+        try {
+            // Use Ollama (llama3) or Groq (llama3-70b) as requested
+            // We let the AI Manager handle the specific provider details based on config,
+            // but we request a model that is good at JSON instructions.
+            const resultString = await aiServiceManager.chat(prompt, {
+                model: 'llama3:8b', // Default to local Ollama if not overridden by env
+                format: 'json',
+                temperature: 0.1 // Low temp for consistent JSON
+            });
+
+            // Clean markdown code blocks if present
+            const cleanJson = resultString.replace(/```json/g, '').replace(/```/g, '').trim();
+            let parsed;
+            try {
+                parsed = JSON.parse(cleanJson);
+            } catch (e) {
+                console.error('AI returned invalid JSON:', cleanJson);
+                throw new Error('AI Parsing failed to return valid JSON');
             }
-        };
+
+            // Validate AI response structure
+            if (!parsed || !Array.isArray(parsed.chunks)) {
+                throw new Error('AI response missing required "chunks" array');
+            }
+
+            const chunks: DialogueChunk[] = parsed.chunks.map((c: any, index: number) => {
+                // Validate each chunk has required fields
+                if (!c || typeof c !== 'object') {
+                    console.warn(`[ChunkerService] Invalid chunk at index ${index}, skipping`);
+                    return null;
+                }
+                return {
+                    type: c.type || 'dialogue',
+                    content: String(c.content || ''),
+                    speaker: c.speaker ? String(c.speaker) : undefined,
+                    lineNumber: index + 1,
+                    chunkIndex: index,
+                    era: c.era ? String(c.era) : undefined,
+                    raw: String(c.content || '')
+                };
+            }).filter(Boolean) as DialogueChunk[];
+
+            // Generate stats
+            const dialogueChunks = chunks.filter(c => c.type === 'dialogue');
+            const characters = Array.from(new Set(chunks.map(c => c.speaker).filter(Boolean))) as string[];
+
+            return {
+                chunks,
+                characters,
+                sceneCount: chunks.filter(c => c.type === 'slug').length,
+                stats: {
+                    dialogueCount: dialogueChunks.length,
+                    actionCount: chunks.filter(c => c.type === 'action').length,
+                    avgDialogueLength: dialogueChunks.length > 0
+                        ? Math.round(dialogueChunks.reduce((sum, c) => sum + c.content.length, 0) / dialogueChunks.length)
+                        : 0
+                }
+            };
+
+        } catch (error) {
+            console.error('[ChunkerService] AI Parsing failed:', error);
+            // Fallback to empty or throw? Throwing is better so user knows.
+            throw error;
+        }
     }
 
     /**
@@ -249,13 +204,14 @@ export class ChunkerService {
             characterFilter?: string[];
         }
     ): DialogueChunk[] {
-        const minLen = options?.minLength ?? 20;
+        const minLen = options?.minLength ?? 10;
         const maxLen = options?.maxLength ?? 2000;
         const charFilter = options?.characterFilter?.map(c => c.toUpperCase());
 
         return parseResult.chunks.filter(chunk => {
             if (chunk.type !== 'dialogue') return false;
-            if (chunk.content.length < minLen) return false;
+            // Allow short lines if they are meaningful (let AI decide what is dialogue)
+            // if (chunk.content.length < minLen) return false; 
             if (chunk.content.length > maxLen) return false;
             if (charFilter && chunk.speaker && !charFilter.includes(chunk.speaker.toUpperCase())) {
                 return false;

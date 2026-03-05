@@ -20,19 +20,19 @@ export function Button({
     disabled,
     ...props
 }: ButtonProps) {
-    const baseStyles = 'inline-flex items-center justify-center gap-2 font-medium rounded-xl transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-[#0b0f14] disabled:opacity-50 disabled:cursor-not-allowed';
+    const baseStyles = 'inline-flex items-center justify-center gap-2 font-medium rounded-xl transition-[background-color,border-color,color,box-shadow,transform] duration-150 focus:outline-none focus:ring-4 focus:ring-accent-focus/20 disabled:opacity-50 disabled:cursor-not-allowed active:scale-[0.98] gpu-accelerated';
 
     const variants = {
-        primary: 'bg-gray-900 border border-gray-200 dark:bg-gradient-to-b dark:from-gray-800 dark:to-gray-900 dark:border-t dark:border-white/10 text-white hover:bg-gray-800 dark:hover:from-gray-700 dark:hover:to-gray-800 active:scale-[0.98] shadow-sm dark:shadow-lg dark:shadow-black/20',
-        secondary: 'bg-white border border-gray-200 text-gray-700 hover:bg-gray-50 hover:border-gray-300 dark:bg-white/5 dark:border-white/10 dark:text-gray-300 dark:hover:bg-white/10 dark:hover:text-white dark:hover:border-white/20 backdrop-blur-sm active:scale-[0.98]',
-        ghost: 'bg-transparent text-gray-600 hover:bg-gray-100 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white dark:hover:bg-white/5 active:scale-[0.98]',
-        danger: 'bg-red-50 text-red-600 border border-red-200 hover:bg-red-100 dark:bg-gradient-to-b dark:from-red-500/10 dark:to-red-500/20 dark:text-red-500 dark:border-red-500/20 dark:hover:from-red-500/20 dark:hover:to-red-500/30 dark:hover:border-red-500/30 active:scale-[0.98]',
+        primary: 'bg-accent-primary text-white border border-accent-primary-dark shadow-premium hover:bg-accent-primary-dark',
+        secondary: 'bg-console-surface border border-border-subtle text-text-primary hover:bg-console-surface-2 hover:border-border-strong shadow-sm',
+        ghost: 'bg-transparent text-text-secondary hover:bg-console-surface-2 hover:text-text-primary',
+        danger: 'bg-red-500/10 text-red-500 border border-red-500/20 hover:bg-red-500/20 active:bg-red-500/30',
     };
 
     const sizes = {
-        sm: 'px-3 py-1.5 text-sm',
-        md: 'px-4 py-2.5 text-sm',
-        lg: 'px-6 py-3 text-base',
+        sm: 'px-2 py-1 text-[10px] sm:text-[11px] min-h-[24px] sm:min-h-[28px]',
+        md: 'px-2.5 py-1.5 text-[11px] sm:text-xs min-h-[28px] sm:min-h-[32px]',
+        lg: 'px-3 py-2 text-xs sm:text-sm min-h-[32px] sm:min-h-[36px]',
     };
 
     return (

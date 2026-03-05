@@ -1,41 +1,17 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
-import type { StateStorage } from 'zustand/middleware';
 import { api } from '../services/api';
 import type { User } from '../services/api';
 import { activityTracker } from '../services/activity.tracker';
 
-// Safe storage wrapper that handles restricted contexts
-const safeStorage: StateStorage = {
-    getItem: (name: string): string | null => {
-        try {
-            return localStorage.getItem(name);
-        } catch {
-            console.warn('localStorage not available, using in-memory storage');
-            return null;
-        }
-    },
-    setItem: (name: string, value: string): void => {
-        try {
-            localStorage.setItem(name, value);
-        } catch {
-            console.warn('localStorage not available, data will not persist');
-        }
-    },
-    removeItem: (name: string): void => {
-        try {
-            localStorage.removeItem(name);
-        } catch {
-            console.warn('localStorage not available');
-        }
-    },
-};
+import { safeStorage } from '../lib/safeStorage';
 
 interface AuthState {
     user: User | null;
     token: string | null;
     isAuthenticated: boolean;
     isLoading: boolean;
+    isCheckingAuth: boolean;
     error: string | null;
 
     // Actions
@@ -53,6 +29,7 @@ export const useAuthStore = create<AuthState>()(
             token: null,
             isAuthenticated: false,
             isLoading: false,
+            isCheckingAuth: false,
             error: null,
 
             login: async (email: string, password: string) => {
@@ -92,7 +69,12 @@ export const useAuthStore = create<AuthState>()(
                 }
             },
 
-            logout: () => {
+            logout: async () => {
+                try {
+                    await api.logout();
+                } catch (e) {
+                    console.error('Logout failed silently', e);
+                }
                 api.setToken(null);
                 activityTracker.setToken(null as any); // Clear tracker
                 set({
@@ -104,29 +86,40 @@ export const useAuthStore = create<AuthState>()(
             },
 
             checkAuth: async () => {
-                const { token } = get();
-                if (!token) {
-                    set({ isAuthenticated: false });
-                    return;
-                }
+                if (get().isCheckingAuth) return;
 
-                set({ isLoading: true });
+                const { token } = get();
+                console.log('[AuthStore] Checking session...', { hasToken: !!token });
+
+                set({ isLoading: true, isCheckingAuth: true });
+
                 try {
-                    api.setToken(token);
+                    // Try to get user. If token is missing or expired, 
+                    // the baseApi interceptor will handle silent refresh automatically.
                     const { user } = await api.getMe();
+
+                    // If it succeeded, update state with whatever token api has now
+                    const currentToken = api.getToken();
+
                     set({
                         user,
+                        token: currentToken,
                         isAuthenticated: true,
                         isLoading: false,
+                        isCheckingAuth: false,
                     });
-                } catch {
-                    // Token invalid or expired
+
+                    console.log('[AuthStore] Session established', { user: user.email });
+                } catch (err) {
+                    console.log('[AuthStore] Session invalid', { error: err instanceof Error ? err.message : 'Unknown' });
+                    // Token invalid or refresh failed
                     api.setToken(null);
                     set({
                         user: null,
                         token: null,
                         isAuthenticated: false,
                         isLoading: false,
+                        isCheckingAuth: false,
                     });
                 }
             },
@@ -137,15 +130,13 @@ export const useAuthStore = create<AuthState>()(
             name: 'auth-storage',
             storage: createJSONStorage(() => safeStorage),
             partialize: (state) => ({
-                token: state.token,
                 user: state.user,
             }),
             onRehydrateStorage: () => {
-                return (state) => {
-                    if (state?.token) {
-                        api.setToken(state.token);
-                        activityTracker.setToken(state.token); // Rehydrate tracker
-                    }
+                return () => {
+                    // Do not rehydrate token from storage!
+                    // Tokens must remain purely in-memory. 
+                    // Session is handled via HttpOnly refreshToken cookie.
                 };
             },
         }
@@ -154,6 +145,14 @@ export const useAuthStore = create<AuthState>()(
 // Listener for API 401 Unauthorized events
 if (typeof window !== 'undefined') {
     window.addEventListener('auth:unauthorized', () => {
-        useAuthStore.getState().logout();
+        // We only clear local state on unauthorized, no need to call API logout 
+        // since the token is already invalid/expired.
+        api.setToken(null);
+        useAuthStore.setState({
+            user: null,
+            token: null,
+            isAuthenticated: false,
+            error: null,
+        });
     });
 }

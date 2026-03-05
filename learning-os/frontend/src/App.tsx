@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, lazy, Suspense } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { activityTracker } from './services/activity.tracker';
 
@@ -12,29 +12,41 @@ function NavigationTracker() {
 
   return null;
 }
+
+// ─── Route-level code splitting (bundle-dynamic-imports) ───
+// Auth pages loaded eagerly (small, needed immediately)
 import { Login } from './pages/Login';
 import { Register } from './pages/Register';
-import { Dashboard } from './pages/Dashboard';
-import { DSATracking } from './pages/DSATracking';
-import { DSAProblemDetail } from './pages/DSAProblemDetail';
-import { BackendTopics } from './pages/BackendTopics';
-import { BackendTopicDetail } from './pages/BackendTopicDetail';
-import { Projects } from './pages/Projects';
-import { Analytics } from './pages/Analytics';
-import { Settings } from './pages/Settings';
-import { Roadmap } from './pages/Roadmap/Roadmap';
-import { InterviewHistory } from './pages/Interview/InterviewHistory';
-import { InterviewSetup } from './pages/Interview/InterviewSetup';
-import { InterviewRoom } from './pages/Interview/InterviewRoom';
-import { ScriptWriterDashboard } from './pages/ScriptWriter/ScriptWriterDashboard';
-import { ScriptWriterInfinite } from './pages/ScriptWriter/ScriptWriterInfinite';
-import ChatPage from './pages/ChatPage';
+
+// Heavy pages loaded lazily — each becomes its own chunk
+const Dashboard = lazy(() => import('./pages/Dashboard').then(m => ({ default: m.Dashboard })));
+const DSATracking = lazy(() => import('./pages/DSATracking').then(m => ({ default: m.DSATracking })));
+const DSAProblemDetail = lazy(() => import('./pages/DSAProblemDetail').then(m => ({ default: m.DSAProblemDetail })));
+const BackendTopics = lazy(() => import('./pages/BackendTopics').then(m => ({ default: m.BackendTopics })));
+const Projects = lazy(() => import('./pages/Projects').then(m => ({ default: m.Projects })));
+const Analytics = lazy(() => import('./pages/Analytics').then(m => ({ default: m.Analytics })));
+const Settings = lazy(() => import('./pages/Settings').then(m => ({ default: m.Settings })));
+const Roadmap = lazy(() => import('./pages/Roadmap/Roadmap').then(m => ({ default: m.Roadmap })));
+const InterviewHistory = lazy(() => import('./pages/Interview/InterviewHistory').then(m => ({ default: m.InterviewHistory })));
+const MockTestHistory = lazy(() => import('./pages/Interview/MockTestHistory').then(m => ({ default: m.MockTestHistory })));
+const InterviewSetup = lazy(() => import('./pages/Interview/InterviewSetup').then(m => ({ default: m.InterviewSetup })));
+const InterviewRoom = lazy(() => import('./pages/Interview/InterviewRoom').then(m => ({ default: m.InterviewRoom })));
+const ScriptWriterDashboard = lazy(() => import('./pages/ScriptWriter/ScriptWriterDashboard').then(m => ({ default: m.ScriptWriterDashboard })));
+const ScriptWriterInfinite = lazy(() => import('./pages/ScriptWriter/ScriptWriterInfinite').then(m => ({ default: m.ScriptWriterInfinite })));
+const ProjectStudyDetail = lazy(() => import('./pages/ProjectStudyDetail').then(m => ({ default: m.ProjectStudyDetail })));
+const BackendTopicDetail = lazy(() => import('./pages/BackendTopicDetail').then(m => ({ default: m.BackendTopicDetail })));
+const ChatPage = lazy(() => import('./pages/ChatPage'));
+
+
 import { useAuthStore } from './stores/authStore';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { Layout } from './components/layout/Layout';
 import { ToastContainer } from './components/ui/Toast';
+import { VerificationBanner } from './components/ui/VerificationBanner';
 import { AIProvider } from './contexts/AIContext';
 import { GlobalAIWidget } from './components/GlobalAIWidget';
+import { useThemeStore } from './stores/themeStore';
+// Removed ThemeProvider in favor of useThemeStore (Zustand)
 
 // Loading Screen
 function LoadingScreen() {
@@ -56,7 +68,7 @@ function LoadingScreen() {
 
 // Protected Route wrapper
 function ProtectedRoute({ children, useLayout = true }: { children: React.ReactNode; useLayout?: boolean }) {
-  const { isAuthenticated, isLoading, checkAuth, token } = useAuthStore();
+  const { isAuthenticated, isLoading, checkAuth } = useAuthStore();
   const [isChecking, setIsChecking] = useState(true);
   const location = useLocation();
 
@@ -75,7 +87,7 @@ function ProtectedRoute({ children, useLayout = true }: { children: React.ReactN
     return () => {
       mounted = false;
     };
-  }, [token]);
+  }, []);
 
   if (isChecking || isLoading) {
     return <LoadingScreen />;
@@ -86,10 +98,20 @@ function ProtectedRoute({ children, useLayout = true }: { children: React.ReactN
   }
 
   if (!useLayout) {
-    return <>{children}</>;
+    return (
+      <>
+        <VerificationBanner />
+        {children}
+      </>
+    );
   }
 
-  return <Layout>{children}</Layout>;
+  return (
+    <Layout>
+      <VerificationBanner />
+      {children}
+    </Layout>
+  );
 }
 
 // Public Route wrapper
@@ -104,6 +126,15 @@ function PublicRoute({ children }: { children: React.ReactNode }) {
 }
 
 function App() {
+  const { theme } = useThemeStore();
+
+  // Ensure theme class is on root (redundant but safe since store does it on applyTheme)
+  useEffect(() => {
+    const root = window.document.documentElement;
+    root.classList.remove('light', 'dark');
+    root.classList.add(theme);
+  }, [theme]);
+
   return (
     <ErrorBoundary>
       <AIProvider>
@@ -129,12 +160,14 @@ function App() {
               }
             />
 
-            {/* Protected routes */}
+            {/* Protected routes - lazy loaded with Suspense */}
             <Route
               path="/"
               element={
                 <ProtectedRoute>
-                  <Dashboard />
+                  <Suspense fallback={<LoadingScreen />}>
+                    <Dashboard />
+                  </Suspense>
                 </ProtectedRoute>
               }
             />
@@ -142,7 +175,9 @@ function App() {
               path="/dsa"
               element={
                 <ProtectedRoute>
-                  <DSATracking />
+                  <Suspense fallback={<LoadingScreen />}>
+                    <DSATracking />
+                  </Suspense>
                 </ProtectedRoute>
               }
             />
@@ -150,7 +185,9 @@ function App() {
               path="/backend"
               element={
                 <ProtectedRoute>
-                  <BackendTopics />
+                  <Suspense fallback={<LoadingScreen />}>
+                    <BackendTopics />
+                  </Suspense>
                 </ProtectedRoute>
               }
             />
@@ -158,7 +195,9 @@ function App() {
               path="/roadmap"
               element={
                 <ProtectedRoute>
-                  <Roadmap />
+                  <Suspense fallback={<LoadingScreen />}>
+                    <Roadmap />
+                  </Suspense>
                 </ProtectedRoute>
               }
             />
@@ -166,7 +205,9 @@ function App() {
               path="/projects"
               element={
                 <ProtectedRoute>
-                  <Projects />
+                  <Suspense fallback={<LoadingScreen />}>
+                    <Projects />
+                  </Suspense>
                 </ProtectedRoute>
               }
             />
@@ -174,7 +215,9 @@ function App() {
               path="/analytics"
               element={
                 <ProtectedRoute>
-                  <Analytics />
+                  <Suspense fallback={<LoadingScreen />}>
+                    <Analytics />
+                  </Suspense>
                 </ProtectedRoute>
               }
             />
@@ -182,7 +225,9 @@ function App() {
               path="/settings"
               element={
                 <ProtectedRoute>
-                  <Settings />
+                  <Suspense fallback={<LoadingScreen />}>
+                    <Settings />
+                  </Suspense>
                 </ProtectedRoute>
               }
             />
@@ -190,7 +235,9 @@ function App() {
               path="/dsa/:id"
               element={
                 <ProtectedRoute>
-                  <DSAProblemDetail />
+                  <Suspense fallback={<LoadingScreen />}>
+                    <DSAProblemDetail />
+                  </Suspense>
                 </ProtectedRoute>
               }
             />
@@ -198,17 +245,41 @@ function App() {
               path="/backend/:id"
               element={
                 <ProtectedRoute>
-                  <BackendTopicDetail />
+                  <Suspense fallback={<LoadingScreen />}>
+                    <BackendTopicDetail />
+                  </Suspense>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/projects/:id"
+              element={
+                <ProtectedRoute>
+                  <Suspense fallback={<LoadingScreen />}>
+                    <ProjectStudyDetail />
+                  </Suspense>
                 </ProtectedRoute>
               }
             />
 
-            {/* Interview Simulator Routes */}
+            {/* Interview Simulator Routes - lazy loaded */}
             <Route
               path="/interview"
               element={
                 <ProtectedRoute>
-                  <InterviewHistory />
+                  <Suspense fallback={<LoadingScreen />}>
+                    <InterviewHistory />
+                  </Suspense>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/interview/history"
+              element={
+                <ProtectedRoute>
+                  <Suspense fallback={<LoadingScreen />}>
+                    <MockTestHistory />
+                  </Suspense>
                 </ProtectedRoute>
               }
             />
@@ -216,7 +287,9 @@ function App() {
               path="/interview/setup"
               element={
                 <ProtectedRoute>
-                  <InterviewSetup />
+                  <Suspense fallback={<LoadingScreen />}>
+                    <InterviewSetup />
+                  </Suspense>
                 </ProtectedRoute>
               }
             />
@@ -224,19 +297,22 @@ function App() {
               path="/interview/:id"
               element={
                 <ProtectedRoute>
-                  <InterviewRoom />
+                  <Suspense fallback={<LoadingScreen />}>
+                    <InterviewRoom />
+                  </Suspense>
                 </ProtectedRoute>
               }
             />
 
 
-            {/* Script Writer Layout-less Route (Opens in new window style) */}
-            {/* Script Writer Routes - SEPARATE PAGES */}
+            {/* Script Writer Routes - lazy loaded, no layout */}
             <Route
               path="/script-writer"
               element={
                 <ProtectedRoute useLayout={false}>
-                  <ScriptWriterDashboard />
+                  <Suspense fallback={<LoadingScreen />}>
+                    <ScriptWriterDashboard />
+                  </Suspense>
                 </ProtectedRoute>
               }
             />
@@ -244,17 +320,21 @@ function App() {
               path="/script-writer/:projectId/:sceneId?"
               element={
                 <ProtectedRoute useLayout={false}>
-                  <ScriptWriterInfinite />
+                  <Suspense fallback={<LoadingScreen />}>
+                    <ScriptWriterInfinite />
+                  </Suspense>
                 </ProtectedRoute>
               }
             />
 
-            {/* AI Chat Layout-less Route */}
+            {/* AI Chat Route - lazy loaded, no layout */}
             <Route
               path="/chat"
               element={
                 <ProtectedRoute useLayout={false}>
-                  <ChatPage />
+                  <Suspense fallback={<LoadingScreen />}>
+                    <ChatPage />
+                  </Suspense>
                 </ProtectedRoute>
               }
             />

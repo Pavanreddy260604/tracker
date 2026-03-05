@@ -58,9 +58,31 @@ export class CriticService {
                 format: "json"
             });
 
-            // Clean markdown blocks if present
-            const cleanJson = response.replace(/```json/g, '').replace(/```/g, '').trim();
-            return JSON.parse(cleanJson) as CritiqueResult;
+            // Robust JSON extraction using regex
+            let jsonString = response;
+
+            // 1. Try to find content between { and }
+            const match = response.match(/\{[\s\S]*\}/);
+            if (match) {
+                jsonString = match[0];
+            } else {
+                // 2. If no braces found, try cleaning markdown blocks
+                jsonString = response.replace(/```json/g, '').replace(/```/g, '').trim();
+            }
+
+            try {
+                return JSON.parse(jsonString) as CritiqueResult;
+            } catch (parseError) {
+                console.warn("[CriticService] Initial JSON parse failed, attempting aggressive cleanup:", parseError);
+                // 3. Last ditch cleanup: remove everything before first { and after last }
+                const firstBrace = jsonString.indexOf('{');
+                const lastBrace = jsonString.lastIndexOf('}');
+                if (firstBrace !== -1 && lastBrace !== -1) {
+                    jsonString = jsonString.substring(firstBrace, lastBrace + 1);
+                    return JSON.parse(jsonString) as CritiqueResult;
+                }
+                throw parseError;
+            }
 
         } catch (error) {
             console.error("Critic evaluation failed:", error);

@@ -6,6 +6,7 @@ export interface IVoiceSample extends Document {
     content: string; // The specific line of dialogue
     contentHash?: string; // Deduplication hash
     speaker?: string; // Optional detected speaker name
+    era?: string; // New: Time period/age context
     chunkType?: 'dialogue' | 'action' | 'narration';
     chunkIndex?: number;
     embedding: number[]; // The vector representation
@@ -20,6 +21,7 @@ const VoiceSampleSchema: Schema = new Schema({
     content: { type: String, required: true },
     contentHash: { type: String },
     speaker: { type: String },
+    era: { type: String }, // NEW: Time period or age range (e.g. "1990s", "childhood")
     chunkType: { type: String, enum: ['dialogue', 'action', 'narration'] },
     chunkIndex: { type: Number },
     embedding: { type: [Number], required: true },

@@ -61,7 +61,13 @@ class ApiService {
     // Auth
     register = authApi.register;
     login = authApi.login;
+    logout = authApi.logout;
     getMe = authApi.getMe;
+    forgotPassword = authApi.forgotPassword;
+    resetPassword = authApi.resetPassword;
+    changePassword = authApi.changePassword;
+    verifyEmail = authApi.verifyEmail;
+    resendVerification = authApi.resendVerification;
     updateProfile = authApi.updateProfile;
     updateAIKey = authApi.updateAIKey;
     exportData = authApi.exportData;
@@ -108,6 +114,10 @@ class ApiService {
     endInterview = interviewApi.endInterview;
     getInterviewHistory = interviewApi.getInterviewHistory;
     getInterviewSession = interviewApi.getInterviewSession;
+    nextSection = interviewApi.nextSection;
+    submitSection = interviewApi.submitSection;
+    getAnalytics = interviewApi.getAnalytics;
+    updateProctoringData = interviewApi.updateProctoringData;
 
     // Chat
     getChatHistory = chatApi.getChatHistory;
@@ -123,21 +133,27 @@ class ApiService {
 
     // Roadmap (kept inline as it's small)
     async getRoadmap() {
-        return baseApi.request<{ nodes: any[]; edges: any[] }>('/roadmap');
+        const response = await baseApi.request<{ nodes: any[]; edges: any[] }>('/roadmap');
+        // The response structure is { nodes: [...], edges: [...] } directly, not wrapped in data
+        return response;
     }
 
     async syncRoadmap(nodes: any[], edges: any[]) {
-        return baseApi.request<{ message: string }>('/roadmap/sync', {
+        const response = await baseApi.request<{ message: string }>('/roadmap/sync', {
             method: 'POST',
             body: JSON.stringify({ nodes, edges }),
         });
+        // The sync endpoint returns { message: "..." }
+        return response;
     }
 
     async updateNodeStatus(nodeId: string, status: string, label: string) {
-        return baseApi.request<{ data: any }>(`/roadmap/node/${nodeId}`, {
+        const response = await baseApi.request<{ data: any }>(`/roadmap/node/${nodeId}`, {
             method: 'PATCH',
             body: JSON.stringify({ status, label }),
         });
+        // The update endpoint returns { data: node }
+        return response;
     }
 }
 

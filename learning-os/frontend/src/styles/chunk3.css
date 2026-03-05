@@ -1,5 +1,4 @@
-﻿
-.chat-session-item:hover {
+﻿.chat-session-item:hover {
   background-color: #eef2f7;
   color: #111827;
 }
@@ -273,6 +272,12 @@ html.dark .chat-inline-code {
   margin: 16px 0;
   border-radius: 10px;
   border: 1px solid #e5e7eb;
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.chat-table-wrap::-webkit-scrollbar {
+  display: none;
 }
 
 .chat-table-wrap table {

@@ -23,8 +23,8 @@ router.get('/provider', (req, res) => {
 router.post('/provider', (req, res) => {
     const { provider } = req.body;
 
-    if (!provider || !['ollama', 'gemini', 'groq'].includes(provider)) {
-        return res.status(400).json({ error: 'Invalid provider. Use "ollama", "gemini", or "groq".' });
+    if (!provider || !['ollama', 'groq'].includes(provider)) {
+        return res.status(400).json({ error: 'Invalid provider. Use "ollama" or "groq".' });
     }
 
     aiServiceManager.setProvider(provider as AIProvider);

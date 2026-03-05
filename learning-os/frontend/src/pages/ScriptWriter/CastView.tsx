@@ -41,7 +41,6 @@ export function CastView({
     isSavingCharacter,
     voiceFile,
     onVoiceFileChange,
-    voiceCharacterId,
     onVoiceCharacterChange,
     onVoiceIngest,
     voiceStatus,

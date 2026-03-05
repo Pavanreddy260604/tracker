@@ -4,13 +4,14 @@ import { api } from '../services/api';
 import { useAuthStore } from '../stores/authStore';
 
 // ============================================
-// GEMINI MODELS CONFIGURATION
+// AI MODELS CONFIGURATION (Ollama + Groq)
 // ============================================
-export const GEMINI_MODELS = [
-    { id: 'gemini-2.5-flash', name: 'Gemini 2.5 Flash', description: 'Fast & smart (default)' },
-    { id: 'gemini-2.5-flash-lite', name: 'Gemini 2.5 Flash Lite', description: 'Low cost, high speed' },
-    { id: 'gemini-2.5-pro', name: 'Gemini 2.5 Pro', description: 'Most capable' },
-    { id: 'gemini-2.0-flash', name: 'Gemini 2.0 Flash', description: 'Legacy stable' },
+export const AI_MODELS = [
+    { id: 'deepseek-v3.1:671b-cloud', name: 'DeepSeek V3.1', description: 'Primary reasoning model' },
+    { id: 'deepseek-r1:32b', name: 'DeepSeek R1 32B', description: 'High reasoning (local)' },
+    { id: 'qwen3-coder:480b-cloud', name: 'Qwen3 Coder', description: 'Strong coding & logic' },
+    { id: 'gemma3:4b', name: 'Gemma 3 4B', description: 'Lightweight & fast' },
+    { id: 'groq:llama-3.3-70b-versatile', name: 'Groq Llama 3.3 70B', description: 'Ultra-fast cloud inference' },
 ];
 
 export interface Message {
@@ -49,7 +50,7 @@ export function AIProvider({ children }: { children: ReactNode }) {
         }
     ]);
     const [isLoading, setIsLoading] = useState(false);
-    const [selectedModel, setSelectedModel] = useState('gemini-2.5-flash');
+    const [selectedModel, setSelectedModel] = useState('deepseek-v3.1:671b-cloud');
     const [context, setContext] = useState<any>({});
 
     // System Awareness State
@@ -94,15 +95,15 @@ export function AIProvider({ children }: { children: ReactNode }) {
         setSessionId(null);
     }, []);
 
-    const _sendMessage = useCallback(async (content: string, onChunk?: (chunk: string) => void) => {
-        if (!content.trim() || isLoading) return;
+    const _sendMessage = useCallback(async (displayContent: string, hiddenPayload: string, onChunk?: (chunk: string) => void) => {
+        if (!displayContent.trim() || isLoading) return;
 
         setIsLoading(true);
 
         const userMsg: Message = {
             id: Date.now().toString(),
             role: 'user',
-            content: content.trim(),
+            content: displayContent.trim(),
             timestamp: new Date()
         };
         setMessages(prev => [...prev, userMsg]);
@@ -125,15 +126,37 @@ export function AIProvider({ children }: { children: ReactNode }) {
             }
 
             let botContent = '';
-            await api.sendChatMessage(activeId!, content, (chunk) => {
+            const apiPayload = hiddenPayload ? `${hiddenPayload}\n${displayContent}` : displayContent;
+            let lastUpdate = Date.now();
+            let pendingChunk = '';
+
+            await api.sendChatMessage(activeId!, apiPayload, (chunk) => {
                 botContent += chunk;
+                pendingChunk += chunk;
+
+                const now = Date.now();
+                if (now - lastUpdate > 90) {
+                    lastUpdate = now;
+                    const throttledContent = botContent;
+                    setMessages(prev => prev.map(msg =>
+                        msg.id === botMsgId
+                            ? { ...msg, content: throttledContent }
+                            : msg
+                    ));
+                    onChunk?.(pendingChunk);
+                    pendingChunk = '';
+                }
+            });
+
+            // Final update
+            if (pendingChunk) {
                 setMessages(prev => prev.map(msg =>
                     msg.id === botMsgId
                         ? { ...msg, content: botContent }
                         : msg
                 ));
-                onChunk?.(chunk);
-            });
+                onChunk?.(pendingChunk);
+            }
 
         } catch (error) {
             console.error('[AIContext] Chat failed:', error);
@@ -166,15 +189,20 @@ export function AIProvider({ children }: { children: ReactNode }) {
 
     // Public wrapper to inject context
     const sendMessage = useCallback(async (content: string, onChunk?: (chunk: string) => void) => {
-        let fullContent = content;
+        let injectedContext = '';
 
         if (systemContext) {
-            fullContent = `${systemContext}USER QUERY:\n${content}`;
+            injectedContext += systemContext + '\n';
             setSystemContext(''); // Clear it so we don't send it again next msg
         }
 
-        await _sendMessage(fullContent, onChunk);
-    }, [_sendMessage, systemContext]);
+        // Inject real-time UI context if the user has a specific modal or card open
+        if (context && Object.keys(context).length > 0) {
+            injectedContext += `[Current Data Context: ${JSON.stringify(context, null, 2)}]\n\n`;
+        }
+
+        await _sendMessage(content, injectedContext, onChunk);
+    }, [_sendMessage, systemContext, context]);
 
     const value: AIContextType = {
         isOpen,

@@ -20,8 +20,11 @@ jest.mock('../../models/User', () => {
 
 // Mock bcrypt
 jest.mock('bcryptjs', () => ({
+    // @ts-expect-error - jest mock
     compare: jest.fn().mockResolvedValue(true),
+    // @ts-expect-error - jest mock
     hash: jest.fn().mockResolvedValue('hashed_password'),
+    // @ts-expect-error - jest mock
     genSalt: jest.fn().mockResolvedValue('salt'),
 }));
 
@@ -39,6 +42,7 @@ describe('Auth Routes Integration', () => {
         // 1. Setup Static Methods (findOne, create, etc.)
         (User as any).findOne = jest.fn();
         (User as any).create = jest.fn();
+        // @ts-expect-error - jest mock
         (User as any).findByIdAndUpdate = jest.fn().mockResolvedValue({
             _id: 'user123',
             toJSON: () => ({ _id: 'user123' })
@@ -49,7 +53,9 @@ describe('Auth Routes Integration', () => {
         (User as unknown as jest.Mock).mockImplementation((data: any) => ({
             ...data,
             _id: 'user123',
+            // @ts-expect-error - jest mock
             save: jest.fn().mockResolvedValue(data), // Mock .save() instance method
+            // @ts-expect-error - jest mock
             comparePassword: jest.fn().mockResolvedValue(true), // Mock instance method
             toJSON: jest.fn().mockReturnValue({
                 _id: 'user123',
@@ -62,6 +68,7 @@ describe('Auth Routes Integration', () => {
     describe('POST /api/auth/register', () => {
         it('should register a new user successfully', async () => {
             // Mock User.findOne to return null (user doesn't exist)
+            // @ts-expect-error - jest mock
             (User.findOne as jest.Mock).mockResolvedValue(null);
 
             const res = await request(app)
@@ -79,6 +86,7 @@ describe('Auth Routes Integration', () => {
 
         it('should fail if user already exists', async () => {
             // Mock User.findOne to return an existing user
+            // @ts-expect-error - jest mock
             (User.findOne as jest.Mock).mockResolvedValue({
                 _id: 'existing123',
                 email: 'test@example.com'
@@ -101,6 +109,7 @@ describe('Auth Routes Integration', () => {
         it('should login successfully with correct credentials', async () => {
             // Mock findOne to return user instance (NOT a plain object!)
             // Because code calls user.comparePassword()
+            // @ts-expect-error - jest mock
             const mockComparePassword = jest.fn().mockResolvedValue(true);
             const mockUserInstance = {
                 _id: 'user123',
@@ -110,6 +119,7 @@ describe('Auth Routes Integration', () => {
                 toJSON: jest.fn().mockReturnValue({ _id: 'user123', email: 'test@example.com' })
             };
 
+            // @ts-expect-error - jest mock
             (User.findOne as jest.Mock).mockResolvedValue(mockUserInstance);
 
             const res = await request(app)
@@ -125,6 +135,7 @@ describe('Auth Routes Integration', () => {
 
         it('should fail with incorrect password', async () => {
             // Mock findOne to return user
+            // @ts-expect-error - jest mock
             const mockComparePassword = jest.fn().mockResolvedValue(false);
             const mockUserInstance = {
                 _id: 'user123',
@@ -134,6 +145,7 @@ describe('Auth Routes Integration', () => {
                 toJSON: jest.fn()
             };
 
+            // @ts-expect-error - jest mock
             (User.findOne as jest.Mock).mockResolvedValue(mockUserInstance);
 
             const res = await request(app)

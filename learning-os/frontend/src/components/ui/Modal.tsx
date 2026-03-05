@@ -1,4 +1,5 @@
 import { type ReactNode, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X } from 'lucide-react';
 import { cn } from '../../lib/utils';
@@ -10,12 +11,13 @@ interface ModalProps {
     children: ReactNode;
     size?: 'sm' | 'md' | 'lg' | 'xl' | '2xl' | '3xl' | '4xl' | '5xl';
     className?: string;
+    headerAction?: ReactNode;
 }
 
-export function Modal({ isOpen, onClose, title, children, size = 'md', className }: ModalProps) {
+export function Modal({ isOpen, onClose, title, children, size = 'md', className, headerAction }: ModalProps) {
     const overlayRef = useRef<HTMLDivElement>(null);
 
-    // Handle escape key
+    // Handle escape key + body scroll lock
     useEffect(() => {
         const handleEscape = (e: KeyboardEvent) => {
             if (e.key === 'Escape') onClose();
@@ -33,20 +35,21 @@ export function Modal({ isOpen, onClose, title, children, size = 'md', className
     }, [isOpen, onClose]);
 
     const sizeClasses = {
-        sm: 'max-w-sm',
-        md: 'max-w-md',
-        lg: 'max-w-lg',
-        xl: 'max-w-xl',
-        '2xl': 'max-w-2xl',
-        '3xl': 'max-w-3xl',
-        '4xl': 'max-w-4xl',
-        '5xl': 'max-w-5xl',
+        sm: 'sm:max-w-sm',
+        md: 'sm:max-w-md',
+        lg: 'sm:max-w-lg',
+        xl: 'sm:max-w-xl',
+        '2xl': 'sm:max-w-2xl',
+        '3xl': 'sm:max-w-3xl',
+        '4xl': 'sm:max-w-4xl',
+        '5xl': 'sm:max-w-5xl',
     };
 
-    return (
+    // Use Portal to render at document.body — escapes all stacking contexts
+    return createPortal(
         <AnimatePresence>
             {isOpen && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+                <div className="fixed inset-0 z-[9999] flex items-end sm:items-center justify-center p-0 sm:p-4">
                     {/* Backdrop */}
                     <motion.div
                         ref={overlayRef}
@@ -57,43 +60,56 @@ export function Modal({ isOpen, onClose, title, children, size = 'md', className
                         onClick={onClose}
                     />
 
-                    {/* Modal Content */}
+                    {/* Modal Content — full-screen on mobile, card on desktop */}
                     <motion.div
                         role="dialog"
                         aria-modal="true"
                         aria-labelledby={title ? "modal-title" : undefined}
                         className={cn(
-                            'relative w-full rounded-2xl flex flex-col max-h-[90vh]',
-                            'bg-[var(--sw-surface)] border border-[var(--sw-border)]',
-                            'shadow-2xl',
+                            'relative w-full flex flex-col',
+                            /* MOBILE: full screen, no rounded corners */
+                            'h-[100dvh] sm:h-auto',
+                            'rounded-none sm:rounded-2xl',
+                            'sm:max-h-[90vh]',
+                            /* Theme-aware colors */
+                            'bg-white dark:bg-gray-900',
+                            'sm:border sm:border-gray-200 sm:dark:border-white/10',
+                            'sm:shadow-2xl overscroll-contain',
                             sizeClasses[size as keyof typeof sizeClasses] || sizeClasses.md,
                             className
                         )}
-                        initial={{ opacity: 0, scale: 0.95, y: 20 }}
-                        animate={{ opacity: 1, scale: 1, y: 0 }}
-                        exit={{ opacity: 0, scale: 0.95, y: 20 }}
-                        transition={{ type: 'spring', duration: 0.3 }}
+                        style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
+                        /* Mobile: slide up from bottom */
+                        initial={{ opacity: 0, y: '100%' }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: '100%' }}
+                        transition={{ duration: 0.25, ease: [0.32, 0.72, 0, 1] }}
                     >
-                        {/* Header */}
-                        {title && (
-                            <div className="flex items-center justify-between px-6 py-4 border-b border-white/10 shrink-0">
-                                <h2 className="text-lg font-semibold text-white">{title}</h2>
+                        {/* Sticky Header — acts as mobile app bar */}
+                        <div className="flex items-center justify-between px-4 sm:px-6 py-3 sm:py-4 border-b border-gray-200 dark:border-white/10 shrink-0 bg-white dark:bg-gray-900 sticky top-0 z-10">
+                            <h2 id="modal-title" className="text-base sm:text-lg font-semibold text-gray-900 dark:text-white truncate pr-4">
+                                {title || '\u00A0'}
+                            </h2>
+                            <div className="flex items-center gap-1">
+                                {headerAction}
                                 <button
                                     onClick={onClose}
-                                    className="p-2 rounded-lg hover:bg-white/10 text-gray-400 hover:text-gray-900 transition-colors"
+                                    className="p-2.5 -mr-1 rounded-full hover:bg-gray-100 dark:hover:bg-white/10 text-gray-500 hover:text-gray-900 dark:hover:text-white transition-colors active:scale-95 shrink-0"
+                                    aria-label="Close"
                                 >
-                                    <X size={20} />
+                                    <X size={22} />
                                 </button>
                             </div>
-                        )}
+                        </div>
 
-                        {/* Body - Scrollable */}
-                        <div className={cn('p-6 overflow-y-auto custom-scrollbar', !title && 'pt-6')}>
+                        {/* Body — scrollable */}
+                        <div className="flex-1 p-4 sm:p-6 overflow-y-auto overscroll-contain">
                             {children}
                         </div>
                     </motion.div>
                 </div>
             )}
-        </AnimatePresence>
+        </AnimatePresence>,
+        document.body
     );
 }

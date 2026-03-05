@@ -1,0 +1,17 @@
+src/services/interview.service.ts(117,81): error TS2345: Argument of type '{}' is not assignable to parameter of type 'string'.
+src/tests/integration/auth.test.ts(43,9): error TS2578: Unused '@ts-expect-error' directive.
+src/tests/integration/auth.test.ts(45,9): error TS2578: Unused '@ts-expect-error' directive.
+src/tests/integration/auth.test.ts(52,9): error TS2578: Unused '@ts-expect-error' directive.
+src/tests/integration/auth.test.ts(56,9): error TS2578: Unused '@ts-expect-error' directive.
+src/tests/integration/auth.test.ts(60,47): error TS2345: Argument of type 'any' is not assignable to parameter of type 'never'.
+src/tests/integration/auth.test.ts(61,58): error TS2345: Argument of type 'true' is not assignable to parameter of type 'never'.
+src/tests/integration/auth.test.ts(114,69): error TS2345: Argument of type 'true' is not assignable to parameter of type 'never'.
+src/tests/integration/auth.test.ts(139,69): error TS2345: Argument of type 'false' is not assignable to parameter of type 'never'.
+src/tests/integration/interview.test.ts(90,9): error TS2578: Unused '@ts-expect-error' directive.
+src/tests/integration/interview.test.ts(93,9): error TS2578: Unused '@ts-expect-error' directive.
+src/tests/integration/interview.test.ts(138,49): error TS2345: Argument of type '{ _id: string; title: string; difficulty: string; description: string; templates: { javascript: string; }; testCases: { input: string; expectedOutput: string; isHidden: boolean; }[]; }[]' is not assignable to parameter of type 'never'.
+src/tests/integration/interview.test.ts(230,55): error TS2345: Argument of type '{ _id: string; userId: string; config: { language: string; hasCameraAccess: boolean; strictMode: boolean; }; sections: { id: string; name: string; type: string; duration: number; status: string; questions: { ...; }[]; }[]; currentSectionIndex: number; markModified: Mock<...>; save: Mock<...>; }' is not assignable to parameter of type 'never'.
+src/tests/integration/interview.test.ts(231,48): error TS2345: Argument of type '{ _id: string; testCases: { input: string; expectedOutput: string; isHidden: boolean; }[]; }' is not assignable to parameter of type 'never'.
+src/tests/integration/interview.test.ts(235,39): error TS2345: Argument of type '{ passed: boolean; actual: string; error: undefined; }' is not assignable to parameter of type 'never'.
+src/tests/integration/projectStudies.test.ts(51,66): error TS2345: Argument of type '{ _id: string; projectName: string; }' is not assignable to parameter of type 'never'.
+src/tests/integration/projectStudies.test.ts(77,76): error TS2345: Argument of type '{ updatedAt: Date; projectName: string; coreComponents: string; _id: string; }' is not assignable to parameter of type 'never'.

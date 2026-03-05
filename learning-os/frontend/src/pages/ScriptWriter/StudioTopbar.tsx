@@ -1,12 +1,10 @@
-import { Menu, ChevronRight, Plus, Sparkles, Brain } from 'lucide-react';
+import { Menu, ChevronRight, Sparkles, Brain } from 'lucide-react';
 import type { Bible, Scene } from '../../services/project.api';
-import type { SaveState, StudioMode } from './types';
+import type { StudioMode } from './types';
 
 interface StudioTopbarProps {
     activeProject: Bible | null;
     activeScene: Scene | null;
-    saveState: SaveState;
-    onNewScene: () => void;
     onGenerate: () => void;
     onCritique: () => void;
     isGenerating: boolean;
@@ -20,8 +18,6 @@ interface StudioTopbarProps {
 export function StudioTopbar({
     activeProject,
     activeScene,
-    saveState,
-    onNewScene,
     onGenerate,
     onCritique,
     isGenerating,
@@ -29,11 +25,9 @@ export function StudioTopbar({
 
     onBackToDashboard,
     activeMode,
-    onModeChange,
     isExplorerOpen
 }: StudioTopbarProps) {
     console.log('[StudioTopbar] Render - isExplorerOpen:', isExplorerOpen, 'activeMode:', activeMode);
-    const saveLabel = saveState === 'saving' ? 'Saving...' : saveState === 'saved' ? 'Saved' : saveState === 'error' ? 'Save failed' : 'Unsaved';
 
     return (
         <div className="ide-toolbar">

@@ -16,7 +16,7 @@ class ActivityTrackerService {
             .catch(err => console.error('Failed to log activity silently:', err));
     }
 
-    setToken(token: string | null) {
+    setToken(_token: string | null) {
         // Redundant now as api service manages token centrally, 
         // but kept for API compatibility if needed or removed if unused.
         // The AuthStore already updates the main api instance.

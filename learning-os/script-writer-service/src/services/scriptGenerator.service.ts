@@ -19,6 +19,7 @@ export interface ScriptRequest {
     characterIds?: string[]; // Specific Cast
     previousContext?: string; // Memory of what happened before
     sceneLength?: 'short' | 'medium' | 'long' | 'extended'; // Scene length control
+    era?: string; // Time period context
 }
 
 export class ScriptGeneratorService {
@@ -78,7 +79,8 @@ export class ScriptGeneratorService {
                 {
                     minSimilarity: 0.55,  // Only use reasonably similar samples
                     maxLength: 500,       // Keep samples concise
-                    dedupe: true          // Avoid repeating same content
+                    dedupe: true,          // Avoid repeating same content
+                    era: request.era       // Contextual Era Filter
                 }
             );
 

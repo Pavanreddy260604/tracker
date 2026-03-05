@@ -51,8 +51,32 @@ router.get('/bible/:bibleId', async (req, res) => {
 router.post('/', async (req, res) => {
     const { bibleId, slugline, summary, sequenceNumber } = req.body;
 
-    if (!bibleId || !slugline) {
-        return res.status(400).json({ error: 'Bible ID and Slugline are required' });
+    // Input validation
+    if (!bibleId || typeof bibleId !== 'string') {
+        return res.status(400).json({ error: 'Bible ID is required and must be a string' });
+    }
+
+    if (!slugline || typeof slugline !== 'string' || slugline.trim().length === 0) {
+        return res.status(400).json({ error: 'Slugline is required and cannot be empty' });
+    }
+
+    // Validate slugline format (should look like a scene header)
+    const sluglinePattern = /^(INT\.|EXT\.|INT\.\/EXT\.|I\/E\.)\s+.+$/i;
+    if (!sluglinePattern.test(slugline.trim())) {
+        return res.status(400).json({
+            error: 'Invalid slugline format. Expected format: "INT. LOCATION - TIME" or "EXT. LOCATION - TIME"'
+        });
+    }
+
+    // Validate sequenceNumber if provided
+    if (sequenceNumber !== undefined && (typeof sequenceNumber !== 'number' || sequenceNumber < 1)) {
+        return res.status(400).json({ error: 'Sequence number must be a positive integer' });
+    }
+
+    // Limit summary length
+    const MAX_SUMMARY_LENGTH = 2000;
+    if (summary && typeof summary === 'string' && summary.length > MAX_SUMMARY_LENGTH) {
+        return res.status(400).json({ error: `Summary must be less than ${MAX_SUMMARY_LENGTH} characters` });
     }
 
     try {
@@ -67,8 +91,8 @@ router.post('/', async (req, res) => {
         const newScene = await Scene.create({
             bibleId,
             sequenceNumber: seq,
-            slugline,
-            summary,
+            slugline: slugline.trim(),
+            summary: summary?.trim() || '',
             status: 'planned',
             content: ''
         });
@@ -86,10 +110,32 @@ router.post('/', async (req, res) => {
 router.put('/:id', async (req, res) => {
     try {
         await assertSceneAccess(req.params.id, req.userId);
+
+        // Whitelist allowed fields to prevent mass assignment
+        const allowedFields = ['slugline', 'summary', 'goal', 'content', 'status',
+            'feedback', 'charactersInvolved', 'mentionedItems'];
+        const updateData: Record<string, unknown> = {};
+
+        for (const field of allowedFields) {
+            if (req.body[field] !== undefined) {
+                updateData[field] = req.body[field];
+            }
+        }
+
+        // Validate status enum
+        if (updateData.status && !['planned', 'drafted', 'reviewed', 'final'].includes(updateData.status as string)) {
+            return res.status(400).json({ error: 'Invalid status value' });
+        }
+
+        // Validate required fields aren't being cleared
+        if (updateData.slugline === '' || updateData.summary === '') {
+            return res.status(400).json({ error: 'slugline and summary cannot be empty' });
+        }
+
         const updatedScene = await Scene.findByIdAndUpdate(
             req.params.id,
-            { $set: req.body },
-            { new: true }
+            { $set: updateData },
+            { new: true, runValidators: true }
         );
         res.json({ success: true, data: updatedScene });
     } catch (error) {
@@ -120,12 +166,29 @@ router.delete('/:id', async (req, res) => {
 
 // POST /api/scene/:id/generate - Generate content for a scene
 router.post('/:id/generate', async (req, res) => {
-    const { userId, style, format, characterIds, sceneLength, language } = req.body;
+    const { style, format, characterIds, sceneLength, language } = req.body;
 
     try {
         const scene = await Scene.findById(req.params.id).populate('bibleId');
         if (!scene) return res.status(404).json({ error: 'Scene not found' });
         await assertBibleAccess(scene.bibleId._id.toString(), req.userId);
+
+        // Validate style parameter
+        const validStyles = ['classic', 'tarantino', 'nolan', 'sorkin', 'wes_anderson', 'fincher'];
+        const validatedStyle = validStyles.includes(style) ? style : 'classic';
+
+        // Validate format parameter
+        const validFormats = ['film', 'tv', 'short'];
+        const validatedFormat = validFormats.includes(format) ? format : 'film';
+
+        // Validate sceneLength parameter
+        const validLengths = ['short', 'medium', 'long'];
+        const validatedLength = validLengths.includes(sceneLength) ? sceneLength : 'medium';
+
+        // Validate characterIds is an array if provided
+        if (characterIds && !Array.isArray(characterIds)) {
+            return res.status(400).json({ error: 'characterIds must be an array' });
+        }
 
         let previousContext = '';
         if (scene.sequenceNumber > 1) {
@@ -135,7 +198,7 @@ router.post('/:id/generate', async (req, res) => {
             });
 
             if (prevScene) {
-                const contextContent = prevScene.summary || prevScene.content.slice(0, 500);
+                const contextContent = prevScene.summary || (prevScene.content ? prevScene.content.slice(0, 500) : 'No previous content');
                 previousContext = `In the previous scene (${prevScene.slugline}): ${contextContent}`;
                 if (scene.previousSceneSummary !== previousContext) {
                     scene.previousSceneSummary = previousContext;
@@ -157,15 +220,16 @@ router.post('/:id/generate', async (req, res) => {
             `;
 
         const request = {
-            userId: req.userId || userId || 'anonymous',
+            userId: req.userId || 'anonymous',
             idea: promptIdea,
-            format: (format as any) || 'film',
-            style: (style as any) || 'classic',
+            format: validatedFormat,
+            style: validatedStyle,
             bibleId: scene.bibleId._id.toString(),
             characterIds: characterIds,
             previousContext: previousContext,
-            sceneLength: sceneLength || 'medium',
-            language: language || 'English'
+            sceneLength: validatedLength,
+            language: language || 'English',
+            era: req.body.era // Optional Era Context
         };
 
         let fullContent = '';
@@ -184,7 +248,7 @@ router.post('/:id/generate', async (req, res) => {
     } catch (error) {
         console.error('[SceneAPI] Generate Error:', error);
         if (!handleAccessError(error, res)) {
-            if (!res.headersSent) res.status(500).json({ error: 'Generation failed', details: (error as Error).message });
+            if (!res.headersSent) res.status(500).json({ error: 'Generation failed' });
             else res.end();
         }
     }

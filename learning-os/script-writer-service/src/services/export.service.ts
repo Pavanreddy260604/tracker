@@ -4,6 +4,11 @@ import { Bible } from '../models/Bible';
 export class ExportService {
 
     async compileProject(bibleId: string, format: 'fountain' | 'txt' | 'json'): Promise<string> {
+        // Validate bibleId
+        if (!bibleId || typeof bibleId !== 'string') {
+            throw new Error('Invalid bible ID provided');
+        }
+
         const bible = await Bible.findById(bibleId);
         const scenes = await Scene.find({ bibleId }).sort({ sequenceNumber: 1 });
 
@@ -16,7 +21,9 @@ export class ExportService {
         let output = '';
 
         // Title Page (Fountain Standard)
-        output += `Title: ${bible.title}\n`;
+        // Sanitize title to prevent injection in output
+        const sanitizedTitle = this.sanitizeFountainText(bible.title || 'Untitled');
+        output += `Title: ${sanitizedTitle}\n`;
         output += `Credit: Written by\n`;
         output += `Author: Screenwriter AI\n`;
         output += `Draft date: ${new Date().toLocaleDateString()}\n`;
@@ -27,8 +34,9 @@ export class ExportService {
         // Scenes
         for (const scene of scenes) {
             output += `\n`; // Space before scene header
-            output += `${scene.slugline.toUpperCase()}\n`;
-            // output += `\n`; // Space after header (optional, Fountain parsers handle it)
+            // Sanitize slugline
+            const sanitizedSlugline = this.sanitizeFountainText(scene.slugline || 'INT. UNKNOWN - TIME');
+            output += `${sanitizedSlugline.toUpperCase()}\n`;
 
             if (scene.content) {
                 // Remove existing FADE IN/sluglines if they are redundant in the content
@@ -41,14 +49,37 @@ export class ExportService {
                     cleanContent = lines.slice(1).join('\n').trim();
                 }
 
-                output += `\n${cleanContent}\n`;
+                // Sanitize content
+                const sanitizedContent = this.sanitizeFountainText(cleanContent);
+                output += `\n${sanitizedContent}\n`;
             } else {
                 // If no content, just print the summary as a note
-                output += `\n[[Scene Summary: ${scene.summary}]]\n`;
+                const sanitizedSummary = this.sanitizeFountainText(scene.summary || 'No summary');
+                output += `\n[[Scene Summary: ${sanitizedSummary}]]\n`;
             }
         }
 
         return output;
+    }
+
+    /**
+     * Sanitize text for Fountain format output.
+     * Prevents potential injection issues and ensures clean output.
+     */
+    private sanitizeFountainText(text: string): string {
+        if (!text || typeof text !== 'string') {
+            return '';
+        }
+        // Remove any potentially dangerous characters while preserving formatting
+        // Limit length to prevent abuse
+        const MAX_LENGTH = 50000;
+        const sanitized = text
+            .replace(/\0/g, '') // Remove null bytes
+            .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, ''); // Remove control characters
+
+        return sanitized.length > MAX_LENGTH
+            ? sanitized.slice(0, MAX_LENGTH) + '\n[Content truncated due to length]'
+            : sanitized;
     }
 }
 

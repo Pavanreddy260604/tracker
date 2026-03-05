@@ -63,7 +63,6 @@ export function StudioInspector({
     // Orbit Model: Sidebar content depends on activeMode
     let content = null;
     let headerTitle = "Inspector";
-    let headerIcon = PanelRight;
 
     if (activeMode === 'write') {
         // Standard Inspector with Project/Scene tabs
@@ -126,14 +125,8 @@ export function StudioInspector({
                 scriptStyle={"standard"}
                 onScriptStyleChange={() => { }}
                 scriptOutput={""}
-                scriptHistory={[]}
-                activeHistoryId={null}
-                onScriptHistorySelect={() => { }}
                 onGenerateScript={() => { }}
                 isScriptGenerating={isGenerating}
-                characters={[]}
-                selectedScriptCharacterIds={[]}
-                onToggleScriptCharacter={() => { }}
             />
         );
     } else {

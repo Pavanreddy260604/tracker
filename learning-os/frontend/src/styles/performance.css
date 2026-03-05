@@ -1,0 +1,93 @@
+/* =========================================
+   PERFORMANCE SYSTEM
+   GPU Acceleration, Layout Containment, Timing
+   ========================================= */
+
+:root {
+    /* High-performance easing curves */
+    --ease-fluid: cubic-bezier(0.32, 0.72, 0, 1);
+    --ease-snappy: cubic-bezier(0.2, 0, 0, 1);
+    --ease-spring: cubic-bezier(0.175, 0.885, 0.32, 1.275);
+
+    /* Standardized fast timings */
+    --t-fast: 150ms;
+    --t-normal: 250ms;
+    --t-slow: 350ms;
+}
+
+/* GPU Acceleration Utilities */
+.gpu-accelerated {
+    transform: translateZ(0);
+    backface-visibility: hidden;
+    perspective: 1000px;
+}
+
+/* Strict Layout Containment (prevents layout thrashing) */
+.contain-strict {
+    contain: layout style paint;
+}
+
+/* Off-screen Content Optimization */
+.content-auto {
+    content-visibility: auto;
+    contain-intrinsic-size: 0 500px;
+    /* Adjust based on typical component height */
+}
+
+/* Smooth Scrolling (Hardware Accelerated) */
+.scroll-smooth-gpu {
+    scroll-behavior: smooth;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-y: contain;
+    /* Prevents pull-to-refresh jank on mobile */
+}
+
+/* 
+  Global disable for all heavy animations if user prefers reduced motion
+  or on low-power devices.
+*/
+@media (prefers-reduced-motion: reduce) {
+
+    *,
+    ::before,
+    ::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+    }
+}
+
+/* Fix for iOS viewport bug when keyboard appears */
+@supports (height: 100dvh) {
+    .viewport-keyboard-safe {
+        height: 100dvh;
+        min-height: -webkit-fill-available;
+    }
+}
+
+/* =========================================
+   NATIVE APP EXPERIENCE (PWA / Installed)
+   ========================================= */
+
+/* Disable pull-to-refresh and overscroll bounce globally */
+html,
+body {
+    overscroll-behavior-y: none;
+}
+
+/* Enable text selection by default for a better learning/copying experience */
+body {
+    -webkit-user-select: text;
+    user-select: text;
+    -webkit-touch-callout: default;
+    -webkit-tap-highlight-color: transparent;
+}
+
+/* Selection is now enabled by default on body */
+input,
+textarea,
+[contenteditable="true"] {
+    -webkit-user-select: auto;
+    user-select: auto;
+}

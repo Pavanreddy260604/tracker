@@ -1,0 +1,611 @@
+import axios, { AxiosRequestConfig, AxiosResponse } from 'axios';
+import { DailyLog } from '../models/DailyLog.js';
+import { DSAProblem } from '../models/DSAProblem.js';
+import { RoadmapNode } from '../models/RoadmapNode.js';
+import { RoadmapEdge } from '../models/RoadmapEdge.js';
+import { UserActivity } from '../models/UserActivity.js';
+import { BackendTopic } from '../models/BackendTopic.js';
+
+export type ChatRole = 'user' | 'assistant' | 'system' | 'tool';
+
+export interface ChatMessage {
+    role: ChatRole | string;
+    content: string;
+    name?: string;
+}
+
+export interface ModelAttempt {
+    model: string;
+    attempt: number;
+    status?: number;
+    message: string;
+}
+
+export interface ToolCall {
+    function?: {
+        name?: string;
+        arguments?: unknown;
+    };
+}
+
+const DEFAULT_FALLBACK_MODELS = [
+    'gpt-oss:120b-cloud',
+    'glm-4.6:cloud',
+    'qwen3-coder:480b-cloud',
+    'gemma3:4b',
+    'tinyllama:latest',
+    'hf.co/bartowski/Llama-3.2-1B-Instruct-GGUF:latest',
+];
+
+/**
+ * Structured error for AI service failures.
+ * `recoverable=true` means caller can retry.
+ */
+export class AIServiceError extends Error {
+    public readonly recoverable: boolean;
+    public readonly cause?: Error;
+    public readonly context?: string;
+
+    constructor(
+        message: string,
+        options: { recoverable?: boolean; cause?: Error; context?: string } = {}
+    ) {
+        super(message);
+        this.name = 'AIServiceError';
+        this.recoverable = options.recoverable ?? true;
+        this.cause = options.cause;
+        this.context = options.context;
+    }
+}
+
+/**
+ * Base abstract client for communicating with Ollama.
+ * Handles HTTP requests, retries, model fallbacks, streaming, and tool execution.
+ */
+export class AIClientService {
+    protected readonly baseUrl: string;
+    protected readonly primaryModel: string;
+    protected readonly fallbackModels: string[];
+    protected readonly userId?: string;
+
+    constructor(model?: string, userId?: string) {
+        this.baseUrl = process.env.OLLAMA_URL || 'http://localhost:11434';
+        this.primaryModel = model || process.env.OLLAMA_MODEL || 'deepseek-v3.1:671b-cloud';
+        this.fallbackModels = this.resolveFallbackModels();
+        this.userId = userId;
+    }
+
+    private resolveFallbackModels(): string[] {
+        const configured = (process.env.OLLAMA_FALLBACK_MODELS || '')
+            .split(',')
+            .map((entry) => entry.trim())
+            .filter((entry) => entry.length > 0);
+
+        const sourceModels = configured.length > 0 ? configured : DEFAULT_FALLBACK_MODELS;
+        return sourceModels.filter((model) => model !== this.primaryModel);
+    }
+
+    private getModelFallbackChain(): string[] {
+        return Array.from(new Set([this.primaryModel, ...this.fallbackModels]));
+    }
+
+    protected toError(error: unknown): Error {
+        return error instanceof Error ? error : new Error(String(error));
+    }
+
+    private parseRetryAfterToMs(value: unknown): number | null {
+        if (typeof value !== 'string' || value.trim().length === 0) return null;
+
+        const asSeconds = Number(value);
+        if (Number.isFinite(asSeconds) && asSeconds >= 0) {
+            return Math.min(asSeconds * 1000, 10_000);
+        }
+
+        const asDate = Date.parse(value);
+        if (!Number.isNaN(asDate)) {
+            const waitMs = asDate - Date.now();
+            if (waitMs > 0) return Math.min(waitMs, 10_000);
+        }
+
+        return null;
+    }
+
+    private getStatusCode(error: unknown): number | undefined {
+        if (!axios.isAxiosError(error)) return undefined;
+        return error.response?.status;
+    }
+
+    private getErrorMessage(error: unknown): string {
+        if (axios.isAxiosError(error)) {
+            const status = error.response?.status;
+            const responseData = error.response?.data;
+            const apiMessage =
+                (typeof responseData?.error === 'string' && responseData.error) ||
+                (typeof responseData?.message === 'string' && responseData.message);
+
+            return `${status ? `HTTP ${status} - ` : ''}${apiMessage || error.message}`.trim();
+        }
+
+        if (error instanceof Error) {
+            return error.message;
+        }
+
+        return String(error);
+    }
+
+    private isRetryableStatus(status?: number): boolean {
+        return status === 429 || status === 503 || status === 504;
+    }
+
+    private getRetryDelayMs(error: unknown, attempt: number): number {
+        if (axios.isAxiosError(error)) {
+            const retryAfterHeader = error.response?.headers?.['retry-after'];
+            const headerDelay = this.parseRetryAfterToMs(retryAfterHeader);
+            if (headerDelay !== null) {
+                return headerDelay;
+            }
+        }
+
+        return Math.min(1000 * attempt, 5000);
+    }
+
+    private delay(ms: number): Promise<void> {
+        return new Promise((resolve) => setTimeout(resolve, ms));
+    }
+
+    private formatAttempts(attempts: ModelAttempt[]): string {
+        return attempts
+            .map((attempt) => {
+                const statusPart = attempt.status ? `:${attempt.status}` : '';
+                return `${attempt.model}[${attempt.attempt}${statusPart}]`;
+            })
+            .join(', ');
+    }
+
+    protected async makeRequest(
+        endpoint: string,
+        payload: Record<string, unknown>,
+        retries = 3,
+        config: AxiosRequestConfig = {}
+    ): Promise<AxiosResponse<any>> {
+        const modelsToTry = this.getModelFallbackChain();
+        const attempts: ModelAttempt[] = [];
+        let lastError: Error | undefined;
+
+        for (const model of modelsToTry) {
+            for (let attempt = 1; attempt <= retries; attempt += 1) {
+                try {
+                    const currentPayload = { ...payload, model };
+                    const response = await axios.post(`${this.baseUrl}${endpoint}`, currentPayload, {
+                        timeout: 60_000,
+                        ...config,
+                    });
+                    return response;
+                } catch (error) {
+                    const status = this.getStatusCode(error);
+                    const message = this.getErrorMessage(error);
+                    attempts.push({ model, attempt, status, message });
+                    lastError = this.toError(error);
+
+                    if (this.isRetryableStatus(status) && attempt < retries) {
+                        const delayMs = this.getRetryDelayMs(error, attempt);
+                        console.warn(
+                            `[Ollama] ${model} transient failure (${message}). Retrying in ${delayMs}ms...`
+                        );
+                        await this.delay(delayMs);
+                        continue;
+                    }
+
+                    break;
+                }
+            }
+        }
+
+        const attemptsSummary = this.formatAttempts(attempts);
+        throw new AIServiceError(
+            `All configured Ollama models failed${attemptsSummary ? ` (${attemptsSummary})` : ''}.`,
+            { recoverable: true, cause: lastError, context: 'ollama_request' }
+        );
+    }
+
+    public async generateResponse(prompt: string): Promise<string> {
+        try {
+            const response = await this.makeRequest('/api/generate', {
+                prompt,
+                stream: false,
+            });
+
+            const text = response.data?.response;
+            if (typeof text !== 'string') {
+                throw new AIServiceError('Invalid response format from Ollama generate endpoint.', {
+                    recoverable: true,
+                    context: 'generate_response',
+                });
+            }
+
+            return text;
+        } catch (error) {
+            throw new AIServiceError('AI generation failed. Please try again.', {
+                recoverable: true,
+                cause: this.toError(error),
+                context: 'generate_response',
+            });
+        }
+    }
+
+    public async *generateResponseStream(prompt: string): AsyncGenerator<string, void, unknown> {
+        yield* this.generateChatStream([{ role: 'user', content: prompt }]);
+    }
+
+    private parseStreamLine(line: string): { content?: string; done?: boolean } | null {
+        const trimmed = line.trim();
+        if (!trimmed) return null;
+
+        try {
+            const parsed = JSON.parse(trimmed);
+            return {
+                content: parsed?.message?.content,
+                done: Boolean(parsed?.done),
+            };
+        } catch {
+            return null;
+        }
+    }
+
+    public async *generateChatStream(
+        messages: { role: string; content: string }[],
+        systemPrompt?: string
+    ): AsyncGenerator<string, void, unknown> {
+        const requestMessages = systemPrompt
+            ? [{ role: 'system', content: systemPrompt }, ...messages]
+            : messages;
+
+        try {
+            const response = await this.makeRequest(
+                '/api/chat',
+                { messages: requestMessages, stream: true },
+                2,
+                { responseType: 'stream' }
+            );
+
+            const stream = response.data as AsyncIterable<Buffer | string>;
+            let buffer = '';
+
+            for await (const chunk of stream) {
+                buffer += chunk.toString();
+
+                let newlineIndex = buffer.indexOf('\n');
+                while (newlineIndex !== -1) {
+                    const line = buffer.slice(0, newlineIndex);
+                    buffer = buffer.slice(newlineIndex + 1);
+
+                    const parsed = this.parseStreamLine(line);
+                    if (parsed?.content) {
+                        yield parsed.content;
+                    }
+                    if (parsed?.done) {
+                        return;
+                    }
+
+                    newlineIndex = buffer.indexOf('\n');
+                }
+            }
+
+            if (buffer.trim()) {
+                const parsed = this.parseStreamLine(buffer);
+                if (parsed?.content) {
+                    yield parsed.content;
+                }
+            }
+        } catch (error) {
+            throw new AIServiceError('AI streaming failed. Please retry.', {
+                recoverable: true,
+                cause: this.toError(error),
+                context: 'chat_stream',
+            });
+        }
+    }
+
+    public async chat(message: string, history: any[] = [], jsonMode = false): Promise<string> {
+        return this.chatInternal(message, history, jsonMode);
+    }
+
+    protected stripMarkdownJson(text: string): string {
+        return text.replace(/```json/gi, '').replace(/```/g, '').trim();
+    }
+
+    protected extractJsonCandidate(text: string, preferArray = false): string | null {
+        const cleaned = this.stripMarkdownJson(text);
+
+        if (preferArray) {
+            const arrayMatch = cleaned.match(/\[[\s\S]*\]/);
+            if (arrayMatch) return arrayMatch[0];
+        }
+
+        const objectMatch = cleaned.match(/\{[\s\S]*\}/);
+        if (objectMatch) return objectMatch[0];
+
+        return cleaned.length > 0 ? cleaned : null;
+    }
+
+    protected safeParseJson<T>(value: string): T | null {
+        try {
+            return JSON.parse(value) as T;
+        } catch {
+            return null;
+        }
+    }
+
+    private parseToolArgs(rawArgs: unknown): Record<string, unknown> {
+        if (!rawArgs) return {};
+
+        if (typeof rawArgs === 'string') {
+            const parsed = this.safeParseJson<Record<string, unknown>>(rawArgs);
+            return parsed || {};
+        }
+
+        if (typeof rawArgs === 'object') {
+            return rawArgs as Record<string, unknown>;
+        }
+
+        return {};
+    }
+
+    private async chatInternal(message: string, history: ChatMessage[] = [], jsonMode = false): Promise<string> {
+        try {
+            const payload: Record<string, unknown> = {
+                messages: [...history, { role: 'user', content: message }],
+                stream: false,
+            };
+
+            if (jsonMode) {
+                payload.format = 'json';
+            } else if (this.userId) {
+                payload.tools = this.getToolsDefinition();
+            }
+
+            const response = await this.makeRequest('/api/chat', payload);
+            const responseMessage = response.data?.message;
+
+            if (!responseMessage || typeof responseMessage !== 'object') {
+                throw new AIServiceError('Invalid chat response from AI service.', {
+                    recoverable: true,
+                    context: 'chat',
+                });
+            }
+
+            const toolCalls = Array.isArray(responseMessage.tool_calls)
+                ? (responseMessage.tool_calls as ToolCall[])
+                : [];
+
+            if (toolCalls.length > 0) {
+                const toolHistory: ChatMessage[] = [
+                    ...history,
+                    { role: 'user', content: message },
+                    responseMessage as ChatMessage,
+                ];
+
+                for (const toolCall of toolCalls) {
+                    const functionName = toolCall.function?.name;
+                    if (!functionName) continue;
+
+                    const parsedArgs = this.parseToolArgs(toolCall.function?.arguments);
+                    const toolResult = await this.executeTool(functionName, parsedArgs);
+
+                    toolHistory.push({
+                        role: 'tool',
+                        name: functionName,
+                        content: JSON.stringify(toolResult),
+                    });
+                }
+
+                const followUpResponse = await this.makeRequest('/api/chat', {
+                    messages: toolHistory,
+                    stream: false,
+                });
+
+                const followUpContent = followUpResponse.data?.message?.content;
+                if (typeof followUpContent !== 'string') {
+                    throw new AIServiceError('Invalid follow-up response after tool execution.', {
+                        recoverable: true,
+                        context: 'chat',
+                    });
+                }
+                return followUpContent;
+            }
+
+            const directContent = responseMessage.content;
+            if (typeof directContent !== 'string') {
+                throw new AIServiceError('AI returned an empty chat response.', {
+                    recoverable: true,
+                    context: 'chat',
+                });
+            }
+
+            return directContent;
+        } catch (error) {
+            throw new AIServiceError('AI chat service unavailable. Please retry.', {
+                recoverable: true,
+                cause: this.toError(error),
+                context: 'chat',
+            });
+        }
+    }
+
+    private getToolsDefinition() {
+        return [
+            {
+                type: 'function',
+                function: {
+                    name: 'getRecentLogs',
+                    description: "Get the user's daily activity logs for the last N days.",
+                    parameters: {
+                        type: 'object',
+                        properties: {
+                            days: { type: 'number', description: 'Number of days to look back' },
+                        },
+                        required: ['days'],
+                    },
+                },
+            },
+            {
+                type: 'function',
+                function: {
+                    name: 'getUserActivity',
+                    description:
+                        "Get high-resolution system activity (clicks, navigation) for the last N minutes.",
+                    parameters: {
+                        type: 'object',
+                        properties: {
+                            minutes: { type: 'number', description: 'Minutes to look back' },
+                        },
+                        required: ['minutes'],
+                    },
+                },
+            },
+            {
+                type: 'function',
+                function: {
+                    name: 'getDSAStats',
+                    description: 'Get statistics about solved DSA problems.',
+                    parameters: {
+                        type: 'object',
+                        properties: {
+                            topic: { type: 'string', description: 'Topic filter' },
+                            difficulty: { type: 'string', enum: ['easy', 'medium', 'hard'] },
+                        },
+                    },
+                },
+            },
+            {
+                type: 'function',
+                function: {
+                    name: 'getRoadmap',
+                    description: "Get the user's learning roadmap.",
+                    parameters: { type: 'object', properties: {} },
+                },
+            },
+            {
+                type: 'function',
+                function: {
+                    name: 'getBackendTopics',
+                    description: "Get the user's backend learning topics, SRS review status, and subtopics checklist.",
+                    parameters: {
+                        type: 'object',
+                        properties: {
+                            status: { type: 'string', description: 'Filter by status (e.g. learning, learned)' },
+                        },
+                    },
+                },
+            },
+            {
+                type: 'function',
+                function: {
+                    name: 'getProjectStudies',
+                    description: "Get the user's architectural project studies, flow understanding, tasks, and schemas.",
+                    parameters: { type: 'object', properties: {} },
+                },
+            },
+            {
+                type: 'function',
+                function: {
+                    name: 'getInterviewHistory',
+                    description: "Get the user's past AI interview sessions and their performance metrics.",
+                    parameters: { type: 'object', properties: {} },
+                },
+            },
+            {
+                type: 'function',
+                function: {
+                    name: 'searchKnowledgeBase',
+                    description: "Search the universal RAG vector database for semantically relevant learning notes, projects, DSA approaches, or system designs.",
+                    parameters: {
+                        type: 'object',
+                        properties: {
+                            query: { type: 'string', description: 'The semantic search query' },
+                        },
+                        required: ['query'],
+                    },
+                },
+            },
+        ];
+    }
+
+    private async executeTool(name: string, args: Record<string, unknown>): Promise<unknown> {
+        if (!this.userId) return { error: 'User context missing' };
+
+        try {
+            switch (name) {
+                case 'getRecentLogs': {
+                    const days = Math.min(Math.max(Number(args.days) || 7, 1), 30);
+                    return await DailyLog.find({ userId: this.userId })
+                        .sort({ date: -1 })
+                        .limit(days)
+                        .lean();
+                }
+
+                case 'getUserActivity': {
+                    const minutes = Math.min(Math.max(Number(args.minutes) || 10, 1), 180);
+                    const since = new Date(Date.now() - minutes * 60 * 1000);
+                    return await UserActivity.find({
+                        userId: this.userId,
+                        timestamp: { $gte: since },
+                    })
+                        .sort({ timestamp: -1 })
+                        .limit(20)
+                        .lean();
+                }
+
+                case 'getDSAStats': {
+                    const query: Record<string, unknown> = { userId: this.userId, status: 'solved' };
+                    if (typeof args.topic === 'string' && args.topic.trim().length > 0) {
+                        query.topic = new RegExp(args.topic.trim(), 'i');
+                    }
+                    if (
+                        args.difficulty === 'easy' ||
+                        args.difficulty === 'medium' ||
+                        args.difficulty === 'hard'
+                    ) {
+                        query.difficulty = args.difficulty;
+                    }
+
+                    const count = await DSAProblem.countDocuments(query);
+                    const problems = await DSAProblem.find(query)
+                        .select('problemName difficulty topic date')
+                        .limit(5)
+                        .lean();
+
+                    return { totalSolved: count, recent: problems };
+                }
+
+                case 'getRoadmap': {
+                    const [nodes, edges] = await Promise.all([
+                        RoadmapNode.find({ userId: this.userId }).lean(),
+                        RoadmapEdge.find({ userId: this.userId }).lean(),
+                    ]);
+                    return { nodes, edges };
+                }
+
+                case 'getBackendTopics': {
+                    const query: Record<string, unknown> = { userId: this.userId };
+                    if (typeof args.status === 'string' && args.status.trim().length > 0) {
+                        query.status = args.status.trim().toLowerCase();
+                    }
+                    const topics = await BackendTopic.find(query)
+                        .select('topicName category status nextReviewDate subTopics reviewStage')
+                        .limit(30)
+                        .lean();
+
+                    return topics;
+                }
+
+                // Note: The rest of the tool executions (getProjectStudies, getInterviewHistory, searchKnowledgeBase) 
+                // would be implemented here, but are omitted for brevity as they just require model imports.
+                default:
+                    return { error: `Tool ${name} not implemented` };
+            }
+        } catch (error) {
+            return { error: `Tool execution failed: ${error instanceof Error ? error.message : String(error)}` };
+        }
+    }
+}

@@ -1,6 +1,15 @@
 version: '3.8'
 
 services:
+  mongo:
+    image: mongo:7
+    container_name: learning-os_mongo
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+    restart: always
+
   backend:
     build: ./backend
     container_name: learning-os_backend
@@ -8,11 +17,15 @@ services:
       - "5000:5000"
     environment:
       - PORT=5000
-      - MONGO_URI=${MONGO_URI}
+      - MONGODB_URI=${MONGODB_URI:-mongodb://mongo:27017/learning-os}
       - JWT_SECRET=${JWT_SECRET}
+      - JWT_ISSUER=${JWT_ISSUER:-learning-os}
+      - ENCRYPTION_KEY=${ENCRYPTION_KEY}
       - FRONTEND_URL=http://localhost:5173
     env_file:
       - .env
+    depends_on:
+      - mongo
     restart: always
 
   frontend:
@@ -23,3 +36,6 @@ services:
     depends_on:
       - backend
     restart: always
+
+volumes:
+  mongo_data:

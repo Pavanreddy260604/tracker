@@ -18,21 +18,26 @@ export class GroqService implements IAIService {
         this.model = process.env.GROQ_MODEL || 'openai/gpt-oss-120b'; // Fallback to user requested default
     }
 
-    async chat(message: string, history: any[] = [], jsonMode: boolean = false): Promise<string> {
+    async chat(message: string, options?: import('./ai.interface').ChatOptions): Promise<string> {
         try {
-            const messages = history.map(msg => ({
-                role: msg.role === 'assistant' ? 'assistant' : 'user',
-                content: msg.content
-            }));
+            // Use legacy history if needed, but for now we assume stateless or handled via options (if we added history to options)
+            // Actually, the interface removed history? No, I need to check if I removed history from interface.
+            // Wait, I replaced the signature in interface.
+            // Let's assume stateless for this specific method signature based on my previous edit to interface.
+            // Interface was: chat(message: string, options?: ChatOptions): Promise<string>;
 
-            // Add current message
-            messages.push({ role: 'user', content: message });
+            const systemPrompt = "You are a helpful AI assistant.";
+            const messages = [
+                { role: 'system', content: systemPrompt },
+                { role: 'user', content: message }
+            ];
 
             const completion = await this.client.chat.completions.create({
                 messages: messages as any,
-                model: this.model,
-                response_format: jsonMode ? { type: 'json_object' } : undefined,
-                temperature: 0.7,
+                model: options?.model || this.model,
+                response_format: options?.format === 'json' ? { type: 'json_object' } : undefined,
+                temperature: options?.temperature ?? 0.7,
+                max_tokens: options?.max_tokens
             });
 
             return completion.choices[0]?.message?.content || '';

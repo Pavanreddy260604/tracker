@@ -24,16 +24,17 @@ import {
 import { Heatmap } from '../components/charts/Heatmap';
 import { useDataStore } from '../stores/dataStore';
 import { api } from '../services/api';
+import { useMobile } from '../hooks/useMobile';
 
 const COLORS = ['#3b82f6', '#8b5cf6', '#06b6d4', '#22c55e', '#f59e0b', '#ef4444'];
 
 const CustomTooltip = ({ active, payload, label }: { active?: boolean; payload?: { value: number; name: string; color: string }[]; label?: string }) => {
     if (!active || !payload) return null;
     return (
-        <div className="bg-white dark:bg-[#1c2128] border border-gray-200 dark:border-white/10 rounded-lg px-3 py-2 shadow-lg">
-            <p className="text-gray-900 dark:text-white font-medium text-sm mb-1">{label}</p>
+        <div className="bg-console-surface border border-border-subtle rounded-lg px-3 py-2 shadow-premium backdrop-blur-md">
+            <p className="text-text-primary font-bold text-sm mb-1">{label}</p>
             {payload.map((entry, index) => (
-                <p key={index} className="text-sm" style={{ color: entry.color }}>
+                <p key={index} className="text-sm font-medium" style={{ color: entry.color }}>
                     {entry.name}: {entry.value}h
                 </p>
             ))}
@@ -43,6 +44,7 @@ const CustomTooltip = ({ active, payload, label }: { active?: boolean; payload?:
 
 export function Analytics() {
     const { weekly, streak, insights, fetchWeekly, fetchStreak, fetchInsights, fetchHeatmap, heatmap } = useDataStore();
+    const { isMobile } = useMobile();
     const [isLoading, setIsLoading] = useState(true);
     const [topicDistribution, setTopicDistribution] = useState<{ name: string; value: number }[]>([]);
 
@@ -99,51 +101,51 @@ export function Analytics() {
         <div className="space-y-6">
             {/* Header */}
             <div>
-                <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Analytics</h1>
-                <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Track your learning patterns and progress</p>
+                <h1 className="text-2xl font-bold text-text-primary">Analytics</h1>
+                <p className="text-sm text-text-secondary mt-1">Track your learning patterns and progress</p>
             </div>
 
             {/* Key Stats */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 {[
-                    { label: 'Current Streak', value: `${streak?.currentStreak || 0} days`, icon: Award, color: 'text-gray-700 dark:text-gray-300', bg: 'bg-gray-100 dark:bg-gray-500/15' },
-                    { label: 'Longest Streak', value: `${streak?.longestStreak || 0} days`, icon: Target, color: 'text-gray-700 dark:text-gray-300', bg: 'bg-gray-100 dark:bg-gray-500/15' },
-                    { label: 'Total Hours', value: `${insights?.totalHours || 0}h`, icon: Clock, color: 'text-gray-700 dark:text-gray-300', bg: 'bg-gray-100 dark:bg-gray-500/15' },
-                    { label: 'Consistency', value: `${insights?.consistencyPercent || 0}%`, icon: TrendingUp, color: 'text-gray-700 dark:text-gray-300', bg: 'bg-gray-100 dark:bg-gray-500/15' },
+                    { label: 'Current Streak', value: `${streak?.currentStreak || 0} days`, icon: Award, color: 'text-accent-primary', bg: 'bg-accent-soft' },
+                    { label: 'Longest Streak', value: `${streak?.longestStreak || 0} days`, icon: Target, color: 'text-accent-secondary', bg: 'bg-accent-soft' },
+                    { label: 'Total Hours', value: `${insights?.totalHours || 0}h`, icon: Clock, color: 'text-status-ok', bg: 'bg-accent-soft' },
+                    { label: 'Consistency', value: `${insights?.consistencyPercent || 0}%`, icon: TrendingUp, color: 'text-status-warning', bg: 'bg-accent-soft' },
                 ].map((stat, index) => (
                     <motion.div
                         key={stat.label}
-                        className="p-5 rounded-xl bg-white dark:bg-[#1c2128] border border-gray-200 dark:border-white/10"
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: index * 0.1 }}
+                        className="p-5 rounded-xl bg-console-surface border border-border-subtle shadow-premium premium-card glow-border"
+                        initial={{ opacity: 0, scale: 0.95 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        transition={{ delay: index * 0.05 }}
                     >
-                        <div className={`w-10 h-10 rounded-lg ${stat.bg} flex items-center justify-center mb-3`}>
-                            <stat.icon size={20} className={stat.color} />
+                        <div className={`w-10 h-10 rounded-lg bg-black/20 flex items-center justify-center mb-3 shadow-inner ${stat.color}`}>
+                            <stat.icon size={20} />
                         </div>
-                        <p className="text-xs text-gray-500 uppercase tracking-wide mb-1">{stat.label}</p>
-                        <p className={`text-2xl font-bold ${stat.color}`}>{stat.value}</p>
+                        <p className="text-[10px] text-text-secondary uppercase tracking-[0.1em] font-bold mb-1 opacity-60">{stat.label}</p>
+                        <p className={`text-2xl font-black text-text-primary text-glow`}>{stat.value}</p>
                     </motion.div>
                 ))}
             </div>
 
             {/* Weekly Activity Chart */}
             <motion.div
-                className="p-6 rounded-xl bg-white dark:bg-[#1c2128] border border-gray-200 dark:border-white/10"
+                className="p-6 rounded-xl bg-console-surface border border-border-subtle shadow-premium premium-card glow-border"
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.2 }}
             >
-                <div className="flex items-center gap-2 mb-6">
-                    <BarChart2 size={20} className="text-gray-500 dark:text-gray-300" />
-                    <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Weekly Activity</h2>
+                <div className="flex items-center gap-2 mb-6 opacity-60">
+                    <BarChart2 size={16} className="text-accent-primary" />
+                    <h2 className="text-[11px] font-bold text-text-secondary uppercase tracking-[0.15em]">Weekly Activity</h2>
                 </div>
-                <ResponsiveContainer width="100%" height={300}>
+                <ResponsiveContainer width="100%" height={isMobile ? 200 : 300}>
                     <BarChart data={weeklyChartData}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="#2d333b" />
-                        <XAxis dataKey="name" stroke="#6b7280" fontSize={12} />
-                        <YAxis stroke="#6b7280" fontSize={12} />
-                        <Tooltip content={<CustomTooltip />} />
+                        <CartesianGrid strokeDasharray="3 3" stroke="currentColor" className="text-border-subtle opacity-30" vertical={false} />
+                        <XAxis dataKey="name" stroke="currentColor" className="text-text-secondary" fontSize={12} axisLine={false} tickLine={false} />
+                        <YAxis stroke="currentColor" className="text-text-secondary" fontSize={12} axisLine={false} tickLine={false} />
+                        <Tooltip content={<CustomTooltip />} cursor={{ fill: 'var(--console-surface-2)', opacity: 0.5 }} />
                         <Bar dataKey="DSA" fill="#3b82f6" radius={[4, 4, 0, 0]} />
                         <Bar dataKey="Backend" fill="#8b5cf6" radius={[4, 4, 0, 0]} />
                         <Bar dataKey="Project" fill="#06b6d4" radius={[4, 4, 0, 0]} />
@@ -156,8 +158,8 @@ export function Analytics() {
                         { label: 'Project', color: '#06b6d4' },
                     ].map(item => (
                         <div key={item.label} className="flex items-center gap-2">
-                            <div className="w-3 h-3 rounded-full" style={{ backgroundColor: item.color }} />
-                            <span className="text-sm text-gray-400">{item.label}</span>
+                            <div className="w-2 h-2 rounded-full" style={{ backgroundColor: item.color }} />
+                            <span className="text-xs font-bold text-text-secondary uppercase tracking-wider">{item.label}</span>
                         </div>
                     ))}
                 </div>
@@ -167,21 +169,24 @@ export function Analytics() {
             <div className="grid md:grid-cols-2 gap-6">
                 {/* Topic Distribution */}
                 <motion.div
-                    className="p-6 rounded-xl bg-white dark:bg-[#1c2128] border border-gray-200 dark:border-white/10"
+                    className="p-6 rounded-xl bg-console-surface border border-border-subtle shadow-premium premium-card glow-border"
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.3 }}
                 >
-                    <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-6">Topic Distribution</h2>
+                    <div className="flex items-center gap-2 mb-6 opacity-60">
+                        <TrendingUp size={16} className="text-accent-secondary" />
+                        <h2 className="text-[11px] font-bold text-text-secondary uppercase tracking-[0.15em]">Topic Distribution</h2>
+                    </div>
                     {topicDistribution.length > 0 ? (
-                        <ResponsiveContainer width="100%" height={250}>
+                        <ResponsiveContainer width="100%" height={isMobile ? 200 : 250}>
                             <PieChart>
                                 <Pie
                                     data={topicDistribution}
                                     cx="50%"
                                     cy="50%"
-                                    innerRadius={60}
-                                    outerRadius={90}
+                                    innerRadius={isMobile ? 45 : 60}
+                                    outerRadius={isMobile ? 70 : 90}
                                     paddingAngle={2}
                                     dataKey="value"
                                 >
@@ -193,9 +198,9 @@ export function Analytics() {
                                     content={({ active, payload }) => {
                                         if (!active || !payload?.length) return null;
                                         return (
-                                            <div className="bg-white dark:bg-[#1c2128] border border-gray-200 dark:border-white/10 rounded-lg px-3 py-2">
-                                                <p className="text-gray-900 dark:text-white capitalize">{payload[0].name}</p>
-                                                <p className="text-gray-500 dark:text-gray-400">{payload[0].value} problems</p>
+                                            <div className="bg-console-surface border border-border-subtle rounded-lg px-3 py-2 shadow-premium">
+                                                <p className="text-text-primary font-bold capitalize">{payload[0].name}</p>
+                                                <p className="text-text-secondary text-sm">{payload[0].value} problems</p>
                                             </div>
                                         );
                                     }}
@@ -203,15 +208,15 @@ export function Analytics() {
                             </PieChart>
                         </ResponsiveContainer>
                     ) : (
-                        <div className="flex items-center justify-center h-[250px] text-gray-500">
+                        <div className="flex items-center justify-center h-[250px] text-text-disabled italic">
                             No problems tracked yet
                         </div>
                     )}
                     <div className="flex flex-wrap justify-center gap-3 mt-4">
                         {topicDistribution.map((topic, index) => (
                             <div key={topic.name} className="flex items-center gap-2">
-                                <div className="w-3 h-3 rounded-full" style={{ backgroundColor: COLORS[index % COLORS.length] }} />
-                                <span className="text-xs text-gray-400 capitalize">{topic.name}</span>
+                                <div className="w-2 h-2 rounded-full" style={{ backgroundColor: COLORS[index % COLORS.length] }} />
+                                <span className="text-[10px] text-text-secondary uppercase tracking-tight font-bold">{topic.name}</span>
                             </div>
                         ))}
                     </div>
@@ -219,34 +224,37 @@ export function Analytics() {
 
                 {/* Insights */}
                 <motion.div
-                    className="p-6 rounded-xl bg-white dark:bg-[#1c2128] border border-gray-200 dark:border-white/10"
+                    className="p-6 rounded-xl bg-console-surface border border-border-subtle shadow-premium premium-card glow-border"
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.4 }}
                 >
-                    <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-6">Insights</h2>
+                    <div className="flex items-center gap-2 mb-6 opacity-60">
+                        <Target size={16} className="text-status-ok" />
+                        <h2 className="text-[11px] font-bold text-text-secondary uppercase tracking-[0.15em]">Strategic Insights</h2>
+                    </div>
                     <div className="space-y-4">
-                        <div className="p-4 rounded-lg bg-gray-100 dark:bg-gray-700/10 border border-gray-200 dark:border-gray-500/20">
-                            <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">Strongest Topic</p>
-                            <p className="text-lg font-semibold text-gray-700 dark:text-gray-300 capitalize">
+                        <div className="p-4 rounded-lg bg-console-surface-2 border border-border-subtle">
+                            <p className="text-xs text-text-secondary uppercase tracking-wide mb-1">Strongest Topic</p>
+                            <p className="text-lg font-bold text-text-primary capitalize">
                                 {insights?.strongestTopic?.replace('-', ' ') || 'Start solving problems!'}
                             </p>
                         </div>
-                        <div className="p-4 rounded-lg bg-gray-100 dark:bg-gray-500/10 border border-gray-200 dark:border-gray-500/20">
-                            <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">Needs More Practice</p>
-                            <p className="text-lg font-semibold text-gray-700 dark:text-gray-400 capitalize">
+                        <div className="p-4 rounded-lg bg-console-surface-2 border border-border-subtle">
+                            <p className="text-xs text-text-secondary uppercase tracking-wide mb-1">Needs More Practice</p>
+                            <p className="text-lg font-bold text-text-primary capitalize">
                                 {insights?.weakestTopic?.replace('-', ' ') || 'Keep practicing!'}
                             </p>
                         </div>
-                        <div className="p-4 rounded-lg bg-gray-100 dark:bg-gray-700/10 border border-gray-200 dark:border-gray-500/20">
-                            <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">Average Daily Hours</p>
-                            <p className="text-lg font-semibold text-gray-700 dark:text-gray-300">
+                        <div className="p-4 rounded-lg bg-console-surface-2 border border-border-subtle">
+                            <p className="text-xs text-text-secondary uppercase tracking-wide mb-1">Average Daily Hours</p>
+                            <p className="text-lg font-bold text-text-primary">
                                 {insights?.avgDailyHours || 0}h per day
                             </p>
                         </div>
-                        <div className="p-4 rounded-lg bg-gray-100 dark:bg-gray-700/10 border border-gray-200 dark:border-gray-500/20">
-                            <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">Total Problems Solved</p>
-                            <p className="text-lg font-semibold text-gray-700 dark:text-gray-300">
+                        <div className="p-4 rounded-lg bg-console-surface-2 border border-border-subtle">
+                            <p className="text-xs text-text-secondary uppercase tracking-wide mb-1">Total Problems Solved</p>
+                            <p className="text-lg font-bold text-text-primary">
                                 {insights?.totalProblems || 0} problems
                             </p>
                         </div>
@@ -256,14 +264,14 @@ export function Analytics() {
 
             {/* Contribution Heatmap */}
             <motion.div
-                className="p-6 rounded-xl bg-white dark:bg-[#1c2128] border border-gray-200 dark:border-white/10"
+                className="p-6 rounded-xl bg-console-surface border border-border-subtle shadow-premium premium-card glow-border"
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.5 }}
             >
-                <div className="flex items-center gap-2 mb-6">
-                    <Calendar size={20} className="text-gray-500 dark:text-gray-300" />
-                    <h2 className="text-lg font-semibold text-gray-900 dark:text-white">{new Date().getFullYear()} Contribution Heatmap</h2>
+                <div className="flex items-center gap-2 mb-6 opacity-60">
+                    <Calendar size={16} className="text-accent-primary" />
+                    <h2 className="text-[11px] font-bold text-text-secondary uppercase tracking-[0.15em]">{new Date().getFullYear()} Contribution Heatmap</h2>
                 </div>
                 <div className="overflow-x-auto">
                     <Heatmap data={heatmap} year={new Date().getFullYear()} />

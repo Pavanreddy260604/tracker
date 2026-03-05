@@ -27,7 +27,8 @@ router.get('/', async (req, res) => {
     } catch (error) {
         const msg = (error as Error).message;
         const stack = (error as Error).stack;
-        // Log to file for debugging since we can't see console
+
+        // Log to file for debugging (server-side only)
         try {
             fs.appendFileSync('error_log.txt', `[${new Date().toISOString()}] List Error: ${msg}\nStack: ${stack}\nUser: ${userId}\n\n`);
         } catch (e) {
@@ -35,10 +36,11 @@ router.get('/', async (req, res) => {
         }
 
         console.error('[BibleAPI] List Error:', error);
+
+        // Security: Never expose stack traces or internal error details to clients
         res.status(500).json({
             error: 'Failed to fetch projects',
-            details: msg,
-            stack: process.env.NODE_ENV === 'development' ? stack : undefined
+            requestId: Date.now().toString(36) // For support reference without exposing internals
         });
     }
 });
@@ -110,10 +112,37 @@ router.get('/:id/export', async (req, res) => {
 router.put('/:id', async (req, res) => {
     try {
         await assertBibleAccess(req.params.id, req.userId);
+
+        // Whitelist allowed fields to prevent mass assignment
+        const allowedFields = ['title', 'logline', 'genre', 'tone', 'language', 'visualStyle', 'rules'];
+        const updateData: Record<string, unknown> = {};
+
+        for (const field of allowedFields) {
+            if (req.body[field] !== undefined) {
+                updateData[field] = req.body[field];
+            }
+        }
+
+        // Validate title is not empty
+        if (updateData.title === '') {
+            return res.status(400).json({ error: 'Title cannot be empty' });
+        }
+
+        // Validate genre against allowed values
+        const validGenres = ['Drama', 'Sci-Fi', 'Comedy', 'Thriller', 'Horror', 'Action', 'Romance', 'Documentary'];
+        if (updateData.genre && !validGenres.includes(updateData.genre as string)) {
+            return res.status(400).json({ error: `Invalid genre. Allowed: ${validGenres.join(', ')}` });
+        }
+
+        // Validate rules is an array
+        if (updateData.rules && !Array.isArray(updateData.rules)) {
+            return res.status(400).json({ error: 'Rules must be an array' });
+        }
+
         const updatedBible = await Bible.findOneAndUpdate(
             { _id: req.params.id, userId: req.userId },
-            { $set: req.body },
-            { new: true }
+            { $set: updateData },
+            { new: true, runValidators: true }
         );
         if (!updatedBible) {
             return res.status(404).json({ error: 'Project not found' });

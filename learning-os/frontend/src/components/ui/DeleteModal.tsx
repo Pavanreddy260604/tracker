@@ -29,7 +29,7 @@ export function DeleteModal({
             <div className="flex flex-col gap-4">
                 <div className="flex items-start gap-4 p-4 bg-red-500/10 border border-red-500/20 rounded-lg">
                     <AlertTriangle className="text-red-500 shrink-0 mt-0.5" size={20} />
-                    <p className="text-sm text-red-200">
+                    <p className="text-sm text-red-700 dark:text-red-200">
                         {description}
                     </p>
                 </div>

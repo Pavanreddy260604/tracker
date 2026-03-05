@@ -1,8 +1,15 @@
 import { Router, Request, Response } from 'express';
 import { z } from 'zod';
-import { DSAProblem } from '../models/DSAProblem.js';
 import { authenticate } from '../middleware/auth.js';
 import { writeLimiter } from '../middleware/rateLimiter.js';
+import { knowledgeSync } from '../services/knowledgeSync.service.js';
+import {
+    createDSAProblem,
+    deleteDSAProblemById,
+    getDSAProblemById,
+    listDSAProblems,
+    updateDSAProblemById,
+} from '../services/dsa.service.js';
 
 const router = Router();
 router.use(authenticate);
@@ -30,36 +37,42 @@ const dsaProblemSchema = z.object({
     companyTags: z.array(z.string()).optional(),
 });
 
+const dsaProblemUpdateSchema = dsaProblemSchema
+    .partial()
+    .strict()
+    .refine((value) => Object.keys(value).length > 0, {
+        message: 'At least one field is required.',
+    });
+
+const listProblemsQuerySchema = z.object({
+    page: z.coerce.number().int().min(1).default(1),
+    limit: z.coerce.number().int().min(1).max(100).default(20),
+    topic: z.string().trim().min(1).max(100).optional(),
+    difficulty: z.enum(['easy', 'medium', 'hard']).optional(),
+});
+
 /**
  * GET /api/dsa-problems
  */
 router.get('/', async (req: Request, res: Response) => {
     try {
-        const page = Math.max(1, parseInt(req.query.page as string) || 1);
-        const requestedLimit = parseInt(req.query.limit as string) || 20;
-        const limit = Math.min(Math.max(1, requestedLimit), 100); // Cap at 100 max
-        const topic = req.query.topic as string;
-        const difficulty = req.query.difficulty as string;
+        const parsedQuery = listProblemsQuerySchema.safeParse(req.query);
+        if (!parsedQuery.success) {
+            res.status(400).json({ success: false, error: parsedQuery.error.errors[0].message });
+            return;
+        }
 
-        const filter: Record<string, unknown> = { userId: req.userId };
-        if (topic) filter.topic = topic;
-        if (difficulty) filter.difficulty = difficulty;
-
-        const [problems, total] = await Promise.all([
-            DSAProblem.find(filter)
-                .sort({ date: -1, createdAt: -1 })
-                .skip((page - 1) * limit)
-                .limit(limit)
-                .lean(),
-            DSAProblem.countDocuments(filter),
-        ]);
+        const { page, limit, topic, difficulty } = parsedQuery.data;
+        const result = await listDSAProblems(req.userId!, {
+            page,
+            limit,
+            topic,
+            difficulty,
+        });
 
         res.json({
             success: true,
-            data: {
-                problems,
-                pagination: { page, limit, total, pages: Math.ceil(total / limit) },
-            },
+            data: result,
         });
     } catch (error) {
         console.error('Get problems error:', error);
@@ -78,10 +91,12 @@ router.post('/', writeLimiter, async (req: Request, res: Response) => {
             return;
         }
 
-        const problem = await DSAProblem.create({
-            ...result.data,
-            userId: req.userId,
-        });
+        const problem = await createDSAProblem(req.userId!, result.data);
+
+        // Sync to RAG
+        if (problem) {
+            knowledgeSync.syncDSAProblem(problem).catch(err => console.error('[DSA] RAG Sync Error:', err));
+        }
 
         res.status(201).json({ success: true, data: { problem } });
     } catch (error) {
@@ -95,10 +110,8 @@ router.post('/', writeLimiter, async (req: Request, res: Response) => {
  */
 router.get('/:id', async (req: Request, res: Response) => {
     try {
-        const problem = await DSAProblem.findOne({
-            _id: req.params.id,
-            userId: req.userId,
-        }).lean();
+        const problemId = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
+        const problem = await getDSAProblemById(req.userId!, problemId);
 
         if (!problem) {
             res.status(404).json({ success: false, error: 'Problem not found' });
@@ -117,22 +130,22 @@ router.get('/:id', async (req: Request, res: Response) => {
  */
 router.put('/:id', writeLimiter, async (req: Request, res: Response) => {
     try {
-        const result = dsaProblemSchema.partial().safeParse(req.body);
+        const result = dsaProblemUpdateSchema.safeParse(req.body);
         if (!result.success) {
             res.status(400).json({ success: false, error: result.error.errors[0].message });
             return;
         }
 
-        const problem = await DSAProblem.findOneAndUpdate(
-            { _id: req.params.id, userId: req.userId },
-            { $set: result.data },
-            { new: true, runValidators: true }
-        );
+        const problemId = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
+        const problem = await updateDSAProblemById(req.userId!, problemId, result.data);
 
         if (!problem) {
             res.status(404).json({ success: false, error: 'Problem not found' });
             return;
         }
+
+        // Sync to RAG
+        knowledgeSync.syncDSAProblem(problem).catch(err => console.error('[DSA] RAG Sync Error:', err));
 
         res.json({ success: true, data: { problem } });
     } catch (error) {
@@ -146,15 +159,16 @@ router.put('/:id', writeLimiter, async (req: Request, res: Response) => {
  */
 router.delete('/:id', writeLimiter, async (req: Request, res: Response) => {
     try {
-        const problem = await DSAProblem.findOneAndDelete({
-            _id: req.params.id,
-            userId: req.userId,
-        });
+        const problemId = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
+        const problem = await deleteDSAProblemById(req.userId!, problemId);
 
         if (!problem) {
             res.status(404).json({ success: false, error: 'Problem not found' });
             return;
         }
+
+        // Delete from RAG Vector Store
+        knowledgeSync.deleteFromVector(problemId as string).catch(err => console.error('[DSA] RAG Delete Error:', err));
 
         res.json({ success: true, data: { message: 'Problem deleted' } });
     } catch (error) {

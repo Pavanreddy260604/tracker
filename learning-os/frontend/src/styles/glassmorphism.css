@@ -1,0 +1,252 @@
+/* =============================================
+   GLASSMORPHISM LAYER — Element-Level Only
+   Frosted glass on cards, sidebar, header, etc.
+   NO gradient mesh background changes.
+   Must load AFTER all chunk*.css files
+   ============================================= */
+
+/* ==============================
+   FROSTED HEADER
+   ============================== */
+.app-header {
+    background: rgba(255, 255, 255, 0.05) !important;
+    backdrop-filter: blur(40px) saturate(200%) !important;
+    -webkit-backdrop-filter: blur(40px) saturate(200%) !important;
+    border: 1px solid rgba(255, 255, 255, 0.1) !important;
+    box-shadow:
+        0 8px 32px rgba(0, 0, 0, 0.4),
+        inset 0 1px 0 rgba(255, 255, 255, 0.08) !important;
+}
+
+html.light .app-header {
+    background: rgba(255, 255, 255, 0.6) !important;
+    backdrop-filter: blur(40px) saturate(200%) !important;
+    -webkit-backdrop-filter: blur(40px) saturate(200%) !important;
+    border: 1px solid rgba(255, 255, 255, 0.5) !important;
+    box-shadow:
+        0 8px 32px rgba(0, 0, 0, 0.06),
+        inset 0 1px 0 rgba(255, 255, 255, 0.9) !important;
+}
+
+/* ==============================
+   FROSTED SIDEBAR
+   ============================== */
+.app-sidebar {
+    background: rgba(255, 255, 255, 0.04) !important;
+    backdrop-filter: blur(32px) saturate(180%) !important;
+    -webkit-backdrop-filter: blur(32px) saturate(180%) !important;
+    border-right: 1px solid rgba(255, 255, 255, 0.08) !important;
+    box-shadow:
+        12px 0 40px rgba(0, 0, 0, 0.2),
+        inset -1px 0 0 rgba(255, 255, 255, 0.04) !important;
+}
+
+html.light .app-sidebar {
+    background: rgba(255, 255, 255, 0.5) !important;
+    backdrop-filter: blur(32px) saturate(200%) !important;
+    -webkit-backdrop-filter: blur(32px) saturate(200%) !important;
+    border-right: 1px solid rgba(255, 255, 255, 0.4) !important;
+    box-shadow:
+        8px 0 24px rgba(0, 0, 0, 0.04),
+        inset -1px 0 0 rgba(255, 255, 255, 0.7) !important;
+}
+
+/* ==============================
+   LIQUID GLASS CARDS
+   ============================== */
+.liquid-glass {
+    background: rgba(255, 255, 255, 0.06) !important;
+    backdrop-filter: blur(24px) saturate(180%) !important;
+    -webkit-backdrop-filter: blur(24px) saturate(180%) !important;
+    border: 1px solid rgba(255, 255, 255, 0.1) !important;
+    box-shadow:
+        0 8px 32px rgba(0, 0, 0, 0.15),
+        inset 0 1px 0 rgba(255, 255, 255, 0.08),
+        inset 0 -1px 0 rgba(255, 255, 255, 0.02) !important;
+}
+
+html.light .liquid-glass {
+    background: rgba(255, 255, 255, 0.5) !important;
+    backdrop-filter: blur(28px) saturate(200%) !important;
+    -webkit-backdrop-filter: blur(28px) saturate(200%) !important;
+    border: 1px solid rgba(255, 255, 255, 0.5) !important;
+    box-shadow:
+        0 8px 32px rgba(0, 0, 0, 0.04),
+        inset 0 1px 0 rgba(255, 255, 255, 0.85) !important;
+}
+
+/* ==============================
+   GLOW EFFECTS & PREMIUM CARDS
+   ============================== */
+.text-glow {
+    text-shadow: 0 0 15px rgba(59, 130, 246, 0.5);
+}
+
+html.light .text-glow {
+    text-shadow: 0 0 10px rgba(59, 130, 246, 0.2);
+}
+
+.glow-border {
+    position: relative;
+    overflow: hidden;
+}
+
+/* Removing glow border pseudo-element to eliminate 'the line' */
+.glow-border::after {
+    display: none !important;
+}
+
+.premium-card {
+    transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1),
+        box-shadow 0.3s ease,
+        border-color 0.3s ease;
+}
+
+.premium-card:hover {
+    transform: translateY(-4px) scale(1.01);
+    border-color: rgba(59, 130, 246, 0.3) !important;
+    box-shadow:
+        0 20px 40px rgba(0, 0, 0, 0.2),
+        0 0 20px rgba(59, 130, 246, 0.1) !important;
+}
+
+html.light .premium-card:hover {
+    border-color: rgba(59, 130, 246, 0.4) !important;
+    box-shadow:
+        0 15px 30px rgba(0, 0, 0, 0.05),
+        0 0 15px rgba(59, 130, 246, 0.1) !important;
+}
+
+/* ==============================
+   FROSTED DROPDOWNS / MENUS
+   ============================== */
+.app-dropdown {
+    background: rgba(255, 255, 255, 0.06) !important;
+    backdrop-filter: blur(40px) saturate(200%) !important;
+    -webkit-backdrop-filter: blur(40px) saturate(200%) !important;
+    border: 1px solid rgba(255, 255, 255, 0.1) !important;
+    box-shadow:
+        0 20px 60px rgba(0, 0, 0, 0.5),
+        inset 0 1px 0 rgba(255, 255, 255, 0.08) !important;
+}
+
+html.light .app-dropdown {
+    background: rgba(255, 255, 255, 0.65) !important;
+    backdrop-filter: blur(40px) saturate(200%) !important;
+    -webkit-backdrop-filter: blur(40px) saturate(200%) !important;
+    border: 1px solid rgba(255, 255, 255, 0.5) !important;
+    box-shadow:
+        0 20px 60px rgba(0, 0, 0, 0.06),
+        inset 0 1px 0 rgba(255, 255, 255, 0.9) !important;
+}
+
+/* ==============================
+   SPECULAR HIGHLIGHT on header
+   ============================== */
+/* Removed specular highlight line */
+
+/* ==============================
+   BOTTOM NAV BAR — Frosted
+   ============================== */
+.app-bottom-nav,
+nav[class*="bottom"],
+[class*="bottom-nav"],
+.fixed.bottom-0 {
+    background: rgba(255, 255, 255, 0.05) !important;
+    backdrop-filter: blur(32px) saturate(200%) !important;
+    -webkit-backdrop-filter: blur(32px) saturate(200%) !important;
+    border-top: 1px solid rgba(255, 255, 255, 0.08) !important;
+}
+
+html.light .app-bottom-nav,
+html.light nav[class*="bottom"],
+html.light [class*="bottom-nav"],
+html.light .fixed.bottom-0 {
+    background: rgba(255, 255, 255, 0.55) !important;
+    backdrop-filter: blur(32px) saturate(200%) !important;
+    -webkit-backdrop-filter: blur(32px) saturate(200%) !important;
+    border-top: 1px solid rgba(255, 255, 255, 0.5) !important;
+}
+
+/* ==============================
+   NAV ITEMS — Glass hover
+   ============================== */
+.app-nav-item:hover {
+    background: rgba(255, 255, 255, 0.08) !important;
+}
+
+.app-nav-item.is-active {
+    background: rgba(59, 130, 246, 0.15) !important;
+    border: 1px solid rgba(59, 130, 246, 0.2) !important;
+}
+
+html.light .app-nav-item:hover {
+    background: rgba(0, 0, 0, 0.04) !important;
+}
+
+html.light .app-nav-item.is-active {
+    background: rgba(59, 130, 246, 0.08) !important;
+}
+
+/* ==============================
+   SEARCH INPUT — Frosted
+   ============================== */
+.app-search {
+    background: rgba(255, 255, 255, 0.04) !important;
+    backdrop-filter: blur(12px) !important;
+    -webkit-backdrop-filter: blur(12px) !important;
+    border: 1px solid rgba(255, 255, 255, 0.06) !important;
+}
+
+html.light .app-search {
+    background: rgba(0, 0, 0, 0.03) !important;
+    backdrop-filter: blur(12px) !important;
+    -webkit-backdrop-filter: blur(12px) !important;
+    border: 1px solid rgba(0, 0, 0, 0.05) !important;
+}
+
+/* ==============================
+   MODAL OVERLAY — Glass blur
+   ============================== */
+.modal-overlay,
+[class*="backdrop-blur"] {
+    backdrop-filter: blur(20px) saturate(120%) !important;
+    -webkit-backdrop-filter: blur(20px) saturate(120%) !important;
+}
+
+/* ==============================
+   LIGHT MODE — Enhanced Glass
+   Make ALL surfaces glassy in light mode
+   ============================== */
+html.light .card,
+html.light .rounded-xl {
+    backdrop-filter: blur(16px) saturate(180%);
+    -webkit-backdrop-filter: blur(16px) saturate(180%);
+    box-shadow:
+        0 4px 24px rgba(0, 0, 0, 0.04),
+        inset 0 1px 0 rgba(255, 255, 255, 0.7);
+    border-color: rgba(255, 255, 255, 0.4) !important;
+}
+
+html.light input:not([type="checkbox"]):not([type="radio"]),
+html.light textarea,
+html.light select {
+    background: rgba(255, 255, 255, 0.5) !important;
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    border: 1px solid rgba(255, 255, 255, 0.4) !important;
+}
+
+html.light .gcp-card {
+    background: rgba(255, 255, 255, 0.45) !important;
+    backdrop-filter: blur(20px) saturate(200%);
+    -webkit-backdrop-filter: blur(20px) saturate(200%);
+    border: 1px solid rgba(255, 255, 255, 0.4) !important;
+    box-shadow:
+        0 6px 24px rgba(0, 0, 0, 0.04),
+        inset 0 1px 0 rgba(255, 255, 255, 0.8) !important;
+}
+
+html.light main {
+    background: transparent !important;
+}

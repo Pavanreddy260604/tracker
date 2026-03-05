@@ -1,5 +1,4 @@
-﻿
-/* ============ PROGRESS BARS ============ */
+﻿/* ============ PROGRESS BARS ============ */
 
 html.light .bg-gray-700 {
   background-color: #e2e8f0 !important;
@@ -25,29 +24,58 @@ html.light ::-webkit-scrollbar-thumb:hover {
   background: #b6c2d1;
 }
 
-/* ============ HOVER STATES ============ */
+/* ============ LIGHT MODE TEXT & CONTRAST FIXES ============ */
 
-/* Prevent white backgrounds on hover in light theme */
-html.light [class*="hover:bg-white"]:hover {
-  background-color: rgba(0, 0, 0, 0.05) !important;
+/* Unified hover logic for Light Mode */
+html.light [class*="hover:bg-white"]:hover,
+html.light [class*="hover:bg-gray"]:not(.bg-gray-900):hover,
+html.light [class*="bg-white/"]:hover {
+  background-color: var(--console-surface-2) !important;
 }
 
-html.light [class*="hover:bg-gray"]:not(.bg-gray-900):hover {
-  background-color: rgba(0, 0, 0, 0.05) !important;
+html.light [class*="bg-white/"] {
+  background-color: var(--console-surface-2) !important;
 }
 
-/* Prevent white text on hover in light theme */
+/* Prevent white text on hover in light mode */
 html.light [class*="hover:text-white"]:hover {
   color: var(--text-primary) !important;
 }
 
-/* Prevent bg-white/10 and similar on hover */
-html.light [class*="bg-white/"]:hover {
-  background-color: rgba(0, 0, 0, 0.03) !important;
+/* Standardized Light Mode Contrast */
+html.light .text-white:not(.dark\:text-white) {
+  color: var(--text-primary) !important;
 }
 
-html.light [class*="bg-white/"] {
-  background-color: rgba(0, 0, 0, 0.03) !important;
+html.light .text-gray-200,
+html.light .text-gray-300,
+html.light .text-gray-400 {
+  color: var(--text-secondary) !important;
+}
+
+html.light .text-gray-500,
+html.light .text-gray-600 {
+  color: var(--text-disabled) !important;
+}
+
+/* Fix hardcoded dark backgrounds */
+html.light .bg-\[\#1c2128\] {
+  background-color: #f8fafc !important;
+  border-color: #e2e8f0 !important;
+}
+
+html.light .bg-\[\#0a0d12\]\/95 {
+  background-color: rgba(255, 255, 255, 0.97) !important;
+}
+
+/* Fix border-white/X in light mode */
+html.light [class*="border-white/"] {
+  border-color: rgba(0, 0, 0, 0.08) !important;
+}
+
+/* Fix text-glow in light mode */
+html.light .text-glow {
+  text-shadow: none !important;
 }
 
 /* ============ SEARCH BAR ============ */
@@ -119,11 +147,17 @@ html.light body {
     linear-gradient(180deg, rgba(255, 255, 255, 0.6) 0%, rgba(255, 255, 255, 0) 45%);
 }
 
-#root {
-  display: flex;
-  flex-direction: column;
-  min-height: 100vh;
+@media (max-width: 767px) {
+
+  html,
+  body {
+    background-image: none !important;
+    background-color: var(--console-bg) !important;
+  }
 }
+
+
+/* #root styles defined in chunk1.css */
 
 h1,
 h2,
@@ -153,7 +187,7 @@ select {
 button:focus-visible,
 a:focus-visible,
 input:focus-visible,
-textarea:focus-visible,
+textarea:focus-visible:not(.chat-input),
 select:focus-visible {
   outline: none;
   box-shadow: 0 0 0 3px var(--accent-focus);
@@ -163,6 +197,7 @@ select:focus-visible {
   position: relative;
   isolation: isolate;
   background-color: transparent;
+  contain: layout style;
 }
 
 .app-shell::before {
@@ -216,6 +251,7 @@ html.light .app-shell::before {
   border-radius: var(--radius-lg);
   box-shadow: var(--elevation-1);
   position: relative;
+  contain: layout style;
 }
 
 .surface-card::after {
@@ -228,17 +264,20 @@ html.light .app-shell::before {
 }
 
 .auth-shell {
-  min-height: 100vh;
+  flex: 1;
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
-  padding: 32px 20px;
+  justify-content: flex-start;
+  padding: 40px 20px;
+  padding-bottom: calc(100px + env(safe-area-inset-bottom, 0px));
   color: var(--text-primary);
   background-color: var(--console-bg);
   background-image:
     radial-gradient(700px 420px at 80% -10%, rgba(127, 178, 255, 0.2), transparent 60%),
     radial-gradient(700px 520px at 0% 20%, rgba(26, 115, 232, 0.16), transparent 60%);
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 .auth-card {
@@ -315,7 +354,10 @@ html.light .auth-shell {
 /* ============ AI CHAT ============ */
 .chat-shell {
   display: flex;
-  height: 100vh;
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+  overflow: hidden;
   background-color: #f7f7f8;
   color: #0f172a;
 }

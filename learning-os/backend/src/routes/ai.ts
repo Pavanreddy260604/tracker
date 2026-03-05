@@ -1,7 +1,7 @@
 import express from 'express';
+import { z } from 'zod';
 import { authenticate } from '../middleware/auth.js';
-import { AIService } from '../services/ai.service.js';
-import { decrypt } from '../utils/encryption.js';
+import { AIClientService, AIServiceError } from '../services/aiClient.service.js';
 import multer from 'multer';
 
 const router = express.Router();
@@ -10,58 +10,126 @@ const upload = multer({
     limits: { fileSize: 5 * 1024 * 1024 } // 5MB limit
 });
 
+const modelPattern = /^[a-zA-Z0-9:._\/-]+$/;
+
+const historyMessageSchema = z.object({
+    role: z.string().trim().min(1).max(32),
+    content: z.string().max(8000),
+}).strict();
+
+const aiChatSchema = z.object({
+    message: z.string().trim().min(1).max(4000),
+    history: z.union([
+        z.string(),
+        z.array(historyMessageSchema),
+    ]).optional(),
+    model: z.string().trim().min(1).max(64).regex(modelPattern, 'Invalid model identifier').optional(),
+}).strict();
+
+const parseHistory = (rawHistory: unknown) => {
+    if (!rawHistory) return [];
+
+    if (Array.isArray(rawHistory)) {
+        const parsedHistory = z.array(historyMessageSchema).safeParse(rawHistory);
+        if (!parsedHistory.success) {
+            throw new Error(parsedHistory.error.errors[0].message);
+        }
+        return parsedHistory.data;
+    }
+
+    if (typeof rawHistory === 'string') {
+        const decoded = JSON.parse(rawHistory);
+        const parsedHistory = z.array(historyMessageSchema).safeParse(decoded);
+        if (!parsedHistory.success) {
+            throw new Error(parsedHistory.error.errors[0].message);
+        }
+        return parsedHistory.data;
+    }
+
+    throw new Error('Invalid history format');
+};
+
 // POST /api/ai/chat
+// Uses Ollama (local) — no API key required
 router.post('/chat', authenticate, upload.single('image'), async (req: any, res) => {
     try {
-        const { message, history, model } = req.body;
-
-        // Prefer per-user encrypted key; fall back to global key
-        let apiKey: string | null = null;
-        if (req.user?.geminiApiKey && req.user?.encryptionIV) {
-            try {
-                apiKey = decrypt(req.user.geminiApiKey, req.user.encryptionIV);
-            } catch (e) {
-                console.error('User API key decrypt failed:', e);
-                return res.status(400).json({
-                    success: false,
-                    error: 'Stored AI key is invalid. Please update your AI key.'
-                });
-            }
-        }
-
-        if (!apiKey) {
-            apiKey = process.env.GEMINI_API_KEY || null;
-        }
-
-        if (!apiKey) {
+        const parsedBody = aiChatSchema.safeParse(req.body ?? {});
+        if (!parsedBody.success) {
             return res.status(400).json({
                 success: false,
-                error: 'API Key is required. Add GEMINI_API_KEY or set a personal key in your profile.'
+                error: parsedBody.error.errors[0].message
             });
         }
 
-        const aiService = new AIService(apiKey, req.user._id.toString(), model || 'gemini-2.0-flash');
+        const { message, history, model } = parsedBody.data;
+        let parsedHistory: Array<{ role: string; content: string }> = [];
 
-        // Handle Image if present (Vision API)
-        const imageParts: any[] = [];
-        if (req.file) {
-            imageParts.push({
-                inlineData: {
-                    data: req.file.buffer.toString('base64'),
-                    mimeType: req.file.mimetype,
-                },
+        try {
+            parsedHistory = parseHistory(history);
+        } catch (historyError: any) {
+            return res.status(400).json({
+                success: false,
+                error: historyError.message || 'Invalid history payload'
             });
         }
 
-        const response = await aiService.chat(message, JSON.parse(history || '[]'), imageParts);
+        // Use Ollama via AIClientService — no API key needed
+        const aiClient = new AIClientService(model, req.user._id.toString());
 
-        res.json({ success: true, response });
+        // Build context messages
+        const contextMessages = [
+            ...parsedHistory,
+            { role: 'user', content: message }
+        ];
+
+        const systemPrompt = `You are the "Learning OS Copilot", a high-performance AI assistant integrated into the user's personal Learning Operating System.
+
+WHO YOU ARE:
+- You are an expert software architect and mentor.
+- You are specifically the "Learning OS Copilot".
+
+CORE PRINCIPLES:
+- Help the user master software engineering, build complex systems, and track their progress.
+- Be encouraging, highly technical, and insightful.
+- Provide full, production-ready code solutions when asked, but always explain the architectural "Why".
+
+TONE: Professional, Insightful, Expert Mentor.`;
+
+        // Try streaming first, fall back to buffered response
+        res.setHeader('Content-Type', 'text/plain');
+        res.setHeader('Transfer-Encoding', 'chunked');
+
+        try {
+            for await (const chunk of aiClient.generateChatStream(contextMessages, systemPrompt)) {
+                if (!chunk) continue;
+                res.write(chunk);
+            }
+            res.end();
+        } catch (streamError) {
+            // Fallback to non-streaming
+            console.warn('[AI Route] Streaming failed, falling back to buffered:', streamError);
+            try {
+                const response = await aiClient.chat(message, parsedHistory);
+                res.write(response);
+                res.end();
+            } catch (fallbackError) {
+                if (!res.writableEnded) {
+                    const errorMsg = fallbackError instanceof AIServiceError
+                        ? fallbackError.message
+                        : 'AI Service unavailable. Make sure Ollama is running.';
+                    res.write(errorMsg);
+                    res.end();
+                }
+            }
+        }
     } catch (error: any) {
         console.error('AI Route Error:', error);
-        res.status(500).json({
-            success: false,
-            error: error.message || 'AI Service Failed'
-        });
+        if (!res.headersSent) {
+            res.status(500).json({
+                success: false,
+                error: error.message || 'AI Service Failed'
+            });
+        }
     }
 });
 

@@ -19,6 +19,7 @@ export interface IProjectStudy extends Document {
     // Project Studies 2.0
     architectureDiagram?: string;
     keyTakeaways?: string[];
+    coreComponents?: string; // New: replaces involvedTables
     tasks?: {
         id: string;
         text: string;
@@ -60,6 +61,10 @@ const projectStudySchema = new Schema<IProjectStudy>(
             type: String,
             default: '',
         },
+        coreComponents: {
+            type: String,
+            default: '',
+        },
         questions: {
             type: String,
             default: '',
@@ -95,6 +100,22 @@ const projectStudySchema = new Schema<IProjectStudy>(
         timestamps: true,
     }
 );
+
+// Unified sync for coreComponents / involvedTables
+projectStudySchema.pre('save', function (next) {
+    if (this.coreComponents && !this.involvedTables) {
+        this.involvedTables = this.coreComponents;
+    } else if (this.involvedTables && !this.coreComponents) {
+        this.coreComponents = this.involvedTables;
+    }
+    next();
+});
+
+// Force updatedAt update on findOneAndUpdate
+projectStudySchema.pre('findOneAndUpdate', function (next) {
+    this.set({ updatedAt: new Date() });
+    next();
+});
 
 // Indexes
 projectStudySchema.index({ user: 1, date: -1 });

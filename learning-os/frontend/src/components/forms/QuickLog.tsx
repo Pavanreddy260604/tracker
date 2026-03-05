@@ -65,8 +65,6 @@ export function QuickLog({ initialValues, onSuccess, className }: QuickLogProps)
             onSuccess?.();
             toast.success('Progress saved successfully!');
         } catch (error: any) {
-            console.error('Failed to save:', error);
-            // Show backend error message if available
             const message = error.response?.data?.error || 'Failed to save progress';
             toast.error(message);
         } finally {
@@ -78,7 +76,7 @@ export function QuickLog({ initialValues, onSuccess, className }: QuickLogProps)
 
     return (
         <motion.div
-            className={cn('space-y-6', className)}
+            className={cn('space-y-5', className)}
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
         >
@@ -92,9 +90,9 @@ export function QuickLog({ initialValues, onSuccess, className }: QuickLogProps)
                     <div className="flex items-center justify-between">
                         <div>
                             <p className="font-medium text-gray-900 dark:text-white">{label}</p>
-                            <p className="text-xs text-gray-500">{target}h target</p>
+                            <p className="text-[10px] uppercase tracking-wider text-gray-500 dark:text-gray-400">{target}H TARGET</p>
                         </div>
-                        <span className="text-xl font-bold text-gray-800 dark:text-gray-300">
+                        <span className="text-xl font-bold text-gray-900 dark:text-white">
                             {values[key as keyof typeof values]}h
                         </span>
                     </div>
@@ -115,21 +113,21 @@ export function QuickLog({ initialValues, onSuccess, className }: QuickLogProps)
             <div className="flex items-center justify-between">
                 <div>
                     <p className="font-medium text-gray-900 dark:text-white">Problems Solved</p>
-                    <p className="text-xs text-gray-500">DSA problems today</p>
+                    <p className="text-[10px] uppercase tracking-wider text-gray-500 dark:text-gray-400">DSA problems today</p>
                 </div>
                 <div className="flex items-center gap-3">
                     <button
                         onClick={() => adjustValue('dsaProblemsSolved', -1)}
-                        className="w-9 h-9 rounded-lg bg-gray-200 dark:bg-white/5 hover:bg-gray-300 dark:hover:bg-white/10 flex items-center justify-center text-gray-600 dark:text-gray-400 transition-colors"
+                        className="w-9 h-9 rounded-lg bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 flex items-center justify-center text-gray-500 dark:text-gray-400 transition-colors"
                     >
                         <Minus size={16} />
                     </button>
-                    <span className="w-14 text-center text-xl font-bold text-gray-800 dark:text-gray-300">
+                    <span className="w-14 text-center text-xl font-bold text-gray-900 dark:text-white">
                         {values.dsaProblemsSolved}
                     </span>
                     <button
                         onClick={() => adjustValue('dsaProblemsSolved', 1)}
-                        className="w-9 h-9 rounded-lg bg-gray-200 dark:bg-white/5 hover:bg-gray-300 dark:hover:bg-white/10 flex items-center justify-center text-gray-600 dark:text-gray-400 transition-colors"
+                        className="w-9 h-9 rounded-lg bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 flex items-center justify-center text-gray-500 dark:text-gray-400 transition-colors"
                     >
                         <Plus size={16} />
                     </button>
@@ -139,24 +137,24 @@ export function QuickLog({ initialValues, onSuccess, className }: QuickLogProps)
             {/* Sleep & Exercise */}
             <div className="grid grid-cols-2 gap-4">
                 {/* Sleep */}
-                <div className="flex items-center justify-between p-3 rounded-xl bg-gray-100 dark:bg-white/5">
+                <div className="flex items-center justify-between p-3 rounded-xl bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-white/10">
                     <div className="flex items-center gap-2">
-                        <Moon size={18} className="text-gray-600 dark:text-gray-400" />
-                        <span className="text-sm text-gray-700 dark:text-gray-300">Sleep</span>
+                        <Moon size={18} className="text-gray-500 dark:text-gray-400" />
+                        <span className="text-sm font-medium text-gray-900 dark:text-white">Sleep</span>
                     </div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-1.5">
                         <button
                             onClick={() => adjustValue('sleepHours', -0.5)}
-                            className="w-6 h-6 rounded bg-gray-200 dark:bg-white/10 hover:bg-gray-300 dark:hover:bg-white/20 flex items-center justify-center text-gray-600 dark:text-gray-400"
+                            className="w-6 h-6 rounded bg-white dark:bg-gray-700 border border-gray-200 dark:border-white/10 hover:bg-gray-100 dark:hover:bg-gray-600 flex items-center justify-center text-gray-500 dark:text-gray-400"
                         >
                             <Minus size={12} />
                         </button>
-                        <span className="w-10 text-center font-medium text-gray-900 dark:text-white">
+                        <span className="w-9 text-center text-sm font-bold text-gray-900 dark:text-white">
                             {values.sleepHours}h
                         </span>
                         <button
                             onClick={() => adjustValue('sleepHours', 0.5)}
-                            className="w-6 h-6 rounded bg-gray-200 dark:bg-white/10 hover:bg-gray-300 dark:hover:bg-white/20 flex items-center justify-center text-gray-600 dark:text-gray-400"
+                            className="w-6 h-6 rounded bg-white dark:bg-gray-700 border border-gray-200 dark:border-white/10 hover:bg-gray-100 dark:hover:bg-gray-600 flex items-center justify-center text-gray-500 dark:text-gray-400"
                         >
                             <Plus size={12} />
                         </button>
@@ -167,31 +165,31 @@ export function QuickLog({ initialValues, onSuccess, className }: QuickLogProps)
                 <button
                     onClick={() => setValues(prev => ({ ...prev, exerciseCompleted: !prev.exerciseCompleted }))}
                     className={cn(
-                        'flex items-center justify-between p-3 rounded-xl transition-colors',
+                        'flex items-center justify-between p-3 rounded-xl border transition-all',
                         values.exerciseCompleted
-                            ? 'bg-gray-200 dark:bg-gray-700 border border-gray-400 dark:border-gray-600'
-                            : 'bg-gray-100 dark:bg-white/5 border border-transparent'
+                            ? 'bg-green-50 dark:bg-green-500/10 border-green-300 dark:border-green-500/30'
+                            : 'bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-white/10'
                     )}
                 >
                     <div className="flex items-center gap-2">
-                        <Dumbbell size={18} className={values.exerciseCompleted ? 'text-gray-800 dark:text-gray-200' : 'text-gray-500 dark:text-gray-400'} />
-                        <span className={cn('text-sm', values.exerciseCompleted ? 'text-gray-800 dark:text-gray-200' : 'text-gray-600 dark:text-gray-300')}>
+                        <Dumbbell size={18} className={values.exerciseCompleted ? 'text-green-600 dark:text-green-400' : 'text-gray-500 dark:text-gray-400'} />
+                        <span className={cn('text-sm font-medium', values.exerciseCompleted ? 'text-green-600 dark:text-green-400' : 'text-gray-900 dark:text-white')}>
                             Exercise
                         </span>
                     </div>
-                    {values.exerciseCompleted && <Check size={18} className="text-gray-800 dark:text-gray-200" />}
+                    {values.exerciseCompleted && <Check size={18} className="text-green-600 dark:text-green-400" />}
                 </button>
             </div>
 
             {/* Action Buttons */}
-            <div className="flex gap-3">
+            <div className="flex gap-3 pt-4 sm:pt-6 mt-6 border-t border-gray-200 dark:border-white/10">
                 {/* Reset Button (Only if there is data to reset) */}
                 {initialValues && (
                     <Button
                         variant="danger"
                         onClick={() => setIsDeleteModalOpen(true)}
                         isLoading={isDeleting}
-                        className="w-1/3 bg-red-50 text-red-600 hover:bg-red-100 dark:bg-red-900/20 dark:text-red-400 dark:hover:bg-red-900/30 border border-transparent"
+                        className="w-1/3 bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-500/20 border border-transparent transition-colors"
                     >
                         <Trash2 size={18} />
                     </Button>

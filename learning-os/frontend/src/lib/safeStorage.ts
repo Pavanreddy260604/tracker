@@ -50,20 +50,4 @@ export const storage = {
     }
 };
 
-/**
- * Specialized helper to get the auth token from storage
- */
-export const getAuthToken = (): string | null => {
-    const raw = safeStorage.getItem('auth-storage');
-    if (raw && typeof raw === 'string') {
-        try {
-            const parsed = JSON.parse(raw);
-            if (parsed?.state?.token) return parsed.state.token as string;
-        } catch {
-            // ignore
-        }
-    }
 
-    const legacyToken = safeStorage.getItem('token');
-    return typeof legacyToken === 'string' ? legacyToken : null;
-};

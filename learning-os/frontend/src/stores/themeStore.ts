@@ -1,5 +1,7 @@
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
+import { persist, createJSONStorage } from 'zustand/middleware';
+import { safeStorage } from '../lib/safeStorage';
+
 
 type Theme = 'dark' | 'light';
 
@@ -27,6 +29,7 @@ export const useThemeStore = create<ThemeState>()(
         }),
         {
             name: 'theme-storage',
+            storage: createJSONStorage(() => safeStorage),
             onRehydrateStorage: () => {
                 return (state) => {
                     if (state?.theme) {

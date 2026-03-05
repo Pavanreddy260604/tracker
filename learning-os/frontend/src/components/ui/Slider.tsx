@@ -28,8 +28,8 @@ export function Slider({
         <div className={cn("w-full", className)}>
             {(label || suffix) && (
                 <div className="flex justify-between mb-2">
-                    {label && <label className="text-sm font-medium text-gray-700 dark:text-gray-300">{label}</label>}
-                    {suffix && <span className="text-sm text-gray-500">{value}{suffix}</span>}
+                    {label && <label className="text-sm font-medium text-text-primary">{label}</label>}
+                    {suffix && <span className="text-sm text-text-secondary">{value}{suffix}</span>}
                 </div>
             )}
             <div className="relative w-full h-6 flex items-center">
@@ -44,17 +44,17 @@ export function Slider({
                 />
 
                 {/* Track Background */}
-                <div className="absolute w-full h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+                <div className="absolute w-full h-2 bg-console-surface-2 rounded-full overflow-hidden">
                     {/* Active Track */}
                     <div
-                        className="h-full bg-blue-500 dark:bg-blue-400 transition-all duration-150 ease-out"
+                        className="h-full bg-accent-primary transition-all duration-150 ease-out"
                         style={{ width: `${percentage}%` }}
                     />
                 </div>
 
                 {/* Thumb Handle */}
                 <div
-                    className="absolute h-5 w-5 bg-white border-2 border-blue-500 dark:border-blue-400 rounded-full shadow-md transition-all duration-150 ease-out pointer-events-none"
+                    className="absolute h-5 w-5 bg-white border-2 border-accent-primary rounded-full shadow-md transition-all duration-150 ease-out pointer-events-none"
                     style={{ left: `calc(${percentage}% - 10px)` }}
                 />
             </div>

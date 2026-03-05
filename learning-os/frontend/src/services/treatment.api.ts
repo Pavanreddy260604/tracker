@@ -1,27 +1,4 @@
-import { SCRIPT_SERVICE_URL } from "./scriptWriter.api";
-
-const TREATMENT_SERVICE_URL = SCRIPT_SERVICE_URL.replace('/script', '') + '/treatment';
-
-const getToken = () => {
-    const raw = localStorage.getItem('auth-storage');
-    if (raw) {
-        try {
-            const parsed = JSON.parse(raw);
-            if (parsed?.state?.token) return parsed.state.token as string;
-        } catch {
-            /* ignore */
-        }
-    }
-    return localStorage.getItem('token');
-};
-
-const getAuthHeaders = (): HeadersInit => {
-    const token = getToken();
-    return {
-        'Content-Type': 'application/json',
-        ...(token ? { Authorization: `Bearer ${token}` } : {})
-    };
-};
+import { baseApi } from './base.api';
 
 export interface Beat {
     name: string;
@@ -43,44 +20,29 @@ export interface Treatment {
 
 class TreatmentApi {
     async generateTreatment(logline: string, style: string = 'Save The Cat'): Promise<Act[]> {
-        const response = await fetch(`${TREATMENT_SERVICE_URL}/generate`, {
+        const data = await baseApi.request<{ acts: Act[] }>('/script/treatment/generate', {
             method: 'POST',
-            headers: getAuthHeaders(),
             body: JSON.stringify({ logline, style })
         });
-        const data = await response.json();
-        if (!data.success) throw new Error(data.error || 'Failed to generate treatment');
-        return data.data.acts;
+        return data.acts;
     }
 
     async saveTreatment(bibleId: string, logline: string, acts: Act[], style: string = 'Save The Cat'): Promise<Treatment> {
-        const response = await fetch(`${TREATMENT_SERVICE_URL}/save`, {
+        return baseApi.request<Treatment>('/script/treatment/save', {
             method: 'POST',
-            headers: getAuthHeaders(),
             body: JSON.stringify({ bibleId, logline, acts, style })
         });
-        const data = await response.json();
-        if (!data.success) throw new Error(data.error || 'Failed to save treatment');
-        return data.data;
     }
 
     async getTreatments(bibleId: string): Promise<Treatment[]> {
-        const response = await fetch(`${TREATMENT_SERVICE_URL}/bible/${bibleId}`, {
-            headers: getAuthHeaders()
-        });
-        const data = await response.json();
-        if (!data.success) throw new Error(data.error || 'Failed to fetch treatments');
-        return data.data;
+        return baseApi.request<Treatment[]>(`/script/treatment/bible/${bibleId}`);
     }
 
     async convertToScenes(treatmentId: string): Promise<void> {
-        const response = await fetch(`${TREATMENT_SERVICE_URL}/convert`, {
+        await baseApi.request('/script/treatment/convert', {
             method: 'POST',
-            headers: getAuthHeaders(),
             body: JSON.stringify({ treatmentId })
         });
-        const data = await response.json();
-        if (!data.success) throw new Error(data.error || 'Failed to convert treatment');
     }
 }
 

@@ -1,8 +1,15 @@
+export interface ChatOptions {
+    model?: string;
+    temperature?: number;
+    max_tokens?: number;
+    format?: 'json' | 'text';
+}
+
 export interface IAIService {
     /**
      * Non-streaming chat completion.
      */
-    chat(message: string, history?: any[], jsonMode?: boolean): Promise<string>;
+    chat(message: string, options?: ChatOptions): Promise<string>;
 
     /**
      * Streaming chat completion.

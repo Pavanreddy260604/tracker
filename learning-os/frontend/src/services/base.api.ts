@@ -13,6 +13,9 @@ export interface ApiResponse<T> {
  */
 class BaseApiService {
     private token: string | null = null;
+    private refreshPromise: Promise<string | null> | null = null;
+    private csrfToken: string | null = null;
+    private csrfPromise: Promise<string | null> | null = null;
 
     setToken(token: string | null) {
         this.token = token;
@@ -22,33 +25,155 @@ class BaseApiService {
         return this.token;
     }
 
+    private async getCsrfToken(): Promise<string | null> {
+        if (this.csrfToken) return this.csrfToken;
+        if (this.csrfPromise) return this.csrfPromise;
+
+        this.csrfPromise = fetch(`${API_BASE}/auth/csrf`, { credentials: 'include' })
+            .then(res => res.json())
+            .then(data => {
+                this.csrfToken = data.token || null;
+                return this.csrfToken;
+            })
+            .catch(() => null)
+            .finally(() => { this.csrfPromise = null; });
+
+        return this.csrfPromise;
+    }
+
+    private async executeWithRetry(endpoint: string, options: RequestInit): Promise<Response> {
+        const MAX_ATTEMPTS = 3;
+        let lastResponse: Response | null = null;
+
+        for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+            // Proactive Refresh: If we have no token and it's the first attempt,
+            // try to refresh once before making the request. This avoids the 401 log in the console.
+            if (!this.token && attempt === 1 && !endpoint.includes('/auth/login') && !endpoint.includes('/auth/refresh')) {
+                if (!this.refreshPromise) {
+                    this.refreshPromise = this.refreshToken();
+                }
+                const newToken = await this.refreshPromise;
+                if (newToken) {
+                    this.token = newToken;
+                }
+                this.refreshPromise = null;
+            }
+
+            const currentToken = this.token;
+            const isMutation = options.method && !['GET', 'HEAD', 'OPTIONS'].includes(options.method.toUpperCase());
+            const currentCsrfToken = isMutation ? await this.getCsrfToken() : null;
+
+            const isFormData = options.body instanceof FormData;
+
+            const headers: HeadersInit = {
+                ...(!isFormData && { 'Content-Type': 'application/json' }),
+                ...(currentToken && { Authorization: `Bearer ${currentToken}` }),
+                ...(currentCsrfToken && { 'X-CSRF-Token': currentCsrfToken }),
+                ...options.headers,
+            };
+
+            const response = await fetch(`${API_BASE}${endpoint}`, {
+                ...options,
+                headers,
+                credentials: 'include',
+            });
+
+            lastResponse = response;
+
+            // 1. Handle 401 (Unauthorized)
+            if (response.status === 401 && !endpoint.includes('/auth/login') && !endpoint.includes('/auth/refresh')) {
+                // If we've already tried identifying ourselves and failed, we need to refresh
+                if (!this.refreshPromise) {
+                    this.refreshPromise = this.refreshToken();
+                }
+
+                try {
+                    const newToken = await this.refreshPromise;
+                    if (newToken) {
+                        this.token = newToken;
+                        // Continue to next loop iteration to retry the request with new token
+                        this.refreshPromise = null;
+                        continue;
+                    } else {
+                        // Refresh failed, exit and let caller handle
+                        window.dispatchEvent(new Event('auth:unauthorized'));
+                        return response;
+                    }
+                } catch (err) {
+                    window.dispatchEvent(new Event('auth:unauthorized'));
+                    throw err;
+                }
+            }
+
+            // 2. Handle 403 (Forbidden/CSRF)
+            if (response.status === 403 && !endpoint.includes('/auth/csrf')) {
+                this.csrfToken = null; // Clear cached token
+                this.csrfPromise = null;
+                // Continue to next loop iteration to re-fetch CSRF and retry
+                continue;
+            }
+
+            // If we got here, it's not a 401 or 403 that we can fix, so return it
+            return response;
+        }
+
+        return lastResponse!;
+    }
+
+    /**
+     * Standard JSON request
+     */
     async request<T>(
         endpoint: string,
         options: RequestInit = {}
     ): Promise<T> {
-        const token = this.getToken();
+        const response = await this.executeWithRetry(endpoint, options);
 
-        const headers: HeadersInit = {
-            'Content-Type': 'application/json',
-            ...(token && { Authorization: `Bearer ${token}` }),
-            ...options.headers,
-        };
-
-        const response = await fetch(`${API_BASE}${endpoint}`, {
-            ...options,
-            headers,
-        });
-
-        const data: ApiResponse<T> = await response.json();
+        const data: ApiResponse<T> = await response.json().catch(() => ({
+            success: false,
+            error: `Invalid JSON response from ${endpoint}`
+        }));
 
         if (!response.ok || !data.success) {
-            if (response.status === 401) {
+            if (response.status === 401 && !endpoint.includes('/auth/login') && !endpoint.includes('/auth/refresh')) {
                 window.dispatchEvent(new Event('auth:unauthorized'));
             }
             throw new Error(data.error || 'An error occurred');
         }
 
         return data.data as T;
+    }
+
+    /**
+     * Raw request that returns the Response object.
+     * Useful for blobs, manual stream handling, etc.
+     */
+    async requestRaw(
+        endpoint: string,
+        options: RequestInit = {}
+    ): Promise<Response> {
+        const response = await this.executeWithRetry(endpoint, options);
+        if (!response.ok) {
+            const data = await response.json().catch(() => ({}));
+            throw new Error(data.error || data.message || `Request failed with status ${response.status}`);
+        }
+        return response;
+    }
+
+    private async refreshToken(): Promise<string | null> {
+        try {
+            const resp = await fetch(`${API_BASE}/auth/refresh`, {
+                method: 'POST',
+                credentials: 'include' // Must send the httpOnly cookie
+            });
+            const data: ApiResponse<{ token: string }> = await resp.json();
+            if (resp.ok && data.success && data.data) {
+                return data.data.token;
+            }
+        } catch (e) {
+            console.error('Failed to refresh token silently', e);
+        }
+        return null;
     }
 
     /**
@@ -60,18 +185,19 @@ class BaseApiService {
         onChunk: (chunk: string) => void,
         signal?: AbortSignal
     ): Promise<void> {
-        const token = this.getToken();
-        const response = await fetch(`${API_BASE}${endpoint}`, {
+        const response = await this.executeWithRetry(endpoint, {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                ...(token && { Authorization: `Bearer ${token}` })
-            },
             body: JSON.stringify(body),
             signal
         });
 
-        if (!response.ok) throw new Error('Request failed');
+        if (!response.ok) {
+            const data = await response.json().catch(() => ({}));
+            if (response.status === 401 && !endpoint.includes('/auth/login') && !endpoint.includes('/auth/refresh')) {
+                window.dispatchEvent(new Event('auth:unauthorized'));
+            }
+            throw new Error(data.error || data.message || 'Streaming request failed');
+        }
 
         const reader = response.body?.getReader();
         const decoder = new TextDecoder();

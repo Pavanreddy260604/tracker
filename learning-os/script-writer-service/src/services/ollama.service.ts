@@ -34,17 +34,13 @@ export class OllamaService implements IAIService {
         this.primaryModel = model || process.env.OLLAMA_MODEL || 'deepseek-v3.1:671b-cloud';
         this.userId = userId;
 
-        // Defined fallback chain prioritizing user preference: Deepseek -> Qwen -> GLM -> GPT -> Gemma
+        // Defined fallback chain prioritizing models present on user's machine
         this.fallbackModels = [
-            'deepseek-r1:32b',          // 1. Deepseek (High Reasoning)
-            'qwen3-coder:480b-cloud',   // 2. Qwen (Strong Coding/Logic)
-            'glm-4.6:cloud',            // 3. GLM
-            'gpt-oss:120b-cloud',       // 4. GPT (General Purpose)
-            'gemma3:4b',                // 5. Gemma (Lightweight)
-
-            // Smaller / Local Models (Last Resort)
-            'tinyllama:latest',
-            'hf.co/bartowski/Llama-3.2-1B-Instruct-GGUF:latest'
+            'gemma3:4b',                                                                // 1. Gemma 3 (Balanced)
+            'hf.co/Telugu-LLM-Labs/Indic-gemma-2b-finetuned-sft-Navarasa-2.0-gguf:Q4_K_M', // 2. Indic Gemma (Telugu/Creative)
+            'hf.co/bartowski/Llama-3.2-1B-Instruct-GGUF:latest',                        // 3. Llama 3.2 1B (Fast)
+            'tinyllama:latest',                                                         // 4. TinyLlama (Fastest)
+            'deepseek-v3.1:671b-cloud',                                                 // 5. Deepseek (High Quality / Needs Pulling if not local)
         ];
     }
 
@@ -179,29 +175,68 @@ export class OllamaService implements IAIService {
      * Non-streaming completion helper (used by critic service).
      */
     async generateCompletion(prompt: string, options?: { temperature?: number; format?: 'json' | 'text' }) {
-        return this.chat(prompt, [], options?.format === 'json');
+        return this.chat(prompt, {
+            format: options?.format,
+            temperature: options?.temperature
+        });
     }
 
     // Unified Chat Interface (matches matches IAIService)
-    async chat(message: string, history: any[] = [], jsonMode: boolean = false): Promise<string> {
-        try {
-            const response = await this.makeRequest('/api/chat', {
-                messages: [
-                    ...history,
-                    { role: 'user', content: message }
-                ],
-                stream: false,
-                format: jsonMode ? 'json' : undefined
-            });
+    async chat(message: string, options?: import('./ai.interface').ChatOptions): Promise<string> {
+        // 1. Build list of models to try
+        // Priority: Requested Model -> Primary Configured -> Fallbacks
+        const requestedModel = options?.model;
+        const candidates = new Set<string>();
 
-            return response.data.message.content;
-        } catch (error) {
-            console.error('[Ollama] Chat error after all model attempts:', error);
-            throw new AIServiceError(
-                'AI Service is currently unavailable. All models failed to respond.',
-                { recoverable: true, cause: error as Error, context: 'chat' }
-            );
+        if (requestedModel) candidates.add(requestedModel);
+        candidates.add(this.primaryModel);
+        this.fallbackModels.forEach(m => candidates.add(m));
+
+        const modelsToTry = Array.from(candidates);
+        let lastError: Error | null = null;
+
+        // 2. Iterate and Try
+        for (const model of modelsToTry) {
+            try {
+                // Formatting payload
+                const payload = {
+                    model: model,
+                    messages: [
+                        { role: 'user', content: message }
+                    ],
+                    stream: false,
+                    format: options?.format === 'json' ? 'json' : undefined,
+                    options: {
+                        temperature: options?.temperature ?? 0.7,
+                        num_predict: options?.max_tokens
+                    }
+                };
+
+                console.log(`[OllamaService] Attempting chat with model: ${model}`);
+                const response = await axios.post(`${this.baseUrl}/api/chat`, payload);
+
+                // Success!
+                return response.data.message.content;
+
+            } catch (error: any) {
+                lastError = error;
+                console.warn(`[OllamaService] Model ${model} failed: ${error.message}`);
+
+                // If 404 (Model not found), just continue to next.
+                // If 500 or Connection Refused, maybe delay? 
+                // For now, fast fail-over is better.
+                if (axios.isAxiosError(error) && error.response?.status === 404) {
+                    continue;
+                }
+            }
         }
+
+        // 3. All failed
+        console.error('[Ollama] All models failed.');
+        throw new AIServiceError(
+            'AI Service is currently unavailable. All models failed to respond.',
+            { recoverable: true, cause: lastError as Error, context: 'chat' }
+        );
     }
 }
 

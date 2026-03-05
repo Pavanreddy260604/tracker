@@ -1,5 +1,5 @@
 // Interview Simulator API Service
-import { baseApi, API_BASE } from './base.api';
+import { baseApi } from './base.api';
 import type { InterviewRunResult, InterviewSession, InterviewSubmitResult, InterviewAnalytics } from './types';
 
 export const interviewApi = {
@@ -39,31 +39,15 @@ export const interviewApi = {
         }
 
         // Streaming implementation
-        const token = baseApi.getToken();
-        const response = await fetch(`${API_BASE}/interview/chat`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                ...(token && { Authorization: `Bearer ${token}` })
-            },
-            body: JSON.stringify({ ...data, stream: true })
-        });
-
-        if (!response.ok) throw new Error('AI Chat failed');
-
-        const reader = response.body?.getReader();
-        const decoder = new TextDecoder();
-
-        if (!reader) return { reply: '' };
-
         let fullReply = '';
-        while (true) {
-            const { done, value } = await reader.read();
-            if (done) break;
-            const chunk = decoder.decode(value, { stream: true });
-            fullReply += chunk;
-            onChunk(chunk);
-        }
+        await baseApi.streamRequest(
+            '/interview/chat',
+            { ...data, stream: true },
+            (chunk) => {
+                fullReply += chunk;
+                onChunk(chunk);
+            }
+        );
         return { reply: fullReply };
     },
 

@@ -1,9 +1,8 @@
-import { Users, Plus, ArrowLeft } from 'lucide-react';
+import { Plus, ArrowLeft } from 'lucide-react';
 import { useState } from 'react';
 import type { Bible } from '../../services/project.api';
 import type { Character } from '../../services/character.api';
 import type { CharacterForm } from './types';
-import { CastList } from './components/cast/CastList'; // Re-use CastList if it fits, otherwise refactor
 import { CharacterEdit } from './components/cast/CharacterEdit'; // Re-use CharacterEdit
 
 interface CastPanelProps {
@@ -30,7 +29,6 @@ interface CastPanelProps {
 export function CastPanel({
     activeProject,
     characters,
-    loadingCharacters,
     activeCharacterId,
     characterForm,
     onCharacterSelect,
@@ -41,7 +39,6 @@ export function CastPanel({
     isSavingCharacter,
     voiceFile,
     onVoiceFileChange,
-    voiceCharacterId,
     onVoiceCharacterChange,
     onVoiceIngest,
     voiceStatus,

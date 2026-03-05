@@ -47,75 +47,24 @@ export interface IScriptDetail {
 
 
 // Microservice runs on a different port (5003)
-export const BASE_SERVICE_URL = import.meta.env.VITE_SCRIPT_SERVICE_URL || 'http://localhost:5003/api';
-export const SCRIPT_SERVICE_URL = `${BASE_SERVICE_URL}/script`;
-export const VOICE_SERVICE_URL = `${BASE_SERVICE_URL}/voice`;
 
-const getToken = () => {
-    const raw = localStorage.getItem('auth-storage');
-    if (raw) {
-        try {
-            const parsed = JSON.parse(raw);
-            if (parsed?.state?.token) return parsed.state.token as string;
-        } catch {
-            /* ignore parse errors */
-        }
-    }
-    return localStorage.getItem('token');
-};
 
-const getAuthHeaders = (): HeadersInit => {
-    const token = getToken();
-    return {
-        'Content-Type': 'application/json',
-        ...(token ? { Authorization: `Bearer ${token}` } : {})
-    };
-};
+import { baseApi } from './base.api';
 
-const getAuthHeadersNoContentType = (): HeadersInit => {
-    const token = getToken();
-    return token ? { Authorization: `Bearer ${token}` } : {};
-};
+
 
 class ScriptWriterApi {
 
     async getTemplates(): Promise<ScriptTemplates> {
-        const response = await fetch(`${SCRIPT_SERVICE_URL}/templates`, {
-            headers: getAuthHeaders()
-        });
-        const data = await response.json();
-
-        if (!data.success) {
-            throw new Error('Failed to load templates');
-        }
-
-        return data.data;
+        return baseApi.request<ScriptTemplates>('/script/templates');
     }
 
     async getHistory(_userId?: string): Promise<ScriptHistoryItem[]> {
-        const response = await fetch(`${SCRIPT_SERVICE_URL}/history`, {
-            headers: getAuthHeaders()
-        });
-        const data = await response.json();
-
-        if (!data.success) {
-            throw new Error('Failed to load history');
-        }
-
-        return data.data;
+        return baseApi.request<ScriptHistoryItem[]>('/script/history');
     }
 
     async getScript(id: string): Promise<IScriptDetail> {
-        const response = await fetch(`${SCRIPT_SERVICE_URL}/history/${id}`, {
-            headers: getAuthHeaders()
-        });
-        const data = await response.json();
-
-        if (!data.success) {
-            throw new Error('Failed to load script');
-        }
-
-        return data.data;
+        return baseApi.request<IScriptDetail>(`/script/history/${id}`);
     }
 
     async generateScriptStream(
@@ -123,39 +72,7 @@ class ScriptWriterApi {
         onChunk: (chunk: string) => void,
         signal?: AbortSignal
     ): Promise<void> {
-        const headers = getAuthHeaders();
-        const response = await fetch(`${SCRIPT_SERVICE_URL}/generate`, {
-            method: 'POST',
-            headers,
-            body: JSON.stringify(request),
-            signal
-        });
-
-        if (!response.ok) {
-            const error = await response.json().catch(() => ({ error: 'Generation failed' }));
-            throw new Error(error.error || 'Generation failed');
-        }
-
-        const reader = response.body?.getReader();
-        const decoder = new TextDecoder();
-
-        if (!reader) return;
-
-        try {
-            while (true) {
-                const { done, value } = await reader.read();
-                if (done) break;
-
-                const chunk = decoder.decode(value, { stream: true });
-                onChunk(chunk);
-            }
-        } catch (error: any) {
-            if (error.name === 'AbortError') throw error;
-            console.error('Stream error:', error);
-            throw error;
-        } finally {
-            reader.releaseLock();
-        }
+        await baseApi.streamRequest('/script/generate', request, onChunk, signal);
     }
 
     async ingestVoiceSample(bibleId: string, file: File, characterId?: string): Promise<{ success: boolean, count: number }> {
@@ -166,42 +83,36 @@ class ScriptWriterApi {
             formData.append('characterId', characterId);
         }
 
-        const response = await fetch(`${VOICE_SERVICE_URL}/ingest`, {
+        return baseApi.request<{ success: boolean, count: number }>('/script/voice/ingest', {
             method: 'POST',
-            headers: getAuthHeadersNoContentType(),
             body: formData
         });
-
-        if (!response.ok) {
-            throw new Error('Upload failed');
-        }
-
-        return response.json();
     }
 
-    async getAIProvider(): Promise<'ollama' | 'gemini' | 'groq'> {
-        const response = await fetch(`${BASE_SERVICE_URL}/ai/provider`, {
-            headers: getAuthHeaders()
-        });
-        const data = await response.json();
-        return data.data.provider;
+    async getAIProvider(): Promise<'ollama' | 'groq'> {
+        const data = await baseApi.request<{ provider: 'ollama' | 'groq' }>('/script/ai/provider');
+        return data.provider;
     }
 
-    async setAIProvider(provider: 'ollama' | 'gemini' | 'groq'): Promise<'ollama' | 'gemini' | 'groq'> {
-        const response = await fetch(`${BASE_SERVICE_URL}/ai/provider`, {
+    async setAIProvider(provider: 'ollama' | 'groq'): Promise<'ollama' | 'groq'> {
+        const data = await baseApi.request<{ provider: 'ollama' | 'groq' }>('/script/ai/provider', {
             method: 'POST',
-            headers: getAuthHeaders(),
             body: JSON.stringify({ provider })
         });
+        return data.provider;
+    }
 
-        if (!response.ok) {
-            const error = await response.json().catch(() => ({ error: 'Failed to set provider' }));
-            throw new Error(error.error || `Failed to set provider: ${response.statusText}`);
-        }
+    async getVoiceSources(bibleId: string, characterId?: string): Promise<any[]> {
+        return baseApi.request<any[]>(`/script/voice/sources?bibleId=${bibleId}${characterId ? `&characterId=${characterId}` : ''}`);
+    }
 
-        const data = await response.json();
-        return data.data.provider;
+    async deleteVoiceSource(bibleId: string, source: string, characterId?: string): Promise<void> {
+        await baseApi.request('/script/voice/delete-source', {
+            method: 'DELETE',
+            body: JSON.stringify({ bibleId, source, characterId })
+        });
     }
 }
+
 
 export const scriptWriterApi = new ScriptWriterApi();

@@ -172,20 +172,20 @@ export function DSAProblemForm({ initialValues, onSuccess, onCancel }: DSAProble
 
         <motion.form
             onSubmit={handleSubmit}
-            className="space-y-8"
+            className="space-y-5"
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
         >
             {error && (
-                <div className="p-4 text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg flex items-center gap-2">
-                    <span className="w-1.5 h-1.5 rounded-full bg-red-500" />
+                <div className="p-4 text-sm text-status-error bg-status-error/10 border border-status-error/20 rounded-lg flex items-center gap-2">
+                    <span className="w-1.5 h-1.5 rounded-full bg-status-error" />
                     {error}
                 </div>
             )}
 
             {/* Section 1: Core Problem Info */}
             <div className="space-y-4">
-                <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 uppercase tracking-wider border-b border-gray-200 dark:border-gray-700 pb-2 mb-4">
+                <h3 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider border-b border-gray-200 dark:border-white/10 pb-2 mb-4">
                     Problem Details
                 </h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -206,7 +206,7 @@ export function DSAProblemForm({ initialValues, onSuccess, onCancel }: DSAProble
                     />
                     <Input
                         label="Solution Link"
-                        placeholder="https://leetcode.com/ problems/..."
+                        placeholder="https://leetcode.com/problems/..."
                         value={values.solutionLink}
                         onChange={(e) => handleChange('solutionLink', e.target.value)}
                     />
@@ -214,7 +214,7 @@ export function DSAProblemForm({ initialValues, onSuccess, onCancel }: DSAProble
             </div>
 
             {/* Section 2: Classification & Metrics */}
-            <div className="bg-gray-50 dark:bg-[var(--sw-surface)] p-6 rounded-xl border border-gray-100 dark:border-[var(--sw-border)] space-y-6">
+            <div className="bg-gray-50 dark:bg-gray-800/50 p-4 sm:p-6 rounded-xl border border-gray-200 dark:border-white/10 space-y-4 sm:space-y-6">
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                     <Select
                         label="Topic"
@@ -265,7 +265,7 @@ export function DSAProblemForm({ initialValues, onSuccess, onCancel }: DSAProble
 
             {/* Section 3: Analysis & Solution */}
             <div className="space-y-4">
-                <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 uppercase tracking-wider border-b border-gray-200 dark:border-gray-700 pb-2 mb-4">
+                <h3 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider border-b border-gray-200 dark:border-white/10 pb-2 mb-4">
                     Analysis & Solution
                 </h3>
 
@@ -294,10 +294,10 @@ export function DSAProblemForm({ initialValues, onSuccess, onCancel }: DSAProble
                     />
 
                     <div className="space-y-2">
-                        <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Solution Code</label>
+                        <label className="text-sm font-medium text-gray-500 dark:text-gray-400">Solution Code</label>
                         <textarea
-                            className="w-full h-64 p-4 font-mono text-sm bg-gray-900 dark:bg-[var(--sw-bg)] text-gray-100 rounded-lg border border-gray-700 dark:border-[var(--sw-border)] focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-y"
-                            placeholder="// Paste your standardized solution code here..."
+                            className="w-full h-40 sm:h-80 p-4 font-mono text-xs bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg border border-gray-200 dark:border-white/10 focus:ring-1 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all resize-y"
+                            placeholder="// Paste your solution code here..."
                             value={values.solutionCode}
                             onChange={(e) => handleChange('solutionCode', e.target.value)}
                         />
@@ -305,13 +305,13 @@ export function DSAProblemForm({ initialValues, onSuccess, onCancel }: DSAProble
                 </div>
             </div>
 
-            <div className="pt-6 border-t border-gray-200 dark:border-gray-800 flex gap-4">
+            <div className="pt-4 sm:pt-6 mt-6 border-t border-gray-200 dark:border-white/10 flex gap-3 sm:gap-4">
                 {onCancel && (
                     <Button
                         type="button"
                         variant="ghost"
                         onClick={onCancel}
-                        className="flex-1 py-3 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-white/5"
+                        className="flex-1 py-3 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800"
                     >
                         Cancel
                     </Button>
@@ -319,7 +319,7 @@ export function DSAProblemForm({ initialValues, onSuccess, onCancel }: DSAProble
                 <Button
                     type="submit"
                     isLoading={isSaving}
-                    className="flex-[2] py-3 bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-500/20"
+                    className="flex-[2] py-3 bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-600/20"
                 >
                     {initialValues?._id ? 'Update Problem' : 'Save Problem'}
                 </Button>

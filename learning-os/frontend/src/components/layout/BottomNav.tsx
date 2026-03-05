@@ -1,10 +1,19 @@
-import { motion } from 'framer-motion';
+import { useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { NavLink, useLocation } from 'react-router-dom';
 import {
     LayoutDashboard,
     Code2,
     Server,
+    Bot,
+    MoreHorizontal,
     FolderGit2,
-    User
+    BarChart2,
+    Map,
+    Settings,
+    MessageSquare,
+    Film,
+    X
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 
@@ -12,80 +21,219 @@ interface BottomNavProps {
     className?: string;
 }
 
-const navItems = [
-    { icon: LayoutDashboard, label: 'Home', href: '/', active: true },
+const primaryItems = [
+    { icon: LayoutDashboard, label: 'Home', href: '/' },
     { icon: Code2, label: 'DSA', href: '/dsa' },
     { icon: Server, label: 'Backend', href: '/backend' },
     { icon: FolderGit2, label: 'Projects', href: '/projects' },
-    { icon: User, label: 'Profile', href: '/profile' },
+];
+
+const learningMoreItems = [
+    { icon: Map, label: 'Roadmap', href: '/roadmap' },
+    { icon: BarChart2, label: 'Analytics', href: '/analytics' },
+];
+
+const toolItems = [
+    { icon: MessageSquare, label: 'AI Chat', href: '/chat' },
+    { icon: Bot, label: 'Interview', href: '/interview' },
+    { icon: Film, label: 'Script Writer', href: '/script-writer' },
+];
+
+const systemItems = [
+    { icon: Settings, label: 'Settings', href: '/settings' },
 ];
 
 export function BottomNav({ className }: BottomNavProps) {
+    const location = useLocation();
+    const [showMore, setShowMore] = useState(false);
+
+    // Check if current route is in "more" items
+    const isMoreActive = [...learningMoreItems, ...toolItems, ...systemItems].some(item =>
+        item.href === '/'
+            ? location.pathname === '/'
+            : location.pathname.startsWith(item.href)
+    );
+
+    const renderMenuItem = (item: any) => {
+        const isActive = item.href === '/'
+            ? location.pathname === '/'
+            : location.pathname.startsWith(item.href);
+        return (
+            <NavLink
+                key={item.label}
+                to={item.href}
+                onClick={() => setShowMore(false)}
+                className={cn(
+                    'flex flex-col items-center justify-center gap-1.5 py-3 px-2 rounded-xl',
+                    'transition-all duration-200 min-h-[60px]',
+                    isActive
+                        ? 'bg-blue-500/10 dark:bg-white/5 text-blue-600 dark:text-white'
+                        : 'text-gray-500 dark:text-gray-400 active:bg-gray-100 dark:active:bg-white/5'
+                )}
+            >
+                <item.icon size={20} />
+                <span className="text-[11px] font-medium">{item.label}</span>
+            </NavLink>
+        );
+    };
+
     return (
-        <motion.nav
-            className={cn(
-                'fixed bottom-0 left-0 right-0 z-50 lg:hidden',
-                'bg-[#0a0d12]/95 backdrop-blur-xl',
-                'border-t border-white/[0.06]',
-                'px-2 pb-safe',
-                className
-            )}
-            initial={{ y: 100 }}
-            animate={{ y: 0 }}
-            transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-        >
-            <div className="flex items-center justify-around py-2">
-                {navItems.map((item) => (
-                    <a
-                        key={item.label}
-                        href={item.href}
+        <>
+            {/* More Menu Overlay */}
+            <AnimatePresence>
+                {showMore && (
+                    <>
+                        <motion.div
+                            className="fixed inset-0 z-40 bg-black/60 md:hidden gpu-accelerated"
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            onClick={() => setShowMore(false)}
+                        />
+                        <motion.div
+                            className="fixed bottom-[var(--bottom-nav-height)] left-3 right-3 z-50 md:hidden rounded-2xl border border-border-subtle bg-console-elevated/40 backdrop-blur-2xl shadow-premium overflow-hidden gpu-accelerated contain-strict liquid-glass glow-border"
+                            style={{ marginBottom: 'env(safe-area-inset-bottom, 0px)' }}
+                            initial={{ opacity: 0, y: 16, scale: 0.98 }}
+                            animate={{ opacity: 1, y: 0, scale: 1 }}
+                            exit={{ opacity: 0, y: 16, scale: 0.98 }}
+                            transition={{ duration: 0.15, ease: [0.2, 0, 0, 1] }}
+                        >
+                            <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-white/[0.06]">
+                                <span className="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">More</span>
+                                <button
+                                    onClick={() => setShowMore(false)}
+                                    className="w-8 h-8 rounded-lg flex items-center justify-center text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-white/5"
+                                >
+                                    <X size={16} />
+                                </button>
+                            </div>
+                            <div className="p-3">
+                                <div className="px-2 mb-2 text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider">Learning</div>
+                                <div className="grid grid-cols-4 gap-1 mb-4">
+                                    {learningMoreItems.map(renderMenuItem)}
+                                </div>
+                                <div className="px-2 mb-2 text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider">Tools</div>
+                                <div className="grid grid-cols-4 gap-1 mb-4">
+                                    {toolItems.map(renderMenuItem)}
+                                </div>
+                                <div className="px-2 mb-2 text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider">System</div>
+                                <div className="grid grid-cols-4 gap-1">
+                                    {systemItems.map(renderMenuItem)}
+                                </div>
+                            </div>
+                        </motion.div>
+                    </>
+                )}
+            </AnimatePresence>
+
+            {/* Bottom Tab Bar */}
+            <motion.nav
+                className={cn(
+                    'fixed bottom-0 left-0 right-0 z-50 md:hidden',
+                    'bg-console-bg/60 backdrop-blur-2xl',
+                    'border-t border-border-subtle shadow-premium',
+                    'px-2 gpu-accelerated contain-strict',
+                    className
+                )}
+                style={{ paddingBottom: 'calc(env(safe-area-inset-bottom) + 8px)' }}
+                initial={{ y: 100 }}
+                animate={{ y: 0 }}
+                transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+            >
+                <div className="flex items-center justify-around pt-1">
+                    {primaryItems.map((item) => {
+                        const isActive = item.href === '/'
+                            ? location.pathname === '/'
+                            : location.pathname.startsWith(item.href);
+
+                        return (
+                            <NavLink
+                                key={item.label}
+                                to={item.href}
+                                onClick={() => setShowMore(false)}
+                                className={cn(
+                                    'flex flex-col items-center justify-center min-w-[50px] min-h-[38px] rounded-xl',
+                                    'transition-colors duration-150', /* Used specific transition instead of all */
+                                    'active:scale-[0.92]', /* Offloaded tap animation to CSS */
+                                    'relative',
+                                    isActive
+                                        ? 'text-blue-600 dark:text-white'
+                                        : 'text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-400'
+                                )}
+                            >
+                                {/* Active background glow */}
+                                {isActive && (
+                                    <motion.div
+                                        className="absolute inset-0 bg-blue-500/8 dark:bg-gray-500/10 rounded-xl"
+                                        initial={{ opacity: 0, scale: 0.9 }}
+                                        animate={{ opacity: 1, scale: 1 }}
+                                        transition={{ duration: 0.15 }}
+                                    />
+                                )}
+
+                                <div className="relative z-10 flex items-center justify-center mb-0.5">
+                                    <item.icon
+                                        size={16}
+                                        className={cn(
+                                            'transition-colors duration-150',
+                                            isActive && 'text-blue-600 dark:text-gray-200'
+                                        )}
+                                    />
+                                </div>
+
+                                <span className={cn(
+                                    'text-[9px] font-normal relative z-10',
+                                    isActive ? 'text-blue-600 dark:text-gray-200' : 'text-gray-400 dark:text-gray-500'
+                                )}>
+                                    {item.label}
+                                </span>
+
+                                {/* Active dot indicator */}
+                                {isActive && (
+                                    <motion.div
+                                        className="absolute -top-1 left-1/2 -translate-x-1/2 w-1.5 h-1.5 rounded-full bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.5)]"
+                                        initial={{ opacity: 0, scale: 0 }}
+                                        animate={{ opacity: 1, scale: 1 }}
+                                        transition={{ type: "spring", stiffness: 400, damping: 30 }}
+                                    />
+                                )}
+                            </NavLink>
+                        );
+                    })}
+
+                    {/* More Button */}
+                    <button
+                        onClick={() => setShowMore(!showMore)}
                         className={cn(
-                            'flex flex-col items-center gap-1 px-4 py-2 rounded-xl',
-                            'transition-all duration-200',
+                            'flex flex-col items-center justify-center min-w-[50px] min-h-[38px] rounded-xl',
+                            'transition-colors duration-150 active:scale-[0.92]',
                             'relative',
-                            item.active
-                                ? 'text-white'
-                                : 'text-gray-500'
+                            showMore || isMoreActive
+                                ? 'text-blue-600 dark:text-white'
+                                : 'text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-400'
                         )}
                     >
-                        {/* Active background glow */}
-                        {item.active && (
+                        {(showMore || isMoreActive) && (
                             <motion.div
-                                className="absolute inset-0 bg-gray-500/20 rounded-xl"
-                                layoutId="bottomNavActive"
+                                className="absolute inset-0 bg-blue-500/8 dark:bg-gray-500/10 rounded-xl"
+                                initial={{ opacity: 0 }}
+                                animate={{ opacity: 1 }}
+                                transition={{ duration: 0.15 }}
                             />
                         )}
-
-                        <motion.div
-                            className="relative z-10"
-                            whileTap={{ scale: 0.9 }}
-                        >
-                            <item.icon
-                                size={22}
-                                className={cn(
-                                    'transition-colors',
-                                    item.active && 'text-gray-300'
-                                )}
-                            />
-                        </motion.div>
-
+                        <div className="relative z-10 flex items-center justify-center mb-0.5">
+                            <MoreHorizontal size={16} />
+                        </div>
                         <span className={cn(
-                            'text-[10px] font-medium relative z-10',
-                            item.active ? 'text-gray-300' : 'text-gray-500'
+                            'text-[9px] font-normal relative z-10',
+                            showMore || isMoreActive ? 'text-blue-600 dark:text-gray-200' : 'text-gray-400 dark:text-gray-500'
                         )}>
-                            {item.label}
+                            More
                         </span>
-
-                        {/* Active dot indicator */}
-                        {item.active && (
-                            <motion.div
-                                className="absolute -top-1 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-gray-600"
-                                layoutId="bottomNavDot"
-                            />
-                        )}
-                    </a>
-                ))}
-            </div>
-        </motion.nav>
+                    </button>
+                </div>
+            </motion.nav>
+        </>
     );
 }
+
