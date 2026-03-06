@@ -1,6 +1,6 @@
 
 import Groq from 'groq-sdk';
-import dotenv from 'dotenv';
+import * as dotenv from 'dotenv';
 import { IAIService } from './ai.interface';
 
 dotenv.config();
@@ -15,7 +15,7 @@ export class GroqService implements IAIService {
             console.warn('[GroqService] No GROQ_API_KEY found. Groq service will fail if used.');
         }
         this.client = new Groq({ apiKey: apiKey || '' });
-        this.model = process.env.GROQ_MODEL || 'openai/gpt-oss-120b'; // Fallback to user requested default
+        this.model = process.env.GROQ_MODEL || 'llama-3.3-70b-versatile';
     }
 
     async chat(message: string, options?: import('./ai.interface').ChatOptions): Promise<string> {
@@ -78,18 +78,9 @@ export class GroqService implements IAIService {
     }
 
     async generateEmbedding(text: string): Promise<number[]> {
-        // Groq might not support embeddings or we reuse another service.
-        // For now, throw or return a dummy/error if not supported by the specific model or SDK capability.
-        // Actually, let's fallback or just error out. RAG uses this.
-        // If Groq doesn't have embeddings, we might need a fallback (e.g. Ollama or Gemini if available).
-        // The AIService interface implies full capability.
-        // Let's implement a placeholder or use a default embedding model if Groq supports it?
-        // Groq generally focuses on inference speed for LLMs.
-        // We will throw "Not Implemented" and let the manager handle fallback if we want,
-        // OR we can just throw. The current app uses RAG, so this might be an issue if Groq is the ONLY provider.
-        // However, the user didn't ask for embeddings on Groq specifically, just "add this toggle".
-        // Let's throw for now.
-        throw new Error('GroqService: Embeddings not yet implemented/supported.');
+        // Groq does not natively support embeddings for chat models.
+        // Falling back to Ollama (bge-m3) via AIServiceManager.
+        throw new Error('GroqService: Native embeddings not supported. Fallback required.');
     }
 }
 

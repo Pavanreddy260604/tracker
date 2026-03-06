@@ -21,7 +21,12 @@ export const authApi = {
         return baseApi.request<{ user: User }>('/auth/me');
     },
 
-    async updateProfile(data: { name?: string; timezone?: string; targets?: { dsa: number; backend: number; project: number } }) {
+    async updateProfile(data: {
+        name?: string;
+        timezone?: string;
+        targets?: { dsa: number; backend: number; project: number };
+        scriptInterests?: { directors: string[]; genres: string[]; styles: string[] };
+    }) {
         const response = await baseApi.request<{ user: User }>('/auth/profile', {
             method: 'PUT',
             body: JSON.stringify(data),

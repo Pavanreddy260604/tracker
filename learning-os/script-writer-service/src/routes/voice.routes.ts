@@ -10,8 +10,13 @@ import path from 'path';
 const router = Router();
 
 // Configure multer with file filtering for security
-const ALLOWED_EXTENSIONS = ['.pdf', '.txt'];
-const ALLOWED_MIME_TYPES = ['application/pdf', 'text/plain'];
+const ALLOWED_EXTENSIONS = ['.pdf', '.txt', '.md', '.docx'];
+const ALLOWED_MIME_TYPES = [
+    'application/pdf',
+    'text/plain',
+    'text/markdown',
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+];
 
 const fileFilter = (req: Express.Request, file: Express.Multer.File, callback: multer.FileFilterCallback) => {
     const ext = path.extname(file.originalname).toLowerCase();

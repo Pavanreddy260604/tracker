@@ -18,6 +18,11 @@ export interface IUser extends Document {
     subscriptionId?: mongoose.Types.ObjectId;
     geminiApiKey?: string;
     encryptionIV?: string;
+    scriptInterests?: {
+        directors: string[];
+        genres: string[];
+        styles: string[];
+    };
     createdAt: Date;
     updatedAt: Date;
     comparePassword(candidatePassword: string): Promise<boolean>;
@@ -78,6 +83,11 @@ const userSchema = new Schema<IUser>(
         encryptionIV: {
             type: String,
             default: null,
+        },
+        scriptInterests: {
+            directors: { type: [String], default: [] },
+            genres: { type: [String], default: [] },
+            styles: { type: [String], default: [] },
         },
     },
     {

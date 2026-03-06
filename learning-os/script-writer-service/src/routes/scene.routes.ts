@@ -411,4 +411,139 @@ router.post('/:id/fix', async (req, res) => {
     }
 });
 
+// POST /api/scene/:id/assisted-edit - Stream an AI refactor of the scene
+router.post('/:id/assisted-edit', async (req, res) => {
+    const { instruction, language } = req.body;
+    if (!instruction) return res.status(400).json({ error: 'Instruction is required' });
+
+    try {
+        const scene = await Scene.findById(req.params.id);
+        if (!scene) return res.status(404).json({ error: 'Scene not found' });
+        await assertBibleAccess(scene.bibleId.toString(), req.userId);
+
+        res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+        res.setHeader('Transfer-Encoding', 'chunked');
+
+        let fullRevisedText = '';
+        const stream = scriptGenerator.assistedEdit(req.params.id, instruction, { language });
+
+        for await (const chunk of stream) {
+            res.write(chunk);
+            fullRevisedText += chunk;
+        }
+
+        // Save to pendingContent automatically
+        scene.pendingContent = fullRevisedText;
+        scene.lastInstruction = instruction;
+        await scene.save();
+
+        res.end();
+    } catch (error) {
+        console.error('[SceneAssistant] Edit Error:', error);
+        if (!handleAccessError(error, res)) {
+            if (!res.headersSent) res.status(500).json({ error: 'Edit failed' });
+            else res.end();
+        }
+    }
+});
+
+// GET /api/scene/:id/assistant-history - Get chat history for a scene
+router.get('/:id/assistant-history', async (req, res) => {
+    try {
+        const scene = await assertSceneAccess(req.params.id, req.userId);
+        if (!scene) return res.status(404).json({ error: 'Scene not found' });
+
+        res.json({ success: true, data: scene.assistantChatHistory || [] });
+    } catch (error) {
+        if (!handleAccessError(error, res)) {
+            res.status(500).json({ error: 'Failed to fetch history' });
+        }
+    }
+});
+
+// DELETE /api/scene/:id/assistant-history - Clear chat history or delete a specific message
+router.delete('/:id/assistant-history', async (req, res) => {
+    const { messageId } = req.body;
+    try {
+        const scene = await assertSceneAccess(req.params.id, req.userId);
+        if (!scene) return res.status(404).json({ error: 'Scene not found' });
+
+        if (messageId) {
+            // Delete specific message
+            scene.assistantChatHistory = scene.assistantChatHistory?.filter(
+                (m: any) => m._id?.toString() !== messageId
+            );
+        } else {
+            // Clear all
+            scene.assistantChatHistory = [];
+        }
+
+        await scene.save();
+        res.json({ success: true, data: scene.assistantChatHistory });
+    } catch (error) {
+        if (!handleAccessError(error, res)) {
+            res.status(500).json({ error: 'Failed to delete history' });
+        }
+    }
+});
+
+// PUT /api/scene/:id/assistant-history - Update a specific message in history
+router.put('/:id/assistant-history', async (req, res) => {
+    const { messageId, content } = req.body;
+    if (!messageId || !content) return res.status(400).json({ error: 'MessageId and content required' });
+
+    try {
+        const scene = await assertSceneAccess(req.params.id, req.userId);
+        if (!scene) return res.status(404).json({ error: 'Scene not found' });
+
+        const message = scene.assistantChatHistory?.find(
+            (m: any) => m._id?.toString() === messageId
+        );
+
+        if (!message) return res.status(404).json({ error: 'Message not found' });
+
+        message.content = content;
+        await scene.save();
+
+        res.json({ success: true, data: scene.assistantChatHistory });
+    } catch (error) {
+        if (!handleAccessError(error, res)) {
+            res.status(500).json({ error: 'Failed to update history' });
+        }
+    }
+});
+
+// POST /api/scene/:id/commit-edit - Commit a proposed edit
+router.post('/:id/commit-edit', async (req, res) => {
+    try {
+        const scene = await assertSceneAccess(req.params.id, req.userId);
+        if (!scene) return res.status(404).json({ error: 'Scene not found' });
+
+        const success = await scriptGenerator.commitAssistedEdit(req.params.id);
+        res.json({ success });
+    } catch (error) {
+        if (!handleAccessError(error, res)) {
+            res.status(500).json({ error: 'Commit failed' });
+        }
+    }
+});
+
+// POST /api/scene/:id/discard-edit - Discard a proposed edit
+router.post('/:id/discard-edit', async (req, res) => {
+    try {
+        const scene = await assertSceneAccess(req.params.id, req.userId);
+        if (!scene) return res.status(404).json({ error: 'Scene not found' });
+
+        scene.pendingContent = undefined;
+        scene.lastInstruction = undefined;
+        await scene.save();
+
+        res.json({ success: true });
+    } catch (error) {
+        if (!handleAccessError(error, res)) {
+            res.status(500).json({ error: 'Discard failed' });
+        }
+    }
+});
+
 export const sceneRoutes = router;

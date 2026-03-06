@@ -17,6 +17,8 @@ export interface DialogueChunk {
     contextBefore?: string;        // Previous chunk for continuity
     raw: string;                   // Original unprocessed text
     era?: string;                  // DETECTED ERA CONTEXT
+    tactic?: string;               // DETECTED CHARACTER TACTIC (PH 19)
+    emotion?: string;              // DETECTED EMOTIONAL CHARGE (PH 19)
 }
 
 export interface ParseResult {
@@ -89,10 +91,11 @@ export class ChunkerService {
         
         CRITICAL RULES:
         1. Identify the ERA context if lines are under a header like "# ERA: [Name]". Apply this era to all subsequent chunks until a new era is found.
-        2. Identify the Speaker Name (e.g. "DEVAVRATA", "దేవవ్రతుడు").
+        2. Identify the Speaker Name.
         3. Extract the Dialogue content exactly as written.
-        4. Ignore empty lines or page numbers.
-        5. Return a valid JSON object with a "chunks" array.
+        4. TACTIC DETECTION (NEW): For every dialogue line, identify the CHARACTER TACTIC being used (e.g., DEFLECT, INTIMIDATE, PLEAD, SEDUCE, EVADE, PITY, INTERROGATE).
+        5. EMOTION DETECTION (NEW): Identify the EMOTIONAL CHARGE of the line (e.g., "Tense", "Vulnerable", "Angry", "Sarcastic").
+        6. Return a valid JSON object with a "chunks" array.
 
         Input Text:
         """
@@ -106,6 +109,8 @@ export class ChunkerService {
                     "type": "dialogue" | "action" | "slug",
                     "speaker": "Name" (or null for action/slug),
                     "content": "Line of text",
+                    "tactic": "THE_TACTIC",
+                    "emotion": "THE_EMOTION",
                     "era": "Era Name" (or null if none)
                 }
             ]
@@ -119,7 +124,6 @@ export class ChunkerService {
             // We let the AI Manager handle the specific provider details based on config,
             // but we request a model that is good at JSON instructions.
             const resultString = await aiServiceManager.chat(prompt, {
-                model: 'llama3:8b', // Default to local Ollama if not overridden by env
                 format: 'json',
                 temperature: 0.1 // Low temp for consistent JSON
             });
@@ -152,6 +156,8 @@ export class ChunkerService {
                     lineNumber: index + 1,
                     chunkIndex: index,
                     era: c.era ? String(c.era) : undefined,
+                    tactic: c.tactic ? String(c.tactic) : undefined,
+                    emotion: c.emotion ? String(c.emotion) : undefined,
                     raw: String(c.content || '')
                 };
             }).filter(Boolean) as DialogueChunk[];

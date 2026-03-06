@@ -29,10 +29,12 @@ export function useScriptWriterSceneEditor({
     const [selectedSceneCharacterIds, setSelectedSceneCharacterIds] = useState<string[]>([]);
     const [pendingFix, setPendingFix] = useState<{
         content: string;
-        critique: CritiqueResult;
-        auditNotes: string;
-        isSuperior: boolean;
-        benchmarkScore: number;
+        critique?: CritiqueResult;
+        auditNotes?: string;
+        isSuperior?: boolean;
+        benchmarkScore?: number;
+        mode?: 'fix' | 'proposal';
+        isStreaming?: boolean;
     } | null>(null);
 
     const saveTimer = useRef<number | null>(null);
@@ -216,7 +218,8 @@ export function useScriptWriterSceneEditor({
                 critique: result.critique,
                 auditNotes: result.auditNotes,
                 isSuperior: result.isSuperior,
-                benchmarkScore: result.benchmarkScore
+                benchmarkScore: result.benchmarkScore,
+                mode: 'fix'
             });
 
         } catch (err) {
@@ -230,7 +233,7 @@ export function useScriptWriterSceneEditor({
         if (!pendingFix || !activeScene) return;
 
         const fullText = pendingFix.content;
-        const newCritique = pendingFix.critique;
+        const newCritique = pendingFix.critique || null;
 
         setSaveState('saving');
         try {
@@ -245,7 +248,7 @@ export function useScriptWriterSceneEditor({
                 goal: sceneForm.goal,
                 status: 'drafted',
                 content: fullText,
-                critique: newCritique
+                critique: newCritique || undefined
             });
 
             updateSceneInState(updated, activeProjectId);
@@ -291,6 +294,7 @@ export function useScriptWriterSceneEditor({
         handleDiscardFix,
         toggleSceneCharacter,
         pendingFix,
+        setPendingFix,
         canRefreshCritique: canRefresh,
         pointsToRefresh,
         eliteHighScore: activeScene?.highScore?.critique?.score || 0

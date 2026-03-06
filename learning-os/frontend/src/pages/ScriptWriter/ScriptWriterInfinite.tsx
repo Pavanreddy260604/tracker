@@ -119,7 +119,8 @@ function ScriptWriterInfiniteContent() {
         canRefreshCritique,
         pointsToRefresh,
         eliteHighScore,
-        pendingFix
+        pendingFix,
+        setPendingFix
     } = useScriptWriterSceneEditor({
         activeScene,
         activeProjectId,
@@ -189,6 +190,11 @@ function ScriptWriterInfiniteContent() {
                     pointsToRefresh={pointsToRefresh}
                     eliteHighScore={eliteHighScore}
                     refreshScenes={loadScenes}
+                    activeScene={activeScene}
+                    pendingFix={pendingFix}
+                    setPendingFix={setPendingFix}
+                    onAcceptFix={handleAcceptFix}
+                    onDiscardFix={handleDiscardFix}
                 />
             }
         >

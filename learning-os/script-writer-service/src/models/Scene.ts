@@ -11,6 +11,14 @@ export interface IScene extends Document {
 
     // The "Writer" Output
     content: string; // The generated script text
+    pendingContent?: string; // PH 35: Proposed edit awaiting approval
+    lastInstruction?: string; // PH 35: The instruction that generated the pendingContent
+    assistantChatHistory?: {
+        role: 'user' | 'assistant';
+        type: 'instruction' | 'thought' | 'proposal';
+        content: string;
+        timestamp: Date;
+    }[];
 
     // The "Critic" Output
     status: 'planned' | 'drafted' | 'reviewed' | 'final';
@@ -95,6 +103,20 @@ const SceneSchema: Schema = new Schema({
         default: '',
         maxlength: [100000, 'Content cannot exceed 100,000 characters']
     },
+    pendingContent: {
+        type: String,
+        maxlength: [100000, 'Pending content cannot exceed 100,000 characters']
+    },
+    lastInstruction: {
+        type: String,
+        maxlength: [2000, 'Last instruction cannot exceed 2000 characters']
+    },
+    assistantChatHistory: [{
+        role: { type: String, enum: ['user', 'assistant'] },
+        type: { type: String, enum: ['instruction', 'thought', 'proposal'] },
+        content: { type: String, maxlength: 100000 },
+        timestamp: { type: Date, default: Date.now }
+    }],
 
     status: {
         type: String,

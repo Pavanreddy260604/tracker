@@ -13,6 +13,10 @@ export interface ScoredSample {
     contentHash?: string;
     speaker?: string;
     era?: string;
+    language?: string; // PH Multilingual
+    tactic?: string;
+    emotion?: string;
+    masterScriptId?: string; // PH 21
     chunkType?: 'dialogue' | 'action' | 'narration';
     chunkIndex?: number;
     embedding?: number[];
@@ -26,6 +30,12 @@ export interface FindSimilarOptions {
     maxLength?: number;          // Max content length to include
     dedupe?: boolean;            // Deduplicate by content hash, default true
     era?: string;                // Filter by specific era/age context
+    language?: string;           // Filter by specific language (PH Multilingual)
+    interests?: {
+        directors: string[];
+        genres: string[];
+        styles: string[];
+    };
 }
 
 /**
@@ -101,7 +111,7 @@ export class VectorService {
         }
 
         const metadata: any = {
-            bibleId: sample.bibleId.toString(),
+            bibleId: sample.bibleId ? sample.bibleId.toString() : "GLOBAL",
             source: sample.source ?? "unknown",
             preview: sample.content.slice(0, 120)
         };
@@ -118,6 +128,22 @@ export class VectorService {
             metadata.era = sample.era;
         }
 
+        if (sample.language) {
+            metadata.language = sample.language;
+        }
+
+        if (sample.tactic) {
+            metadata.tactic = sample.tactic;
+        }
+
+        if (sample.emotion) {
+            metadata.emotion = sample.emotion;
+        }
+
+        if (sample.masterScriptId) {
+            metadata.masterScriptId = sample.masterScriptId.toString();
+        }
+
         if (sample.chunkType) {
             metadata.chunkType = sample.chunkType;
         }
@@ -126,12 +152,41 @@ export class VectorService {
             metadata.contentHash = sample.contentHash;
         }
 
-        await this.collection.upsert({
-            ids: [sample._id.toString()],
-            embeddings: [sample.embedding],
-            metadatas: [metadata],
-            documents: [sample.content]
-        });
+        try {
+            await this.collection.upsert({
+                ids: [sample._id.toString()],
+                embeddings: [sample.embedding],
+                metadatas: [metadata],
+                documents: [sample.content]
+            });
+        } catch (error: any) {
+            if (error.message && (error.message.includes("dimension") || error.message.includes("expecting embedding with dimension"))) {
+                console.warn(`[VectorService] Dimension mismatch detected. Recreating collection '${VectorService.COLLECTION_NAME}'...`);
+
+                try {
+                    // Force deletion of local collection state
+                    await (this.client as any).deleteCollection({ name: VectorService.COLLECTION_NAME });
+                } catch (delErr) {
+                    console.warn("[VectorService] Could not delete collection (might not exist):", delErr);
+                }
+
+                this.collection = null;
+                this.initPromise = null;
+                await this.init();
+
+                // Retry once
+                if (this.collection) {
+                    await (this.collection as any).upsert({
+                        ids: [sample._id.toString()],
+                        embeddings: [sample.embedding],
+                        metadatas: [metadata],
+                        documents: [sample.content]
+                    });
+                }
+            } else {
+                throw error;
+            }
+        }
     }
 
     /**
@@ -169,6 +224,10 @@ export class VectorService {
 
         if (options?.era) {
             conditions.push({ era: options.era });
+        }
+
+        if (options?.language) {
+            conditions.push({ language: options.language });
         }
 
         let where: any = undefined;
@@ -218,13 +277,38 @@ export class VectorService {
                 continue;
             }
 
+            const meta = metadatas?.[i] ?? {};
+            let score = similarity;
+
+            // PH 22: Boost score if it matches user interests
+            if (options?.interests) {
+                const source = (meta.source || '').toUpperCase();
+                const tags = Array.isArray(meta.tags) ? meta.tags.map((t: string) => t.toUpperCase()) : [];
+
+                // Boost for Director match
+                if (options.interests.directors.some(d => source.includes(d.toUpperCase()))) {
+                    score += 0.15;
+                    console.log(`[VectorService] Interest Boost (+0.15) for director match in: ${source}`);
+                }
+
+                // Boost for Tag/Genre/Style match
+                const allInterests = [...options.interests.genres, ...options.interests.styles].map(s => s.toUpperCase());
+                if (tags.some((t: string) => allInterests.includes(t))) {
+                    score += 0.10;
+                    console.log(`[VectorService] Interest Boost (+0.10) for tag match in samples.`);
+                }
+            }
+
             scoredIds.push({
                 id: ids[i],
-                score: similarity,
+                score: Math.min(1.0, score), // Cap at 1.0
                 doc,
-                meta: metadatas?.[i]
+                meta
             });
         }
+
+        // Re-sort by boosted score
+        scoredIds.sort((a, b) => b.score - a.score);
 
         // Deduplicate by content hash if enabled
         if (shouldDedupe) {
@@ -272,6 +356,9 @@ export class VectorService {
                     contentHash: obj.contentHash,
                     speaker: obj.speaker,
                     era: obj.era,
+                    tactic: obj.tactic,
+                    emotion: obj.emotion,
+                    masterScriptId: obj.masterScriptId?.toString(),
                     chunkType: obj.chunkType,
                     chunkIndex: obj.chunkIndex,
                     tags: obj.tags,

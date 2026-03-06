@@ -30,6 +30,11 @@ export function Settings() {
         backendHours: 4,
         projectHours: 1,
     });
+    const [scriptInterests, setScriptInterests] = useState({
+        directors: [] as string[],
+        genres: [] as string[],
+        styles: [] as string[]
+    });
     const [isSaving, setIsSaving] = useState(false);
     const [saveSuccess, setSaveSuccess] = useState(false);
 
@@ -39,6 +44,13 @@ export function Settings() {
                 dsaHours: user.targets.dsa,
                 backendHours: user.targets.backend,
                 projectHours: user.targets.project,
+            });
+        }
+        if (user?.scriptInterests) {
+            setScriptInterests({
+                directors: user.scriptInterests.directors || [],
+                genres: user.scriptInterests.genres || [],
+                styles: user.scriptInterests.styles || []
             });
         }
     }, [user]);
@@ -71,6 +83,24 @@ export function Settings() {
             'Are you sure you want to log out?',
             logout
         );
+    };
+
+    const handleSaveInterests = async () => {
+        setIsSaving(true);
+        setSaveSuccess(false);
+        try {
+            await api.updateProfile({
+                scriptInterests
+            });
+            await checkAuth();
+            setSaveSuccess(true);
+            setTimeout(() => setSaveSuccess(false), 3000);
+        } catch (error) {
+            console.error('Failed to update interests', error);
+            showAlert('Update Failed', 'Failed to update interests. Please try again.');
+        } finally {
+            setIsSaving(false);
+        }
     };
 
     const handleExportData = async () => {
@@ -321,6 +351,63 @@ export function Settings() {
                         <p className="text-[10px] text-text-secondary mt-2 flex items-center gap-1">
                             <Shield size={10} /> Stored with AES-256-CBC encryption on the backend.
                         </p>
+                    </div>
+                </div>
+            </motion.div>
+
+            {/* Script Writer Interests */}
+            <motion.div
+                className="p-6 rounded-xl bg-console-surface border border-border-subtle shadow-premium"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.28 }}
+            >
+                <div className="flex items-center justify-between mb-6">
+                    <div className="flex items-center gap-3">
+                        <Sparkles size={20} className="text-blue-400" />
+                        <h2 className="text-lg font-semibold text-text-primary">Script Writer Interests</h2>
+                    </div>
+                    <Button
+                        size="sm"
+                        onClick={handleSaveInterests}
+                        disabled={isSaving}
+                        className={saveSuccess ? 'bg-status-ok hover:bg-status-ok' : 'bg-console-surface-2 border border-border-subtle text-text-primary hover:bg-console-surface-3 transition-all'}
+                    >
+                        {saveSuccess ? (
+                            <><Check size={16} className="mr-2" /> Saved</>
+                        ) : (
+                            <><Save size={16} className="mr-2" /> {isSaving ? 'Saving...' : 'Save Interests'}</>
+                        )}
+                    </Button>
+                </div>
+
+                <div className="space-y-6">
+                    <div className="space-y-2">
+                        <label className="text-[10px] font-black text-text-secondary uppercase tracking-widest px-1 text-blue-400/80">Favorite Directors</label>
+                        <Input
+                            placeholder="Christopher Nolan, Quentin Tarantino..."
+                            value={scriptInterests.directors.join(', ')}
+                            onChange={(e) => setScriptInterests(s => ({ ...s, directors: e.target.value.split(',').map(v => v.trim()).filter(Boolean) }))}
+                        />
+                        <p className="text-[10px] text-text-secondary px-1">Boosts results from these directors in the RAG feed.</p>
+                    </div>
+
+                    <div className="space-y-2">
+                        <label className="text-[10px] font-black text-text-secondary uppercase tracking-widest px-1 text-purple-400/80">Preferred Genres</label>
+                        <Input
+                            placeholder="Sci-Fi, Neo-Noir, Thriller..."
+                            value={scriptInterests.genres.join(', ')}
+                            onChange={(e) => setScriptInterests(s => ({ ...s, genres: e.target.value.split(',').map(v => v.trim()).filter(Boolean) }))}
+                        />
+                    </div>
+
+                    <div className="space-y-2">
+                        <label className="text-[10px] font-black text-text-secondary uppercase tracking-widest px-1 text-emerald-400/80">Writing Styles</label>
+                        <Input
+                            placeholder="Fast-Paced, Minimalist, Poetic..."
+                            value={scriptInterests.styles.join(', ')}
+                            onChange={(e) => setScriptInterests(s => ({ ...s, styles: e.target.value.split(',').map(v => v.trim()).filter(Boolean) }))}
+                        />
                     </div>
                 </div>
             </motion.div>

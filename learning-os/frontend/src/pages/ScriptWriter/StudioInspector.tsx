@@ -1,10 +1,10 @@
 import type { ComponentType } from 'react';
 import { PanelRight, BookOpen, FileText } from 'lucide-react';
 import type { Bible, Scene, CritiqueResult } from '../../services/project.api';
-import type { GenerationOptions, InspectorTab, ProjectForm, SceneForm, StudioMode } from './types';
+import type { AssistantMessage, GenerationOptions, InspectorTab, ProjectForm, SceneForm, StudioMode } from './types';
 import { InspectorProjectTab } from './InspectorProjectTab';
 import { InspectorSceneTab } from './InspectorSceneTab';
-import { GeneratorPanel } from './GeneratorPanel';
+import { AssistantPanel } from './components/AssistantPanel';
 
 
 interface StudioInspectorProps {
@@ -28,6 +28,14 @@ interface StudioInspectorProps {
 
     critique: CritiqueResult | null;
     activeMode: StudioMode;
+
+    // PH 36: Assistant Props
+    assistantMessages: AssistantMessage[];
+    isAssistantThinking: boolean;
+    onAssistantSendMessage: (content: string) => void;
+    onApplyProposal: (messageId: string) => void;
+    onDiscardProposal: (messageId: string) => void;
+    onClearChat: () => void;
 }
 
 
@@ -55,7 +63,14 @@ export function StudioInspector({
     isGenerating,
     isCritiquing,
     critique,
-    activeMode
+    activeMode,
+
+    assistantMessages,
+    isAssistantThinking,
+    onAssistantSendMessage,
+    onApplyProposal,
+    onDiscardProposal,
+    onClearChat
 }: StudioInspectorProps) {
     console.log('[StudioInspector] Render - activeMode:', activeMode, 'tab:', tab, 'activeProject:', activeProject?.title);
 
@@ -113,20 +128,15 @@ export function StudioInspector({
         );
     } else if (activeMode === 'generate') {
         headerTitle = "AI Assistant";
-        console.log('[StudioInspector] Generate mode - Using MOCK data for GeneratorPanel (scriptTemplates: null, scriptIdea: "")');
         content = (
-            <GeneratorPanel
+            <AssistantPanel
                 activeProject={activeProject}
-                scriptTemplates={null}
-                scriptIdea={""}
-                onScriptIdeaChange={() => { }}
-                scriptFormat={"screenplay"}
-                onScriptFormatChange={() => { }}
-                scriptStyle={"standard"}
-                onScriptStyleChange={() => { }}
-                scriptOutput={""}
-                onGenerateScript={() => { }}
-                isScriptGenerating={isGenerating}
+                messages={assistantMessages}
+                isGenerating={isAssistantThinking}
+                onSendMessage={(content) => onAssistantSendMessage(content)}
+                onApplyProposal={onApplyProposal}
+                onDiscardProposal={onDiscardProposal}
+                onClearChat={onClearChat}
             />
         );
     } else {

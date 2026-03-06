@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { Plus, FolderOpen, Clock, FileText, Loader2, Trash2, Calendar, Layout, Sparkles } from 'lucide-react';
+import { Plus, FolderOpen, Clock, FileText, Loader2, Trash2, Calendar, Layout, Sparkles, Database } from 'lucide-react';
+import { AdminPanel } from './components/AdminPanel';
 import { useDialog } from '../../hooks/useDialog';
 import { ConfirmDialog } from '../../components/ui/ConfirmDialog';
 import type { Bible } from '../../services/project.api';
@@ -33,7 +34,7 @@ export function ProjectDashboard({
     onProjectDelete
 }: ProjectDashboardProps) {
     const { dialog, showConfirm, closeDialog } = useDialog();
-    const [filter, setFilter] = useState<'all' | 'recent'>('all');
+    const [filter, setFilter] = useState<'all' | 'recent' | 'admin'>('all');
 
     const sortedProjects = [...projects].sort((a, b) => {
         return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
@@ -42,7 +43,7 @@ export function ProjectDashboard({
     const displayedProjects = filter === 'recent' ? sortedProjects.slice(0, 6) : sortedProjects;
 
     return (
-        <div className="min-h-screen bg-zinc-950 text-zinc-100 selection:bg-blue-500/30">
+        <div className="h-screen w-full overflow-y-auto bg-zinc-950 text-zinc-100 selection:bg-blue-500/30">
             {/* Ambient Background Glows */}
             <div className="fixed inset-0 overflow-hidden pointer-events-none">
                 <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-blue-900/10 blur-[120px] rounded-full" />
@@ -81,7 +82,8 @@ export function ProjectDashboard({
                         <div className="flex items-center gap-1 bg-zinc-950/50 p-1 rounded-xl border border-zinc-800">
                             {[
                                 { id: 'all', label: 'All Projects', icon: Layout },
-                                { id: 'recent', label: 'Recent', icon: Clock }
+                                { id: 'recent', label: 'Recent', icon: Clock },
+                                { id: 'admin', label: 'Master Feed', icon: Database }
                             ].map(tab => (
                                 <button
                                     key={tab.id}
@@ -107,8 +109,10 @@ export function ProjectDashboard({
                         </div>
                     </div>
 
-                    {/* Projects Grid */}
-                    {loadingProjects ? (
+                    {/* Dynamic Content */}
+                    {filter === 'admin' ? (
+                        <AdminPanel />
+                    ) : loadingProjects ? (
                         <div className="flex flex-col items-center justify-center py-32 space-y-4">
                             <Loader2 size={40} className="animate-spin text-blue-500" />
                             <p className="text-zinc-500 font-medium animate-pulse">Scanning Library...</p>

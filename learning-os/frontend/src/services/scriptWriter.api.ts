@@ -45,6 +45,19 @@ export interface IScriptDetail {
     metadata: any;
 }
 
+export interface IMasterScript {
+    _id: string;
+    title: string;
+    director: string;
+    description?: string;
+    tags: string[];
+    language: string; // PH Multilingual RAG
+    rawContent: string;
+    status: 'pending' | 'processing' | 'indexed' | 'failed';
+    processedChunks: number;
+    createdAt: string;
+}
+
 
 // Microservice runs on a different port (5003)
 
@@ -111,6 +124,89 @@ class ScriptWriterApi {
             method: 'DELETE',
             body: JSON.stringify({ bibleId, source, characterId })
         });
+    }
+
+    // Admin Master Scripts (PH 23)
+    async getMasterScripts(): Promise<IMasterScript[]> {
+        return baseApi.request<IMasterScript[]>('/script/admin/master-scripts');
+    }
+
+    async createMasterScript(data: Partial<IMasterScript> & { file?: File }): Promise<IMasterScript> {
+        if (data.file) {
+            // Use FormData for file uploads
+            const formData = new FormData();
+            if (data.title) formData.append('title', data.title);
+            if (data.director) formData.append('director', data.director);
+            if (data.language) formData.append('language', data.language);
+            if (data.tags && Array.isArray(data.tags)) formData.append('tags', JSON.stringify(data.tags));
+            else if (data.tags) formData.append('tags', data.tags as any);
+            if (data.rawContent) formData.append('rawContent', data.rawContent);
+            formData.append('file', data.file);
+
+            return baseApi.request<IMasterScript>('/script/admin/master-scripts', {
+                method: 'POST',
+                body: formData
+            });
+        }
+
+        // Fallback to standard JSON if no file is provided
+        return baseApi.request<IMasterScript>('/script/admin/master-scripts', {
+            method: 'POST',
+            body: JSON.stringify(data)
+        });
+    }
+
+    async processMasterScript(id: string): Promise<{ message: string, scriptId: string }> {
+        return baseApi.request<{ message: string, scriptId: string }>(`/script/admin/master-scripts/${id}/process`, {
+            method: 'POST'
+        });
+    }
+
+    // Assisted Edit / Assistant Flow (PH 35/36)
+    async assistedEditStream(
+        sceneId: string,
+        instruction: string,
+        onChunk: (chunk: string) => void,
+        options: { language?: string } = {},
+        signal?: AbortSignal
+    ): Promise<void> {
+        await baseApi.streamRequest(`/script/scene/${sceneId}/assisted-edit`, {
+            instruction,
+            ...options
+        }, onChunk, signal);
+    }
+
+    async commitEdit(sceneId: string): Promise<{ success: boolean }> {
+        return baseApi.request<{ success: boolean }>(`/script/scene/${sceneId}/commit-edit`, {
+            method: 'POST'
+        });
+    }
+
+    async discardEdit(sceneId: string): Promise<{ success: boolean }> {
+        return baseApi.request<{ success: boolean }>(`/script/scene/${sceneId}/discard-edit`, {
+            method: 'POST'
+        });
+    }
+
+    async getAssistantHistory(sceneId: string): Promise<any[]> {
+        const response = await baseApi.request<{ success: boolean, data: any[] }>(`/script/scene/${sceneId}/assistant-history`);
+        return response.data || [];
+    }
+
+    async deleteAssistantHistory(sceneId: string, messageId?: string): Promise<any[]> {
+        const response = await baseApi.request<{ success: boolean, data: any[] }>(`/script/scene/${sceneId}/assistant-history`, {
+            method: 'DELETE',
+            body: JSON.stringify({ messageId })
+        });
+        return response.data;
+    }
+
+    async updateAssistantHistory(sceneId: string, messageId: string, content: string): Promise<any[]> {
+        const response = await baseApi.request<{ success: boolean, data: any[] }>(`/script/scene/${sceneId}/assistant-history`, {
+            method: 'PUT',
+            body: JSON.stringify({ messageId, content })
+        });
+        return response.data;
     }
 }
 

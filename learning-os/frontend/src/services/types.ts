@@ -11,6 +11,11 @@ export interface User {
         backend: number;
         project: number;
     };
+    scriptInterests?: {
+        directors: string[];
+        genres: string[];
+        styles: string[];
+    };
     emailVerified?: boolean;
     createdAt: string;
 }

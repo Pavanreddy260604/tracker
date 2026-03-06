@@ -49,6 +49,7 @@ import { sceneRoutes } from './routes/scene.routes';
 import { characterRoutes } from './routes/character.routes';
 import { treatmentRoutes } from './routes/treatment.routes';
 import { aiRoutes } from './routes/ai.routes';
+import adminRoutes from './routes/admin.routes';
 
 // Routes
 app.use('/api/script', scriptRoutes);
@@ -58,6 +59,7 @@ app.use('/api/script/scene', sceneRoutes);
 app.use('/api/script/character', characterRoutes);
 app.use('/api/script/treatment', treatmentRoutes);
 app.use('/api/script/ai', aiRoutes); // Switch provider, etc.
+app.use('/api/script/admin', adminRoutes); // PH 21
 
 
 // Start server

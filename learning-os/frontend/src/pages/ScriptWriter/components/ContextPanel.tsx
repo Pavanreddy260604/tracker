@@ -4,8 +4,8 @@ import { useScriptWriter } from '../../../contexts/ScriptWriterContext';
 import { useScriptWriterCharacters } from '../useScriptWriterCharacters';
 import { useScriptWriterGenerator } from '../useScriptWriterGenerator';
 import { useScriptWriterTreatments } from '../useScriptWriterTreatments';
-import { GeneratorPanel } from '../GeneratorPanel';
-import type { CritiqueResult } from '../../../services/project.api';
+import { AssistantPanel } from './AssistantPanel';
+import type { CritiqueResult, Scene } from '../../../services/project.api';
 import { scriptWriterApi } from '../../../services/scriptWriter.api';
 
 interface ContextPanelProps {
@@ -28,6 +28,10 @@ interface ContextPanelProps {
     pointsToRefresh?: number;
     eliteHighScore?: number;
     pendingFix?: any | null;
+    activeScene?: Scene | null;
+    setPendingFix?: (fix: any) => void;
+    onAcceptFix?: () => void;
+    onDiscardFix?: () => void;
 }
 
 export function ContextPanel({
@@ -49,7 +53,11 @@ export function ContextPanel({
     canRefreshCritique,
     pointsToRefresh,
     eliteHighScore,
-    pendingFix
+    pendingFix,
+    activeScene,
+    setPendingFix,
+    onAcceptFix,
+    onDiscardFix
 }: ContextPanelProps) {
     const { uiState, setRightPanelTool, toggleRightPanel, activeProject: contextActiveProject, editorContent } = useScriptWriter();
     const activeProject = propActiveProject || contextActiveProject;
@@ -74,18 +82,18 @@ export function ContextPanel({
     }, [activeProject?.title]);
 
     const {
-        scriptTemplates,
-        scriptIdea,
-        scriptFormat,
-        scriptStyle,
-        scriptOutput,
-        isScriptGenerating,
-        setScriptIdea,
-        setScriptFormat,
-        setScriptStyle
+        assistantMessages,
+        isAssistantThinking,
+        handleAssistantSendMessage,
+        handleApplyProposal,
+        handleDiscardProposal,
+        handleDeleteAssistantMessage,
+        handleUpdateAssistantMessage,
+        handleClearChat
     } = useScriptWriterGenerator({
         activeProject,
         activeProjectId: activeProject?._id || null,
+        activeSceneId: activeScene?._id || null,
         editorContext: editorContent,
         setError: () => { }
     });
@@ -172,23 +180,35 @@ export function ContextPanel({
             {/* Content Area */}
             <div className="flex-1 overflow-y-auto custom-scrollbar p-3">
                 {activeTool === 'generator' && (
-                    <div className="space-y-4">
-                        <div className="flex items-center justify-between">
-                            <h3 className="text-xs font-bold uppercase tracking-wider text-zinc-500">Ai Generator</h3>
-                            {isGenerating && <Loader2 size={12} className="animate-spin text-blue-400" />}
-                        </div>
-                        <GeneratorPanel
+                    <div className="h-full -m-3">
+                        <AssistantPanel
                             activeProject={activeProject}
-                            scriptTemplates={scriptTemplates}
-                            scriptIdea={scriptIdea}
-                            onScriptIdeaChange={setScriptIdea}
-                            scriptFormat={scriptFormat}
-                            onScriptFormatChange={setScriptFormat}
-                            scriptStyle={scriptStyle}
-                            onScriptStyleChange={setScriptStyle}
-                            scriptOutput={scriptOutput}
-                            onGenerateScript={onGenerate ?? (() => { })}
-                            isScriptGenerating={isGenerating || isScriptGenerating}
+                            messages={assistantMessages}
+                            isGenerating={isAssistantThinking}
+                            activeSceneName={activeScene?.slugline || undefined}
+                            onSendMessage={(content) => handleAssistantSendMessage(content, activeScene?._id || null, (updatedContent, finished) => {
+                                if (setPendingFix) {
+                                    setPendingFix({
+                                        content: updatedContent,
+                                        mode: 'proposal',
+                                        isStreaming: !finished
+                                    });
+                                }
+                            })}
+                            onApplyProposal={(id) => {
+                                handleApplyProposal(id, activeScene?._id || null);
+                                if (onAcceptFix) onAcceptFix();
+                            }}
+                            onDiscardProposal={(id) => {
+                                handleDiscardProposal(id, activeScene?._id || null);
+                                if (onDiscardFix) onDiscardFix();
+                            }}
+                            onDeleteMessage={(id) => handleDeleteAssistantMessage(id, activeScene?._id || null)}
+                            onUpdateMessage={(id, content) => handleUpdateAssistantMessage(id, content, activeScene?._id || null)}
+                            onClearChat={() => {
+                                handleClearChat(activeScene?._id || null);
+                                if (setPendingFix) setPendingFix(null);
+                            }}
                         />
                     </div>
                 )}
@@ -513,27 +533,6 @@ export function ContextPanel({
                                     >
                                         {aiProvider === 'ollama' && isSwitchingProvider ? <Loader2 size={12} className="animate-spin" /> : null}
                                         Ollama (Local)
-                                    </button>
-                                    <button
-                                        onClick={() => {
-                                            if (aiProvider !== 'gemini') {
-                                                setIsSwitchingProvider(true);
-                                                scriptWriterApi.setAIProvider('gemini')
-                                                    .then((p) => setAiProvider(p))
-                                                    .catch((err) => alert(err.message))
-                                                    .finally(() => setIsSwitchingProvider(false));
-                                            }
-                                        }}
-                                        disabled={isSwitchingProvider}
-                                        className={`
-                                            py-2 px-3 rounded text-xs font-bold uppercase tracking-wider transition-all flex items-center justify-center gap-2
-                                            ${aiProvider === 'gemini'
-                                                ? 'bg-blue-600 text-white shadow-sm shadow-blue-900/20'
-                                                : 'text-zinc-500 hover:text-blue-400 hover:bg-blue-900/10'}
-                                        `}
-                                    >
-                                        {aiProvider === 'gemini' && isSwitchingProvider ? <Loader2 size={12} className="animate-spin" /> : null}
-                                        Gemini
                                     </button>
                                     <button
                                         onClick={() => {

@@ -5,6 +5,16 @@ import type { ScriptRequest } from '../../services/scriptWriter.api';
 export type SaveState = 'saved' | 'saving' | 'unsaved' | 'error';
 export type InspectorTab = 'project' | 'scene';
 export type StudioMode = 'write' | 'generate' | 'cast' | 'story';
+export type AssistantTab = 'chat' | 'history';
+
+export type AssistantMessage = {
+    id: string;
+    role: 'user' | 'assistant';
+    type: 'instruction' | 'thought' | 'proposal';
+    content: string;
+    status?: 'streaming' | 'pending' | 'applied' | 'discarded';
+    timestamp: number;
+};
 
 export type SceneForm = {
     slugline: string;

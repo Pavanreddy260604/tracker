@@ -352,6 +352,11 @@ const updateProfileSchema = z.object({
         backend: z.number().min(0).max(24),
         project: z.number().min(0).max(24),
     }).optional(),
+    scriptInterests: z.object({
+        directors: z.array(z.string()),
+        genres: z.array(z.string()),
+        styles: z.array(z.string()),
+    }).optional(),
 });
 
 /**

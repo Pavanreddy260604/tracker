@@ -1,6 +1,6 @@
 
 import axios from 'axios';
-import dotenv from 'dotenv';
+import * as dotenv from 'dotenv';
 import { IAIService } from './ai.interface';
 
 dotenv.config();
@@ -37,10 +37,9 @@ export class OllamaService implements IAIService {
         // Defined fallback chain prioritizing models present on user's machine
         this.fallbackModels = [
             'gemma3:4b',                                                                // 1. Gemma 3 (Balanced)
-            'hf.co/Telugu-LLM-Labs/Indic-gemma-2b-finetuned-sft-Navarasa-2.0-gguf:Q4_K_M', // 2. Indic Gemma (Telugu/Creative)
-            'hf.co/bartowski/Llama-3.2-1B-Instruct-GGUF:latest',                        // 3. Llama 3.2 1B (Fast)
-            'tinyllama:latest',                                                         // 4. TinyLlama (Fastest)
-            'deepseek-v3.1:671b-cloud',                                                 // 5. Deepseek (High Quality / Needs Pulling if not local)
+            'hf.co/bartowski/Llama-3.2-1B-Instruct-GGUF:latest',                        // 2. Llama 3.2 1B (Fast)
+            'tinyllama:latest',                                                         // 3. TinyLlama (Fastest)
+            'deepseek-v3.1:671b-cloud',                                                 // 4. Deepseek (High Quality)
         ];
     }
 
@@ -156,7 +155,7 @@ export class OllamaService implements IAIService {
      * Generates a vector embedding for the given text.
      */
     async generateEmbedding(text: string): Promise<number[]> {
-        const embeddingModel = process.env.OLLAMA_EMBED_MODEL || 'nomic-embed-text';
+        const embeddingModel = process.env.OLLAMA_EMBED_MODEL || 'bge-m3:latest'; // BGE-M3 is excellent for multilingual
 
         try {
             const response = await axios.post(`${this.baseUrl}/api/embeddings`, {

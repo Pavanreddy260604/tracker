@@ -37,9 +37,11 @@ const TEST_PAIRS: { pair: [string, string]; expected: 'high' | 'low' }[] = [
 
 export class EmbeddingValidator {
     private modelName: string;
+    public embeddingDimension: number;
 
     constructor() {
-        this.modelName = process.env.OLLAMA_EMBED_MODEL || 'nomic-embed-text';
+        this.modelName = process.env.OLLAMA_EMBED_MODEL || 'bge-m3:latest';
+        this.embeddingDimension = 1024; // BGE-M3 outputs 1024-dimensional vectors
     }
 
     /**

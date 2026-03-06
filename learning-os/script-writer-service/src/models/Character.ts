@@ -12,6 +12,9 @@ export interface ICharacter extends Document {
     };
     traits: string[]; // "Limp", "Chain smoker"
     motivation: string;
+    currentStatus?: string; // e.g., "Injured", "Angry"
+    heldItems?: string[]; // e.g., ["Sword", "Letter"]
+    relationships?: { targetCharName: string, dynamic: string }[]; // e.g., { "MAL": "Suspicious but obsessed" }
     createdAt: Date;
     updatedAt: Date;
 }
@@ -67,7 +70,20 @@ const CharacterSchema: Schema = new Schema({
     motivation: {
         type: String,
         maxlength: [1000, 'Motivation cannot exceed 1000 characters']
-    }
+    },
+    currentStatus: {
+        type: String,
+        maxlength: [500, 'Status cannot exceed 500 characters'],
+        default: 'Stable'
+    },
+    heldItems: [{
+        type: String,
+        maxlength: [100]
+    }],
+    relationships: [{
+        targetCharName: { type: String, trim: true },
+        dynamic: { type: String, maxlength: [500] }
+    }]
 }, { timestamps: true });
 
 // Index for efficient queries

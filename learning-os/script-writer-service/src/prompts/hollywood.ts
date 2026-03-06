@@ -57,74 +57,74 @@ IMPORTANT: Generate ONLY the screenplay content. No explanations, no markdown, n
 // ============================================
 
 export const FORMAT_TEMPLATES = {
-    film: {
-        name: 'Feature Film',
-        duration: '90-180 minutes',
-        structure: `Three-act structure:
+  film: {
+    name: 'Feature Film',
+    duration: '90-180 minutes',
+    structure: `Three-act structure:
 - Act 1 (Setup): First 25-30 pages
 - Act 2 (Confrontation): Pages 30-90  
 - Act 3 (Resolution): Final 30 pages
 Include: Opening Hook, Inciting Incident, Midpoint, All Is Lost, Climax`,
-        pageCount: '90-180 pages'
-    },
+    pageCount: '90-180 pages'
+  },
 
-    short: {
-        name: 'Short Film',
-        duration: '5-30 minutes',
-        structure: `Compact narrative:
+  short: {
+    name: 'Short Film',
+    duration: '5-30 minutes',
+    structure: `Compact narrative:
 - Quick setup (1-2 pages)
 - Single central conflict
 - Swift resolution
 Focus on one powerful moment or idea`,
-        pageCount: '5-30 pages'
-    },
+    pageCount: '5-30 pages'
+  },
 
-    youtube: {
-        name: 'YouTube Video',
-        duration: '3-20 minutes',
-        structure: `Hook-driven format:
+  youtube: {
+    name: 'YouTube Video',
+    duration: '3-20 minutes',
+    structure: `Hook-driven format:
 - Strong opening hook (first 30 seconds)
 - Clear value proposition
 - Engaging middle with payoffs
 - Call-to-action ending
 Consider: chapter breaks, visual callouts`,
-        pageCount: '3-20 pages'
-    },
+    pageCount: '3-20 pages'
+  },
 
-    reel: {
-        name: 'Reel/Short-Form',
-        duration: '15-90 seconds',
-        structure: `Ultra-compact:
+  reel: {
+    name: 'Reel/Short-Form',
+    duration: '15-90 seconds',
+    structure: `Ultra-compact:
 - Immediate hook (first 2 seconds)
 - One core idea/message
 - Quick visual storytelling
 - Punchline or twist ending
 Every second counts!`,
-        pageCount: '0.5-1.5 pages'
-    },
+    pageCount: '0.5-1.5 pages'
+  },
 
-    commercial: {
-        name: 'Commercial/Ad',
-        duration: '15-60 seconds',
-        structure: `AIDA Format:
+  commercial: {
+    name: 'Commercial/Ad',
+    duration: '15-60 seconds',
+    structure: `AIDA Format:
 - Attention: Grab viewer instantly
 - Interest: Present the problem/solution
 - Desire: Emotional appeal
 - Action: Clear CTA
 Focus on brand message and emotion`,
-        pageCount: '0.5-1 page'
-    },
+    pageCount: '0.5-1 page'
+  },
 
-    'tv-episode': {
-        name: 'TV Episode',
-        duration: '22-60 minutes',
-        structure: `Multi-act TV structure:
+  'tv-episode': {
+    name: 'TV Episode',
+    duration: '22-60 minutes',
+    structure: `Multi-act TV structure:
 - Cold Open (Teaser)
 - Act 1-4 or 1-5 (with act breaks)
 - Tag/Button (optional)
 Consider: A-plot, B-plot, serialized elements`,
-        pageCount: '22-60 pages'
-    }
+    pageCount: '22-60 pages'
+  }
 };
 
 // ============================================
@@ -134,121 +134,148 @@ Consider: A-plot, B-plot, serialized elements`,
 import { DIRECTOR_STYLES } from './styles';
 
 export const STYLE_PROMPTS = {
-    ...DIRECTOR_STYLES,
-    classic: {
-        name: 'Classic Screenplay',
-        prompt: `Write in traditional Hollywood style:
+  ...DIRECTOR_STYLES,
+  classic: {
+    name: 'Classic Screenplay',
+    prompt: `Write in traditional Hollywood style:
 - Clear three-act structure
 - Balance of dialogue and action
 - Character-driven with visual storytelling
 - Professional, clean formatting
 - Universal appeal, accessible narrative`,
-        characteristics: ['balanced pacing', 'clear story beats', 'relatable characters']
-    },
+    characteristics: ['balanced pacing', 'clear story beats', 'relatable characters']
+  },
 
-    'dialogue-driven': {
-        name: 'Dialogue-Driven',
-        prompt: `Focus on character conversations:
+  'dialogue-driven': {
+    name: 'Dialogue-Driven',
+    prompt: `Focus on character conversations:
 - Rich, naturalistic dialogue
 - Subtext and layered meanings
 - Minimal action descriptions
 - Character voice differentiation
 - Conversation carries the plot`,
-        characteristics: ['extended dialogue scenes', 'verbal wit', 'character depth']
-    },
+    characteristics: ['extended dialogue scenes', 'verbal wit', 'character depth']
+  },
 
-    'visual-minimal': {
-        name: 'Visual/Minimal Dialogue',
-        prompt: `Show, don't tell approach:
+  'visual-minimal': {
+    name: 'Visual/Minimal Dialogue',
+    prompt: `Show, don't tell approach:
 - Emphasis on visual storytelling
 - Minimal dialogue (essential only)
 - Detailed action descriptions
 - Environmental storytelling
 - Silence as a tool`,
-        characteristics: ['visual poetry', 'atmospheric', 'implied meaning']
-    },
+    characteristics: ['visual poetry', 'atmospheric', 'implied meaning']
+  },
 
-    'non-linear': {
-        name: 'Non-Linear Narrative',
-        prompt: `Time-shifting storytelling:
+  'non-linear': {
+    name: 'Non-Linear Narrative',
+    prompt: `Time-shifting storytelling:
 - Flashbacks and flash-forwards
 - Parallel timelines
 - Puzzle-like structure
 - Strategic reveal of information
 - Thematic connections across time`,
-        characteristics: ['time jumps', 'revelation structure', 'complex timeline']
-    },
+    characteristics: ['time jumps', 'revelation structure', 'complex timeline']
+  },
 
-    documentary: {
-        name: 'Documentary Style',
-        prompt: `Realism and authenticity:
+  documentary: {
+    name: 'Documentary Style',
+    prompt: `Realism and authenticity:
 - Interview segments
 - Voiceover narration
 - Found footage elements
 - Breaking fourth wall
 - Intimate, observational tone`,
-        characteristics: ['talking heads', 'archival feel', 'authentic voice']
-    },
+    characteristics: ['talking heads', 'archival feel', 'authentic voice']
+  },
 
-    'action-heavy': {
-        name: 'Action-Heavy',
-        prompt: `Kinetic, exciting pacing:
+  'action-heavy': {
+    name: 'Action-Heavy',
+    prompt: `Kinetic, exciting pacing:
 - Detailed action sequences
 - Dynamic scene descriptions
 - Short, punchy dialogue
 - Physical character expression
 - Set-piece construction`,
-        characteristics: ['choreographed action', 'tension building', 'visual spectacle']
-    },
+    characteristics: ['choreographed action', 'tension building', 'visual spectacle']
+  },
 
-    experimental: {
-        name: 'Experimental',
-        prompt: `Breaking conventions:
+  experimental: {
+    name: 'Experimental',
+    prompt: `Breaking conventions:
 - Non-traditional formatting
 - Abstract sequences
 - Unconventional structure
 - Artistic expression
 - Challenge expectations`,
-        characteristics: ['avant-garde', 'rule-breaking', 'artistic vision']
-    },
+    characteristics: ['avant-garde', 'rule-breaking', 'artistic vision']
+  },
 
-    custom: {
-        name: 'Custom Style',
-        prompt: 'Follow the user\'s specific style instructions while maintaining professional screenplay format.',
-        characteristics: ['user-defined']
-    },
+  custom: {
+    name: 'Custom Style',
+    prompt: 'Follow the user\'s specific style instructions while maintaining professional screenplay format.',
+    characteristics: ['user-defined']
+  },
 
-    indie: {
-        name: 'Indie / Naturalistic',
-        prompt: `Write in a raw, naturalistic style:
+  indie: {
+    name: 'Indie / Naturalistic',
+    prompt: `Write in a raw, naturalistic style:
 - Authentic, overlapping dialogue
 - Focus on small, intimate moments
 - Character-driven conflicts over plot
 - Use silence and subtext effectively
 - Avoid Hollywood clichés`,
-        characteristics: ['authentic dialogue', 'intimate specific', 'character focus']
-    },
+    characteristics: ['authentic dialogue', 'intimate specific', 'character focus']
+  },
 
-    modern: {
-        name: 'Modern Cinematic',
-        prompt: `Write in a sleek, contemporary style:
+  modern: {
+    name: 'Modern Cinematic',
+    prompt: `Write in a sleek, contemporary style:
 - Fast-paced, efficient storytelling
 - Visual, active scene descriptions
 - Sharp, witty dialogue
 - Focus on visual flow and momentum
 - Avoid dense blocks of text`,
-        characteristics: ['fast pacing', 'visual flow', 'witty dialogue']
-    }
+    characteristics: ['fast pacing', 'visual flow', 'witty dialogue']
+  }
 };
+
+// ============================================
+// CHARACTER TACTICS (The "Verbs" of Drama)
+// ============================================
+
+export const TACTICS_LIBRARY = {
+  deflect: "The character uses humor, proverbs, or changes the subject to avoid a direct question.",
+  intimidate: "The character uses power, size, or status to force the other to back down.",
+  plead: "The character shows vulnerability or desperation to get what they want.",
+  seduce: "The character uses charm, mystery, or compliments to lower the other's guard.",
+  evade: "The character gives a technical or overly complex answer to hide the truth.",
+  pity: "The character makes themselves look small or hurt to escape responsibility.",
+  interrogate: "The character asks rapid-fire questions to catch the other in a lie."
+};
+
+// ============================================
+// THE SUBTEXT MANDATE (Anti-"On-The-Nose" Rules)
+// ============================================
+
+export const SUBTEXT_MANDATE = `
+## THE SUBTEXT MANDATE: NEVER SAY WHAT YOU FEEL
+You are a master of indirect communication. 
+- **RULE 1**: If a character is angry, they talk about how the tea is cold. 
+- **RULE 2**: If a character is in love, they critique the other person's worn-out shoes.
+- **RULE 3**: Use "Emotional Proxies". Use weather, objects, or small physical tasks to hide the character's true objective.
+- **RULE 4**: No "Self-Narrating". Never let a character say "I am sad" or "I am happy". Show it through their Tactic.
+`;
 
 // ============================================
 // VOICE GUIDANCE BUILDER
 // ============================================
 
 interface VoiceSampleWithMeta {
-    content: string;
-    speaker?: string;
-    similarityScore?: number;
+  content: string;
+  speaker?: string;
+  similarityScore?: number;
 }
 
 /**
@@ -256,23 +283,23 @@ interface VoiceSampleWithMeta {
  * Groups by speaker and provides weighted inspiration rather than blunt mimicry.
  */
 function buildVoiceGuidance(
-    samples: VoiceSampleWithMeta[],
-    weight: 'strong' | 'subtle' = 'subtle'
+  samples: VoiceSampleWithMeta[],
+  weight: 'strong' | 'subtle' = 'subtle'
 ): string {
-    if (!samples || samples.length === 0) return '';
+  if (!samples || samples.length === 0) return '';
 
-    // Group samples by speaker
-    const bySpeaker = new Map<string, VoiceSampleWithMeta[]>();
+  // Group samples by speaker
+  const bySpeaker = new Map<string, VoiceSampleWithMeta[]>();
 
-    for (const sample of samples) {
-        const speaker = sample.speaker || 'GENERAL';
-        if (!bySpeaker.has(speaker)) {
-            bySpeaker.set(speaker, []);
-        }
-        bySpeaker.get(speaker)!.push(sample);
+  for (const sample of samples) {
+    const speaker = sample.speaker || 'GENERAL';
+    if (!bySpeaker.has(speaker)) {
+      bySpeaker.set(speaker, []);
     }
+    bySpeaker.get(speaker)!.push(sample);
+  }
 
-    let guidance = `
+  let guidance = `
 ## VOICE REFERENCE ${weight === 'strong' ? '(MATCH CLOSELY)' : '(USE AS INSPIRATION)'}
 
 The following examples demonstrate the desired dialogue style and voice patterns.
@@ -280,41 +307,41 @@ Study the vocabulary, rhythm, and cadence - then adapt (don't copy) for your cha
 
 `;
 
-    for (const [speaker, lines] of bySpeaker) {
-        if (speaker !== 'GENERAL') {
-            guidance += `### ${speaker}'s Voice Pattern:\n`;
-        } else {
-            guidance += `### Reference Dialogue:\n`;
-        }
-
-        // Only show top 2 per character to avoid overwhelming
-        const topLines = lines
-            .sort((a, b) => (b.similarityScore ?? 0) - (a.similarityScore ?? 0))
-            .slice(0, 2);
-
-        for (const line of topLines) {
-            // Truncate long samples
-            const excerpt = line.content.length > 200
-                ? line.content.slice(0, 200) + '...'
-                : line.content;
-            guidance += `> "${excerpt}"\n`;
-        }
-        guidance += '\n';
+  for (const [speaker, lines] of bySpeaker) {
+    if (speaker !== 'GENERAL') {
+      guidance += `### ${speaker}'s Voice Pattern:\n`;
+    } else {
+      guidance += `### Reference Dialogue:\n`;
     }
 
-    if (weight === 'subtle') {
-        guidance += `**IMPORTANT:** These are EXAMPLES for inspiration, not templates to copy.
+    // Only show top 2 per character to avoid overwhelming
+    const topLines = lines
+      .sort((a, b) => (b.similarityScore ?? 0) - (a.similarityScore ?? 0))
+      .slice(0, 2);
+
+    for (const line of topLines) {
+      // Truncate long samples
+      const excerpt = line.content.length > 200
+        ? line.content.slice(0, 200) + '...'
+        : line.content;
+      guidance += `> "${excerpt}"\n`;
+    }
+    guidance += '\n';
+  }
+
+  if (weight === 'subtle') {
+    guidance += `**IMPORTANT:** These are EXAMPLES for inspiration, not templates to copy.
 Adapt the tone and vocabulary while strictly following screenplay format rules.
 Character dialogue should feel natural, not forced to match examples exactly.
 
 `;
-    } else {
-        guidance += `**NOTE:** Match the vocabulary and sentence patterns closely, but ensure proper screenplay formatting.
+  } else {
+    guidance += `**NOTE:** Match the vocabulary and sentence patterns closely, but ensure proper screenplay formatting.
 
 `;
-    }
+  }
 
-    return guidance;
+  return guidance;
 }
 
 // ============================================
@@ -322,24 +349,25 @@ Character dialogue should feel natural, not forced to match examples exactly.
 // ============================================
 
 export function buildScriptPrompt(
-    userPrompt: string,
-    format: keyof typeof FORMAT_TEMPLATES,
-    style: keyof typeof STYLE_PROMPTS,
-    options?: {
-        duration?: number;
-        genre?: string;
-        tone?: string;
-        language?: string;
-        transliteration?: boolean;
-        sceneLength?: 'short' | 'medium' | 'long' | 'extended';
-    },
-    voiceSamples?: any[], // New argument
-    cast?: any[] // New argument: List of characters to include
+  userPrompt: string,
+  format: keyof typeof FORMAT_TEMPLATES,
+  style: keyof typeof STYLE_PROMPTS,
+  options?: {
+    duration?: number;
+    genre?: string;
+    tone?: string;
+    language?: string;
+    transliteration?: boolean;
+    sceneLength?: 'short' | 'medium' | 'long' | 'extended';
+    polarityShift?: string;
+  },
+  voiceSamples?: any[], // New argument
+  cast?: any[] // New argument: List of characters to include
 ): string {
-    const formatInfo = FORMAT_TEMPLATES[format] || FORMAT_TEMPLATES.film;
-    const styleInfo = STYLE_PROMPTS[style] || STYLE_PROMPTS.classic;
+  const formatInfo = FORMAT_TEMPLATES[format] || FORMAT_TEMPLATES.film;
+  const styleInfo = STYLE_PROMPTS[style] || STYLE_PROMPTS.classic;
 
-    let prompt = `${SCREENPLAY_SYSTEM_PROMPT}
+  let prompt = `${SCREENPLAY_SYSTEM_PROMPT}
 
 ## YOUR ASSIGNMENT
 
@@ -353,113 +381,134 @@ ${styleInfo.prompt}
 
 `;
 
-    // Inject Cast List (Context Awareness)
-    if (cast && cast.length > 0) {
-        prompt += `## CAST OF CHARACTERS (STRICT ENFORCEMENT)\n\n`;
-        prompt += `You must ONLY use the following characters. Do NOT invent new named characters.\n\n`;
+  // Inject Cast List (Context Awareness)
+  if (cast && cast.length > 0) {
+    prompt += `## CAST OF CHARACTERS (STRICT ENFORCEMENT)\n\n`;
+    prompt += `You must ONLY use the following characters. Do NOT invent new named characters.\n\n`;
 
-        cast.forEach(c => {
-            const role = c.role ? `(${c.role.toUpperCase()})` : '';
-            const traits = c.traits && c.traits.length > 0 ? `Traits: ${c.traits.join(', ')}` : '';
-            const motivation = c.motivation ? `Motivation: "${c.motivation}"` : '';
-            const voice = c.voice?.description ? `Voice: ${c.voice.description}` : '';
+    cast.forEach(c => {
+      const role = c.role ? `(${c.role.toUpperCase()})` : '';
+      const traits = c.traits && c.traits.length > 0 ? `Traits: ${c.traits.join(', ')}` : '';
+      const motivation = c.motivation ? `Motivation: "${c.motivation}"` : '';
+      const voice = c.voice?.description ? `Voice: ${c.voice.description}` : '';
 
-            prompt += `### ${c.name.toUpperCase()} ${role}\n`;
-            if (traits) prompt += `- ${traits}\n`;
-            if (motivation) prompt += `- ${motivation}\n`;
-            if (voice) prompt += `- ${voice}\n`;
-            prompt += `\n`;
-        });
+      prompt += `### ${c.name.toUpperCase()} ${role}\n`;
+      if (traits) prompt += `- ${traits}\n`;
+      if (motivation) prompt += `- ${motivation}\n`;
+      if (voice) prompt += `- ${voice}\n`;
+      prompt += `\n`;
+    });
 
-        prompt += `**CHARACTER BEHAVIOR RULES:**\n`;
-        prompt += `1. ADHERE TO VOICE: Write dialogue that matches each character's specific voice description.\n`;
-        prompt += `2. MOTIVATION DRIVEN: Ensure character actions align with their stated motivations.\n`;
-        prompt += `3. NO HALLUCINATIONS: If a character is not in this list, do not give them a name or significant lines.\n\n`;
-    }
+    prompt += `**CHARACTER BEHAVIOR RULES:**\n`;
+    prompt += `1. ADHERE TO VOICE: Write dialogue that matches each character's specific voice description.\n`;
+    prompt += `2. MOTIVATION DRIVEN: Ensure character actions align with their stated motivations.\n`;
+    prompt += `3. NO HALLUCINATIONS: If a character is not in this list, do not give them a name or significant lines.\n\n`;
+  }
 
-    // Inject Voice Samples (RAG) with weighted guidance
-    if (voiceSamples && voiceSamples.length > 0) {
-        prompt += buildVoiceGuidance(voiceSamples);
-    }
+  // Inject Professional Tactics Guidance
+  prompt += `## PROFESSIONAL DYNAMICS (TACTIC-BASED WRITING)\n`;
+  prompt += `A professional script is built on characters using TACTICS to achieve their goals. \n`;
+  prompt += `When writing, consider these tactics defined in the system:\n`;
+  Object.entries(TACTICS_LIBRARY).forEach(([name, desc]) => {
+    prompt += `- ${name.toUpperCase()}: ${desc}\n`;
+  });
+  prompt += `\n**WRITING RULE**: Never write a character speaking without them using a clear tactic. Subtext is key.\n\n`;
 
-    if (options?.genre) {
-        prompt += `**Genre:** ${options.genre}\n`;
-    }
-    if (options?.tone) {
-        prompt += `**Tone:** ${options.tone}\n`;
-    }
-    if (options?.duration) {
-        prompt += `**Target Duration:** ${options.duration} minutes\n`;
-    }
+  // Inject Subtext Mandate
+  prompt += SUBTEXT_MANDATE + `\n`;
 
-    // Scene Length Control
-    if (options?.sceneLength) {
-        const lengthGuide: Record<string, { pages: string; words: string; instruction: string }> = {
-            short: {
-                pages: '1/4 to 1/2 page',
-                words: '50-100 words',
-                instruction: 'Write a BRIEF scene. Quick beat, single exchange or action. Get in late, get out early.'
-            },
-            medium: {
-                pages: '1 to 2 pages',
-                words: '200-400 words',
-                instruction: 'Write a STANDARD scene with dialogue exchanges and action. Develop the moment fully.'
-            },
-            long: {
-                pages: '3 to 5 pages',
-                words: '600-1000 words',
-                instruction: 'Write an EXTENDED scene with multiple beats, conflict escalation, and character depth.'
-            },
-            extended: {
-                pages: '5 to 10 pages',
-                words: '1000-2000 words',
-                instruction: 'Write a MAJOR set piece or climactic scene. Full dramatic arc with setup, confrontation, resolution.'
-            }
-        };
-        const guide = lengthGuide[options.sceneLength];
-        prompt += `\n**SCENE LENGTH REQUIREMENT (CRITICAL):**
+  // Inject Voice Samples (RAG) with weighted guidance
+  if (voiceSamples && voiceSamples.length > 0) {
+    prompt += buildVoiceGuidance(voiceSamples);
+  }
+
+  if (options?.genre) {
+    prompt += `**Genre:** ${options.genre}\n`;
+  }
+  if (options?.tone) {
+    prompt += `**Tone:** ${options.tone}\n`;
+  }
+  if (options?.duration) {
+    prompt += `**Target Duration:** ${options.duration} minutes\n`;
+  }
+
+  // Scene Length Control
+  if (options?.sceneLength) {
+    const lengthGuide: Record<string, { pages: string; words: string; instruction: string }> = {
+      short: {
+        pages: '1/4 to 1/2 page',
+        words: '50-100 words',
+        instruction: 'Write a BRIEF scene. Quick beat, single exchange or action. Get in late, get out early.'
+      },
+      medium: {
+        pages: '1 to 2 pages',
+        words: '200-400 words',
+        instruction: 'Write a STANDARD scene with dialogue exchanges and action. Develop the moment fully.'
+      },
+      long: {
+        pages: '3 to 5 pages',
+        words: '600-1000 words',
+        instruction: 'Write an EXTENDED scene with multiple beats, conflict escalation, and character depth.'
+      },
+      extended: {
+        pages: '5 to 10 pages',
+        words: '1000-2000 words',
+        instruction: 'Write a MAJOR set piece or climactic scene. Full dramatic arc with setup, confrontation, resolution.'
+      }
+    };
+    const guide = lengthGuide[options.sceneLength];
+    prompt += `\n**SCENE LENGTH REQUIREMENT (CRITICAL):**
 Target: ${guide.pages} (approximately ${guide.words})
 ${guide.instruction}
 DO NOT exceed or fall short of this target significantly.\n`;
+  }
+
+  // Polarity Enforcement (Delta tracking)
+  if (options?.polarityShift) {
+    prompt += `\n## EMOTIONAL POLARITY (THE DELTA)
+The scene MUST move emotionally. 
+Target Shift: ${options.polarityShift}
+Ensure the ending emotional state is strictly different from the opening. If you start peaceful, you MUST end with tension or revelation.
+`;
+  }
+
+  // Language Handling
+  if (options?.language && options.language !== 'English') {
+    prompt += `\n**LANGUAGE INSTRUCTION (NATIVE SPEAKER PROTOCOL):**\n`;
+    prompt += `You are NOT a translator. You are a **NATIVE ${options.language.toUpperCase()} SCREENWRITER**.\n`;
+
+    // Universal Rules for Non-English
+    prompt += `1. **Think in ${options.language}**: Do not write in English and translate. Write directly in ${options.language} thoughts and sentence structures.\n`;
+    prompt += `2. **No "Bookish" Language**: Avoid formal, textbook, or news-anchor language. Use **Spoken/Colloquial** diction appropriate for the character's social status.\n`;
+
+    // Specific Language Rules (Optimizations)
+    if (options.language.toLowerCase().includes('telugu')) {
+      prompt += `3. **Telugu Particles**: You MUST use natural emotional particles like *ra, bey, andi, kadha, abba, chass* where appropriate for the relationship.\n`;
+      prompt += `4. **Dialect**: Use standard film-industry Telugu (neutral or Telangana/Andhra blend) unless a specific dialect is requested.\n`;
+    } else if (options.language.toLowerCase().includes('hindi')) {
+      prompt += `3. **Hindi Particles**: Use natural particles like *yaar, na, arey, bhai* to sound authentic.\n`;
+      prompt += `4. **Hinglish**: If the character is urban/modern, it is acceptable to mix English words naturally (Code-Switching).\n`;
+    } else if (options.language.toLowerCase().includes('tamil')) {
+      prompt += `3. **Tamil Particles**: Use particles like *da, machan, la* for friends, and respectful forms for elders.\n`;
+    } else {
+      // Fallback for all other languages to ensure they also get particle instruction
+      prompt += `3. **Natural Particles**: You MUST use natural emotional particles, interjections, and fillers SPECIFIC TO ${options.language.toUpperCase()} to sound authentic.\n`;
     }
 
-    // Language Handling
-    if (options?.language && options.language !== 'English') {
-        prompt += `\n**LANGUAGE INSTRUCTION (NATIVE SPEAKER PROTOCOL):**\n`;
-        prompt += `You are NOT a translator. You are a **NATIVE ${options.language.toUpperCase()} SCREENWRITER**.\n`;
-
-        // Universal Rules for Non-English
-        prompt += `1. **Think in ${options.language}**: Do not write in English and translate. Write directly in ${options.language} thoughts and sentence structures.\n`;
-        prompt += `2. **No "Bookish" Language**: Avoid formal, textbook, or news-anchor language. Use **Spoken/Colloquial** diction appropriate for the character's social status.\n`;
-
-        // Specific Language Rules (Optimizations)
-        if (options.language.toLowerCase().includes('telugu')) {
-            prompt += `3. **Telugu Particles**: You MUST use natural emotional particles like *ra, bey, andi, kadha, abba, chass* where appropriate for the relationship.\n`;
-            prompt += `4. **Dialect**: Use standard film-industry Telugu (neutral or Telangana/Andhra blend) unless a specific dialect is requested.\n`;
-        } else if (options.language.toLowerCase().includes('hindi')) {
-            prompt += `3. **Hindi Particles**: Use natural particles like *yaar, na, arey, bhai* to sound authentic.\n`;
-            prompt += `4. **Hinglish**: If the character is urban/modern, it is acceptable to mix English words naturally (Code-Switching).\n`;
-        } else if (options.language.toLowerCase().includes('tamil')) {
-            prompt += `3. **Tamil Particles**: Use particles like *da, machan, la* for friends, and respectful forms for elders.\n`;
-        } else {
-            // Fallback for all other languages to ensure they also get particle instruction
-            prompt += `3. **Natural Particles**: You MUST use natural emotional particles, interjections, and fillers SPECIFIC TO ${options.language.toUpperCase()} to sound authentic.\n`;
-        }
-
-        if (options.transliteration) {
-            prompt += `5. **Script**: Write all DIALOGUE in ${options.language} using the **ENGLISH ALPHABET** (Transliteration/Phonetic). Example: "Yekkada unnav ra?" instead of native script.\n`;
-            prompt += `6. **Formatting**: KEEP all Scene Headers, Character Names, and Transitions in **STRICT ENGLISH**. Action lines should be in ENGLISH.\n`;
-        } else {
-            prompt += `5. **Script**: Write all ACTION LINES and DIALOGUE in the **NATIVE SCRIPT** of ${options.language}.\n`;
-            prompt += `6. **Formatting Rules (Hybrid)**:\n`;
-            prompt += `   - **SCENE HEADERS**: Keep strictly in ENGLISH (e.g., "INT. HOUSE - DAY"). Do NOT translate INT/EXT or Time.\n`;
-            prompt += `   - **CHARACTER NAMES**: Keep strictly in ENGLISH CAPS (e.g., "RAVI").\n`;
-            prompt += `   - **TRANSITIONS**: Keep strictly in ENGLISH (e.g., "CUT TO:").\n`;
-            prompt += `   - **ACTION & DIALOGUE**: Write these entirely in ${options.language}.\n`;
-        }
+    if (options.transliteration) {
+      prompt += `5. **Script**: Write all DIALOGUE in ${options.language} using the **ENGLISH ALPHABET** (Transliteration/Phonetic). Example: "Yekkada unnav ra?" instead of native script.\n`;
+      prompt += `6. **Formatting**: KEEP all Scene Headers, Character Names, and Transitions in **STRICT ENGLISH**. Action lines should be in ENGLISH.\n`;
+    } else {
+      prompt += `5. **Script**: Write all ACTION LINES and DIALOGUE in the **NATIVE SCRIPT** of ${options.language}.\n`;
+      prompt += `6. **Formatting Rules (Hybrid)**:\n`;
+      prompt += `   - **SCENE HEADERS**: Keep strictly in ENGLISH (e.g., "INT. HOUSE - DAY"). Do NOT translate INT/EXT or Time.\n`;
+      prompt += `   - **CHARACTER NAMES**: Keep strictly in ENGLISH CAPS (e.g., "RAVI").\n`;
+      prompt += `   - **TRANSITIONS**: Keep strictly in ENGLISH (e.g., "CUT TO:").\n`;
+      prompt += `   - **ACTION & DIALOGUE**: Write these entirely in ${options.language}.\n`;
     }
+  }
 
-    prompt += `
+  prompt += `
 ## THE STORY TO WRITE
 
 ${userPrompt}
@@ -468,7 +517,7 @@ ${userPrompt}
 
 Now write the complete screenplay. Begin with FADE IN: and use proper Hollywood formatting throughout.`;
 
-    return prompt;
+  return prompt;
 }
 
 // ============================================
@@ -476,13 +525,13 @@ Now write the complete screenplay. Begin with FADE IN: and use proper Hollywood 
 // ============================================
 
 export function buildBeatSheetPrompt(logline: string, style: string = 'Save The Cat'): string {
-    let structurePrompt = '';
-    let jsonStructure = '';
+  let structurePrompt = '';
+  let jsonStructure = '';
 
-    switch (style) {
-        case 'Hero\'s Journey':
-            structurePrompt = 'Joseph Campbell\'s Monomyth (Hero\'s Journey)';
-            jsonStructure = `{
+  switch (style) {
+    case 'Hero\'s Journey':
+      structurePrompt = 'Joseph Campbell\'s Monomyth (Hero\'s Journey)';
+      jsonStructure = `{
       "acts": [
         {
           "name": "Departure (Act I)",
@@ -513,11 +562,11 @@ export function buildBeatSheetPrompt(logline: string, style: string = 'Save The 
         }
       ]
     }`;
-            break;
+      break;
 
-        case 'Three Act':
-            structurePrompt = 'Classic Three-Act Structure';
-            jsonStructure = `{
+    case 'Three Act':
+      structurePrompt = 'Classic Three-Act Structure';
+      jsonStructure = `{
       "acts": [
         {
           "name": "Act 1: The Setup",
@@ -547,11 +596,11 @@ export function buildBeatSheetPrompt(logline: string, style: string = 'Save The 
         }
       ]
     }`;
-            break;
+      break;
 
-        case 'TV Beat Sheet':
-            structurePrompt = 'TV Drama Structure (5-Act)';
-            jsonStructure = `{
+    case 'TV Beat Sheet':
+      structurePrompt = 'TV Drama Structure (5-Act)';
+      jsonStructure = `{
       "acts": [
         {
           "name": "Teaser / Cold Open",
@@ -597,11 +646,11 @@ export function buildBeatSheetPrompt(logline: string, style: string = 'Save The 
         }
       ]
     }`;
-            break;
+      break;
 
-        case 'Fictional Pulse':
-            structurePrompt = 'Fictional Pulse (4-Part Rhythm)';
-            jsonStructure = `{
+    case 'Fictional Pulse':
+      structurePrompt = 'Fictional Pulse (4-Part Rhythm)';
+      jsonStructure = `{
       "acts": [
         {
           "name": "Pulse 1: The Awake",
@@ -636,11 +685,11 @@ export function buildBeatSheetPrompt(logline: string, style: string = 'Save The 
         }
       ]
     }`;
-            break;
+      break;
 
-        default: // Save The Cat
-            structurePrompt = 'Save The Cat (Blake Snyder)';
-            jsonStructure = `{
+    default: // Save The Cat
+      structurePrompt = 'Save The Cat (Blake Snyder)';
+      jsonStructure = `{
       "acts": [
         {
           "name": "Act 1",
@@ -674,9 +723,9 @@ export function buildBeatSheetPrompt(logline: string, style: string = 'Save The 
         }
       ]
     }`;
-    }
+  }
 
-    return `You are a master story architect.
+  return `You are a master story architect.
     
     TASK: Convert the following Logline into a full structured Beat Sheet using the ${structurePrompt} framework.
     
@@ -806,4 +855,297 @@ Keep it professional, concise, and focused on CRAFT.
 """
 
 Format your response as a simple bulleted list of 3 items. Max 30 words per item.
+`;
+
+// ============================================
+// SCENE BEAT SHEET PROMPT (Step 1 of Orchestration)
+// ============================================
+
+export const SCENE_BEAT_SHEET_PROMPT = ` You are a Senior Script Architect.
+Your task is to break down a user's scene idea into a professional **JSON BEAT SHEET**.
+
+Each beat must include:
+1. **Description**: What happens physically.
+2. **Characters**: Who is in the beat.
+3. **Tactic**: The specific verb from the TACTICS_LIBRARY the character is using (INTIMIDATE, DEFLECT, PLEAD, etc.).
+4. **Emotional Polarity**: The "Charge" of the beat (+, -, or Neutral).
+
+## TACTICS REFERENCE:
+{{tactics}}
+
+## SCENE GOAL & CONTEXT:
+{{goal}}
+{{polarityShift}}
+
+## OUTPUT FORMAT:
+Respond ONLY with a valid JSON object:
+{
+  "beats": [
+    {
+      "description": "...",
+      "characters": ["Name1", "Name2"],
+      "tactic": "TACTIC_NAME",
+      "polarity": "+/-"
+    }
+  ],
+  "startingPolarity": "+/-",
+  "endingPolarity": "+/-"
+}
+`;
+
+// ============================================
+// STORY STATE EXTRACTOR (PH 20: Continuity)
+// ============================================
+
+export const STORY_STATE_EXTRACTOR_PROMPT = `You are a Script Continuity Supervisor.
+Analyze the following scene and identify any CHANGES to the physical or emotional state of the characters.
+
+SCENE CONTENT:
+"""
+{{scene}}
+"""
+
+CURRENT CHARACTERS:
+{{characters}}
+
+OUTPUT FORMAT:
+Respond ONLY with a valid JSON object:
+{
+  "updates": [
+    {
+      "name": "CHARACTER_NAME",
+      "newStatus": "Short clinical description (e.g. 'Bleeding from left arm', 'Holding a dagger', 'Furious')",
+      "itemsGained": ["item1"],
+      "itemsLost": ["item2"]
+    }
+  ]
+}
+
+INSTRUCTIONS:
+- Be precise. If a character picks up an object, list it in itemsGained.
+- If a character is injured, update their status.
+- If nothing changed for a character, do not include them in the updates array.
+`;
+
+// ============================================
+// ULTIMATE COHERENCE PROMPT (PH 25: Orchestration)
+// ============================================
+
+export const ULTIMATE_COHERENCE_PROMPT = `You are an advanced screenplay generation engine responsible for maintaining long-term narrative coherence across hundreds of scenes.
+
+You must perform FOUR steps internally:
+
+1. CONTEXT ANALYSIS
+2. SCENE PLANNING
+3. SCENE GENERATION
+4. MEMORY UPDATE
+
+-------------------------------------
+CONTEXT DATA
+-------------------------------------
+USER REQUEST: {{user_prompt}}
+
+GLOBAL OUTLINE (20-BEAT ARC):
+{{global_outline}}
+
+STORY SO FAR (LONG-TERM SUMMARY):
+{{story_so_far}}
+
+RETRIEVED SCENES:
+{{retrieved_scenes}}
+
+CHARACTER MEMORY (STATES & RELATIONSHIPS):
+{{character_memory}}
+
+PLOT STATE:
+{{plot_state}}
+
+-------------------------------------
+STEP 1: CONTEXT ANALYSIS
+-------------------------------------
+From the data, identify:
+- Where we are in the GLOBAL OUTLINE.
+- What just happened in the STORY SO FAR.
+- Active characters and their RELATIONSHIPS.
+- Ongoing conflicts and location continuity.
+
+Summarize how this scene fits into the 100-scene global arc.
+
+-------------------------------------
+STEP 2: SCENE PLAN
+-------------------------------------
+Determine the next logical scene that moves the story TOWARDS the next beat in the Global Outline.
+Define:
+- scene_goal
+- characters_in_scene
+- location
+- primary_conflict
+- expected_outcome
+
+-------------------------------------
+STEP 3: SCREENPLAY SCENE
+-------------------------------------
+Write the scene using professional screenplay format. Structure it with Scene Title, Location, and Time.
+
+Maintain consistency with the STORY SO FAR.
+
+-------------------------------------
+STEP 4: MEMORY UPDATE
+-------------------------------------
+Update character states and specifically track RELATIONSHIP CHANGES (grudges, alliances, trust).
+
+-------------------------------------
+FINAL OUTPUT STRUCTURE
+-------------------------------------
+
+STORY_CONTEXT_SUMMARY:
+[Your summary here]
+
+SCENE_PLAN:
+[Your plan here]
+
+SCENE_SCRIPT:
+[The full screenplay scene here]
+
+CHARACTER_MEMORY_UPDATE (JSON):
+{
+  "characters": [
+    {
+      "name": "...",
+      "emotionalState": "...",
+      "newMotivations": "...",
+      "relationshipChanges": [
+        {"target": "...", "dynamic": "..."}
+      ]
+    }
+  ]
+}
+
+PLOT_STATE_UPDATE (JSON):
+{
+  "newEvents": ["..."],
+  "cluesRevealed": ["..."],
+  "conflictsEscalated": ["..."]
+}
+`;
+
+// ============================================
+// MASTER OUTLINE PROMPT (PH 30: Planning)
+// ============================================
+
+export const MASTER_OUTLINE_PROMPT = `You are a Senior Story Architect. Break down the following logline into a professional 20-beat master story arc.
+Each beat should represent a major movement in a 100-scene script.
+
+LOGLINE: {{logline}}
+
+Respond ONLY with a valid JSON array of 20 strings.
+["Beat 1: ...", "Beat 2: ...", ...]
+`;
+
+// ============================================
+// RECURSIVE SUMMARY PROMPT (PH 29: Memory)
+// ============================================
+
+export const RECURSIVE_SUMMARY_PROMPT = `You are a Script Continuity Supervisor. 
+Condense the following recent scenes into a single, high-density paragraph that preserves all critical plot clues, character revelations, and state changes for the "Story So Far" log.
+
+RECENT SCENES:
+{{recent_scenes}}
+
+CURRENT STORY SO FAR:
+{{story_so_far}}
+
+OUTPUT: A single paragraph (max 200 words) that integrates the new events into the existing narrative history.
+`;
+
+// ============================================
+// PERFORMANCE PIPELINING PROMPTS (PH 31)
+// ============================================
+
+export const BLOCK_BEAT_SHEET_PROMPT = `You are a Senior Narrative Architect. Your task is to plan a specific block of 10 scenes for a 100-scene project.
+You must ensure these scenes bridge the gap between the "Story So Far" and the next major beat in the "Global Outline".
+
+STORY SO FAR:
+{{story_so_far}}
+
+GLOBAL OUTLINE (20 BEATS):
+{{global_outline}}
+
+SCENE RANGE TO PLAN: {{start_scene}} to {{end_scene}}
+
+Respond ONLY with a JSON array of 10 scene plans. Each plan must be detailed enough for a writer to generate the scene independently.
+CRITICAL: Sluglines MUST start with 'INT.' or 'EXT.' (e.g., 'INT. LOCATION - TIME').
+
+[
+  {
+    "sceneNumber": {{start_scene}},
+    "slugline": "INT. ... - ...",
+    "tactic": "...",
+    "summary": "Detailed beat description (what happens, who changes, clue revealed)...",
+    "polarityShift": "- to +"
+  },
+  ...
+]
+`;
+
+export const BATCH_SCENE_PROMPT = `You are an Expert Screenwriter executing a specific beat in a massive narrative mosaic.
+You must write THIS SCENE so it fits perfectly into the larger story context.
+
+GLOBAL CONTEXT:
+Story So Far: {{story_so_far}}
+Current Master Beat: {{master_beat}}
+
+SPECIFIC SCENE DIRECTIVE:
+Scene Number: {{scene_number}}
+Slugline: {{slugline}} (CRITICAL: Must be Hollywood standard, e.g., INT. BAR - NIGHT)
+Summary: {{summary}}
+Polarity Shift: {{polarity_shift}}
+
+CHARACTERS INVOLVED:
+{{character_memory}}
+
+TASK:
+Write the complete screenplay scene (INT/EXT, Action, Dialogue).
+Include state updates at the end.
+
+FORMAT:
+SCENE_SCRIPT:
+[Script content]
+
+CHARACTER_MEMORY_UPDATE (JSON):
+{ "characters": [...] }
+
+PLOT_STATE_UPDATE (JSON):
+{ "newEvents": [...], "cluesRevealed": [...] }
+`;
+// ============================================
+// AI SCRIPT ASSISTANT PROMPT (PH 34)
+// ============================================
+
+export const SCRIPT_ASSISTANT_PROMPT = `You are an elite screenwriter and script doctor. You have complete creative freedom to write, rewrite, translate, expand, condense, or transform any script content based on the user's instructions. Trust your craft.
+
+## CONTEXT
+Story So Far: {{story_so_far}}
+Scene: {{slugline}}
+Summary: {{summary}}
+Characters: {{characters}}
+Language: {{language}}
+
+## CURRENT SCRIPT
+"""
+{{original_content}}
+"""
+
+{{similar_samples}}
+
+## INSTRUCTION
+"""
+{{instruction}}
+"""
+
+Do exactly what the instruction says. If the script is empty, create the full scene from scratch using the context above. If asked to translate, transliterate, rewrite, expand, shorten, add characters, change tone, or anything else — just do it. No explanations, no commentary. Output only the screenplay content.
+
+KEY: "Transliterate" means keep the SAME language but write it in English letters phonetically (e.g. Telugu → "Meeru ela unnaru?" not "How are you?"). "Translate" means change the language entirely.
+
+REVISED SCRIPT:
 `;

@@ -9,6 +9,9 @@ export interface IBible extends Document {
     language: string;
     visualStyle: string; // "Noir", "Wes Anderson", "Handheld"
     rules: string[]; // "No voiceovers", "Only takes place at night"
+    globalOutline?: string[]; // 20-beat master story arc
+    storySoFar?: string; // Cumulative summary of the entire plot
+    sceneCount?: number; // Total scenes generated so far
     createdAt: Date;
     updatedAt: Date;
 }
@@ -60,6 +63,18 @@ const BibleSchema: Schema = new Schema({
         type: String,
         maxlength: [500, 'Each rule cannot exceed 500 characters']
     }],
+    globalOutline: [{
+        type: String,
+        maxlength: [500]
+    }],
+    storySoFar: {
+        type: String,
+        default: 'The story is just beginning.'
+    },
+    sceneCount: {
+        type: Number,
+        default: 0
+    }
 }, { timestamps: true });
 
 // Index for efficient queries

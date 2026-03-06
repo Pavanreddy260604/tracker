@@ -1,6 +1,6 @@
 import crypto from 'crypto';
 import mongoose from 'mongoose';
-import pdfParse from 'pdf-parse';
+import { extractTextFromFile } from '../utils/fileParser';
 
 import { VoiceSample } from '../models/VoiceSample';
 import { aiServiceManager } from './ai.manager';
@@ -20,7 +20,7 @@ export interface IngestionResult {
 export class VoiceService {
 
     /**
-     * Ingests a raw text or PDF file, chunks it intelligently,
+     * Ingests a raw text, PDF, DOCX, or MD file, chunks it intelligently,
      * embeds dialogue, and saves samples with proper attribution.
      */
     async ingestReferenceMaterial(
@@ -36,13 +36,7 @@ export class VoiceService {
         }
     ): Promise<IngestionResult> {
         // 1. Extract Text
-        let fullText = '';
-        if (mimeType === 'application/pdf') {
-            const data = await pdfParse(fileBuffer);
-            fullText = data.text;
-        } else {
-            fullText = fileBuffer.toString('utf-8');
-        }
+        let fullText = await extractTextFromFile(fileBuffer, mimeType, sourceName);
 
         // 2. Intelligent Screenplay-Aware Chunking
         const parseResult = await chunkerService.parseScreenplay(fullText);

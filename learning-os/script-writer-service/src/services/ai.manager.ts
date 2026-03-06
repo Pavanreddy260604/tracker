@@ -3,8 +3,8 @@ import { IAIService } from './ai.interface';
 import { ollamaService } from './ollama.service';
 
 import { groqService } from './groq.service';
-import fs from 'fs';
-import path from 'path';
+import * as fs from 'fs';
+import * as path from 'path';
 
 export type AIProvider = 'ollama' | 'groq';
 
@@ -62,22 +62,52 @@ export class AIServiceManager implements IAIService {
     }
 
     async chat(message: string, options?: import('./ai.interface').ChatOptions): Promise<string> {
-        return this.providers[this.activeProvider].chat(message, options);
+        try {
+            return await this.providers[this.activeProvider].chat(message, options);
+        } catch (error: any) {
+            console.warn(`[AIServiceManager] Provider '${this.activeProvider}' failed: ${error.message}. Switching to fallback...`);
+
+            // "Sticky" fallback: Change the active provider for the rest of the session
+            const failedProvider = this.activeProvider;
+            this.activeProvider = failedProvider === 'groq' ? 'ollama' : 'groq';
+
+            try {
+                return await this.providers[this.activeProvider].chat(message, options);
+            } catch (fallbackError: any) {
+                console.error('[AIServiceManager] All providers failed.');
+                throw error; // Throw original error from first attempt
+            }
+        }
     }
 
     async *chatStream(messages: { role: string; content: string }[], systemPrompt?: string): AsyncGenerator<string, void, unknown> {
-        const provider = this.providers[this.activeProvider];
-        // Ensure provider has the method (Ollama does, Gemini does)
-        if (provider.chatStream) {
-            yield* provider.chatStream(messages, systemPrompt);
-        } else {
-            // Fallback for providers without streaming if necessary, or error
-            throw new Error(`Provider ${this.activeProvider} does not support streaming`);
+        try {
+            const provider = this.providers[this.activeProvider];
+            if (provider.chatStream) {
+                yield* provider.chatStream(messages, systemPrompt);
+            } else {
+                throw new Error(`Provider ${this.activeProvider} does not support streaming`);
+            }
+        } catch (error: any) {
+            console.warn(`[AIServiceManager] Stream failed for '${this.activeProvider}': ${error.message}. Switching to fallback...`);
+
+            // "Sticky" fallback for streaming too
+            const failedProvider = this.activeProvider;
+            this.activeProvider = failedProvider === 'groq' ? 'ollama' : 'groq';
+
+            const fallback = this.providers[this.activeProvider];
+            if (fallback.chatStream) {
+                yield* fallback.chatStream(messages, systemPrompt);
+            } else {
+                throw error;
+            }
         }
     }
 
     async generateEmbedding(text: string): Promise<number[]> {
-        return this.providers[this.activeProvider].generateEmbedding(text);
+        // Embeddings are now strictly handled by Ollama (bge-m3)
+        // Groq does not support embeddings.
+        return await this.providers.ollama.generateEmbedding(text);
     }
 }
 
