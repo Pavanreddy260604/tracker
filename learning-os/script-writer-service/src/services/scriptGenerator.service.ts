@@ -117,7 +117,11 @@ export class ScriptGeneratorService {
         let castContext: any[] = [];
         try {
             if (request.characterIds && request.characterIds.length > 0) {
-                castContext = await Character.find({ _id: { $in: request.characterIds } }).lean();
+                const characterQuery: Record<string, unknown> = { _id: { $in: request.characterIds } };
+                if (request.bibleId) {
+                    characterQuery.bibleId = request.bibleId;
+                }
+                castContext = await Character.find(characterQuery).lean();
             } else if (request.bibleId) {
                 castContext = await Character.find({ bibleId: request.bibleId }).lean();
             }
@@ -233,7 +237,11 @@ export class ScriptGeneratorService {
         let castContext: any[] = [];
         try {
             if (request.characterIds?.length) {
-                castContext = await Character.find({ _id: { $in: request.characterIds } }).lean();
+                const characterQuery: Record<string, unknown> = { _id: { $in: request.characterIds } };
+                if (request.bibleId) {
+                    characterQuery.bibleId = request.bibleId;
+                }
+                castContext = await Character.find(characterQuery).lean();
             }
         } catch (e) { }
 
@@ -401,7 +409,11 @@ export class ScriptGeneratorService {
 
             let castContext: any[] = [];
             if (request.characterIds?.length) {
-                castContext = await Character.find({ _id: { $in: request.characterIds } }).lean();
+                const characterQuery: Record<string, unknown> = { _id: { $in: request.characterIds } };
+                if (request.bibleId) {
+                    characterQuery.bibleId = request.bibleId;
+                }
+                castContext = await Character.find(characterQuery).lean();
             }
 
             const bible = await Bible.findById(request.bibleId);
@@ -426,6 +438,7 @@ export class ScriptGeneratorService {
                 await new Scene({
                     bibleId: request.bibleId,
                     sequenceNumber: beat.sceneNumber,
+                    title: beat.title,
                     slugline: beat.slugline,
                     summary: beat.summary,
                     content: content,
@@ -511,7 +524,7 @@ export class ScriptGeneratorService {
             console.warn(`[ScriptGenerator] Assistant RAG Lookup failed:`, err);
         }
 
-        const prompt = SCRIPT_ASSISTANT_PROMPT
+        let prompt = SCRIPT_ASSISTANT_PROMPT
             .replace('{{original_content}}', scene.content || '')
             .replace('{{similar_samples}}', similarSamplesText)
             .replace('{{instruction}}', instruction)
@@ -521,11 +534,21 @@ export class ScriptGeneratorService {
             .replace('{{characters}}', characterNames)
             .replace('{{language}}', language);
 
+        // Inject Chat History
+        let chatHistoryText = 'No previous conversation.\n';
+        if (scene.assistantChatHistory && scene.assistantChatHistory.length > 0) {
+            chatHistoryText = scene.assistantChatHistory.map((entry: any) => {
+                const roleName = entry.role === 'assistant' ? 'AI' : 'User';
+                return `[${roleName}]: ${entry.content}`;
+            }).join('\n\n');
+        }
+        prompt = prompt.replace('{{chat_history}}', chatHistoryText);
+
         // Add user instruction to history
         if (!scene.assistantChatHistory) scene.assistantChatHistory = [];
         scene.assistantChatHistory.push({
             role: 'user',
-            type: 'instruction',
+            type: 'chat',
             content: instruction,
             timestamp: new Date()
         });
@@ -533,7 +556,7 @@ export class ScriptGeneratorService {
 
         let fullRevisedText = '';
         try {
-            const stream = aiServiceManager.chatStream([{ role: 'user', content: prompt }]);
+            const stream = aiServiceManager.chatStream([{ role: 'system', content: prompt }]);
             for await (const chunk of stream) {
                 fullRevisedText += chunk;
                 yield chunk;
@@ -542,7 +565,7 @@ export class ScriptGeneratorService {
             // After stream finishes, save assistant response to history
             scene.assistantChatHistory.push({
                 role: 'assistant',
-                type: 'proposal',
+                type: 'chat',
                 content: fullRevisedText,
                 timestamp: new Date()
             });

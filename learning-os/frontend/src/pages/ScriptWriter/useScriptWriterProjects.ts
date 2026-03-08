@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import type { Bible, Scene } from '../../services/project.api';
+import type { Bible, IScene as Scene } from '../../services/project.api';
 import { projectApi } from '../../services/project.api';
 import type { ProjectForm } from './types';
 import { DEFAULT_NEW_PROJECT } from './types';

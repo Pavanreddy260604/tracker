@@ -2,6 +2,9 @@ import mongoose, { Schema, Document } from 'mongoose';
 
 export interface IBeat {
     name: string; // e.g. "Opening Image", "Theme Stated"
+    title?: string;
+    slugline?: string;
+    summary?: string;
     description: string; // The generated plot point
 }
 
@@ -21,6 +24,9 @@ export interface ITreatment extends Document {
 
 const BeatSchema = new Schema({
     name: { type: String, required: true },
+    title: { type: String },
+    slugline: { type: String },
+    summary: { type: String },
     description: { type: String, required: true }
 });
 

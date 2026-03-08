@@ -1,6 +1,6 @@
 import { createContext, useContext, useState } from 'react';
 import type { ReactNode } from 'react';
-import type { Scene, Bible } from '../services/project.api';
+import type { IScene, Bible } from '../services/project.api';
 
 // Define the UI State for the "Infinite Desk"
 interface ScriptWriterUIState {
@@ -13,10 +13,10 @@ interface ScriptWriterUIState {
 interface ScriptWriterContextType {
     // Data State
     activeProject: Bible | null;
-    activeScene: Scene | null;
+    activeScene: IScene | null;
     editorContent: string;
     setActiveProject: (project: Bible | null) => void;
-    setActiveScene: (scene: Scene | null) => void;
+    setActiveScene: (scene: IScene | null) => void;
     setEditorContent: (content: string) => void;
 
     // UI State
@@ -31,7 +31,7 @@ const ScriptWriterContext = createContext<ScriptWriterContextType | undefined>(u
 
 export function ScriptWriterProvider({ children }: { children: ReactNode }) {
     const [activeProject, setActiveProject] = useState<Bible | null>(null);
-    const [activeScene, setActiveScene] = useState<Scene | null>(null);
+    const [activeScene, setActiveScene] = useState<IScene | null>(null);
     const [editorContent, setEditorContent] = useState<string>('');
 
     const [uiState, setUiState] = useState<ScriptWriterUIState>({
@@ -42,7 +42,7 @@ export function ScriptWriterProvider({ children }: { children: ReactNode }) {
     });
 
     // Custom setter to ensure view switches to editor when a scene is selected
-    const handleSetActiveScene = (scene: Scene | null) => {
+    const handleSetActiveScene = (scene: IScene | null) => {
         setActiveScene(scene);
         if (scene) {
             setUiState(prev => ({ ...prev, viewMode: 'editor' }));

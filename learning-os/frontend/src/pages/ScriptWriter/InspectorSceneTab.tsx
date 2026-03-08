@@ -1,5 +1,5 @@
 import { Brain, Sparkles } from 'lucide-react';
-import type { Scene, CritiqueResult } from '../../services/project.api';
+import type { IScene as Scene, CritiqueResult } from '../../services/project.api';
 import type { GenerationOptions, SceneForm } from './types';
 
 interface InspectorSceneTabProps {

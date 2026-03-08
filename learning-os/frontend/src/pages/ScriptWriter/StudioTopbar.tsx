@@ -1,5 +1,5 @@
 import { Menu, ChevronRight, Sparkles, Brain } from 'lucide-react';
-import type { Bible, Scene } from '../../services/project.api';
+import type { Bible, IScene as Scene } from '../../services/project.api';
 import type { StudioMode } from './types';
 
 interface StudioTopbarProps {

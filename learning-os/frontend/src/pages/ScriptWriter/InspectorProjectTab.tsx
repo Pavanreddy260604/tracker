@@ -8,7 +8,7 @@ interface InspectorProjectTabProps {
     projectDirty: boolean;
     onProjectFormChange: (field: keyof ProjectForm, value: string) => void;
     onSaveProject: () => void;
-    onExport: (format: 'fountain' | 'txt' | 'json') => void;
+    onExport: (format: 'fountain' | 'txt' | 'json' | 'pdf') => void;
 }
 
 export function InspectorProjectTab({
@@ -72,16 +72,25 @@ export function InspectorProjectTab({
                     <option value="French">French</option>
                 </select>
             </div>
-            <div className="ide-inline-actions">
-                <button className="ide-btn ide-btn-secondary ide-btn-sm" onClick={() => onExport('fountain')}>
-                    <Download size={12} /> Export Fountain
-                </button>
-                <button className="ide-btn ide-btn-secondary ide-btn-sm" onClick={() => onExport('txt')}>
-                    <Download size={12} /> Export TXT
-                </button>
-                <button className="ide-btn ide-btn-secondary ide-btn-sm" onClick={() => onExport('json')}>
-                    <Download size={12} /> Export JSON
-                </button>
+            <div className="space-y-2">
+                <label className="ide-label flex flex-col">
+                    Export Options
+                    <span className="text-[9px] text-zinc-500 font-normal mt-0.5">Generate industry-standard script formats.</span>
+                </label>
+                <div className="ide-inline-actions">
+                    <button className="ide-btn ide-btn-primary ide-btn-sm bg-blue-600 hover:bg-blue-500 text-white" onClick={() => onExport('pdf')}>
+                        <Download size={12} /> Export PDF
+                    </button>
+                    <button className="ide-btn ide-btn-secondary ide-btn-sm" onClick={() => onExport('fountain')}>
+                        <Download size={12} /> Export Fountain
+                    </button>
+                    <button className="ide-btn ide-btn-secondary ide-btn-sm" onClick={() => onExport('txt')}>
+                        <Download size={12} /> Export TXT
+                    </button>
+                    <button className="ide-btn ide-btn-secondary ide-btn-sm" onClick={() => onExport('json')}>
+                        <Download size={12} /> Export JSON
+                    </button>
+                </div>
             </div>
             <button
                 className="ide-btn ide-btn-primary ide-btn-full"

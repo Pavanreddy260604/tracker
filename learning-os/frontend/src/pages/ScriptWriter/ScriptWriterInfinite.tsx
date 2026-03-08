@@ -185,7 +185,7 @@ function ScriptWriterInfiniteContent() {
                     handleUpdateProject={handleUpdateProject}
                     handleDeleteProject={handleDeleteProject}
                     activeProject={activeProject}
-                    onExport={(format: 'fountain' | 'txt' | 'json') => projectApi.exportProject(activeProjectId!, format)}
+                    onExport={(format: 'fountain' | 'txt' | 'json' | 'pdf') => projectApi.exportProject(activeProjectId!, format)}
                     canRefreshCritique={canRefreshCritique}
                     pointsToRefresh={pointsToRefresh}
                     eliteHighScore={eliteHighScore}
@@ -194,7 +194,7 @@ function ScriptWriterInfiniteContent() {
                     pendingFix={pendingFix}
                     setPendingFix={setPendingFix}
                     onAcceptFix={handleAcceptFix}
-                    onDiscardFix={handleDiscardFix}
+                    setError={setError}
                 />
             }
         >

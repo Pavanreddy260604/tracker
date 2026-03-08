@@ -31,7 +31,12 @@ const chatSessionSchema = new mongoose.Schema({
     // Metadata for potential future features (e.g., usage stats, context window)
     metadata: {
         model: { type: String, default: 'mistral' },
-        tokensUsed: { type: Number, default: 0 }
+        tokensUsed: { type: Number, default: 0 },
+        assistantType: {
+            type: String,
+            enum: ['learning-os', 'script-writer'],
+            default: 'learning-os'
+        }
     }
 }, {
     timestamps: true

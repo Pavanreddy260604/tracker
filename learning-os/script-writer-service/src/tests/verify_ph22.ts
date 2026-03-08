@@ -45,7 +45,7 @@ async function test() {
             tags: ['Mind-Bending', 'Sci-Fi'],
             rawContent: NOLAN_MOCK
         });
-        await adminService.processMasterScript(master._id as string);
+        await adminService.processMasterScript(master._id.toString());
 
         // 3. Trigger Generation and check logs for "Interest Boost"
         const request = {

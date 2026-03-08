@@ -1,0 +1,3 @@
+src/pages/ScriptWriter/components/ContextPanel.tsx(198,29): error TS2322: Type '{ activeProject: any; messages: AssistantMessage[]; isGenerating: boolean; activeSceneName: string | undefined; onSendMessage: (content: string) => Promise<void>; ... 4 more ...; onClearChat: () => void; }' is not assignable to type 'IntrinsicAttributes & AssistantPanelProps'.
+  Property 'onDiscardProposal' does not exist on type 'IntrinsicAttributes & AssistantPanelProps'.
+src/pages/ScriptWriter/components/ContextPanel.tsx(198,49): error TS7006: Parameter 'id' implicitly has an 'any' type.

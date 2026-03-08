@@ -86,6 +86,8 @@ Optional:
 - `JWT_SECRET=...` (must match backend)
 - `OLLAMA_URL=...`
 - `OLLAMA_MODEL=...`
+- `SCRIPT_WRITER_ADMIN_EMAILS=admin1@example.com,admin2@example.com` (required for `/api/script/ai/provider` switching)
+- `SCRIPT_WRITER_ADMIN_USER_IDS=...` (optional additional allowlist for provider switching)
 
 ## Run Locally
 

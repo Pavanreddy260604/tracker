@@ -38,7 +38,10 @@ export function InspectorTreatmentTab({
             <div className="ide-section">
                 <div className="ide-section-title">Treatment Blueprint</div>
                 <div className="ide-field">
-                    <label className="ide-label">Logline</label>
+                    <label className="ide-label flex flex-col">
+                        Logline & Synopsis
+                        <span className="text-[9px] text-zinc-500 font-normal mt-0.5">Define your core story. We will use this to generate a full act-by-act beat sheet.</span>
+                    </label>
                     <textarea
                         className="ide-textarea ide-textarea-sm"
                         value={treatmentLogline}

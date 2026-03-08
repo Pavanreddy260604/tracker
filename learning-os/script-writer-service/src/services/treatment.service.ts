@@ -5,6 +5,13 @@ import { buildBeatSheetPrompt } from '../prompts/hollywood';
 import mongoose from 'mongoose';
 
 export class TreatmentService {
+    private isSequenceConflict(error: any): boolean {
+        if (!error || typeof error !== 'object') return false;
+        if (error.code !== 11000) return false;
+        const keyPattern = error.keyPattern || {};
+        if (keyPattern.bibleId && keyPattern.sequenceNumber) return true;
+        return String(error.message || '').includes('bibleId_1_sequenceNumber_1');
+    }
 
     /**
      * Generates a Beat Sheet (Treatment) from a logline using Ollama.
@@ -69,15 +76,36 @@ export class TreatmentService {
 
         for (const act of treatment.acts) {
             for (const beat of act.beats) {
-                const scene = await Scene.create({
-                    bibleId: treatment.bibleId,
-                    sequenceNumber: seq++,
-                    slugline: `EXT. ${beat.name.toUpperCase()} - DAY`, // Placeholder
-                    summary: beat.description,
-                    goal: `Execute beat: ${beat.name}`,
-                    status: 'planned'
-                });
-                scenesCreated.push(scene);
+                const MAX_SEQUENCE_RETRIES = 5;
+                let created: any = null;
+
+                for (let attempt = 1; attempt <= MAX_SEQUENCE_RETRIES; attempt++) {
+                    try {
+                        created = await Scene.create({
+                            bibleId: treatment.bibleId,
+                            sequenceNumber: seq,
+                            title: beat.title || beat.name,
+                            slugline: beat.slugline || `EXT. ${beat.name.toUpperCase()} - DAY`,
+                            summary: beat.description || beat.summary,
+                            goal: `Execute beat: ${beat.name || beat.title}`,
+                            status: 'planned'
+                        });
+                        seq += 1;
+                        break;
+                    } catch (error) {
+                        if (this.isSequenceConflict(error) && attempt < MAX_SEQUENCE_RETRIES) {
+                            seq += 1;
+                            continue;
+                        }
+                        throw error;
+                    }
+                }
+
+                if (!created) {
+                    throw new Error(`Failed to allocate unique sequence for beat "${beat.name || beat.title || 'Untitled'}"`);
+                }
+
+                scenesCreated.push(created);
             }
         }
 

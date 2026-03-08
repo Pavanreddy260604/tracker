@@ -1,4 +1,4 @@
-import type { Bible, Scene } from '../../services/project.api';
+import type { Bible, IScene as Scene } from '../../services/project.api';
 
 interface StudioStatusbarProps {
     projectCount: number;

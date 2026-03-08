@@ -1,11 +1,10 @@
 import { useState, useEffect } from 'react';
 import { Sparkles, Brain, ChevronRight, Settings, Loader2 } from 'lucide-react';
 import { useScriptWriter } from '../../../contexts/ScriptWriterContext';
-import { useScriptWriterCharacters } from '../useScriptWriterCharacters';
 import { useScriptWriterGenerator } from '../useScriptWriterGenerator';
 import { useScriptWriterTreatments } from '../useScriptWriterTreatments';
 import { AssistantPanel } from './AssistantPanel';
-import type { CritiqueResult, Scene } from '../../../services/project.api';
+import type { CritiqueResult, IScene as Scene } from '../../../services/project.api';
 import { scriptWriterApi } from '../../../services/scriptWriter.api';
 
 interface ContextPanelProps {
@@ -22,7 +21,7 @@ interface ContextPanelProps {
     handleUpdateProject?: (projectId: string, updates: any) => void;
     handleDeleteProject?: (projectId: string) => void;
     activeProject?: any;
-    onExport?: (format: 'fountain' | 'txt' | 'json') => void;
+    onExport?: (format: 'fountain' | 'txt' | 'json' | 'pdf') => void;
     refreshScenes?: (projectId: string, autoSelect?: boolean) => Promise<void>;
     canRefreshCritique?: boolean;
     pointsToRefresh?: number;
@@ -31,7 +30,7 @@ interface ContextPanelProps {
     activeScene?: Scene | null;
     setPendingFix?: (fix: any) => void;
     onAcceptFix?: () => void;
-    onDiscardFix?: () => void;
+    setError: (message: string | null) => void;
 }
 
 export function ContextPanel({
@@ -57,17 +56,11 @@ export function ContextPanel({
     activeScene,
     setPendingFix,
     onAcceptFix,
-    onDiscardFix
+    setError
 }: ContextPanelProps) {
-    const { uiState, setRightPanelTool, toggleRightPanel, activeProject: contextActiveProject, editorContent } = useScriptWriter();
+    const { uiState, setRightPanelTool, toggleRightPanel, activeProject: contextActiveProject, editorContent, setEditorContent } = useScriptWriter();
     const activeProject = propActiveProject || contextActiveProject;
     const { activeTool, rightPanelOpen } = uiState;
-
-    // hook unused characters
-    useScriptWriterCharacters({
-        activeProjectId: activeProject?._id || null,
-        setError: () => { }
-    });
 
     const [projectTitle, setProjectTitle] = useState(activeProject?.title || '');
     const [aiProvider, setAiProvider] = useState<string>('ollama');
@@ -86,7 +79,7 @@ export function ContextPanel({
         isAssistantThinking,
         handleAssistantSendMessage,
         handleApplyProposal,
-        handleDiscardProposal,
+
         handleDeleteAssistantMessage,
         handleUpdateAssistantMessage,
         handleClearChat
@@ -95,7 +88,8 @@ export function ContextPanel({
         activeProjectId: activeProject?._id || null,
         activeSceneId: activeScene?._id || null,
         editorContext: editorContent,
-        setError: () => { }
+        setEditorContent,
+        setError
     });
 
     const {
@@ -112,7 +106,7 @@ export function ContextPanel({
     } = useScriptWriterTreatments({
         activeProject,
         activeProjectId: activeProject?._id || null,
-        setError: () => { },
+        setError,
         refreshScenes
     });
 
@@ -195,16 +189,12 @@ export function ContextPanel({
                                     });
                                 }
                             })}
-                            onApplyProposal={(id) => {
+                            onApplyProposal={(id: string) => {
                                 handleApplyProposal(id, activeScene?._id || null);
                                 if (onAcceptFix) onAcceptFix();
                             }}
-                            onDiscardProposal={(id) => {
-                                handleDiscardProposal(id, activeScene?._id || null);
-                                if (onDiscardFix) onDiscardFix();
-                            }}
-                            onDeleteMessage={(id) => handleDeleteAssistantMessage(id, activeScene?._id || null)}
-                            onUpdateMessage={(id, content) => handleUpdateAssistantMessage(id, content, activeScene?._id || null)}
+                            onDeleteMessage={(id: string) => handleDeleteAssistantMessage(id, activeScene?._id || null)}
+                            onUpdateMessage={(id: string, content: string) => handleUpdateAssistantMessage(id, content, activeScene?._id || null)}
                             onClearChat={() => {
                                 handleClearChat(activeScene?._id || null);
                                 if (setPendingFix) setPendingFix(null);
@@ -259,6 +249,7 @@ export function ContextPanel({
                                     <button
                                         onClick={onCritique ?? (() => { })}
                                         disabled={isCritiquing}
+                                        title="Performs a deep structural Executive Audit of your scene."
                                         className="px-6 py-2 bg-blue-600 hover:bg-blue-500 disabled:bg-zinc-800 text-white text-xs font-black rounded-lg transition-all uppercase tracking-tighter"
                                     >
                                         {isCritiquing ? 'Analyzing...' : 'Run Analysis'}
@@ -314,6 +305,7 @@ export function ContextPanel({
                                         <button
                                             onClick={onCritique}
                                             disabled={isCritiquing || isGenerating}
+                                            title="Runs the Executive Audit again with your new changes."
                                             className={`flex-1 py-2 border rounded-lg text-[10px] font-bold transition-all uppercase tracking-widest
                                                 ${(critique && canRefreshCritique === false)
                                                     ? 'border-amber-900/30 hover:bg-amber-900/10 text-zinc-400'
@@ -326,6 +318,7 @@ export function ContextPanel({
                                         <button
                                             onClick={onFix}
                                             disabled={isGenerating || isCritiquing || !!pendingFix}
+                                            title="Auto-applies Hollywood-level corrections to your scene."
                                             className="flex-1 py-2 bg-blue-600 hover:bg-blue-500 disabled:bg-zinc-800 text-white text-[10px] font-black rounded-lg transition-all uppercase tracking-widest flex items-center justify-center gap-2"
                                         >
                                             {isGenerating ? <Loader2 size={12} className="animate-spin" /> : <Sparkles size={12} />}

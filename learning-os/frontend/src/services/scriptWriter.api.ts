@@ -53,9 +53,56 @@ export interface IMasterScript {
     tags: string[];
     language: string; // PH Multilingual RAG
     rawContent: string;
-    status: 'pending' | 'processing' | 'indexed' | 'failed';
+    status: 'pending' | 'processing' | 'validating' | 'indexed' | 'failed';
+    progress?: number;
     processedChunks: number;
+    activeScriptVersion?: string;   // Added for structural versioning
+    processingScriptVersion?: string; // Added for structural versioning
+    parserVersion?: string;
+    gateStatus?: 'pending' | 'passed' | 'failed'; // Audit status
+    lastValidationSummary?: string;
     createdAt: string;
+}
+
+export interface ProcessMasterScriptResponse {
+    message: string;
+    scriptId: string;
+    scriptVersion?: string | null;
+    gateStatus?: 'pending' | 'passed' | 'failed';
+}
+
+export interface MasterScriptValidationReport {
+    scriptVersion: string;
+    status: 'passed' | 'failed';
+    summary: string;
+    reconstructionMismatch: boolean;
+    missingLines: Array<{ lineNo: number; lineId?: string; detail?: string }>;
+    extraLines: Array<{ lineNo: number; lineId?: string; detail?: string }>;
+    orderMismatches: Array<{ sceneSeq: number; elementSeq: number; detail: string }>;
+    hierarchyMismatches: Array<{ chunkId?: string; detail: string }>;
+    geAudit?: {
+        status: 'passed' | 'failed' | 'skipped';
+        summary?: string;
+        checkedAt?: string;
+        command?: string;
+        details?: Record<string, unknown>;
+    };
+}
+
+export interface MasterScriptReconstruction {
+    scriptVersion: string;
+    parserVersion?: string;
+    lineCount: number;
+    content: string;
+}
+
+export interface VoiceIngestResult {
+    count: number;
+    skippedDuplicates: number;
+    skippedShort: number;
+    characters: string[];
+    sceneCount: number;
+    message: string;
 }
 
 
@@ -88,7 +135,7 @@ class ScriptWriterApi {
         await baseApi.streamRequest('/script/generate', request, onChunk, signal);
     }
 
-    async ingestVoiceSample(bibleId: string, file: File, characterId?: string): Promise<{ success: boolean, count: number }> {
+    async ingestVoiceSample(bibleId: string, file: File, characterId?: string): Promise<VoiceIngestResult> {
         const formData = new FormData();
         formData.append('bibleId', bibleId);
         formData.append('file', file);
@@ -96,7 +143,7 @@ class ScriptWriterApi {
             formData.append('characterId', characterId);
         }
 
-        return baseApi.request<{ success: boolean, count: number }>('/script/voice/ingest', {
+        return baseApi.request<VoiceIngestResult>('/script/voice/ingest', {
             method: 'POST',
             body: formData
         });
@@ -156,10 +203,31 @@ class ScriptWriterApi {
         });
     }
 
-    async processMasterScript(id: string): Promise<{ message: string, scriptId: string }> {
-        return baseApi.request<{ message: string, scriptId: string }>(`/script/admin/master-scripts/${id}/process`, {
+    async processMasterScript(id: string): Promise<ProcessMasterScriptResponse> {
+        return baseApi.request<ProcessMasterScriptResponse>(`/script/admin/master-scripts/${id}/process`, {
             method: 'POST'
         });
+    }
+
+    async deleteMasterScript(id: string): Promise<{ message: string }> {
+        return baseApi.request<{ message: string }>(`/script/admin/master-scripts/${id}`, {
+            method: 'DELETE'
+        });
+    }
+
+    async getMasterScriptChunks(id: string, scriptVersion?: string): Promise<any[]> {
+        const query = scriptVersion ? `?scriptVersion=${scriptVersion}` : '';
+        return baseApi.request<any[]>(`/script/admin/master-scripts/${id}/chunks${query}`);
+    }
+
+    async getMasterScriptReconstruction(id: string, scriptVersion?: string): Promise<MasterScriptReconstruction> {
+        const query = scriptVersion ? `?scriptVersion=${scriptVersion}` : '';
+        return baseApi.request<MasterScriptReconstruction>(`/script/admin/master-scripts/${id}/reconstructed${query}`);
+    }
+
+    async getMasterScriptValidationReport(id: string, scriptVersion?: string): Promise<MasterScriptValidationReport | null> {
+        const query = scriptVersion ? `?scriptVersion=${scriptVersion}` : '';
+        return baseApi.request<MasterScriptValidationReport | null>(`/script/admin/master-scripts/${id}/validation-report${query}`);
     }
 
     // Assisted Edit / Assistant Flow (PH 35/36)

@@ -27,6 +27,8 @@ export class OllamaService implements IAIService {
     private primaryModel: string;
     private fallbackModels: string[];
     private userId?: string;
+    private embeddingModels: string[];
+    private readonly maxEmbeddingChars = this.parsePositiveInt(process.env.EMBEDDING_MAX_CHARS, 4000);
 
     constructor(model?: string, userId?: string) {
         this.baseUrl = process.env.OLLAMA_URL || 'http://localhost:11434';
@@ -41,6 +43,13 @@ export class OllamaService implements IAIService {
             'tinyllama:latest',                                                         // 3. TinyLlama (Fastest)
             'deepseek-v3.1:671b-cloud',                                                 // 4. Deepseek (High Quality)
         ];
+
+        const configuredEmbedModel = this.normalizeModelTag(process.env.OLLAMA_EMBED_MODEL || 'bge-m3:latest');
+        const configuredEmbedFallbacks = (process.env.OLLAMA_EMBED_FALLBACK_MODELS || '')
+            .split(',')
+            .map(model => this.normalizeModelTag(model.trim()))
+            .filter(Boolean);
+        this.embeddingModels = Array.from(new Set([configuredEmbedModel, ...configuredEmbedFallbacks]));
     }
 
     private async wait(ms: number) {
@@ -155,19 +164,41 @@ export class OllamaService implements IAIService {
      * Generates a vector embedding for the given text.
      */
     async generateEmbedding(text: string): Promise<number[]> {
-        const embeddingModel = process.env.OLLAMA_EMBED_MODEL || 'bge-m3:latest'; // BGE-M3 is excellent for multilingual
+        let lastError: any;
+        const maxRetries = 5;
+        const sanitized = this.sanitizeEmbeddingText(text);
 
-        try {
-            const response = await axios.post(`${this.baseUrl}/api/embeddings`, {
-                model: embeddingModel,
-                prompt: text
-            });
+        for (const model of this.embeddingModels) {
+            for (let attempt = 1; attempt <= maxRetries; attempt++) {
+                const textForAttempt = this.buildNaNSafeTextVariant(sanitized, attempt);
+                try {
+                    // Prefer /api/embed (new endpoint). Fall back to /api/embeddings for older Ollama servers.
+                    const embedding = await this.generateEmbeddingViaEmbedEndpoint(model, textForAttempt);
+                    return this.validateAndNormalizeEmbedding(embedding);
+                } catch (error: any) {
+                    lastError = error;
+                    const message = this.extractEmbeddingErrorMessage(error);
+                    console.warn(`[Ollama] Embedding failed for model ${model} (attempt ${attempt}/${maxRetries}): ${message}`);
 
-            return response.data.embedding;
-        } catch (error: any) {
-            console.error(`[Ollama] Embedding failed for model ${embeddingModel}:`, error.message);
-            throw new Error(`Failed to generate embedding. Make sure '${embeddingModel}' is pulled.`);
+                    if (message.toLowerCase().includes('unsupported value: nan')) {
+                        if (attempt < maxRetries) {
+                            console.warn(`[Ollama] Retrying ${model} with NaN-safe text variant (attempt ${attempt + 1}/${maxRetries}).`);
+                        }
+                        await this.wait(200 * attempt);
+                        continue;
+                    }
+
+                    // Non-NaN errors should not spin excessive retries.
+                    if (attempt >= 3) {
+                        break;
+                    }
+                }
+            }
         }
+
+        throw new Error(
+            `Failed to generate embedding from all models (${this.embeddingModels.join(', ')}). Last error: ${this.extractEmbeddingErrorMessage(lastError)}`
+        );
     }
 
     /**
@@ -236,6 +267,119 @@ export class OllamaService implements IAIService {
             'AI Service is currently unavailable. All models failed to respond.',
             { recoverable: true, cause: lastError as Error, context: 'chat' }
         );
+    }
+
+    private validateAndNormalizeEmbedding(vector: number[]): number[] {
+        if (!Array.isArray(vector) || vector.length === 0) {
+            throw new Error('Embedding vector is missing or empty.');
+        }
+
+        const finite = vector.map(value => (Number.isFinite(value) ? value : 0));
+        const magnitude = Math.sqrt(finite.reduce((acc, val) => acc + val * val, 0));
+        if (!(magnitude > 0)) {
+            throw new Error('Embedding vector magnitude is zero after sanitization.');
+        }
+
+        return finite.map(value => value / magnitude);
+    }
+
+    private extractEmbeddingErrorMessage(error: any): string {
+        if (axios.isAxiosError(error)) {
+            const apiMessage = error.response?.data?.error;
+            if (typeof apiMessage === 'string' && apiMessage.trim()) {
+                return apiMessage;
+            }
+            if (apiMessage && typeof apiMessage === 'object') {
+                try {
+                    return JSON.stringify(apiMessage);
+                } catch {
+                    // continue
+                }
+            }
+            if (typeof error.message === 'string' && error.message.trim()) {
+                return error.message;
+            }
+        }
+        if (typeof error?.message === 'string' && error.message.trim()) {
+            return error.message;
+        }
+        return 'Unknown embedding error';
+    }
+
+    private async generateEmbeddingViaEmbedEndpoint(model: string, text: string): Promise<number[]> {
+        try {
+            const response = await axios.post(`${this.baseUrl}/api/embed`, {
+                model,
+                input: text
+            });
+
+            const embeddings = response.data?.embeddings;
+            if (Array.isArray(embeddings) && embeddings.length > 0 && Array.isArray(embeddings[0])) {
+                return embeddings[0] as number[];
+            }
+
+            throw new Error('Invalid /api/embed response shape');
+        } catch (error: any) {
+            const status = axios.isAxiosError(error) ? error.response?.status : undefined;
+            const message = this.extractEmbeddingErrorMessage(error).toLowerCase();
+            const shouldFallbackToLegacy = status === 404 || message.includes('not found') || message.includes('unknown route');
+            if (!shouldFallbackToLegacy) {
+                throw error;
+            }
+        }
+
+        const legacyResponse = await axios.post(`${this.baseUrl}/api/embeddings`, {
+            model,
+            prompt: text
+        });
+        return legacyResponse.data.embedding;
+    }
+
+    private normalizeModelTag(model: string): string {
+        const m = (model || '').trim();
+        if (!m) return m;
+        if (m.includes(':')) return m;
+        return `${m}:latest`;
+    }
+
+    private sanitizeEmbeddingText(text: string): string {
+        const input = typeof text === 'string' ? text : '';
+        const cleaned = input
+            .normalize('NFKC')
+            .replace(/\u0000/g, ' ')
+            .replace(/[\u0001-\u0008\u000B\u000C\u000E-\u001F\u007F]/g, ' ')
+            .replace(/[\u200B-\u200F\u202A-\u202E\u2060-\u206F\uFEFF]/g, ' ')
+            .replace(/\r\n?/g, '\n')
+            .replace(/[ \t]{2,}/g, ' ')
+            .trim();
+
+        if (!cleaned) {
+            return '[EMPTY_TEXT]';
+        }
+
+        return cleaned.length > this.maxEmbeddingChars
+            ? cleaned.slice(0, this.maxEmbeddingChars)
+            : cleaned;
+    }
+
+    private buildNaNSafeTextVariant(text: string, attempt: number): string {
+        if (attempt <= 1) {
+            return text;
+        }
+
+        const markers = [' [pad]', ' [pad:v2]', ' [pad:v3]', '\n[pad:v4]'];
+        const marker = markers[(attempt - 2) % markers.length];
+        const maxBaseLength = Math.max(this.maxEmbeddingChars - marker.length, 0);
+        const base = text.length > maxBaseLength ? text.slice(0, maxBaseLength) : text;
+        return `${base}${marker}`;
+    }
+
+    private parsePositiveInt(raw: string | undefined, fallback: number): number {
+        const parsed = Number(raw);
+        if (!Number.isFinite(parsed) || parsed <= 0) {
+            return fallback;
+        }
+        return Math.floor(parsed);
     }
 }
 

@@ -2,6 +2,7 @@ import { Router } from 'express';
 import mongoose from 'mongoose';
 import multer from 'multer';
 import { voiceService } from '../services/voice.service';
+import { vectorService } from '../services/vector.service';
 import { authenticate } from '../middleware/auth.js';
 import { Bible } from '../models/Bible';
 import { VoiceSample } from '../models/VoiceSample';
@@ -82,14 +83,19 @@ router.post('/ingest', upload.single('file'), async (req, res) => {
             { era }
         );
 
-        res.json({
-            success: true,
+        const payload = {
             count: result.savedCount,
             skippedDuplicates: result.skippedDuplicates,
             skippedShort: result.skippedShort,
             characters: result.characters,
             sceneCount: result.sceneCount,
             message: `Successfully ingested ${result.savedCount} samples (${result.skippedDuplicates} duplicates skipped, detected ${result.characters.length} characters).`
+        };
+
+        res.json({
+            success: true,
+            data: payload,
+            ...payload
         });
 
     } catch (error: any) {
@@ -142,7 +148,11 @@ router.get('/sources', async (req, res) => {
             { $sort: { lastIngested: -1 } }
         ]);
 
-        res.json({ success: true, sources });
+        res.json({
+            success: true,
+            data: sources,
+            sources
+        });
 
     } catch (error: any) {
         console.error('Fetch sources failed:', error);
@@ -153,14 +163,18 @@ router.get('/sources', async (req, res) => {
 
 // Validation helper for source parameter (prevents NoSQL injection)
 const validateSourceParam = (source: unknown): string | null => {
-    if (typeof source !== 'string' || source.length === 0 || source.length > 200) {
+    if (typeof source !== 'string') {
         return null;
     }
-    // Block MongoDB operators and special characters that could be used for injection
-    if (source.includes('$') || source.includes('.') || source.includes('\0')) {
+    const normalized = source.trim();
+    if (normalized.length === 0 || normalized.length > 255) {
         return null;
     }
-    return source;
+    // Null bytes should never appear in user-visible source names.
+    if (normalized.includes('\0')) {
+        return null;
+    }
+    return normalized;
 };
 
 // DELETE /api/voice/delete-source - Delete a specific source
@@ -182,6 +196,9 @@ router.delete('/delete-source', async (req, res) => {
         if (!mongoose.Types.ObjectId.isValid(bibleId)) {
             return res.status(400).json({ success: false, error: 'Invalid bibleId format' });
         }
+        if (characterId && !mongoose.Types.ObjectId.isValid(characterId)) {
+            return res.status(400).json({ success: false, error: 'Invalid characterId format' });
+        }
 
         // Verify access
         const bible = await Bible.findOne({ _id: bibleId, userId: req.userId });
@@ -198,15 +215,31 @@ router.delete('/delete-source', async (req, res) => {
             deleteQuery.characterId = new mongoose.Types.ObjectId(characterId);
         }
 
+        // Delete from vector DB first, then MongoDB to avoid stale vectors surviving a successful delete flow.
+        const samplesToDelete = await VoiceSample.find(deleteQuery).select('_id').lean();
+        const sampleIds = samplesToDelete.map((doc: any) => doc._id.toString());
+
+        if (sampleIds.length > 0) {
+            await vectorService.deleteSamplesByIds(sampleIds);
+        }
+        // Metadata-scope cleanup for any drifted vectors not present in MongoDB anymore.
+        await vectorService.deleteSamplesBySource(
+            bibleId,
+            validatedSource,
+            characterId && mongoose.Types.ObjectId.isValid(characterId) ? characterId : undefined
+        );
+
         const result = await VoiceSample.deleteMany(deleteQuery);
 
-        // Also remove from Vector DB (this might need a specialized method in vectorService)
-        // For now, simpler implementation assuming vector DB will handle missing IDs gracefully or we re-sync later
-        // Ideally: await vectorService.deleteSamplesBySource(bibleId, source);
+        const payload = {
+            deletedCount: result.deletedCount,
+            message: `Deleted ${result.deletedCount} samples from source "${source}"`
+        };
 
         res.json({
             success: true,
-            message: `Deleted ${result.deletedCount} samples from source "${source}"`
+            data: payload,
+            ...payload
         });
 
     } catch (error: any) {

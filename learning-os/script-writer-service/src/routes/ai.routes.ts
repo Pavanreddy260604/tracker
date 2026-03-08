@@ -7,6 +7,30 @@ const router = express.Router();
 
 router.use(authenticate);
 
+function parseCsvSet(value?: string): Set<string> {
+    if (!value) return new Set();
+    return new Set(
+        value
+            .split(',')
+            .map((item) => item.trim())
+            .filter(Boolean)
+    );
+}
+
+const adminEmails = new Set(
+    Array.from(parseCsvSet(process.env.SCRIPT_WRITER_ADMIN_EMAILS)).map((email) => email.toLowerCase())
+);
+const adminUserIds = parseCsvSet(process.env.SCRIPT_WRITER_ADMIN_USER_IDS);
+
+function isProviderSwitchAdmin(req: express.Request): boolean {
+    const email = (req.userEmail || '').toLowerCase();
+    const userId = req.userId || '';
+
+    if (email && adminEmails.has(email)) return true;
+    if (userId && adminUserIds.has(userId)) return true;
+    return false;
+}
+
 // GET /api/ai/provider
 // Get current active provider
 router.get('/provider', (req, res) => {
@@ -21,6 +45,13 @@ router.get('/provider', (req, res) => {
 // POST /api/ai/provider
 // Switch provider
 router.post('/provider', (req, res) => {
+    if (!isProviderSwitchAdmin(req)) {
+        return res.status(403).json({
+            success: false,
+            error: 'Provider switching is restricted to script-writer admins.'
+        });
+    }
+
     const { provider } = req.body;
 
     if (!provider || !['ollama', 'groq'].includes(provider)) {

@@ -2,7 +2,7 @@ import { Map, AlignLeft, Plus, Trash2 } from 'lucide-react';
 import { useDialog } from '../../../hooks/useDialog';
 import { ConfirmDialog } from '../../../components/ui/ConfirmDialog';
 import { useScriptWriter } from '../../../contexts/ScriptWriterContext';
-import type { Scene } from '../../../services/project.api';
+import type { IScene as Scene } from '../../../services/project.api';
 
 interface StructurePanelProps {
     scenes: Scene[];

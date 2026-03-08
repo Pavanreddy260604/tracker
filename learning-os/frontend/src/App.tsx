@@ -33,6 +33,7 @@ const InterviewSetup = lazy(() => import('./pages/Interview/InterviewSetup').the
 const InterviewRoom = lazy(() => import('./pages/Interview/InterviewRoom').then(m => ({ default: m.InterviewRoom })));
 const ScriptWriterDashboard = lazy(() => import('./pages/ScriptWriter/ScriptWriterDashboard').then(m => ({ default: m.ScriptWriterDashboard })));
 const ScriptWriterInfinite = lazy(() => import('./pages/ScriptWriter/ScriptWriterInfinite').then(m => ({ default: m.ScriptWriterInfinite })));
+const MasterScriptReaderPage = lazy(() => import('./pages/ScriptWriter/MasterScriptReaderPage').then(m => ({ default: m.MasterScriptReaderPage })));
 const ProjectStudyDetail = lazy(() => import('./pages/ProjectStudyDetail').then(m => ({ default: m.ProjectStudyDetail })));
 const BackendTopicDetail = lazy(() => import('./pages/BackendTopicDetail').then(m => ({ default: m.BackendTopicDetail })));
 const ChatPage = lazy(() => import('./pages/ChatPage'));
@@ -312,6 +313,16 @@ function App() {
                 <ProtectedRoute useLayout={false}>
                   <Suspense fallback={<LoadingScreen />}>
                     <ScriptWriterDashboard />
+                  </Suspense>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/script-writer/master-script/:scriptId"
+              element={
+                <ProtectedRoute useLayout={false}>
+                  <Suspense fallback={<LoadingScreen />}>
+                    <MasterScriptReaderPage />
                   </Suspense>
                 </ProtectedRoute>
               }

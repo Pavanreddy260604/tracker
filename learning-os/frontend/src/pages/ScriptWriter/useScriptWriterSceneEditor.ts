@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import type { CritiqueResult, Scene } from '../../services/project.api';
+import type { CritiqueResult, IScene as Scene } from '../../services/project.api';
 import { projectApi } from '../../services/project.api';
 import type { GenerationOptions, SceneForm } from './types';
 import { DEFAULT_GENERATION, DEFAULT_SCENE_FORM, type SaveState } from './types';

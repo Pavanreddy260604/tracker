@@ -1,8 +1,11 @@
 
 import express from 'express';
+import mongoose from 'mongoose';
 import { scriptGenerator, ScriptRequest } from '../services/scriptGenerator.service';
 import { FORMAT_TEMPLATES, STYLE_PROMPTS } from '../prompts/hollywood';
 import { Script } from '../models/Script';
+import { Bible } from '../models/Bible';
+import { Character } from '../models/Character';
 import { authenticate } from '../middleware/auth.js';
 
 const router = express.Router();
@@ -88,6 +91,51 @@ router.post('/generate', async (req, res) => {
     }
     if (!request.style || !STYLE_PROMPTS[request.style]) {
         return res.status(400).json({ error: 'Invalid style' });
+    }
+    if (request.bibleId && typeof request.bibleId !== 'string') {
+        return res.status(400).json({ error: 'bibleId must be a string' });
+    }
+    if (request.bibleId && !mongoose.Types.ObjectId.isValid(request.bibleId)) {
+        return res.status(400).json({ error: 'Invalid bibleId format' });
+    }
+    if (request.characterIds !== undefined) {
+        if (!Array.isArray(request.characterIds)) {
+            return res.status(400).json({ error: 'characterIds must be an array of strings' });
+        }
+        if (request.characterIds.some((id) => typeof id !== 'string' || !mongoose.Types.ObjectId.isValid(id))) {
+            return res.status(400).json({ error: 'characterIds must contain valid IDs only' });
+        }
+        request.characterIds = Array.from(new Set(request.characterIds));
+    }
+
+    // Enforce project/character ownership to prevent cross-tenant data access.
+    try {
+        if (request.bibleId) {
+            const bible = await Bible.findOne({ _id: request.bibleId, userId: request.userId })
+                .select('_id')
+                .lean();
+            if (!bible) {
+                return res.status(403).json({ error: 'Access denied for the selected project' });
+            }
+        }
+
+        if (request.characterIds && request.characterIds.length > 0) {
+            if (!request.bibleId) {
+                return res.status(400).json({ error: 'bibleId is required when characterIds are provided' });
+            }
+
+            const characterCount = await Character.countDocuments({
+                _id: { $in: request.characterIds },
+                bibleId: request.bibleId
+            });
+
+            if (characterCount !== request.characterIds.length) {
+                return res.status(403).json({ error: 'One or more characters are outside this project' });
+            }
+        }
+    } catch (error) {
+        console.error('[API] Scope validation error:', error);
+        return res.status(500).json({ error: 'Failed to validate generation scope' });
     }
 
     // Set headers for simple text streaming

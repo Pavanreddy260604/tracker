@@ -3,6 +3,7 @@ import mongoose, { Schema, Document } from 'mongoose';
 export interface IScene extends Document {
     bibleId: mongoose.Types.ObjectId;
     sequenceNumber: number; // 1, 2, 3...
+    title?: string; // Creative name: "The Betrayal"
     slugline: string; // INT. BAR - NIGHT
 
     // The "Architect" Output
@@ -15,7 +16,7 @@ export interface IScene extends Document {
     lastInstruction?: string; // PH 35: The instruction that generated the pendingContent
     assistantChatHistory?: {
         role: 'user' | 'assistant';
-        type: 'instruction' | 'thought' | 'proposal';
+        type: 'instruction' | 'thought' | 'proposal' | 'chat';
         content: string;
         timestamp: Date;
     }[];
@@ -74,6 +75,11 @@ const SceneSchema: Schema = new Schema({
         required: [true, 'Sequence number is required'],
         min: [1, 'Sequence number must be at least 1']
     },
+    title: {
+        type: String,
+        trim: true,
+        maxlength: [200, 'Title cannot exceed 200 characters']
+    },
     slugline: {
         type: String,
         required: [true, 'Slugline is required'],
@@ -113,7 +119,7 @@ const SceneSchema: Schema = new Schema({
     },
     assistantChatHistory: [{
         role: { type: String, enum: ['user', 'assistant'] },
-        type: { type: String, enum: ['instruction', 'thought', 'proposal'] },
+        type: { type: String, enum: ['instruction', 'thought', 'proposal', 'chat'] },
         content: { type: String, maxlength: 100000 },
         timestamp: { type: Date, default: Date.now }
     }],
@@ -216,7 +222,7 @@ const SceneSchema: Schema = new Schema({
     }
 }, { timestamps: true });
 
-// Index for fast retrieval of the script in order
-SceneSchema.index({ bibleId: 1, sequenceNumber: 1 });
+// Keep sequence numbers unique per project to prevent race-condition duplicates.
+SceneSchema.index({ bibleId: 1, sequenceNumber: 1 }, { unique: true });
 
 export const Scene = mongoose.model<IScene>('Scene', SceneSchema);

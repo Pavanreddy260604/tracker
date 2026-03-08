@@ -32,6 +32,16 @@ function handleAccessError(error: any, res: express.Response) {
     return false;
 }
 
+function isSequenceConflict(error: any): boolean {
+    if (!error || typeof error !== 'object') return false;
+    const e = error as any;
+    if (e.code !== 11000) return false;
+    const keyPattern = e.keyPattern || {};
+    if (keyPattern.bibleId && keyPattern.sequenceNumber) return true;
+    const message = String(e.message || '');
+    return message.includes('bibleId_1_sequenceNumber_1');
+}
+
 // GET /api/scene/bible/:bibleId - List all scenes for a project
 router.get('/bible/:bibleId', async (req, res) => {
     try {
@@ -69,7 +79,7 @@ router.post('/', async (req, res) => {
     }
 
     // Validate sequenceNumber if provided
-    if (sequenceNumber !== undefined && (typeof sequenceNumber !== 'number' || sequenceNumber < 1)) {
+    if (sequenceNumber !== undefined && (!Number.isInteger(sequenceNumber) || sequenceNumber < 1)) {
         return res.status(400).json({ error: 'Sequence number must be a positive integer' });
     }
 
@@ -81,23 +91,54 @@ router.post('/', async (req, res) => {
 
     try {
         await assertBibleAccess(bibleId, req.userId);
-        // Auto-increment sequence if not provided
-        let seq = sequenceNumber;
-        if (!seq) {
-            const lastScene = await Scene.findOne({ bibleId }).sort({ sequenceNumber: -1 });
-            seq = (lastScene?.sequenceNumber || 0) + 1;
+        const createScene = async (seq: number) => {
+            return Scene.create({
+                bibleId,
+                sequenceNumber: seq,
+                slugline: slugline.trim(),
+                summary: summary?.trim() || '',
+                status: 'planned',
+                content: ''
+            });
+        };
+
+        // Explicit sequence number: fail fast with conflict if already taken.
+        if (sequenceNumber !== undefined) {
+            try {
+                const newScene = await createScene(sequenceNumber);
+                return res.json({ success: true, data: newScene });
+            } catch (error) {
+                if (isSequenceConflict(error)) {
+                    return res.status(409).json({ error: `Sequence number ${sequenceNumber} already exists for this project` });
+                }
+                throw error;
+            }
         }
 
-        const newScene = await Scene.create({
-            bibleId,
-            sequenceNumber: seq,
-            slugline: slugline.trim(),
-            summary: summary?.trim() || '',
-            status: 'planned',
-            content: ''
-        });
+        // Auto sequence allocation with retry for concurrent writers.
+        const MAX_SEQUENCE_RETRIES = 5;
+        for (let attempt = 1; attempt <= MAX_SEQUENCE_RETRIES; attempt++) {
+            const lastScene = await Scene.findOne({ bibleId })
+                .sort({ sequenceNumber: -1 })
+                .select('sequenceNumber')
+                .lean();
+            const nextSequence = (lastScene?.sequenceNumber || 0) + 1;
 
-        res.json({ success: true, data: newScene });
+            try {
+                const newScene = await createScene(nextSequence);
+                return res.json({ success: true, data: newScene });
+            } catch (error) {
+                if (isSequenceConflict(error) && attempt < MAX_SEQUENCE_RETRIES) {
+                    continue;
+                }
+                if (isSequenceConflict(error)) {
+                    return res.status(409).json({ error: 'Could not allocate a unique scene sequence. Please retry.' });
+                }
+                throw error;
+            }
+        }
+
+        return res.status(409).json({ error: 'Could not allocate a unique scene sequence. Please retry.' });
     } catch (error) {
         console.error('[SceneAPI] Create Error:', error);
         if (!handleAccessError(error, res)) {

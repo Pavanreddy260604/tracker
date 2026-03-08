@@ -7,8 +7,14 @@ export interface IMasterScript extends Document {
     language: string; // PH Multilingual RAG
     tags: string[]; // ["Sci-Fi", "Noir", "Tense"]
     rawContent: string;
-    status: 'pending' | 'processing' | 'indexed' | 'failed';
+    status: 'pending' | 'processing' | 'validating' | 'indexed' | 'failed';
+    progress: number;
     processedChunks: number;
+    activeScriptVersion?: string;
+    processingScriptVersion?: string;
+    parserVersion?: string;
+    gateStatus?: 'pending' | 'passed' | 'failed';
+    lastValidationSummary?: string;
     createdAt: Date;
 }
 
@@ -21,13 +27,20 @@ const MasterScriptSchema: Schema = new Schema({
     rawContent: { type: String, required: true },
     status: {
         type: String,
-        enum: ['pending', 'processing', 'indexed', 'failed'],
+        enum: ['pending', 'processing', 'validating', 'indexed', 'failed'],
         default: 'pending'
     },
-    processedChunks: { type: Number, default: 0 }
+    progress: { type: Number, default: 0 },
+    processedChunks: { type: Number, default: 0 },
+    activeScriptVersion: { type: String },
+    processingScriptVersion: { type: String },
+    parserVersion: { type: String },
+    gateStatus: { type: String, enum: ['pending', 'passed', 'failed'] },
+    lastValidationSummary: { type: String }
 }, { timestamps: true });
 
 MasterScriptSchema.index({ director: 1, title: 1 });
 MasterScriptSchema.index({ tags: 1 });
+MasterScriptSchema.index({ activeScriptVersion: 1 });
 
 export const MasterScript = mongoose.model<IMasterScript>('MasterScript', MasterScriptSchema);

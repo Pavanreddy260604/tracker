@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
     Database,
     Plus,
@@ -9,15 +10,18 @@ import {
     Tag,
     User,
     FileText,
-    ChevronRight,
-    Search
+    Search,
+    Trash2,
+    Eye
 } from 'lucide-react';
 import { scriptWriterApi, type IMasterScript } from '../../../services/scriptWriter.api';
 
 export function AdminPanel() {
+    const navigate = useNavigate();
     const [scripts, setScripts] = useState<IMasterScript[]>([]);
     const [loading, setLoading] = useState(true);
     const [isAdding, setIsAdding] = useState(false);
+    const [isDeleting, setIsDeleting] = useState<string | null>(null);
     const [searchQuery, setSearchQuery] = useState('');
 
     const [formData, setFormData] = useState({
@@ -29,15 +33,15 @@ export function AdminPanel() {
         file: null as File | null
     });
 
-    const fetchScripts = async () => {
+    const fetchScripts = async (silent = false) => {
         try {
-            setLoading(true);
+            if (!silent) setLoading(true);
             const data = await scriptWriterApi.getMasterScripts();
             setScripts(data);
         } catch (err) {
             console.error('Failed to fetch master scripts:', err);
         } finally {
-            setLoading(false);
+            if (!silent) setLoading(false);
         }
     };
 
@@ -45,16 +49,34 @@ export function AdminPanel() {
         fetchScripts();
     }, []);
 
+    // Auto-poll if any script is still processing
+    useEffect(() => {
+        const hasProcessingScripts = scripts.some(s => s.status === 'processing' || s.status === 'validating');
+        if (!hasProcessingScripts) return;
+
+        const interval = setInterval(() => {
+            fetchScripts(true); // silent fetch
+        }, 1000);
+
+        return () => clearInterval(interval);
+    }, [scripts]);
+
     const handleCreate = async (e: React.FormEvent) => {
         e.preventDefault();
         try {
-            await scriptWriterApi.createMasterScript({
+            const newScript = await scriptWriterApi.createMasterScript({
                 ...formData,
                 tags: formData.tags.split(',').map(t => t.trim()).filter(Boolean),
                 file: formData.file || undefined
             });
             setIsAdding(false);
             setFormData({ title: '', director: '', language: 'English', tags: '', rawContent: '', file: null });
+
+            // Automatically trigger processing
+            if (newScript._id) {
+                await scriptWriterApi.processMasterScript(newScript._id);
+            }
+
             fetchScripts();
         } catch (err) {
             alert('Failed to create script');
@@ -70,6 +92,20 @@ export function AdminPanel() {
         }
     };
 
+    const handleDelete = async (id: string, title: string) => {
+        if (!window.confirm(`Are you sure you want to delete "${title}"? This will remove all associated AI training data permanently.`)) return;
+
+        try {
+            setIsDeleting(id);
+            await scriptWriterApi.deleteMasterScript(id);
+            await fetchScripts();
+        } catch (err) {
+            alert('Failed to delete script');
+        } finally {
+            setIsDeleting(null);
+        }
+    };
+
     const filteredScripts = scripts.filter(s =>
         s.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
         s.director.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -80,8 +116,29 @@ export function AdminPanel() {
         switch (status) {
             case 'indexed': return <CheckCircle2 size={14} className="text-emerald-500" />;
             case 'processing': return <RefreshCcw size={14} className="text-blue-500 animate-spin" />;
+            case 'validating': return <RefreshCcw size={14} className="text-amber-400 animate-spin" />;
             case 'failed': return <AlertCircle size={14} className="text-red-500" />;
             default: return <Clock size={14} className="text-zinc-500" />;
+        }
+    };
+
+    const openReader = (script: IMasterScript) => {
+        const params = new URLSearchParams();
+        if (script.activeScriptVersion) {
+            params.set('version', script.activeScriptVersion);
+        }
+        params.set('title', script.title);
+        navigate(`/script-writer/master-script/${script._id}?${params.toString()}`);
+    };
+
+    const getGateTone = (status?: IMasterScript['gateStatus']) => {
+        switch (status) {
+            case 'passed':
+                return 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400';
+            case 'failed':
+                return 'bg-red-500/10 border-red-500/20 text-red-400';
+            default:
+                return 'bg-amber-500/10 border-amber-500/20 text-amber-300';
         }
     };
 
@@ -260,32 +317,80 @@ export function AdminPanel() {
                                                     {getStatusIcon(script.status)}
                                                     {script.status}
                                                 </span>
+                                                {script.gateStatus && (
+                                                    <span className={`px-2 py-0.5 border rounded text-[10px] font-black uppercase ${getGateTone(script.gateStatus)}`}>
+                                                        Gate {script.gateStatus}
+                                                    </span>
+                                                )}
                                             </div>
                                             <div className="flex items-center gap-4 text-xs text-zinc-500 font-medium">
                                                 <span className="flex items-center gap-1"><User size={12} className="text-blue-500/50" /> {script.director}</span>
                                                 <span className="flex items-center gap-1 text-blue-400 font-bold">{script.language || 'English'}</span>
-                                                <span className="flex items-center gap-1"><Tag size={12} className="text-purple-500/50" /> {script.tags.join(', ')}</span>
+                                                <span className="flex items-center gap-1"><Tag size={12} className="text-purple-500/50" /> {Array.isArray(script.tags) ? script.tags.join(', ') : ''}</span>
                                                 <span className="flex items-center gap-1"><Clock size={12} className="text-zinc-700" /> {new Date(script.createdAt).toLocaleDateString()}</span>
                                             </div>
+                                            <div className="mt-2 flex flex-wrap items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-zinc-500">
+                                                {(script.processingScriptVersion || script.activeScriptVersion) && (
+                                                    <span className="rounded-lg border border-zinc-800 bg-zinc-950 px-2 py-1">
+                                                        Version {script.processingScriptVersion || script.activeScriptVersion}
+                                                    </span>
+                                                )}
+                                                {script.parserVersion && (
+                                                    <span className="rounded-lg border border-blue-500/20 bg-blue-500/10 px-2 py-1 text-blue-300">
+                                                        Parser {script.parserVersion}
+                                                    </span>
+                                                )}
+                                            </div>
+                                            {script.lastValidationSummary && (
+                                                <p className="mt-2 max-w-2xl text-xs text-zinc-400">
+                                                    {script.lastValidationSummary}
+                                                </p>
+                                            )}
                                         </div>
                                     </div>
 
                                     <div className="flex items-center gap-3">
-                                        {script.status !== 'indexed' && script.status !== 'processing' && (
+                                        {script.status !== 'processing' && script.status !== 'validating' && (
                                             <button
                                                 onClick={() => handleProcess(script._id)}
                                                 className="px-4 py-2 bg-blue-600/10 hover:bg-blue-600/20 text-blue-400 border border-blue-500/20 rounded-xl text-xs font-bold transition-all"
                                             >
-                                                Start Processing
+                                                {script.activeScriptVersion ? 'Reprocess' : 'Start Processing'}
                                             </button>
                                         )}
-                                        {script.status === 'indexed' && (
-                                            <div className="text-xs font-black text-emerald-500 tracking-widest px-4">
-                                                {script.processedChunks} CHUNKS INDEXED
+                                        {(script.status === 'processing' || script.status === 'validating') && (
+                                            <div className="flex flex-col items-end gap-1.5 w-48">
+                                                <div className={`flex items-center justify-between w-full text-[10px] font-black tracking-widest ${script.status === 'validating' ? 'text-amber-300' : 'text-blue-400'}`}>
+                                                    <span>{script.status === 'validating' ? 'VALIDATING' : 'PROCESSING'}</span>
+                                                    <span>{script.progress || 0}%</span>
+                                                </div>
+                                                <div className="w-full h-1.5 bg-zinc-900 rounded-full overflow-hidden border border-zinc-800">
+                                                    <div
+                                                        className={`h-full transition-all duration-500 ease-out ${script.status === 'validating' ? 'bg-amber-400' : 'bg-blue-500'}`}
+                                                        style={{ width: `${script.progress || 0}%` }}
+                                                    />
+                                                </div>
                                             </div>
                                         )}
-                                        <button className="p-2 text-zinc-600 hover:text-white transition-colors">
-                                            <ChevronRight size={20} />
+                                        {script.status === 'indexed' && (
+                                            <button
+                                                onClick={() => openReader(script)}
+                                                className="group/btn flex items-center gap-2 px-4 py-2 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-500 border border-emerald-500/20 rounded-xl text-xs font-black tracking-widest transition-all"
+                                            >
+                                                <Eye size={14} />
+                                                OPEN READER
+                                            </button>
+                                        )}
+                                        <button
+                                            onClick={() => handleDelete(script._id, script.title)}
+                                            disabled={isDeleting === script._id}
+                                            className={`p-2 transition-colors ${isDeleting === script._id
+                                                ? 'text-red-500/50 cursor-not-allowed'
+                                                : 'text-zinc-600 hover:text-red-400'
+                                                }`}
+                                            title="Delete Script & Vector Data"
+                                        >
+                                            <Trash2 size={20} className={isDeleting === script._id ? 'animate-pulse' : ''} />
                                         </button>
                                     </div>
                                 </div>
@@ -294,6 +399,7 @@ export function AdminPanel() {
                     )}
                 </div>
             )}
+
         </div>
     );
 }

@@ -1,4 +1,4 @@
-import { OllamaService } from './ollama.service';
+import { aiServiceManager } from './ai.manager';
 
 interface CritiqueResult {
     score: number; // 0-100
@@ -11,16 +11,11 @@ interface CritiqueResult {
 }
 
 export class CriticService {
-    private ollama: OllamaService;
-
-    constructor() {
-        this.ollama = new OllamaService();
-    }
-
     async evaluateScene(sceneContent: string, sceneGoal: string, genre: string, language: string = 'English'): Promise<CritiqueResult> {
         const prompt = `
-        You are a professional Hollywood Script Consultant. Your job is to provide an objective, high-level evaluation of the following screenplay scene.
-        
+        You are a ruthless, elite Hollywood Script Doctor performing an Executive Scene Audit.
+        Your job is to provide an objective, unflinching breakdown of the following screenplay scene. Do not flatter the writer. Be brutally honest. If the scene is boring, say so. If the dialogue is clunky, point it out.
+
         CONTEXT:
         Language: ${language}
         Genre: ${genre}
@@ -32,28 +27,28 @@ export class CriticService {
         """
         
         Analyze the scene for:
-        1. FORMATTING: Absolute fidelity to Industry Standard Screenplay Format.
-        2. DIALOGUE: Naturalism, subtext, and character voice. Avoid "on-the-nose" exposition.
-        3. PACING: Tension, momentum, and scene economy (enter late, leave early).
-        4. GOAL: Effectiveness in achieving the stated dramatic goal.
+        1. FORMATTING: Absolute fidelity to Industry Standard Screenplay Format. Call out any sloppy formatting.
+        2. DIALOGUE: Naturalism, subtext, and character voice. Ruthlessly identify "on-the-nose" exposition or wooden lines.
+        3. PACING: Tension, momentum, and scene economy. Does it enter late and leave early? Where does the scene drag?
+        4. GOAL: Does it actually achieve the stated dramatic goal, or does it wander aimlessly?
 
         Return a JSON object with the following structure:
         {
             "score": [0-100 integer],
             "grade": ["A", "B", "C", "D", "F"],
-            "summary": "Professional verdict.",
-            "formattingIssues": ["list", "of", "errors"],
-            "dialogueIssues": ["list", "of", "critiques"],
-            "pacingIssues": ["list", "of", "notes"],
-            "suggestions": ["3 specific items for improvement or 'Elite Polish' if score is 90+"]
+            "summary": "Your brutally honest executive verdict (max 3 sentences).",
+            "formattingIssues": ["list", "of", "sloppy", "errors", "or empty if perfect"],
+            "dialogueIssues": ["list", "of", "wooden lines", "on-the-nose exposition", "or empty if brilliant"],
+            "pacingIssues": ["list", "of", "where the scene drags", "unnecessary action lines"],
+            "suggestions": ["3 aggressive, specific prescriptions for rewriting the scene. If the score is 90+, provide 'Elite Polish' suggestions."]
         }
         
-        Be precise and objective. If the scene is already elite (90+), focus your suggestions on subtle nuances and professional polish rather than pointing out flaws for the sake of it.
+        Be precise, surgical, and unsparing.
         ONLY RETURN THE RAW JSON.
         `;
 
         try {
-            const response = await this.ollama.generateCompletion(prompt, {
+            const response = await aiServiceManager.chat(prompt, {
                 temperature: 0.3, // Low temp for analytical consistency
                 format: "json"
             });

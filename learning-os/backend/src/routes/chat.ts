@@ -13,10 +13,12 @@ const modelPattern = /^[a-zA-Z0-9:._-]+$/;
 const createSessionSchema = z.object({
     message: z.string().trim().min(1).max(4000).optional(),
     model: z.string().trim().min(1).max(64).regex(modelPattern, 'Invalid model identifier').optional(),
+    assistantType: z.enum(['learning-os', 'script-writer']).optional(),
 }).strict();
 
 const messageSchema = z.object({
     message: z.string().trim().min(1).max(4000),
+    assistantType: z.enum(['learning-os', 'script-writer']).optional(),
 }).strict();
 
 const updateSessionSchema = z.object({
@@ -25,6 +27,69 @@ const updateSessionSchema = z.object({
 
 const toSessionTitle = (message?: string) =>
     message ? message.substring(0, 30) + (message.length > 30 ? '...' : '') : 'New Chat';
+
+const getSystemPrompt = (assistantType: 'learning-os' | 'script-writer') => {
+    if (assistantType === 'script-writer') {
+        return `You are an AI Script Engineering Assistant.
+
+Your role is similar to a coding assistant but for screenplays and scene-based storytelling. You help edit, modify, and maintain story coherence across multiple scenes.
+
+Follow these rules strictly:
+
+1. Treat the screenplay like a structured system, not plain text. The story consists of:
+- Characters
+- Scenes
+- Timeline
+- Character arcs
+- World rules
+- Dialogue
+
+2. When the user requests a change (for example: change character traits, modify a scene, alter tone, remove events), you must:
+- Identify which scenes are affected
+- Update only necessary parts
+- Preserve narrative continuity and character consistency
+- Ensure timeline and story logic remain valid
+
+3. Do not rewrite the entire script unless requested. Make surgical edits like a code assistant modifying specific functions.
+
+4. Always output these sections in this exact order:
+CHANGE SUMMARY
+- List of scenes affected
+- Characters affected
+- Narrative implications
+
+PATCH
+- Show only modified scenes or dialogue blocks
+
+CONTINUITY CHECK
+- Verify timeline consistency
+- Verify character motivations
+- Identify potential contradictions
+
+5. Maintain global story memory for:
+- Character goals
+- Unresolved plot points
+- Emotional arcs
+- Major events
+
+6. While editing scenes:
+- Preserve existing tone unless instructed otherwise
+- Maintain character voice
+- Keep cause-effect relationships logical
+
+7. If a requested change creates contradictions, propose 2-3 solutions.
+
+Editing style:
+- Behave like version control for stories
+- Scenes are modules
+- Edits are patches
+- Prioritize coherence, structure, and minimal meaningful changes`;
+    }
+
+    return `You are the "Learning OS Copilot", a specialized AI assistant in this workspace.
+Identify as the Learning OS Copilot. Be a senior software engineer and mentor.
+You have access to tools to see the user's roadmap, logs, and DSA progress-use them if the user asks about their state.`;
+};
 
 // GET /api/chat/history
 // List recent chat sessions (sidebar)
@@ -63,7 +128,7 @@ router.post('/', authenticate, async (req: any, res) => {
         if (!parsed.success) {
             return res.status(400).json({ success: false, error: parsed.error.errors[0].message });
         }
-        const { message, model } = parsed.data;
+        const { message, model, assistantType } = parsed.data;
 
         // INFRA: Cleanup empty sessions for this user before creating a new one
         // This prevents accumulating "New Chat" orphans that were never used.
@@ -77,7 +142,10 @@ router.post('/', authenticate, async (req: any, res) => {
             userId: req.userId,
             title: toSessionTitle(message),
             messages: [],
-            metadata: { model: model || 'mistral' }
+            metadata: {
+                model: model || 'mistral',
+                assistantType: assistantType || 'learning-os'
+            }
         });
 
         if (message) {
@@ -99,7 +167,7 @@ router.post('/:id/message', authenticate, async (req: any, res) => {
         if (!parsed.success) {
             return res.status(400).json({ success: false, error: parsed.error.errors[0].message });
         }
-        const { message } = parsed.data;
+        const { message, assistantType: requestedAssistantType } = parsed.data;
         const sessionId = req.params.id;
 
         // 1. ATOMIC: Save User Message
@@ -139,13 +207,21 @@ router.post('/:id/message', authenticate, async (req: any, res) => {
             const sessionModel = typeof session.metadata?.model === 'string' && session.metadata.model.trim().length > 0
                 ? session.metadata.model
                 : undefined;
+            const assistantType = requestedAssistantType
+                ? requestedAssistantType
+                : (session.metadata?.assistantType === 'script-writer' ? 'script-writer' : 'learning-os');
+
+            if (requestedAssistantType && session.metadata?.assistantType !== requestedAssistantType) {
+                await ChatSession.updateOne(
+                    { _id: sessionId },
+                    { $set: { 'metadata.assistantType': requestedAssistantType } }
+                );
+            }
+
+            const systemPrompt = getSystemPrompt(assistantType);
             const chatService = new AIChatService(sessionModel, req.userId);
 
             let assistantText = '';
-
-            const systemPrompt = `You are the "Learning OS Copilot", a specialized AI assistant in this workspace. 
-            Identify as the Learning OS Copilot. Be a senior software engineer and mentor. 
-            You have access to tools to see the user's roadmap, logs, and DSA progress—use them if the user asks about their state.`;
 
             try {
                 for await (const chunk of chatService.generateChatStream(contextMessages, systemPrompt)) {
@@ -155,7 +231,10 @@ router.post('/:id/message', authenticate, async (req: any, res) => {
                 }
             } catch (streamingError) {
                 console.warn('[chat] Streaming API unavailable, falling back to buffered response:', streamingError);
-                const responseText = await chatService.chat(message, contextMessages);
+                const responseText = await chatService.chat(
+                    message,
+                    [{ role: 'system', content: systemPrompt }, ...contextMessages]
+                );
                 if (responseText) {
                     // Keep fallback chunks small so the UI still gets incremental feedback.
                     const chunkSize = 8;
@@ -230,3 +309,6 @@ router.delete('/:id', authenticate, async (req: any, res) => {
 });
 
 export default router;
+
+
+

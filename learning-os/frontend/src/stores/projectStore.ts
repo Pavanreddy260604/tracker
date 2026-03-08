@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { projectApi } from '../services/project.api';
-import type { Bible, Scene } from '../services/project.api';
+import type { Bible, IScene as Scene } from '../services/project.api';
 
 interface ProjectState {
     projects: Bible[];

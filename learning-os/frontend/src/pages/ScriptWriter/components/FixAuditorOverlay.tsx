@@ -42,7 +42,7 @@ export function FixAuditorOverlay({
                         </div>
                         <div>
                             <h2 className="text-sm font-black uppercase tracking-widest text-white flex items-center gap-2">
-                                {isProposal ? 'Assistant Proposal' : 'Senior Writer Audit'}
+                                {isProposal ? 'Assistant Proposal' : 'Executive Scene Audit'}
                                 {!isProposal && !isSuperior && (
                                     <span className="bg-amber-500/10 text-amber-500 text-[10px] px-2 py-0.5 rounded border border-amber-500/20 flex items-center gap-1">
                                         <AlertTriangle size={10} />
@@ -51,7 +51,7 @@ export function FixAuditorOverlay({
                                 )}
                             </h2>
                             <p className="text-[10px] text-zinc-500 uppercase font-bold">
-                                {isProposal ? 'Reviewing AI-Proposed Script Improvement' : 'Reviewing AI-Proposed Professional Revision'}
+                                {isProposal ? 'Reviewing AI-Proposed Script Improvement' : 'Reviewing Ruthless Executive Analysis'}
                             </p>
                         </div>
                     </div>

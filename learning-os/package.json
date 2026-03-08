@@ -10,6 +10,11 @@
         "chroma": "chroma run --host localhost --port 8000"
     },
     "devDependencies": {
+        "@types/pdfkit": "^0.17.5",
         "concurrently": "^8.2.2"
+    },
+    "dependencies": {
+        "pdf2json": "^4.0.2",
+        "pdfkit": "^0.17.2"
     }
 }

@@ -1,4 +1,3 @@
-import crypto from 'crypto';
 import mongoose from 'mongoose';
 import { extractTextFromFile } from '../utils/fileParser';
 
@@ -41,6 +40,9 @@ export class VoiceService {
         // 2. Intelligent Screenplay-Aware Chunking
         const parseResult = await chunkerService.parseScreenplay(fullText);
 
+        // Deterministic re-ingest: replace existing rows/vectors for this source scope.
+        await this.replaceSourceScope(bibleId, sourceName, characterId);
+
         console.log(`[VoiceService] Parsed ${sourceName}:`);
         console.log(`  - Scenes: ${parseResult.sceneCount}`);
         console.log(`  - Characters: ${parseResult.characters.join(', ')}`);
@@ -78,48 +80,97 @@ export class VoiceService {
 
         console.log(`[VoiceService] Processing ${dialogueChunks.length} dialogue chunks for ingestion`);
 
+        // PH 29: Hierarchical RAG - Pre-create Beat Nodes
+        console.log(`[VoiceService] Pre-creating ${Math.ceil(dialogueChunks.length / 4)} Beat Nodes...`);
+        const BEAT_SIZE = 4;
+        const beatIds: (mongoose.Types.ObjectId | undefined)[] = new Array(dialogueChunks.length).fill(undefined);
+
+        for (let i = 0; i < dialogueChunks.length; i += BEAT_SIZE) {
+            const beatChunks = dialogueChunks.slice(i, i + BEAT_SIZE);
+            if (beatChunks.length === 0) continue;
+
+            const beatText = beatChunks.map(c => `[${c.speaker}] ${c.content}`).join('\n');
+            const beatEmbedding = await aiServiceManager.generateEmbedding(`BEAT CONTEXT:\n${beatText}`);
+            const beatHash = chunkerService.generateContentHash(`${sourceName}|BEAT|${i}|${beatText}`);
+
+            const beatNode = await VoiceSample.create({
+                bibleId: new mongoose.Types.ObjectId(bibleId),
+                content: beatText,
+                contentHash: beatHash,
+                chunkType: 'context',
+                chunkIndex: i,
+                embedding: beatEmbedding,
+                isHierarchicalNode: true,
+                source: `${sourceName} (Beat)`,
+                tags: ['auto-ingested', 'beat-node']
+            });
+            await vectorService.upsertSample({
+                id: beatNode._id.toString(),
+                content: beatText,
+                embedding: beatEmbedding,
+                metadata: {
+                    bibleId: bibleId.toString(),
+                    contentHash: beatHash,
+                    chunkType: 'context',
+                    chunkIndex: i,
+                    isHierarchicalNode: true,
+                    tags: ['auto-ingested', 'beat-node'],
+                    source: `${sourceName} (Beat)`
+                }
+            });
+
+            for (let j = 0; j < beatChunks.length; j++) {
+                if (i + j < beatIds.length) beatIds[i + j] = beatNode._id as mongoose.Types.ObjectId;
+            }
+        }
+
         // 4. Process & Save with deduplication (CONTROLLED PARALLEL PROCESSING)
-        // Using reduced concurrency to prevent memory issues and API rate limiting
         let savedCount = 0;
         let skippedDuplicates = 0;
         let skippedShort = 0;
         let errorCount = 0;
 
-        const CONCURRENCY_LIMIT = 3; // Reduced from 10 to prevent memory pressure
-        const BATCH_DELAY_MS = 100; // Small delay between batches for API rate limiting
+        const CONCURRENCY_LIMIT = 10;
+        const BATCH_DELAY_MS = 100;
 
         // Helper function to process a single chunk with error isolation
-        const processChunk = async (chunk: any): Promise<{ success: boolean; reason?: string }> => {
+        const processChunk = async (chunk: any, globalIdx: number): Promise<{ success: boolean; reason?: string }> => {
             try {
-                // Generate content hash for deduplication
-                const contentHash = this.generateContentHash(chunk.content);
+                const contentHash = chunkerService.generateContentHash(
+                    `${sourceName}|${chunk.chunkIndex}|${chunk.speaker || 'UNKNOWN'}|${chunk.content}`
+                );
 
-                // Check for existing duplicate
                 const existing = await VoiceSample.findOne({
                     bibleId: new mongoose.Types.ObjectId(bibleId),
-                    contentHash
+                    source: sourceName,
+                    contentHash,
+                    isHierarchicalNode: false
                 });
 
                 if (existing) {
                     return { success: false, reason: 'duplicate' };
                 }
 
-                // Skip very short content
                 if (chunk.content.length < 10) {
                     return { success: false, reason: 'short' };
                 }
 
-                // SOTA TECHNIQUE: Contextual Embedding
-                // Instead of just embedding "No.", we embed "Speaker: Bhishma (Young). Previous: Father asking question. Content: No."
-                // This creates a much richer vector representation.
                 const eraContext = (chunk as any).era || options?.era || '';
                 const contextString = chunk.contextBefore ? `Context: ${chunk.contextBefore}. ` : '';
                 const speakerString = `Speaker: ${chunk.speaker}${eraContext ? ` (${eraContext})` : ''}. `;
 
                 const richTextToEmbed = `${speakerString}${contextString}Line: "${chunk.content}"`;
-
-                // Generate embedding from RICH TEXT
                 const embedding = await aiServiceManager.generateEmbedding(richTextToEmbed);
+
+                // PH 28: Semantic Deduplication
+                const isSemanticDuplicate = await vectorService.isSemanticallyDuplicate(
+                    bibleId,
+                    embedding,
+                    0.95
+                );
+                if (isSemanticDuplicate) {
+                    return { success: false, reason: 'duplicate' };
+                }
 
                 // Resolve character ID
                 const resolvedCharacterId = characterId
@@ -138,11 +189,29 @@ export class VoiceService {
                     chunkIndex: chunk.chunkIndex,
                     embedding,
                     source: sourceName,
+                    parentNodeId: beatIds[globalIdx], // PH 29: LINK TO BEAT
                     tags: ['auto-ingested', chunk.parenthetical || ''].filter(Boolean)
                 });
 
                 // Index in ChromaDB
-                await vectorService.upsertSample(newSample as any);
+                await vectorService.upsertSample({
+                    id: newSample._id.toString(),
+                    content: chunk.content,
+                    embedding: embedding,
+                    metadata: {
+                        bibleId: bibleId.toString(),
+                        characterId: resolvedCharacterId?.toString(),
+                        contentHash,
+                        speaker: chunk.speaker,
+                        era: (chunk as any).era || options?.era,
+                        chunkType: chunk.type,
+                        chunkIndex: chunk.chunkIndex,
+                        source: sourceName,
+                        parentNodeId: beatIds[globalIdx]?.toString(),
+                        isHierarchicalNode: false,
+                        tags: ['auto-ingested', chunk.parenthetical || ''].filter(Boolean)
+                    }
+                });
                 return { success: true };
 
             } catch (err: any) {
@@ -155,10 +224,11 @@ export class VoiceService {
         for (let i = 0; i < dialogueChunks.length; i += CONCURRENCY_LIMIT) {
             const batch = dialogueChunks.slice(i, i + CONCURRENCY_LIMIT);
 
-            // Process batch with Promise.allSettled for error isolation
             const results = await Promise.allSettled(
-                batch.map(chunk => processChunk(chunk))
+                batch.map((chunk, batchIdx) => processChunk(chunk, i + batchIdx))
             );
+
+            // ... tally results logic starts here ...
 
             // Tally results
             for (const result of results) {
@@ -205,11 +275,45 @@ export class VoiceService {
     }
 
     /**
-     * Generate a short hash for content deduplication.
+     * Remove existing data for a source scope before re-ingesting,
+     * so chunk set and source stay 1:1 deterministic.
      */
-    private generateContentHash(content: string): string {
-        const normalized = content.toLowerCase().replace(/\s+/g, ' ').trim();
-        return crypto.createHash('sha256').update(normalized).digest('hex').slice(0, 16);
+    private async replaceSourceScope(
+        bibleId: string,
+        sourceName: string,
+        characterId?: string
+    ): Promise<void> {
+        const bibleObjectId = new mongoose.Types.ObjectId(bibleId);
+        const leafQuery: Record<string, unknown> = {
+            bibleId: bibleObjectId,
+            source: sourceName
+        };
+        if (characterId && mongoose.Types.ObjectId.isValid(characterId)) {
+            leafQuery.characterId = new mongoose.Types.ObjectId(characterId);
+        }
+        const beatQuery: Record<string, unknown> = {
+            bibleId: bibleObjectId,
+            source: `${sourceName} (Beat)`
+        };
+
+        const existing = await VoiceSample.find({ $or: [leafQuery, beatQuery] }).select('_id').lean();
+        if (existing.length === 0) return;
+
+        const existingIds = existing.map((doc: any) => doc._id.toString());
+        await vectorService.deleteSamplesByIds(existingIds);
+        await vectorService.deleteSamplesBySource(
+            bibleId,
+            sourceName,
+            characterId && mongoose.Types.ObjectId.isValid(characterId) ? characterId : undefined
+        );
+        await vectorService.deleteSamplesBySource(
+            bibleId,
+            `${sourceName} (Beat)`,
+            undefined
+        );
+        await VoiceSample.deleteMany({ $or: [leafQuery, beatQuery] });
+
+        console.log(`[VoiceService] Replaced existing source scope "${sourceName}" (${existingIds.length} samples removed).`);
     }
 
     /**

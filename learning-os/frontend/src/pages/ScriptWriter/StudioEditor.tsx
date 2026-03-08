@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import type { Bible, Scene } from '../../services/project.api';
+import type { Bible, IScene as Scene } from '../../services/project.api';
 import type { SaveState } from './types';
 
 interface StudioEditorProps {

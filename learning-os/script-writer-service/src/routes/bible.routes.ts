@@ -1,6 +1,7 @@
 import express from 'express';
 import { Bible } from '../models/Bible';
 import { exportService } from '../services/export.service';
+import { vectorService } from '../services/vector.service';
 import { authenticate } from '../middleware/auth.js';
 import fs from 'fs';
 import path from 'path';
@@ -88,7 +89,16 @@ router.get('/:id', async (req, res) => {
 router.get('/:id/export', async (req, res) => {
     try {
         await assertBibleAccess(req.params.id, req.userId);
-        const format = (req.query.format as 'fountain' | 'txt' | 'json') || 'fountain';
+        const format = (req.query.format as 'fountain' | 'txt' | 'json' | 'pdf') || 'fountain';
+
+        if (format === 'pdf') {
+            const pdfBuffer = await exportService.generatePDF(req.params.id);
+            res.header('Content-Type', 'application/pdf');
+            res.header('Content-Disposition', `attachment; filename="script.pdf"`);
+            res.send(pdfBuffer);
+            return;
+        }
+
         const content = await exportService.compileProject(req.params.id, format);
 
         if (format === 'json') {
@@ -154,21 +164,44 @@ router.put('/:id', async (req, res) => {
     }
 });
 
-// DELETE /api/bible/:id - Delete project and all its scenes
+// DELETE /api/bible/:id - Delete project and all linked data
 router.delete('/:id', async (req, res) => {
     try {
-        const bible = await assertBibleAccess(req.params.id, req.userId);
+        const bibleId = req.params.id;
+        await assertBibleAccess(bibleId, req.userId);
 
-        // Import Scene model dynamically to avoid circular dependencies
-        const { Scene } = await import('../models/Scene.js');
+        // Import models dynamically to avoid potential circular dependencies.
+        const [{ Scene }, { Character }, { Treatment }, { VoiceSample }] = await Promise.all([
+            import('../models/Scene.js'),
+            import('../models/Character.js'),
+            import('../models/Treatment.js'),
+            import('../models/VoiceSample.js')
+        ]);
 
-        // Delete all scenes associated with this project
-        await Scene.deleteMany({ bibleId: req.params.id });
+        // Remove vectors first so semantic retrieval cannot return stale project data.
+        await vectorService.deleteSamplesByBibleId(bibleId);
 
-        // Delete the project itself
-        await Bible.findByIdAndDelete(req.params.id);
+        const [sceneResult, characterResult, treatmentResult, voiceResult] = await Promise.all([
+            Scene.deleteMany({ bibleId }),
+            Character.deleteMany({ bibleId }),
+            Treatment.deleteMany({ bibleId }),
+            VoiceSample.deleteMany({ bibleId })
+        ]);
 
-        res.json({ success: true, message: 'Project and all scenes deleted' });
+        await Bible.findByIdAndDelete(bibleId);
+
+        res.json({
+            success: true,
+            data: {
+                message: 'Project and all related data deleted',
+                deleted: {
+                    scenes: sceneResult.deletedCount || 0,
+                    characters: characterResult.deletedCount || 0,
+                    treatments: treatmentResult.deletedCount || 0,
+                    voiceSamples: voiceResult.deletedCount || 0
+                }
+            }
+        });
     } catch (error) {
         if ((error as Error).message === 'ACCESS_DENIED') {
             return res.status(403).json({ error: 'Access denied' });

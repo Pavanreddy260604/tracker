@@ -1,5 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Sparkles, Send, Check, X, Loader2, Trash2, RotateCcw, Copy, User, Bot, ChevronDown, Plus } from 'lucide-react';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+import { Sparkles, Send, Check, Loader2, Trash2, RotateCcw, Copy, User, Bot, ChevronDown, Plus, FileText, ArrowRight } from 'lucide-react';
 import type { AssistantMessage } from '../types';
 import type { Bible } from '../../../services/project.api';
 
@@ -10,7 +12,6 @@ interface AssistantPanelProps {
     activeSceneName?: string;
     onSendMessage: (content: string) => void;
     onApplyProposal: (messageId: string) => void;
-    onDiscardProposal: (messageId: string) => void;
     onDeleteMessage: (messageId: string) => void;
     onUpdateMessage: (messageId: string, content: string) => void;
     onClearChat: () => void;
@@ -31,7 +32,6 @@ export function AssistantPanel({
     activeSceneName,
     onSendMessage,
     onApplyProposal,
-    onDiscardProposal,
     onDeleteMessage,
     onUpdateMessage,
     onClearChat
@@ -162,26 +162,35 @@ export function AssistantPanel({
                             </div>
                             <div className="space-y-1">
                                 <p className="text-[11px] text-zinc-500 max-w-[220px] leading-relaxed">
-                                    I can write, rewrite, translate, or transform your scenes. Just tell me what you need.
+                                    Chat naturally, or use /edit &lt;instruction&gt; on a selected scene.
                                 </p>
                             </div>
                         </div>
 
                         <div className="flex flex-col gap-1.5 w-full max-w-[240px]">
                             {[
-                                'Write this scene from scratch',
-                                'Make the dialogue more emotional',
-                                'Translate to Telugu in English letters',
+                                { text: 'How can I improve this scene?', desc: 'Conversational feedback', icon: '>' },
+                                { text: '/edit tighten dialogue and pacing', desc: 'Scene rewrite command', icon: '/' },
+                                { text: 'Give me 3 alternate opening hooks', desc: 'Brainstorm options', icon: '*' },
                             ].map((suggestion) => (
                                 <button
-                                    key={suggestion}
+                                    key={suggestion.text}
                                     onClick={() => {
-                                        setInputValue(suggestion);
-                                        inputRef.current?.focus();
+                                        setInputValue(suggestion.text);
+                                        onSendMessage(suggestion.text);
+                                        setTimeout(() => {
+                                            if (scrollRef.current) {
+                                                scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+                                            }
+                                        }, 100);
                                     }}
-                                    className="px-3 py-2 bg-transparent border border-zinc-800/60 rounded-lg text-[11px] font-medium text-zinc-400 hover:text-zinc-200 hover:border-zinc-700 hover:bg-zinc-800/50 transition-all text-left group"
+                                    className="ide-suggestion-btn flex items-center gap-2 p-2 hover:bg-zinc-800 rounded-md transition-colors text-left border border-transparent hover:border-zinc-700"
                                 >
-                                    {suggestion}
+                                    <span className="text-base">{suggestion.icon}</span>
+                                    <div className="flex flex-col">
+                                        <span className="text-xs text-zinc-300 font-medium">{suggestion.text}</span>
+                                        <span className="text-[9px] text-zinc-500">{suggestion.desc}</span>
+                                    </div>
                                 </button>
                             ))}
                         </div>
@@ -260,6 +269,93 @@ export function AssistantPanel({
                                                     </>
                                                 )}
 
+                                                {/* Surgical Patch / Script Edit Block */}
+                                                {(msg.type === 'chat' || msg.type === 'proposal') && (
+                                                    <div className="relative pt-1 overflow-hidden prose prose-invert prose-zinc prose-sm max-w-none">
+                                                        <ReactMarkdown
+                                                            remarkPlugins={[remarkGfm]}
+                                                            components={{
+                                                                pre: ({ children }) => <div className="not-prose">{children}</div>,
+                                                                code({ node, inline, className, children, ...props }: any) {
+                                                                    const match = /language-(\w+)/.exec(className || '');
+                                                                    const isScriptEdit = match && match[1] === 'script-edit';
+                                                                    const content = String(children).replace(/\n$/, '');
+
+                                                                    if (!inline && isScriptEdit) {
+                                                                        const searchIndex = content.indexOf('<<<SEARCH>>>');
+                                                                        const replaceIndex = content.indexOf('<<<REPLACE>>>');
+
+                                                                        if (searchIndex !== -1 && replaceIndex !== -1) {
+                                                                            const oldText = content.substring(searchIndex + 12, replaceIndex).trim();
+                                                                            const newText = content.substring(replaceIndex + 13).trim();
+
+                                                                            return (
+                                                                                <div className="my-4 border border-blue-500/30 rounded-lg bg-blue-500/5 overflow-hidden shadow-lg shadow-blue-500/5 animate-in fade-in zoom-in-95 duration-300">
+                                                                                    {/* Diff Header */}
+                                                                                    <div className="flex items-center justify-between px-3 py-2 bg-blue-500/10 border-b border-blue-500/20">
+                                                                                        <div className="flex items-center gap-2">
+                                                                                            <FileText size={12} className="text-blue-400" />
+                                                                                            <span className="text-[10px] uppercase tracking-wider font-bold text-blue-300/80">Surgical Script Patch</span>
+                                                                                        </div>
+                                                                                        <button
+                                                                                            onClick={() => onApplyProposal(msg.id + '|' + btoa(content))}
+                                                                                            className="flex items-center gap-1.5 px-2 py-1 bg-blue-600 hover:bg-blue-500 text-white text-[10px] font-bold rounded transition-all hover:scale-105"
+                                                                                        >
+                                                                                            <Check size={10} /> Apply Patch
+                                                                                        </button>
+                                                                                    </div>
+
+                                                                                    {/* Diff Content */}
+                                                                                    <div className="divide-y divide-blue-500/10">
+                                                                                        <div className="bg-red-500/5 p-3">
+                                                                                            <div className="text-[10px] text-red-400 mb-1 font-bold opacity-60">OLD</div>
+                                                                                            <div className="text-xs text-zinc-400 line-through decoration-red-500/50 italic font-mono opacity-80">{oldText}</div>
+                                                                                        </div>
+                                                                                        <div className="flex items-center justify-center py-1 opacity-20">
+                                                                                            <ArrowRight size={14} className="text-blue-400" />
+                                                                                        </div>
+                                                                                        <div className="bg-green-500/5 p-3">
+                                                                                            <div className="text-[10px] text-green-400 mb-1 font-bold opacity-60">NEW</div>
+                                                                                            <div className="text-xs text-zinc-200 font-mono font-medium">{newText}</div>
+                                                                                        </div>
+                                                                                    </div>
+                                                                                </div>
+                                                                            );
+                                                                        }
+                                                                    }
+
+                                                                    // Default code block
+                                                                    return (
+                                                                        <code className={className} {...props}>
+                                                                            {children}
+                                                                        </code>
+                                                                    );
+                                                                }
+                                                            }}
+                                                        >
+                                                            {msg.content}
+                                                        </ReactMarkdown>
+
+                                                        {/* Hover actions for chat/proposal */}
+                                                        <div className="absolute -right-1 -top-2 opacity-0 group-hover/msg:opacity-100 transition-opacity flex items-center gap-0.5 bg-zinc-800 border border-zinc-700 rounded-md p-0.5 shadow-xl z-20">
+                                                            <button
+                                                                onClick={() => handleCopy(msg.content, msg.id)}
+                                                                className="p-1 rounded hover:bg-zinc-700 text-zinc-400 hover:text-zinc-200 transition-colors"
+                                                                title="Copy"
+                                                            >
+                                                                {copiedId === msg.id ? <Check size={11} className="text-green-400" /> : <Copy size={11} />}
+                                                            </button>
+                                                            <button
+                                                                onClick={() => onDeleteMessage(msg.id)}
+                                                                className="p-1 rounded hover:bg-zinc-700 text-zinc-400 hover:text-red-400 transition-colors"
+                                                                title="Delete"
+                                                            >
+                                                                <Trash2 size={11} />
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                )}
+
                                                 {/* Thought/Status */}
                                                 {msg.type === 'thought' && (
                                                     <div className="flex items-center gap-2 text-[10px] text-zinc-500 py-1">
@@ -268,69 +364,7 @@ export function AssistantPanel({
                                                     </div>
                                                 )}
 
-                                                {/* Proposal */}
-                                                {msg.type === 'proposal' && (
-                                                    <div className="space-y-2">
-                                                        {/* Script content block */}
-                                                        <div className="bg-[#0a0a0a] border border-zinc-800 rounded-lg overflow-hidden">
-                                                            {/* Code block header */}
-                                                            <div className="flex items-center justify-between px-3 py-1.5 bg-zinc-900/80 border-b border-zinc-800">
-                                                                <span className="text-[10px] text-zinc-500 font-mono">screenplay</span>
-                                                                <div className="flex items-center gap-1">
-                                                                    <button
-                                                                        onClick={() => handleCopy(msg.content, msg.id)}
-                                                                        className="p-1 rounded hover:bg-zinc-800 text-zinc-500 hover:text-zinc-300 transition-colors"
-                                                                        title="Copy"
-                                                                    >
-                                                                        {copiedId === msg.id ? <Check size={11} className="text-green-400" /> : <Copy size={11} />}
-                                                                    </button>
-                                                                </div>
-                                                            </div>
-                                                            {/* Content */}
-                                                            <div className="p-3 text-xs font-mono text-zinc-300 whitespace-pre-wrap max-h-[400px] overflow-y-auto custom-scrollbar leading-relaxed">
-                                                                {msg.content}
-                                                                {isGenerating && msg.id === messages[messages.length - 1]?.id && (
-                                                                    <span className="inline-block w-1.5 h-4 ml-0.5 bg-blue-500 animate-pulse align-middle rounded-sm" />
-                                                                )}
-                                                            </div>
-                                                        </div>
-
-                                                        {/* Action buttons */}
-                                                        {msg.status === 'pending' && (
-                                                            <div className="flex items-center gap-2 animate-in fade-in slide-in-from-bottom-1 duration-300">
-                                                                <button
-                                                                    onClick={() => onApplyProposal(msg.id)}
-                                                                    className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white text-[11px] font-semibold rounded-md transition-all shadow-sm shadow-blue-900/20"
-                                                                >
-                                                                    <Check size={12} /> Apply Changes
-                                                                </button>
-                                                                <button
-                                                                    onClick={() => onDiscardProposal(msg.id)}
-                                                                    className="flex items-center gap-1.5 px-3 py-1.5 bg-zinc-800 hover:bg-zinc-700 text-zinc-400 hover:text-zinc-200 text-[11px] font-semibold rounded-md transition-all border border-zinc-700"
-                                                                >
-                                                                    <X size={12} /> Discard
-                                                                </button>
-                                                            </div>
-                                                        )}
-                                                        {msg.status === 'applied' && (
-                                                            <div className="flex items-center gap-1.5 text-[11px] text-green-400/80 font-medium">
-                                                                <Check size={12} /> Changes applied to editor
-                                                            </div>
-                                                        )}
-                                                        {msg.status === 'discarded' && (
-                                                            <div className="flex items-center gap-1.5 text-[11px] text-zinc-500 font-medium">
-                                                                <X size={12} /> Changes discarded
-                                                            </div>
-                                                        )}
-
-                                                        {/* Hover delete for proposal */}
-                                                        <div className="absolute right-0 -top-2 opacity-0 group-hover/msg:opacity-100 transition-opacity">
-                                                            <button onClick={() => onDeleteMessage(msg.id)} className="p-1 rounded-md bg-zinc-800 border border-zinc-700 hover:bg-zinc-700 text-zinc-500 hover:text-red-400 transition-colors shadow-lg" title="Delete">
-                                                                <Trash2 size={11} />
-                                                            </button>
-                                                        </div>
-                                                    </div>
-                                                )}
+                                                <div />
                                             </div>
                                         ))}
                                     </div>

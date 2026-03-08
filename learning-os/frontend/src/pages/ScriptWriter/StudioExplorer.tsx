@@ -1,5 +1,5 @@
 import { ChevronDown, ChevronRight, FileText, Loader2, PanelRight, Plus, Search } from 'lucide-react';
-import type { Bible, Scene } from '../../services/project.api';
+import type { Bible, IScene as Scene } from '../../services/project.api';
 import type { ProjectForm } from './types';
 
 interface StudioExplorerProps {

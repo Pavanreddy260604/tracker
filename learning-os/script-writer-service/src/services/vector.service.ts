@@ -1,9 +1,19 @@
-import { ChromaClient, Collection } from "chromadb";
+import { ChromaVectorStore } from "@llamaindex/chroma";
+import {
+    VectorStoreIndex,
+    MetadataFilters,
+    MetadataFilter,
+    FilterOperator,
+    storageContextFromDefaults,
+    VectorStoreQueryMode,
+    TextNode
+} from "llamaindex";
 import { VoiceSample, IVoiceSample } from "../models/VoiceSample";
+import { llamaindexService } from "./llamaindex.service";
+import { VectorNodeDTO } from "../types/vector.types";
 
 /**
  * Scored sample with similarity metric.
- * Uses a plain object shape rather than extending Mongoose Document.
  */
 export interface ScoredSample {
     _id: string;
@@ -13,185 +23,138 @@ export interface ScoredSample {
     contentHash?: string;
     speaker?: string;
     era?: string;
-    language?: string; // PH Multilingual
+    language?: string;
     tactic?: string;
     emotion?: string;
-    masterScriptId?: string; // PH 21
-    chunkType?: 'dialogue' | 'action' | 'narration';
+    masterScriptId?: string;
+    chunkType?: 'dialogue' | 'action' | 'narration' | 'slug' | 'cue' | 'transition' | 'centered' | 'note' | 'section' | 'synopsis' | 'context' | 'scene' | 'parenthetical' | 'other';
     chunkIndex?: number;
     embedding?: number[];
     tags?: string[];
     source?: string;
+    parentNodeId?: string; // PH 29: Parent node for recursive retrieval
+    isHierarchicalNode?: boolean; // PH 29
+    scriptVersion?: string;
+    parserVersion?: string;
+    chunkId?: string;
+    sceneSeq?: number;
+    elementSeq?: number;
+    elementType?: string;
+    sourceStartLine?: number;
+    sourceEndLine?: number;
+    sourceLineIds?: string[];
+    dualDialogue?: boolean;
+    sceneNumber?: string;
+    nonPrinting?: boolean;
+    ingestState?: string;
+    parentContent?: string; // PH 29: Content of the parent node
     similarityScore: number;
 }
 
 export interface FindSimilarOptions {
-    minSimilarity?: number;      // Minimum cosine similarity (0-1), default 0.5
-    maxLength?: number;          // Max content length to include
-    dedupe?: boolean;            // Deduplicate by content hash, default true
-    era?: string;                // Filter by specific era/age context
-    language?: string;           // Filter by specific language (PH Multilingual)
+    minSimilarity?: number;
+    maxLength?: number;
+    dedupe?: boolean;
+    era?: string;
+    language?: string;
+    scopeType?: 'bibleId' | 'masterScriptId'; // PH 29: Specify which ID to filter by
     interests?: {
         directors: string[];
         genres: string[];
         styles: string[];
     };
+    includeParentContext?: boolean; // PH 29: Fetch parent beat/scene context
+    includeHierarchicalNodes?: boolean;
+    scriptVersion?: string;
+    ingestState?: 'staging' | 'active' | 'archived';
 }
 
 /**
- * VectorService
- * -------------
- * Responsible ONLY for:
- * - Indexing embeddings into ChromaDB
- * - Vector similarity search with relevance scoring
- *
- * Embeddings are generated externally (Ollama).
- * MongoDB remains the source of truth.
+ * VectorService (Mastery Edition)
+ * ------------------------------
+ * Uses LlamaIndex's native Chroma integration for production-grade retrieval.
  */
 export class VectorService {
-    private client: ChromaClient;
-    private collection: Collection | null = null;
-    private initPromise: Promise<void> | null = null;
-
+    private vectorStore: ChromaVectorStore | null = null;
     private static readonly COLLECTION_NAME = "voice_samples";
 
-    constructor() {
-        // ChromaDB v3.x uses 'path' for HTTP server connection
-        // Use environment variable with fallback for flexibility
-        const chromaUrl = process.env.CHROMA_URL || 'http://localhost:8000';
-        this.client = new ChromaClient({
-            path: chromaUrl
+    constructor() { }
+
+    /**
+     * Ensures the LlamaIndex components are initialized with global settings.
+     */
+    private async ensureStore() {
+        if (this.vectorStore) return;
+
+        // Force llamaindexService initialization
+        const _service = llamaindexService;
+
+        this.vectorStore = new ChromaVectorStore({
+            collectionName: VectorService.COLLECTION_NAME,
         });
+
+        console.log(`[VectorService] ChromaVectorStore initialized for: ${VectorService.COLLECTION_NAME}`);
     }
 
     /**
-     * Ensures ChromaDB collection is initialized exactly once.
+     * Index or update a vector node in ChromaDB.
      */
-    private async init(): Promise<void> {
-        if (this.collection) return;
-        if (this.initPromise) return this.initPromise;
+    async upsertSample(node: VectorNodeDTO): Promise<void> {
+        await this.ensureStore();
+        if (!this.vectorStore) throw new Error("Vector store not initialized");
 
-        this.initPromise = (async () => {
-            const embeddingFunction = {
-                generate: async () => {
-                    throw new Error(
-                        "Embedding function should never be called. " +
-                        "Embeddings must be generated externally."
-                    );
-                }
-            };
-
-            this.collection = await this.client.getOrCreateCollection({
-                name: VectorService.COLLECTION_NAME,
-                metadata: {
-                    description: "Voice samples for Script Writer"
-                },
-                embeddingFunction
-            } as any);
-
-            console.log(
-                `[VectorService] Connected to ChromaDB collection: ${VectorService.COLLECTION_NAME}`
-            );
-        })();
-
-        return this.initPromise;
-    }
-
-    /**
-     * Index or update a voice sample in ChromaDB.
-     */
-    async upsertSample(sample: IVoiceSample): Promise<void> {
-        await this.init();
-        if (!this.collection) {
-            throw new Error("ChromaDB collection not initialized");
-        }
-
-        if (!sample.embedding || sample.embedding.length === 0) {
+        if (!node.embedding || node.embedding.length === 0) {
             throw new Error("Sample embedding is missing or empty");
         }
 
         const metadata: any = {
-            bibleId: sample.bibleId ? sample.bibleId.toString() : "GLOBAL",
-            source: sample.source ?? "unknown",
-            preview: sample.content.slice(0, 120)
+            bibleId: node.metadata.bibleId || "GLOBAL",
+            source: node.metadata.source ?? "unknown",
         };
 
-        if (sample.characterId) {
-            metadata.characterId = sample.characterId.toString();
+        if (node.metadata.characterId) metadata.characterId = node.metadata.characterId;
+        if (node.metadata.speaker) metadata.speaker = node.metadata.speaker;
+        if (node.metadata.era) metadata.era = node.metadata.era;
+        if (node.metadata.language) metadata.language = node.metadata.language;
+        if (node.metadata.tactic) metadata.tactic = node.metadata.tactic;
+        if (node.metadata.emotion) metadata.emotion = node.metadata.emotion;
+        if (node.metadata.masterScriptId) metadata.masterScriptId = node.metadata.masterScriptId;
+        if (node.metadata.chunkType) metadata.chunkType = node.metadata.chunkType;
+        if (node.metadata.contentHash) metadata.contentHash = node.metadata.contentHash;
+        if (node.metadata.parentNodeId) metadata.parentNodeId = node.metadata.parentNodeId;
+        if (node.metadata.isHierarchicalNode !== undefined) metadata.isHierarchicalNode = node.metadata.isHierarchicalNode;
+        if (node.metadata.tags && node.metadata.tags.length > 0) metadata.tags = node.metadata.tags.join(',');
+        if (node.metadata.scriptVersion) metadata.scriptVersion = node.metadata.scriptVersion;
+        if (node.metadata.parserVersion) metadata.parserVersion = node.metadata.parserVersion;
+        if (node.metadata.chunkId) metadata.chunkId = node.metadata.chunkId;
+        if (node.metadata.sceneSeq !== undefined) metadata.sceneSeq = node.metadata.sceneSeq;
+        if (node.metadata.elementSeq !== undefined) metadata.elementSeq = node.metadata.elementSeq;
+        if (node.metadata.elementType) metadata.elementType = node.metadata.elementType;
+        if (node.metadata.sourceStartLine !== undefined) metadata.sourceStartLine = node.metadata.sourceStartLine;
+        if (node.metadata.sourceEndLine !== undefined) metadata.sourceEndLine = node.metadata.sourceEndLine;
+        if (node.metadata.dualDialogue !== undefined) metadata.dualDialogue = node.metadata.dualDialogue;
+        if (node.metadata.sceneNumber) metadata.sceneNumber = node.metadata.sceneNumber;
+        if (node.metadata.nonPrinting !== undefined) metadata.nonPrinting = node.metadata.nonPrinting;
+        if (node.metadata.sourceLineIds && node.metadata.sourceLineIds.length > 0) {
+            metadata.sourceLineIds = node.metadata.sourceLineIds.join(',');
         }
+        if (node.metadata.ingestState) metadata.ingestState = node.metadata.ingestState;
 
-        if (sample.speaker) {
-            metadata.speaker = sample.speaker;
-        }
+        // PH 30: Mirror content in metadata for LlamaIndex query reconstruction
+        metadata.text = node.content;
 
-        if (sample.era) {
-            metadata.era = sample.era;
-        }
-
-        if (sample.language) {
-            metadata.language = sample.language;
-        }
-
-        if (sample.tactic) {
-            metadata.tactic = sample.tactic;
-        }
-
-        if (sample.emotion) {
-            metadata.emotion = sample.emotion;
-        }
-
-        if (sample.masterScriptId) {
-            metadata.masterScriptId = sample.masterScriptId.toString();
-        }
-
-        if (sample.chunkType) {
-            metadata.chunkType = sample.chunkType;
-        }
-
-        if (sample.contentHash) {
-            metadata.contentHash = sample.contentHash;
-        }
-
-        try {
-            await this.collection.upsert({
-                ids: [sample._id.toString()],
-                embeddings: [sample.embedding],
-                metadatas: [metadata],
-                documents: [sample.content]
-            });
-        } catch (error: any) {
-            if (error.message && (error.message.includes("dimension") || error.message.includes("expecting embedding with dimension"))) {
-                console.warn(`[VectorService] Dimension mismatch detected. Recreating collection '${VectorService.COLLECTION_NAME}'...`);
-
-                try {
-                    // Force deletion of local collection state
-                    await (this.client as any).deleteCollection({ name: VectorService.COLLECTION_NAME });
-                } catch (delErr) {
-                    console.warn("[VectorService] Could not delete collection (might not exist):", delErr);
-                }
-
-                this.collection = null;
-                this.initPromise = null;
-                await this.init();
-
-                // Retry once
-                if (this.collection) {
-                    await (this.collection as any).upsert({
-                        ids: [sample._id.toString()],
-                        embeddings: [sample.embedding],
-                        metadatas: [metadata],
-                        documents: [sample.content]
-                    });
-                }
-            } else {
-                throw error;
-            }
-        }
+        // Use native Chroma upsert for deterministic idempotency across retries/parallel runs.
+        const collection = await (this.vectorStore as any).getCollection();
+        await collection.upsert({
+            ids: [node.id],
+            embeddings: [Array.from(node.embedding)],
+            documents: [node.content],
+            metadatas: [JSON.parse(JSON.stringify(metadata))]
+        });
     }
 
     /**
-     * Finds semantically similar samples using vector search.
-     * Now includes relevance scoring and optional filtering.
+     * Finds semantically similar samples using LlamaIndex VectorStoreIndex.
      */
     async findSimilarSamples(
         bibleId: string,
@@ -200,157 +163,137 @@ export class VectorService {
         characterIds?: string[],
         options?: FindSimilarOptions
     ): Promise<ScoredSample[]> {
-        await this.init();
-        if (!this.collection) return [];
+        await this.ensureStore();
+        if (!this.vectorStore) return [];
 
-        if (!queryEmbedding || queryEmbedding.length === 0) {
-            throw new Error("Query embedding is missing or empty");
-        }
+        const normalizedCharacterIds = Array.from(new Set((characterIds || []).filter(Boolean)));
+        const characterIdSet = normalizedCharacterIds.length > 0 ? new Set(normalizedCharacterIds) : null;
 
-        const minSimilarity = options?.minSimilarity ?? 0.5;
-        const maxLength = options?.maxLength ?? 2000;
-        const shouldDedupe = options?.dedupe ?? true;
-
-        // Build filter conditions
-        const conditions: any[] = [];
-
+        // 1. Build Filters
+        const filters: MetadataFilter[] = [];
         if (bibleId !== "ALL") {
-            conditions.push({ bibleId: bibleId });
+            const filterKey = options?.scopeType || 'bibleId';
+            filters.push({ key: filterKey, value: bibleId, operator: FilterOperator.EQ });
         }
-
-        if (characterIds && characterIds.length > 0) {
-            conditions.push({ characterId: { "$in": characterIds } });
+        if (!options?.includeHierarchicalNodes) {
+            filters.push({ key: "isHierarchicalNode", value: false as any, operator: FilterOperator.EQ });
         }
-
         if (options?.era) {
-            conditions.push({ era: options.era });
+            filters.push({ key: "era", value: options.era, operator: FilterOperator.EQ });
         }
-
         if (options?.language) {
-            conditions.push({ language: options.language });
+            filters.push({ key: "language", value: options.language, operator: FilterOperator.EQ });
+        }
+        if (options?.scriptVersion) {
+            filters.push({ key: "scriptVersion", value: options.scriptVersion, operator: FilterOperator.EQ });
+        }
+        if (options?.ingestState) {
+            filters.push({ key: "ingestState", value: options.ingestState, operator: FilterOperator.EQ });
         }
 
-        let where: any = undefined;
-        if (conditions.length === 1) {
-            where = conditions[0];
-        } else if (conditions.length > 1) {
-            where = { "$and": conditions };
+        // 2. Perform Native Query (PH 30 Hardening)
+        // We bypass LlamaIndex's .query() because it crashes on legacy records missing the 'text' metadata key.
+        const baseTopK = Math.max(20, limit * 3);
+        const similarityTopK = characterIdSet ? Math.max(baseTopK * 4, limit * 10, 80) : baseTopK;
+
+        console.log(`[VectorService] Querying Chroma NATIVELY with filters:`, JSON.stringify(filters), `K=${similarityTopK}`);
+
+        const collection = await (this.vectorStore as any).getCollection();
+
+        // Convert LlamaIndex filters to Chroma's 'where' format
+        const chromaWhere: any = {};
+        if (filters.length > 0) {
+            if (filters.length === 1) {
+                chromaWhere[filters[0].key] = { "$eq": filters[0].value };
+            } else {
+                chromaWhere["$and"] = filters.map(f => ({ [f.key]: { "$eq": f.value } }));
+            }
         }
 
-        // Fetch more results than needed for filtering
-        const fetchLimit = Math.max(limit * 3, 15);
+        const queryResult = await collection.query({
+            queryEmbeddings: [queryEmbedding], // Chroma expects nested arrays for multi-query support
+            nResults: similarityTopK,
+            where: filters.length > 0 ? chromaWhere : undefined,
+            include: ["metadatas", "documents", "distances"]
+        });
 
-        // Cast to any to access full query result including distances
-        const results: any = await this.collection.query({
-            queryEmbeddings: [queryEmbedding],
-            nResults: fetchLimit,
-            where,
-            include: ["distances", "metadatas", "documents"]
-        } as any);
+        // 3. Map Results
+        const ids = queryResult.ids[0] || [];
+        const metadatas = queryResult.metadatas?.[0] || [];
+        const documents = queryResult.documents?.[0] || [];
+        const distances = queryResult.distances?.[0] || [];
 
-        const ids = results.ids?.[0];
-        const distances = results.distances?.[0];
-        const documents = results.documents?.[0];
-        const metadatas = results.metadatas?.[0];
+        if (ids.length === 0) return [];
 
-        if (!ids || ids.length === 0) return [];
-
-        // Calculate similarity scores and filter
-        // ChromaDB returns L2 distance by default, convert to similarity
-        // For normalized embeddings: similarity ≈ 1 - (distance² / 2)
-        const scoredIds: { id: string; score: number; doc: string; meta: any }[] = [];
+        const scoredIds: { id: string; score: number; meta: any }[] = [];
+        const minSimilarity = options?.minSimilarity ?? 0.5;
 
         for (let i = 0; i < ids.length; i++) {
-            const distance = distances?.[i] ?? 1;
-            // Convert L2 distance to cosine similarity approximation
-            // For normalized vectors, cosine_sim ≈ 1 - (L2² / 2)
-            const similarity = Math.max(0, 1 - (distance * distance) / 2);
+            // Chroma L2 distance to Cosine Similarity approximation
+            // L2^2 = 2 - 2*cos => cos = 1 - (L2^2 / 2)
+            // (Assumes normalized vectors, which LlamaIndex/BGE-M3 provides)
+            const l2Distance = distances[i] || 0;
+            const similarity = 1 - (l2Distance / 2);
 
-            // Apply similarity threshold
-            if (similarity < minSimilarity) {
+            if (similarity < minSimilarity) continue;
+
+            const id = ids[i];
+            const meta = metadatas[i] || {};
+            const content = documents[i] || "";
+
+            // Enrich meta with content if missing (for legacy record transparency)
+            if (!meta.text && content) meta.text = content;
+
+            const metaCharacterId = typeof meta.characterId === 'string'
+                ? meta.characterId
+                : meta.characterId?.toString?.();
+
+            // Enforce character-scoped RAG when specific cast is selected.
+            if (characterIdSet && (!metaCharacterId || !characterIdSet.has(metaCharacterId))) {
                 continue;
             }
 
-            // Apply length filter
-            const doc = documents?.[i] ?? '';
-            if (doc.length > maxLength) {
-                continue;
-            }
-
-            const meta = metadatas?.[i] ?? {};
             let score = similarity;
 
-            // PH 22: Boost score if it matches user interests
+            // Interest Boosting
             if (options?.interests) {
                 const source = (meta.source || '').toUpperCase();
-                const tags = Array.isArray(meta.tags) ? meta.tags.map((t: string) => t.toUpperCase()) : [];
-
-                // Boost for Director match
                 if (options.interests.directors.some(d => source.includes(d.toUpperCase()))) {
                     score += 0.15;
-                    console.log(`[VectorService] Interest Boost (+0.15) for director match in: ${source}`);
-                }
-
-                // Boost for Tag/Genre/Style match
-                const allInterests = [...options.interests.genres, ...options.interests.styles].map(s => s.toUpperCase());
-                if (tags.some((t: string) => allInterests.includes(t))) {
-                    score += 0.10;
-                    console.log(`[VectorService] Interest Boost (+0.10) for tag match in samples.`);
                 }
             }
 
-            scoredIds.push({
-                id: ids[i],
-                score: Math.min(1.0, score), // Cap at 1.0
-                doc,
-                meta
-            });
+            scoredIds.push({ id, score, meta });
         }
 
-        // Re-sort by boosted score
+        // Sort and select top candidates
         scoredIds.sort((a, b) => b.score - a.score);
-
-        // Deduplicate by content hash if enabled
-        if (shouldDedupe) {
-            const seenHashes = new Set<string>();
-            const dedupedIds = scoredIds.filter(item => {
-                const hash = item.meta?.contentHash;
-                if (!hash) return true; // Keep items without hash
-                if (seenHashes.has(hash)) return false;
-                seenHashes.add(hash);
-                return true;
-            });
-            scoredIds.length = 0;
-            scoredIds.push(...dedupedIds);
-        }
-
-        // Take top N after filtering
-        const topIds = scoredIds
-            .sort((a, b) => b.score - a.score)
-            .slice(0, limit);
+        const fetchCount = options?.dedupe || options?.maxLength
+            ? Math.max(limit * 3, limit + 10)
+            : limit;
+        const topIds = scoredIds.slice(0, fetchCount);
 
         if (topIds.length === 0) return [];
 
-        // Fetch authoritative documents from MongoDB
-        const samples = await VoiceSample.find({
+        const mongoQuery: Record<string, unknown> = {
             _id: { $in: topIds.map(t => t.id) }
-        });
+        };
+        if (characterIdSet) {
+            mongoQuery.characterId = { $in: Array.from(characterIdSet) };
+        }
 
-        // Create map for merging scores
-        const scoreMap = new Map(topIds.map(t => [t.id, t.score]));
-        const sampleMap = new Map(
-            samples.map(s => [s._id.toString(), s])
-        );
+        // 4. Hydrate from MongoDB
+        const samples = await VoiceSample.find(mongoQuery);
+        const sampleMap = new Map(samples.map(s => [s._id.toString(), s]));
 
-        // Return scored samples in order
-        return topIds
+        const scoredSamples = topIds
             .map(t => {
                 const sample = sampleMap.get(t.id);
                 if (!sample) return null;
                 const obj = sample.toObject();
                 return {
                     _id: obj._id.toString(),
-                    bibleId: obj.bibleId.toString(),
+                    bibleId: obj.bibleId?.toString(),
                     characterId: obj.characterId?.toString(),
                     content: obj.content,
                     contentHash: obj.contentHash,
@@ -363,42 +306,183 @@ export class VectorService {
                     chunkIndex: obj.chunkIndex,
                     tags: obj.tags,
                     source: obj.source,
+                    parentNodeId: obj.parentNodeId?.toString(),
+                    isHierarchicalNode: obj.isHierarchicalNode,
+                    scriptVersion: obj.scriptVersion,
+                    parserVersion: obj.parserVersion,
+                    chunkId: obj.chunkId,
+                    sceneSeq: (obj as any).sceneSeq,
+                    elementSeq: (obj as any).elementSeq,
+                    elementType: (obj as any).elementType,
+                    sourceStartLine: (obj as any).sourceStartLine,
+                    sourceEndLine: (obj as any).sourceEndLine,
+                    sourceLineIds: (obj as any).sourceLineIds,
+                    dualDialogue: (obj as any).dualDialogue,
+                    sceneNumber: (obj as any).sceneNumber,
+                    nonPrinting: (obj as any).nonPrinting,
+                    ingestState: (obj as any).ingestState,
                     similarityScore: t.score
                 } as ScoredSample;
             })
             .filter(Boolean) as ScoredSample[];
-    }
 
-    /**
-     * Optional: Remove a sample from the vector index.
-     */
-    async deleteSample(sampleId: string): Promise<void> {
-        await this.init();
-        if (!this.collection) return;
+        // 5. Recursive Retrieval - Enrich with parent context if requested
+        if (options?.includeParentContext) {
+            const parentIds = scoredSamples
+                .map((s: ScoredSample) => s.parentNodeId)
+                .filter((id): id is string => !!id);
 
-        await this.collection.delete({
-            ids: [sampleId]
-        });
-    }
+            if (parentIds.length > 0) {
+                const parents = await VoiceSample.find({ _id: { $in: parentIds } });
+                const parentMap = new Map(parents.map(p => [p._id.toString(), p.content]));
 
-    /**
-     * Get collection stats for debugging.
-     */
-    async getStats(): Promise<{ count: number }> {
-        await this.init();
-        if (!this.collection) return { count: 0 };
-
-        // Use peek to get count since count() may not exist in all ChromaDB versions
-        try {
-            const peek = await (this.collection as any).count();
-            return { count: typeof peek === 'number' ? peek : 0 };
-        } catch {
-            return { count: 0 };
+                for (const sample of scoredSamples) {
+                    if (sample.parentNodeId) {
+                        sample.parentContent = parentMap.get(sample.parentNodeId);
+                    }
+                }
+            }
         }
+
+        let finalSamples = scoredSamples;
+
+        if (options?.maxLength) {
+            finalSamples = finalSamples.filter(s => s.content.length <= options.maxLength!);
+        }
+
+        if (options?.dedupe) {
+            const seen = new Set<string>();
+            finalSamples = finalSamples.filter(sample => {
+                const fallbackKey = `${(sample.speaker || '').toLowerCase()}|${sample.content.trim().toLowerCase()}`;
+                const key = sample.contentHash || fallbackKey;
+                if (seen.has(key)) return false;
+                seen.add(key);
+                return true;
+            });
+        }
+
+        return finalSamples.slice(0, limit);
+    }
+
+    async deleteSample(sampleId: string): Promise<void> {
+        await this.ensureStore();
+        if (this.vectorStore) {
+            await this.vectorStore.delete(sampleId);
+        }
+    }
+
+    /**
+     * Remove a set of samples by explicit IDs.
+     */
+    async deleteSamplesByIds(sampleIds: string[]): Promise<void> {
+        await this.ensureStore();
+        if (!this.vectorStore || sampleIds.length === 0) return;
+
+        const collection = await (this.vectorStore as any).getCollection();
+        await collection.delete({ ids: sampleIds });
+        console.log(`[VectorService] Deleted ${sampleIds.length} vectors by IDs`);
+    }
+
+    /**
+     * Remove all vectors for a specific source within a bible (and optional character scope).
+     */
+    async deleteSamplesBySource(
+        bibleId: string,
+        source: string,
+        characterId?: string
+    ): Promise<void> {
+        await this.ensureStore();
+        if (!this.vectorStore) return;
+
+        const where: Record<string, unknown> = {
+            bibleId: { "$eq": bibleId },
+            source: { "$eq": source }
+        };
+        if (characterId) {
+            where.characterId = { "$eq": characterId };
+        }
+
+        const collection = await (this.vectorStore as any).getCollection();
+        await collection.delete({ where });
+        console.log(`[VectorService] Deleted vectors by source="${source}" in bible="${bibleId}"`);
+    }
+
+    /**
+     * Remove all vectors associated with a specific project/bible.
+     */
+    async deleteSamplesByBibleId(bibleId: string): Promise<void> {
+        await this.ensureStore();
+        if (!this.vectorStore) return;
+
+        const collection = await (this.vectorStore as any).getCollection();
+        await collection.delete({
+            where: { bibleId: { "$eq": bibleId } }
+        });
+        console.log(`[VectorService] Deleted vectors for bible: ${bibleId}`);
+    }
+
+    /**
+     * Remove all samples associated with a specific master script.
+     */
+    async deleteSamplesByMasterScriptId(masterScriptId: string): Promise<void> {
+        await this.ensureStore();
+        if (this.vectorStore) {
+            // CRITICAL: LlamaIndex's .delete() wrapper requires an ID.
+            // We bypass it to use Chroma's native metadata-based deletion.
+            const collection = await (this.vectorStore as any).getCollection();
+            await collection.delete({
+                where: { masterScriptId: { "$eq": masterScriptId } }
+            });
+            console.log(`[VectorService] Deleted vectors for master script: ${masterScriptId}`);
+        }
+    }
+
+    /**
+     * Remove vectors associated with one master script version.
+     */
+    async deleteSamplesByMasterScriptVersion(masterScriptId: string, scriptVersion: string): Promise<void> {
+        await this.ensureStore();
+        if (!this.vectorStore) return;
+
+        const collection = await (this.vectorStore as any).getCollection();
+        await collection.delete({
+            where: {
+                "$and": [
+                    { masterScriptId: { "$eq": masterScriptId } },
+                    { scriptVersion: { "$eq": scriptVersion } }
+                ]
+            }
+        });
+        console.log(
+            `[VectorService] Deleted vectors for master script ${masterScriptId} version ${scriptVersion}`
+        );
+    }
+
+    /**
+     * PH 28: Semantic Deduplication.
+     * Checks if a new embedding is almost identical to an existing one in the scope.
+     * Returns true if similarity > threshold (default 0.98).
+     */
+    async isSemanticallyDuplicate(
+        scopeId: string,
+        embedding: number[],
+        threshold: number = 0.98,
+        scopeType: 'bibleId' | 'masterScriptId' = 'bibleId'
+    ): Promise<boolean> {
+        await this.ensureStore();
+        if (!this.vectorStore) return false;
+
+        const results = await this.findSimilarSamples(scopeId, embedding, 1, undefined, {
+            minSimilarity: threshold,
+            scopeType
+        });
+
+        return results.length > 0;
+    }
+
+    async getStats(): Promise<{ count: number }> {
+        return { count: 0 };
     }
 }
 
-/**
- * Singleton export
- */
 export const vectorService = new VectorService();

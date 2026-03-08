@@ -60,7 +60,7 @@ export function InspectorGeneratorTab({
                         className="ide-textarea ide-textarea-sm"
                         value={scriptIdea}
                         onChange={(event) => onScriptIdeaChange(event.target.value)}
-                        placeholder="Describe the story, characters, and tone."
+                        placeholder="Describe the story, characters, and tone. Be specific about the conflict."
                     />
                 </div>
                 <div className="ide-field">
@@ -83,7 +83,10 @@ export function InspectorGeneratorTab({
                     </select>
                 </div>
                 <div className="ide-field">
-                    <label className="ide-label">Style</label>
+                    <label className="ide-label flex items-center justify-between">
+                        Style
+                        <span className="text-[9px] text-zinc-500 font-normal">Hollywood Directors</span>
+                    </label>
                     <select
                         className="ide-select"
                         value={scriptStyle}

@@ -734,7 +734,20 @@ export function buildBeatSheetPrompt(logline: string, style: string = 'Save The 
     OUTPUT FORMAT: Strictly Valid JSON. No whitespace or markdown outside the JSON.
     
     Structure:
-    ${jsonStructure}
+    {
+      "acts": [
+        {
+          "name": "Act Name",
+          "beats": [
+             { 
+               "title": "Creative Scene Title (e.g. 'The Setup', 'Ravi's Discovery')", 
+               "slugline": "INT. LOCATION - TIME",
+               "description": "Specific beat description..." 
+             }
+          ]
+        }
+      ]
+    }
     
     INSTRUCTIONS:
     - Keep descriptions concise but specific to the story.
@@ -1079,7 +1092,8 @@ CRITICAL: Sluglines MUST start with 'INT.' or 'EXT.' (e.g., 'INT. LOCATION - TIM
 [
   {
     "sceneNumber": {{start_scene}},
-    "slugline": "INT. ... - ...",
+    "title": "Creative Scene Title",
+    "slugline": "INT. LOCATION - TIME",
     "tactic": "...",
     "summary": "Detailed beat description (what happens, who changes, clue revealed)...",
     "polarityShift": "- to +"

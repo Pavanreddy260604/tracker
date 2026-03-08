@@ -1,6 +1,6 @@
 import type { ComponentType } from 'react';
 import { PanelRight, BookOpen, FileText } from 'lucide-react';
-import type { Bible, Scene, CritiqueResult } from '../../services/project.api';
+import type { Bible, IScene as Scene, CritiqueResult } from '../../services/project.api';
 import type { AssistantMessage, GenerationOptions, InspectorTab, ProjectForm, SceneForm, StudioMode } from './types';
 import { InspectorProjectTab } from './InspectorProjectTab';
 import { InspectorSceneTab } from './InspectorSceneTab';
@@ -15,7 +15,7 @@ interface StudioInspectorProps {
     projectDirty: boolean;
     onProjectFormChange: (field: keyof ProjectForm, value: string) => void;
     onSaveProject: () => void;
-    onExport: (format: 'fountain' | 'txt' | 'json') => void;
+    onExport: (format: 'fountain' | 'txt' | 'json' | 'pdf') => void;
     activeScene: Scene | null;
     sceneForm: SceneForm;
     onSceneFormChange: (field: keyof SceneForm, value: string) => void;
@@ -69,8 +69,8 @@ export function StudioInspector({
     isAssistantThinking,
     onAssistantSendMessage,
     onApplyProposal,
-    onDiscardProposal,
-    onClearChat
+    // onDiscardProposal, // Removed
+    // onClearChat // Removed
 }: StudioInspectorProps) {
     console.log('[StudioInspector] Render - activeMode:', activeMode, 'tab:', tab, 'activeProject:', activeProject?.title);
 
@@ -134,9 +134,10 @@ export function StudioInspector({
                 messages={assistantMessages}
                 isGenerating={isAssistantThinking}
                 onSendMessage={(content) => onAssistantSendMessage(content)}
-                onApplyProposal={onApplyProposal}
-                onDiscardProposal={onDiscardProposal}
-                onClearChat={onClearChat}
+                onApplyProposal={(messageId) => onApplyProposal(messageId)}
+                onDeleteMessage={() => { }}
+                onUpdateMessage={() => { }}
+                onClearChat={() => { }}
             />
         );
     } else {

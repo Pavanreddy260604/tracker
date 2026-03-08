@@ -1,4 +1,4 @@
-import type { Scene } from '../../services/project.api';
+import type { IScene } from '../../services/project.api';
 import type { Character } from '../../services/character.api';
 import type { ScriptRequest } from '../../services/scriptWriter.api';
 
@@ -10,7 +10,7 @@ export type AssistantTab = 'chat' | 'history';
 export type AssistantMessage = {
     id: string;
     role: 'user' | 'assistant';
-    type: 'instruction' | 'thought' | 'proposal';
+    type: 'instruction' | 'thought' | 'proposal' | 'chat';
     content: string;
     status?: 'streaming' | 'pending' | 'applied' | 'discarded';
     timestamp: number;
@@ -20,7 +20,7 @@ export type SceneForm = {
     slugline: string;
     summary: string;
     goal: string;
-    status: Scene['status'];
+    status: IScene['status'];
 };
 
 export type ProjectForm = {

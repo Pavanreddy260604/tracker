@@ -19,7 +19,7 @@ export interface CritiqueResult {
     suggestions: string[];
 }
 
-export interface Scene {
+export interface IScene {
     _id: string;
     bibleId: string;
     sequenceNumber: number;
@@ -57,19 +57,19 @@ export const projectApi = {
     },
 
     // Scenes
-    listScenes: async (bibleId: string): Promise<Scene[]> => {
-        return baseApi.request<Scene[]>(`/script/scene/bible/${bibleId}`);
+    listScenes: async (bibleId: string): Promise<IScene[]> => {
+        return baseApi.request<IScene[]>(`/script/scene/bible/${bibleId}`);
     },
 
-    createScene: async (bibleId: string, data: Partial<Scene>): Promise<Scene> => {
-        return baseApi.request<Scene>('/script/scene', {
+    createScene: async (bibleId: string, data: Partial<IScene>): Promise<IScene> => {
+        return baseApi.request<IScene>('/script/scene', {
             method: 'POST',
             body: JSON.stringify({ bibleId, ...data }),
         });
     },
 
-    updateScene: async (sceneId: string, data: Partial<Scene>): Promise<Scene> => {
-        return baseApi.request<Scene>(`/script/scene/${sceneId}`, {
+    updateScene: async (sceneId: string, data: Partial<IScene>): Promise<IScene> => {
+        return baseApi.request<IScene>(`/script/scene/${sceneId}`, {
             method: 'PUT',
             body: JSON.stringify(data),
         });
@@ -137,7 +137,7 @@ export const projectApi = {
     },
 
     // Export
-    exportProject: async (bibleId: string, format: 'fountain' | 'txt' | 'json'): Promise<void> => {
+    exportProject: async (bibleId: string, format: 'fountain' | 'txt' | 'json' | 'pdf'): Promise<void> => {
         const res = await baseApi.requestRaw(`/script/bible/${bibleId}/export?format=${format}`);
 
         const blob = await res.blob();

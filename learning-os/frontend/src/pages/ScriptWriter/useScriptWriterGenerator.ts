@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import type { Bible } from '../../services/project.api';
 import type { ScriptHistoryItem, ScriptTemplates, IScriptDetail, ScriptRequest } from '../../services/scriptWriter.api';
 import { scriptWriterApi } from '../../services/scriptWriter.api';
+import { chatApi } from '../../services/chat.api';
 import { getErrorMessage } from './utils';
 import type { AssistantMessage } from './types';
 
@@ -10,6 +11,7 @@ interface UseScriptWriterGeneratorProps {
     activeProjectId: string | null;
     activeSceneId?: string | null;
     editorContext?: string;
+    setEditorContent?: (content: string) => void;
     setError: (message: string | null) => void;
 }
 
@@ -18,6 +20,7 @@ export function useScriptWriterGenerator({
     activeProjectId,
     activeSceneId,
     editorContext,
+    setEditorContent,
     setError
 }: UseScriptWriterGeneratorProps) {
     const [scriptTemplates, setScriptTemplates] = useState<ScriptTemplates | null>(null);
@@ -32,6 +35,7 @@ export function useScriptWriterGenerator({
     const [selectedScriptCharacterIds, setSelectedScriptCharacterIds] = useState<string[]>([]);
     const [assistantMessages, setAssistantMessages] = useState<AssistantMessage[]>([]);
     const [isAssistantThinking, setIsAssistantThinking] = useState(false);
+    const [assistantSessionId, setAssistantSessionId] = useState<string | null>(null);
 
     useEffect(() => {
         loadTemplates();
@@ -51,6 +55,7 @@ export function useScriptWriterGenerator({
     useEffect(() => {
         setSelectedScriptCharacterIds([]);
         setAssistantMessages([]); // Clear chat temporarily
+        setAssistantSessionId(null);
         if (activeSceneId) {
             loadAssistantHistory(activeSceneId);
         }
@@ -63,9 +68,11 @@ export function useScriptWriterGenerator({
         try {
             const history = await scriptWriterApi.getAssistantHistory(sceneId);
             const mappedMessages: AssistantMessage[] = history.map((m: any) => ({
-                id: m._id,
+                id: m._id?.toString?.() || `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
                 role: m.role,
-                type: m.type,
+                type: m.type === 'instruction' || m.type === 'thought' || m.type === 'proposal' || m.type === 'chat'
+                    ? m.type
+                    : 'chat',
                 content: m.content,
                 timestamp: new Date(m.timestamp).getTime(),
                 status: m.type === 'proposal' ? 'pending' : undefined
@@ -143,33 +150,91 @@ export function useScriptWriterGenerator({
         );
     };
 
+    const isMongoObjectId = (id: string) => /^[a-f0-9]{24}$/i.test(id);
+    const isPersistedSceneMessage = (msg?: AssistantMessage) => !!msg && msg.type !== 'chat' && isMongoObjectId(msg.id);
+
+    const buildSceneContext = () => {
+        const contextParts: string[] = [];
+
+        if (activeProject) {
+            contextParts.push([
+                'PROJECT CONTEXT',
+                `Title: ${activeProject.title || ''}`,
+                `Logline: ${activeProject.logline || ''}`,
+                `Genre: ${activeProject.genre || ''}`,
+                `Tone: ${activeProject.tone || ''}`,
+                `Language: ${scriptLanguage || ''}`
+            ].join('\n'));
+        }
+
+        if (activeSceneId) {
+            contextParts.push(`ACTIVE SCENE CONTEXT\nScene ID: ${activeSceneId}`);
+        }
+
+        if (editorContext?.trim()) {
+            const maxScriptChars = 12000;
+            const clippedScript = editorContext.trim().slice(0, maxScriptChars);
+            contextParts.push(`OPEN SCENE SCRIPT\n${clippedScript}`);
+        }
+
+        return contextParts.join('\n\n');
+    };
+
     const handleAssistantSendMessage = async (content: string, activeSceneId: string | null, onUpdatePending?: (content: string, finished?: boolean) => void) => {
-        if (!content.trim() || isAssistantThinking) return;
+        const trimmedContent = content.trim();
+        if (!trimmedContent || isAssistantThinking) return;
+
+        const isEditCommand = /^\/edit\b/i.test(trimmedContent);
+        const editInstruction = isEditCommand ? trimmedContent.replace(/^\/edit\b/i, '').trim() : '';
+        const isSceneEditMode = isEditCommand && !!activeSceneId && !!editInstruction;
 
         const userMsg: AssistantMessage = {
             id: Date.now().toString(),
             role: 'user',
-            type: 'instruction',
-            content,
+            type: isSceneEditMode ? 'instruction' : 'chat',
+            content: isSceneEditMode ? editInstruction : trimmedContent,
             timestamp: Date.now()
         };
 
         setAssistantMessages(prev => [...prev, userMsg]);
         setIsAssistantThinking(true);
 
-        // Placeholder for AI thought
-        const thoughtMsg: AssistantMessage = {
-            id: (Date.now() + 1).toString(),
-            role: 'assistant',
-            type: 'thought',
-            content: 'Analyzing scene context and story bible...',
-            timestamp: Date.now() + 1
-        };
-        setAssistantMessages(prev => [...prev, thoughtMsg]);
-
         try {
-            if (activeSceneId) {
-                // Assisted Edit Flow
+            if (isEditCommand && !activeSceneId) {
+                const guidanceMsg: AssistantMessage = {
+                    id: (Date.now() + 1).toString(),
+                    role: 'assistant',
+                    type: 'chat',
+                    content: 'Select a scene first, then use `/edit <instruction>` to generate a scene rewrite.',
+                    timestamp: Date.now() + 1
+                };
+                setAssistantMessages(prev => [...prev, guidanceMsg]);
+                return;
+            }
+
+            if (isEditCommand && !editInstruction) {
+                const usageMsg: AssistantMessage = {
+                    id: (Date.now() + 1).toString(),
+                    role: 'assistant',
+                    type: 'chat',
+                    content: 'Use `/edit <instruction>`. Example: `/edit tighten dialogue and add subtext`.',
+                    timestamp: Date.now() + 1
+                };
+                setAssistantMessages(prev => [...prev, usageMsg]);
+                return;
+            }
+
+            if (isSceneEditMode && activeSceneId) {
+                // Assisted edit flow.
+                const thoughtMsg: AssistantMessage = {
+                    id: (Date.now() + 1).toString(),
+                    role: 'assistant',
+                    type: 'thought',
+                    content: 'Analyzing scene context and story bible...',
+                    timestamp: Date.now() + 1
+                };
+                setAssistantMessages(prev => [...prev, thoughtMsg]);
+
                 const proposalId = (Date.now() + 2).toString();
                 const proposalMsg: AssistantMessage = {
                     id: proposalId,
@@ -182,7 +247,7 @@ export function useScriptWriterGenerator({
                 setAssistantMessages(prev => [...prev, proposalMsg]);
 
                 let accumulated = '';
-                await scriptWriterApi.assistedEditStream(activeSceneId, content, (chunk) => {
+                await scriptWriterApi.assistedEditStream(activeSceneId, editInstruction, (chunk) => {
                     accumulated += chunk;
                     setAssistantMessages(prev => prev.map(m =>
                         m.id === proposalId ? { ...m, content: accumulated } : m
@@ -202,19 +267,60 @@ export function useScriptWriterGenerator({
                     onUpdatePending(accumulated, true);
                 }
             } else {
-                // Fallback to general generation if no scene selected
-                // (Optional: Implement general chat logic here)
-                const errorMsg: AssistantMessage = {
-                    id: (Date.now() + 3).toString(),
+                // Conversational assistant flow.
+                let sessionId = assistantSessionId;
+                if (!sessionId) {
+                    const session = await chatApi.createChatSession(undefined, undefined, 'script-writer');
+                    sessionId = session._id;
+                    setAssistantSessionId(sessionId);
+                }
+                if (!sessionId) {
+                    throw new Error('Failed to create chat session');
+                }
+
+                const botMsgId = (Date.now() + 1).toString();
+                const botMsg: AssistantMessage = {
+                    id: botMsgId,
                     role: 'assistant',
-                    type: 'proposal', // Using proposal type for the result
-                    content: 'Please select a scene to refactor.',
-                    timestamp: Date.now() + 3
+                    type: 'chat',
+                    content: '',
+                    timestamp: Date.now() + 1
                 };
-                setAssistantMessages(prev => [...prev, errorMsg]);
+                setAssistantMessages(prev => [...prev, botMsg]);
+
+                let botContent = '';
+                let lastUiUpdate = Date.now();
+                const sceneContext = buildSceneContext();
+
+                await chatApi.sendChatMessage(sessionId, trimmedContent, (chunk) => {
+                    botContent += chunk;
+                    const now = Date.now();
+
+                    if (now - lastUiUpdate > 90) {
+                        lastUiUpdate = now;
+                        const currentText = botContent;
+                        setAssistantMessages(prev => prev.map(m =>
+                            m.id === botMsgId ? { ...m, content: currentText } : m
+                        ));
+                    }
+                }, undefined, 'script-writer', sceneContext);
+
+                setAssistantMessages(prev => prev.map(m =>
+                    m.id === botMsgId
+                        ? { ...m, content: botContent.trim() ? botContent : 'No response from assistant.' }
+                        : m
+                ));
             }
         } catch (err) {
             setError(getErrorMessage(err, 'Assistant request failed'));
+            const failedMsg: AssistantMessage = {
+                id: (Date.now() + 4).toString(),
+                role: 'assistant',
+                type: 'chat',
+                content: 'Assistant request failed. Please retry.',
+                timestamp: Date.now() + 4
+            };
+            setAssistantMessages(prev => [...prev, failedMsg]);
         } finally {
             setIsAssistantThinking(false);
         }
@@ -222,6 +328,37 @@ export function useScriptWriterGenerator({
 
     const handleApplyProposal = async (messageId: string, activeSceneId: string | null) => {
         if (!activeSceneId) return;
+
+        // Surgical Patch Check
+        if (messageId.includes('|')) {
+            const [realMsgId, base64Patch] = messageId.split('|');
+            try {
+                const patchContent = atob(base64Patch);
+                const searchIndex = patchContent.indexOf('<<<SEARCH>>>');
+                const replaceIndex = patchContent.indexOf('<<<REPLACE>>>');
+
+                if (searchIndex !== -1 && replaceIndex !== -1 && editorContext) {
+                    const oldText = patchContent.substring(searchIndex + 12, replaceIndex).trim();
+                    const newText = patchContent.substring(replaceIndex + 13).trim();
+
+                    if (editorContext.includes(oldText)) {
+                        const updated = editorContext.replace(oldText, newText);
+                        if (setEditorContent) {
+                            setEditorContent(updated);
+                        }
+                    } else {
+                        console.warn('Surgical patch target not found in editor.');
+                        setError('Could not find the target text to apply this patch. You might have changed it manually.');
+                    }
+                }
+            } catch (err) {
+                console.error('Failed to parse surgical patch:', err);
+            }
+
+            setAssistantMessages(prev => prev.filter(m => m.id !== realMsgId));
+            return;
+        }
+
         // Optimization: Immediate disappearance from UI
         setAssistantMessages(prev => prev.filter(m => m.id !== messageId));
 
@@ -252,7 +389,12 @@ export function useScriptWriterGenerator({
     };
 
     const handleDeleteAssistantMessage = async (messageId: string, activeSceneId: string | null) => {
-        if (!activeSceneId) return;
+        const targetMsg = assistantMessages.find(m => m.id === messageId);
+        if (!activeSceneId || !isPersistedSceneMessage(targetMsg)) {
+            setAssistantMessages(prev => prev.filter(m => m.id !== messageId));
+            return;
+        }
+
         try {
             await scriptWriterApi.deleteAssistantHistory(activeSceneId, messageId);
             // Sync UI
@@ -263,7 +405,14 @@ export function useScriptWriterGenerator({
     };
 
     const handleUpdateAssistantMessage = async (messageId: string, content: string, activeSceneId: string | null) => {
-        if (!activeSceneId) return;
+        const targetMsg = assistantMessages.find(m => m.id === messageId);
+        if (!activeSceneId || !isPersistedSceneMessage(targetMsg)) {
+            setAssistantMessages(prev => prev.map(m =>
+                m.id === messageId ? { ...m, content } : m
+            ));
+            return;
+        }
+
         try {
             await scriptWriterApi.updateAssistantHistory(activeSceneId, messageId, content);
             setAssistantMessages(prev => prev.map(m =>
@@ -275,16 +424,19 @@ export function useScriptWriterGenerator({
     };
 
     const handleClearChat = async (activeSceneId: string | null) => {
-        if (!activeSceneId) {
-            setAssistantMessages([]);
-            return;
+        const hasSceneEditMessages = assistantMessages.some(msg => msg.type !== 'chat');
+
+        if (activeSceneId && hasSceneEditMessages) {
+            try {
+                await scriptWriterApi.deleteAssistantHistory(activeSceneId);
+            } catch (err) {
+                setError(getErrorMessage(err, 'Failed to clear chat'));
+                return;
+            }
         }
-        try {
-            await scriptWriterApi.deleteAssistantHistory(activeSceneId);
-            setAssistantMessages([]);
-        } catch (err) {
-            setError(getErrorMessage(err, 'Failed to clear chat'));
-        }
+
+        setAssistantMessages([]);
+        setAssistantSessionId(null);
     };
 
     return {
@@ -315,3 +467,10 @@ export function useScriptWriterGenerator({
         toggleScriptCharacter
     };
 }
+
+
+
+
+
+
+
