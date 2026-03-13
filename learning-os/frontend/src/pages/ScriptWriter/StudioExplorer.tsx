@@ -20,7 +20,7 @@ interface StudioExplorerProps {
     newProjectForm: ProjectForm;
     onNewProjectClick: () => void;
     onNewProjectCancel: () => void;
-    onNewProjectFieldChange: (field: keyof ProjectForm, value: string) => void;
+    onNewProjectFieldChange: <K extends keyof ProjectForm>(field: K, value: ProjectForm[K]) => void;
     onNewProjectSubmit: () => void;
     getScenes: (projectId: string) => Scene[];
     onCollapse: () => void;
@@ -171,7 +171,9 @@ export function StudioExplorer({
                                                     >
                                                         <FileText size={14} />
                                                         <div>
-                                                            <div className="ide-explorer-title">{scene.sequenceNumber}. {scene.slugline || 'Untitled Scene'}</div>
+                                                            <div className="ide-explorer-title">
+                                                                {scene.sequenceNumber}. {scene.title || scene.slugline || 'Untitled Scene'}
+                                                            </div>
                                                             <div className="ide-explorer-subtitle">{scene.summary || 'Add a summary for this scene.'}</div>
                                                         </div>
                                                         <span className={`ide-status-dot ${scene.status}`} />

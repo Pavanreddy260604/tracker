@@ -9,6 +9,48 @@ const router = express.Router();
 const aiChat = new AIChatService();
 
 const modelPattern = /^[a-zA-Z0-9:._-]+$/;
+const assistantPreferencesSchema = z.object({
+    defaultMode: z.enum(['ask', 'edit', 'agent']).optional(),
+    replyLanguage: z.string().trim().min(1).max(50).optional(),
+    transliteration: z.boolean().optional(),
+    savedDirectives: z.array(z.string().trim().min(1).max(500)).max(12).optional(),
+}).strict();
+
+const selectionContextSchema = z.object({
+    text: z.string().trim().min(1).max(12000),
+    lineStart: z.number().int().positive().optional(),
+    lineEnd: z.number().int().positive().optional(),
+    charCount: z.number().int().nonnegative().optional(),
+}).strict();
+
+const structuredContextSchema = z.object({
+    project: z.object({
+        id: z.string().trim().min(1).max(64).optional(),
+        title: z.string().trim().min(1).max(200).optional(),
+        logline: z.string().trim().min(1).max(1200).optional(),
+        genre: z.string().trim().min(1).max(100).optional(),
+        tone: z.string().trim().min(1).max(100).optional(),
+        language: z.string().trim().min(1).max(50).optional(),
+    }).strict().optional(),
+    scene: z.object({
+        id: z.string().trim().min(1).max(64).optional(),
+        name: z.string().trim().min(1).max(200).optional(),
+    }).strict().optional(),
+    script: z.object({
+        excerpt: z.string().trim().min(1).max(12000).optional(),
+    }).strict().optional(),
+    selection: selectionContextSchema.nullish(),
+    reply: z.object({
+        language: z.string().trim().min(1).max(50).optional(),
+        transliteration: z.boolean().optional(),
+    }).strict().optional(),
+    assistantPreferences: assistantPreferencesSchema.optional(),
+}).strict();
+
+const contextSchema = z.union([
+    z.string().trim().min(1).max(16000),
+    structuredContextSchema,
+]);
 
 const createSessionSchema = z.object({
     message: z.string().trim().min(1).max(4000).optional(),
@@ -19,6 +61,7 @@ const createSessionSchema = z.object({
 const messageSchema = z.object({
     message: z.string().trim().min(1).max(4000),
     assistantType: z.enum(['learning-os', 'script-writer']).optional(),
+    context: contextSchema.optional(),
 }).strict();
 
 const updateSessionSchema = z.object({
@@ -28,62 +71,104 @@ const updateSessionSchema = z.object({
 const toSessionTitle = (message?: string) =>
     message ? message.substring(0, 30) + (message.length > 30 ? '...' : '') : 'New Chat';
 
-const getSystemPrompt = (assistantType: 'learning-os' | 'script-writer') => {
+function normalizeScriptWriterContext(context?: z.infer<typeof contextSchema>): string {
+    if (!context) return '';
+    if (typeof context === 'string') {
+        return context.trim().slice(0, 16000);
+    }
+
+    const sections: string[] = [];
+
+    if (context.project) {
+        const lines = [
+            'PROJECT CONTEXT',
+            context.project.title ? `Title: ${context.project.title}` : '',
+            context.project.logline ? `Logline: ${context.project.logline}` : '',
+            context.project.genre ? `Genre: ${context.project.genre}` : '',
+            context.project.tone ? `Tone: ${context.project.tone}` : '',
+            context.project.language ? `Language: ${context.project.language}` : '',
+        ].filter(Boolean);
+        if (lines.length > 1) sections.push(lines.join('\n'));
+    }
+
+    if (context.scene) {
+        const lines = [
+            'ACTIVE SCENE',
+            context.scene.id ? `Scene ID: ${context.scene.id}` : '',
+            context.scene.name ? `Scene: ${context.scene.name}` : '',
+        ].filter(Boolean);
+        if (lines.length > 1) sections.push(lines.join('\n'));
+    }
+
+    if (context.script?.excerpt) {
+        sections.push(`OPEN SCRIPT EXCERPT\n${context.script.excerpt.slice(0, 12000)}`);
+    }
+
+    if (context.selection?.text) {
+        const lines = [
+            'ACTIVE SELECTION',
+            typeof context.selection.lineStart === 'number' && typeof context.selection.lineEnd === 'number'
+                ? `Lines: ${context.selection.lineStart}-${context.selection.lineEnd}`
+                : '',
+            typeof context.selection.charCount === 'number'
+                ? `Characters: ${context.selection.charCount}`
+                : '',
+            context.selection.text,
+        ].filter(Boolean);
+        sections.push(lines.join('\n'));
+    }
+
+    if (context.reply) {
+        const lines = [
+            'REPLY PREFERENCES',
+            context.reply.language ? `Reply Language: ${context.reply.language}` : '',
+            typeof context.reply.transliteration === 'boolean'
+                ? `Transliteration: ${context.reply.transliteration ? 'enabled' : 'disabled'}`
+                : '',
+        ].filter(Boolean);
+        if (lines.length > 1) sections.push(lines.join('\n'));
+    }
+
+    if (context.assistantPreferences) {
+        const directives = context.assistantPreferences.savedDirectives || [];
+        const lines = [
+            'SAVED ASSISTANT PREFERENCES',
+            context.assistantPreferences.defaultMode ? `Default Mode: ${context.assistantPreferences.defaultMode}` : '',
+            context.assistantPreferences.replyLanguage ? `Preferred Reply Language: ${context.assistantPreferences.replyLanguage}` : '',
+            typeof context.assistantPreferences.transliteration === 'boolean'
+                ? `Preferred Transliteration: ${context.assistantPreferences.transliteration ? 'enabled' : 'disabled'}`
+                : '',
+            directives.length > 0 ? `Directives:\n- ${directives.slice(0, 8).join('\n- ')}` : '',
+        ].filter(Boolean);
+        if (lines.length > 1) sections.push(lines.join('\n'));
+    }
+
+    return sections.join('\n\n').trim();
+}
+
+const getSystemPrompt = (
+    assistantType: 'learning-os' | 'script-writer',
+    normalizedContext = ''
+) => {
     if (assistantType === 'script-writer') {
-        return `You are an AI Script Engineering Assistant.
+        const basePrompt = `You are a senior screenplay assistant working inside a script editor.
 
-Your role is similar to a coding assistant but for screenplays and scene-based storytelling. You help edit, modify, and maintain story coherence across multiple scenes.
+Default behavior:
+- Be conversation-first. Normal questions, critique, and choice discussion are the default.
+- Ground every answer in the provided script context when it exists.
+- Follow the user's stated choices and preferences precisely.
+- Only draft rewrites, patches, or replacement text when the user explicitly asks for them.
+- If the request is ambiguous between analysis and rewriting, ask a brief clarifying question.
+- For non-trivial rewrite requests, first summarize the scope and constraints in 1-2 sentences, then provide the requested output.
+- Do not force fixed section headings for ordinary chat.
+- Preserve continuity, character voice, and causal logic when discussing or proposing changes.
+- If context is insufficient, say what is missing instead of inventing facts.`;
 
-Follow these rules strictly:
+        if (!normalizedContext) {
+            return basePrompt;
+        }
 
-1. Treat the screenplay like a structured system, not plain text. The story consists of:
-- Characters
-- Scenes
-- Timeline
-- Character arcs
-- World rules
-- Dialogue
-
-2. When the user requests a change (for example: change character traits, modify a scene, alter tone, remove events), you must:
-- Identify which scenes are affected
-- Update only necessary parts
-- Preserve narrative continuity and character consistency
-- Ensure timeline and story logic remain valid
-
-3. Do not rewrite the entire script unless requested. Make surgical edits like a code assistant modifying specific functions.
-
-4. Always output these sections in this exact order:
-CHANGE SUMMARY
-- List of scenes affected
-- Characters affected
-- Narrative implications
-
-PATCH
-- Show only modified scenes or dialogue blocks
-
-CONTINUITY CHECK
-- Verify timeline consistency
-- Verify character motivations
-- Identify potential contradictions
-
-5. Maintain global story memory for:
-- Character goals
-- Unresolved plot points
-- Emotional arcs
-- Major events
-
-6. While editing scenes:
-- Preserve existing tone unless instructed otherwise
-- Maintain character voice
-- Keep cause-effect relationships logical
-
-7. If a requested change creates contradictions, propose 2-3 solutions.
-
-Editing style:
-- Behave like version control for stories
-- Scenes are modules
-- Edits are patches
-- Prioritize coherence, structure, and minimal meaningful changes`;
+        return `${basePrompt}\n\n## ACTIVE SCRIPT CONTEXT\n${normalizedContext}`;
     }
 
     return `You are the "Learning OS Copilot", a specialized AI assistant in this workspace.
@@ -167,7 +252,7 @@ router.post('/:id/message', authenticate, async (req: any, res) => {
         if (!parsed.success) {
             return res.status(400).json({ success: false, error: parsed.error.errors[0].message });
         }
-        const { message, assistantType: requestedAssistantType } = parsed.data;
+        const { message, assistantType: requestedAssistantType, context } = parsed.data;
         const sessionId = req.params.id;
 
         // 1. ATOMIC: Save User Message
@@ -218,7 +303,10 @@ router.post('/:id/message', authenticate, async (req: any, res) => {
                 );
             }
 
-            const systemPrompt = getSystemPrompt(assistantType);
+            const normalizedContext = assistantType === 'script-writer'
+                ? normalizeScriptWriterContext(context)
+                : '';
+            const systemPrompt = getSystemPrompt(assistantType, normalizedContext);
             const chatService = new AIChatService(sessionModel, req.userId);
 
             let assistantText = '';

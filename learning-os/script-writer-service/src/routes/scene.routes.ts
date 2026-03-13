@@ -454,7 +454,7 @@ router.post('/:id/fix', async (req, res) => {
 
 // POST /api/scene/:id/assisted-edit - Stream an AI refactor of the scene
 router.post('/:id/assisted-edit', async (req, res) => {
-    const { instruction, language } = req.body;
+    const { instruction, language, mode, target, currentContent } = req.body;
     if (!instruction) return res.status(400).json({ error: 'Instruction is required' });
 
     try {
@@ -462,21 +462,36 @@ router.post('/:id/assisted-edit', async (req, res) => {
         if (!scene) return res.status(404).json({ error: 'Scene not found' });
         await assertBibleAccess(scene.bibleId.toString(), req.userId);
 
+        const normalizedMode = mode === 'ask' || mode === 'edit' || mode === 'agent' ? mode : 'edit';
+        const normalizedTarget = target === 'selection' ? 'selection' : 'scene';
+        const rawSelection = req.body.selection;
+        const selection = rawSelection && typeof rawSelection.text === 'string' && rawSelection.text.trim()
+            ? {
+                text: rawSelection.text,
+                start: typeof rawSelection.start === 'number' ? rawSelection.start : undefined,
+                end: typeof rawSelection.end === 'number' ? rawSelection.end : undefined,
+                lineStart: typeof rawSelection.lineStart === 'number' ? rawSelection.lineStart : undefined,
+                lineEnd: typeof rawSelection.lineEnd === 'number' ? rawSelection.lineEnd : undefined,
+                lineCount: typeof rawSelection.lineCount === 'number' ? rawSelection.lineCount : undefined,
+                charCount: typeof rawSelection.charCount === 'number' ? rawSelection.charCount : undefined,
+                preview: typeof rawSelection.preview === 'string' ? rawSelection.preview : undefined
+            }
+            : null;
+
         res.setHeader('Content-Type', 'text/plain; charset=utf-8');
         res.setHeader('Transfer-Encoding', 'chunked');
 
-        let fullRevisedText = '';
-        const stream = scriptGenerator.assistedEdit(req.params.id, instruction, { language });
+        const stream = scriptGenerator.assistedEdit(req.params.id, instruction, {
+            language,
+            mode: normalizedMode,
+            target: normalizedTarget,
+            currentContent: typeof currentContent === 'string' ? currentContent : undefined,
+            selection
+        });
 
         for await (const chunk of stream) {
             res.write(chunk);
-            fullRevisedText += chunk;
         }
-
-        // Save to pendingContent automatically
-        scene.pendingContent = fullRevisedText;
-        scene.lastInstruction = instruction;
-        await scene.save();
 
         res.end();
     } catch (error) {
@@ -560,11 +575,16 @@ router.post('/:id/commit-edit', async (req, res) => {
         const scene = await assertSceneAccess(req.params.id, req.userId);
         if (!scene) return res.status(404).json({ error: 'Scene not found' });
 
+        console.log(`[SceneAssistant] Committing edit for scene ${req.params.id}`);
         const success = await scriptGenerator.commitAssistedEdit(req.params.id);
-        res.json({ success });
+
+        const responseData = { success: true, data: { success } };
+        console.log(`[SceneAssistant] Sending response for ${req.params.id}:`, JSON.stringify(responseData));
+        res.json(responseData);
     } catch (error) {
+        console.error(`[SceneAssistant] Error in commit-edit for ${req.params.id}:`, error);
         if (!handleAccessError(error, res)) {
-            res.status(500).json({ error: 'Commit failed' });
+            res.status(500).json({ success: false, error: 'Commit failed', data: null });
         }
     }
 });
@@ -572,17 +592,22 @@ router.post('/:id/commit-edit', async (req, res) => {
 // POST /api/scene/:id/discard-edit - Discard a proposed edit
 router.post('/:id/discard-edit', async (req, res) => {
     try {
+        console.log(`[SceneAssistant] Discarding edit for scene ${req.params.id}`);
         const scene = await assertSceneAccess(req.params.id, req.userId);
         if (!scene) return res.status(404).json({ error: 'Scene not found' });
 
-        scene.pendingContent = undefined;
-        scene.lastInstruction = undefined;
-        await scene.save();
-
-        res.json({ success: true });
+        if (scene.pendingContent) {
+            scene.pendingContent = undefined;
+            scene.lastInstruction = undefined;
+            await scene.save();
+        }
+        const responseData = { success: true, data: { success: true } };
+        console.log(`[SceneAssistant] Sending discard response for ${req.params.id}:`, JSON.stringify(responseData));
+        res.json(responseData);
     } catch (error) {
+        console.error(`[SceneAssistant] Error in discard-edit for ${req.params.id}:`, error);
         if (!handleAccessError(error, res)) {
-            res.status(500).json({ error: 'Discard failed' });
+            res.status(500).json({ success: false, error: 'Discard failed', data: null });
         }
     }
 });

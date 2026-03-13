@@ -14,12 +14,24 @@ import { masterScriptValidatorService } from './masterScriptValidator.service';
 import { llamaindexService } from './llamaindex.service';
 import { vectorService } from './vector.service';
 import { geAuditService, GeAuditResult } from './geAudit.service';
+import {
+    extractStructuredTextFromRawContent
+} from '../utils/fileParser';
+import type {
+    ExtractedMasterScriptSource,
+    MasterScriptSourceFormat,
+    MasterScriptSourceLayoutLine
+} from '../types/masterScriptLayout';
 
 type GateStatus = 'pending' | 'passed' | 'failed';
 
 interface StartMasterScriptProcessingResult {
     scriptVersion: string;
     gateStatus: GateStatus;
+}
+
+interface CreateMasterScriptInput extends Partial<IMasterScript> {
+    extractedSource?: ExtractedMasterScriptSource;
 }
 
 export class AdminService {
@@ -40,12 +52,13 @@ export class AdminService {
             };
         }
 
-        const scriptVersion = this.createScriptVersion();
+        const scriptVersion = script.processingScriptVersion || this.createScriptVersion();
         script.processingScriptVersion = scriptVersion;
         script.gateStatus = 'pending';
         script.status = 'processing';
-        script.progress = 0;
+        script.progress = script.readerReady ? 5 : 0;
         script.processedChunks = 0;
+        script.ragReady = false;
         script.lastValidationSummary = `Ingestion started for ${scriptVersion}`;
         await script.save();
 
@@ -66,21 +79,29 @@ export class AdminService {
         const script = await MasterScript.findById(scriptId);
         if (!script) throw new Error('Master script not found');
 
-        const processingVersion = scriptVersion || script.processingScriptVersion || this.createScriptVersion();
+        const processingVersion =
+            scriptVersion ||
+            script.processingScriptVersion ||
+            script.activeScriptVersion ||
+            this.createScriptVersion();
         const manifest = await this.prepareManifest(script._id, processingVersion);
 
         try {
-            await this.resetVersionArtifacts(script._id, processingVersion);
+            await this.resetVersionArtifacts(script._id, processingVersion, { preserveSourceLines: true });
+            const extractedSource = await this.ensureSourceLayoutForVersion(script, processingVersion, manifest);
 
             script.status = 'processing';
             script.progress = 5;
             script.processedChunks = 0;
             script.processingScriptVersion = processingVersion;
             script.gateStatus = 'pending';
+            script.readerReady = extractedSource.lines.length > 0;
+            script.ragReady = false;
+            this.applySourceMetadata(script, extractedSource);
             script.lastValidationSummary = `Parsing ${processingVersion}`;
             await script.save();
 
-            const parsed = masterScriptParserService.parse(script.rawContent, processingVersion);
+            const parsed = masterScriptParserService.parse(extractedSource, processingVersion);
             if (parsed.elements.length === 0) {
                 throw new Error('Structured parser produced no chunks');
             }
@@ -90,18 +111,10 @@ export class AdminService {
             script.lastValidationSummary = `Parsed ${parsed.elements.length} structured chunks for ${processingVersion}`;
             await script.save();
 
-            await MasterScriptSourceLine.insertMany(
-                parsed.sourceLines.map(line => ({
-                    masterScriptId: script._id,
-                    scriptVersion: processingVersion,
-                    lineNo: line.lineNo,
-                    rawText: line.rawText,
-                    lineHash: line.lineHash,
-                    lineId: line.lineId
-                }))
-            );
-
             manifest.totalChunks = parsed.elements.length;
+            manifest.titlePage = parsed.titlePage;
+            manifest.readerReady = true;
+            manifest.ragReady = false;
             await manifest.save();
 
             const sceneParentMap = await this.createSceneNodes(script, processingVersion, parsed.parserVersion, parsed.scenes);
@@ -127,23 +140,28 @@ export class AdminService {
 
             const validation = await masterScriptValidatorService.validateScriptVersion(scriptId, processingVersion);
             const auditResult = await this.runGeAudit(scriptId, processingVersion);
-            const gatePassed = validation.passed && auditResult.status === 'passed';
+            const ragReady = validation.passed;
+            const gatePassed = ragReady && auditResult.status === 'passed';
 
-            script.processingScriptVersion = undefined;
+            script.processingScriptVersion = gatePassed ? undefined : processingVersion;
             script.gateStatus = gatePassed ? 'passed' : 'failed';
             script.status = gatePassed ? 'indexed' : 'failed';
             script.progress = 100;
             script.processedChunks = manifest.successfulChunks;
             script.parserVersion = parsed.parserVersion;
+            script.readerReady = true;
+            script.ragReady = ragReady;
             script.lastValidationSummary = `${validation.report.summary} GE audit: ${auditResult.summary}`;
             if (gatePassed) {
                 script.activeScriptVersion = processingVersion;
             }
             await script.save();
 
-            manifest.status = manifest.failedChunks > 0 || !validation.passed ? 'partial_success' : 'completed';
+            manifest.status = manifest.failedChunks > 0 || !ragReady ? 'partial_success' : 'completed';
             manifest.gateStatus = gatePassed ? 'passed' : 'failed';
             manifest.geAuditStatus = auditResult.status;
+            manifest.readerReady = true;
+            manifest.ragReady = ragReady;
             await manifest.save();
 
             if (!gatePassed) {
@@ -152,16 +170,19 @@ export class AdminService {
                 );
             }
         } catch (error: any) {
-            script.processingScriptVersion = undefined;
+            script.processingScriptVersion = processingVersion;
             script.gateStatus = 'failed';
             script.status = 'failed';
-            script.progress = 0;
+            script.progress = script.readerReady ? 5 : 0;
+            script.ragReady = false;
             script.lastValidationSummary = error?.message || 'Ingestion failed';
             await script.save();
 
             manifest.status = 'failed';
             manifest.gateStatus = 'failed';
             manifest.geAuditStatus = manifest.geAuditStatus || 'skipped';
+            manifest.readerReady = script.readerReady || false;
+            manifest.ragReady = false;
             manifest.errorLogs.push({ error: error?.message || 'Unknown error' });
             await manifest.save();
 
@@ -174,15 +195,78 @@ export class AdminService {
         return MasterScript.find().sort({ createdAt: -1 });
     }
 
-    async createMasterScript(data: Partial<IMasterScript>) {
-        const script = new MasterScript(data);
+    async createMasterScript(data: CreateMasterScriptInput) {
+        const { extractedSource: providedSource, ...scriptData } = data;
+        const extractedSource = providedSource || this.buildSourceFromScriptInput(scriptData.rawContent, scriptData.sourceFormat);
+        const scriptVersion = this.createScriptVersion();
+        const script = new MasterScript({
+            ...scriptData,
+            rawContent: extractedSource.rawContent,
+            processingScriptVersion: scriptVersion,
+            readerReady: extractedSource.lines.length > 0,
+            ragReady: false,
+            gateStatus: 'pending',
+            progress: extractedSource.lines.length > 0 ? 5 : 0,
+            processedChunks: 0,
+            lastValidationSummary: `Layout extracted for ${scriptVersion}`
+        });
+
+        this.applySourceMetadata(script, extractedSource);
         await script.save();
+
+        if (extractedSource.lines.length > 0) {
+            await MasterScriptSourceLine.insertMany(
+                extractedSource.lines.map(line => ({
+                    masterScriptId: script._id,
+                    scriptVersion,
+                    lineNo: line.lineNo,
+                    pageNo: line.pageNo,
+                    pageLineNo: line.pageLineNo,
+                    rawText: line.rawText,
+                    isBlank: line.isBlank,
+                    indentColumns: line.indentColumns,
+                    lineHash: line.lineHash,
+                    lineId: line.lineId,
+                    sourceKind: line.sourceKind,
+                    xStart: line.xStart,
+                    yTop: line.yTop
+                }))
+            );
+        }
+
+        await IngestionManifest.findOneAndUpdate(
+            {
+                jobType: 'master_script',
+                targetId: script._id,
+                scriptVersion
+            },
+            {
+                $set: {
+                    status: 'pending',
+                    sourceFormat: extractedSource.sourceFormat,
+                    pageCount: extractedSource.pageCount,
+                    layoutVersion: extractedSource.layoutVersion,
+                    readerReady: extractedSource.lines.length > 0,
+                    ragReady: false,
+                    ingestWarnings: extractedSource.warnings,
+                    gateStatus: 'pending',
+                    geAuditStatus: undefined,
+                    totalChunks: 0,
+                    successfulChunks: 0,
+                    failedChunks: 0,
+                    titlePage: this.buildTitlePageSummary(extractedSource.lines),
+                    errorLogs: []
+                }
+            },
+            { upsert: true, new: true }
+        );
+
         return script;
     }
 
     async getMasterScriptChunks(scriptId: string, scriptVersion?: string) {
         const filter: Record<string, unknown> = { masterScriptId: scriptId };
-        if (scriptVersion) filter.scriptVersion = scriptVersion;
+        filter.scriptVersion = scriptVersion || await this.resolveScriptVersion(scriptId);
         return VoiceSample.find(filter as any)
             .select([
                 '_id',
@@ -230,11 +314,36 @@ export class AdminService {
             .select('parserVersion')
             .lean();
 
+        const manifest = await IngestionManifest.findOne({
+            targetId: scriptId as any,
+            scriptVersion: resolvedScriptVersion
+        }).lean();
+
         return {
             scriptVersion: resolvedScriptVersion,
             parserVersion: parserMeta?.parserVersion,
+            sourceFormat: manifest?.sourceFormat,
+            pageCount: manifest?.pageCount || Math.max(1, ...sourceLines.map((line: any) => line.pageNo || 1)),
+            layoutVersion: manifest?.layoutVersion,
+            readerReady: manifest?.readerReady ?? true,
+            ragReady: manifest?.ragReady ?? false,
+            warnings: manifest?.ingestWarnings || [],
             lineCount: sourceLines.length,
-            content: sourceLines.map(line => line.rawText || '').join('\n')
+            content: sourceLines.map((line: any) => line.rawText || '').join('\n'),
+            lines: sourceLines.map((line: any) => ({
+                lineNo: line.lineNo,
+                pageNo: line.pageNo || 1,
+                pageLineNo: line.pageLineNo || line.lineNo,
+                rawText: line.rawText || '',
+                isBlank: Boolean(line.isBlank),
+                indentColumns: line.indentColumns || 0,
+                lineHash: line.lineHash,
+                lineId: line.lineId,
+                sourceKind: line.sourceKind || 'body',
+                xStart: line.xStart,
+                yTop: line.yTop
+            })),
+            titlePage: manifest?.titlePage || {}
         };
     }
 
@@ -267,6 +376,8 @@ export class AdminService {
                     status: result.status === 'passed' ? 'passed' : 'failed',
                     missingLines: [],
                     extraLines: [],
+                    layoutMismatches: [],
+                    classificationMismatches: [],
                     orderMismatches: [],
                     reconstructionMismatch: false,
                     hierarchyMismatches: [],
@@ -324,6 +435,8 @@ export class AdminService {
         manifest.totalChunks = 0;
         manifest.successfulChunks = 0;
         manifest.failedChunks = 0;
+        manifest.readerReady = manifest.readerReady || false;
+        manifest.ragReady = false;
         manifest.errorLogs = [];
         await manifest.save();
 
@@ -338,7 +451,7 @@ export class AdminService {
             throw new Error('Master script not found');
         }
 
-        const resolvedScriptVersion = script.activeScriptVersion || script.processingScriptVersion;
+        const resolvedScriptVersion = script.processingScriptVersion || script.activeScriptVersion;
         if (!resolvedScriptVersion) {
             throw new Error('No script version available');
         }
@@ -346,7 +459,11 @@ export class AdminService {
         return resolvedScriptVersion;
     }
 
-    private async resetVersionArtifacts(scriptId: mongoose.Types.ObjectId, scriptVersion: string): Promise<void> {
+    private async resetVersionArtifacts(
+        scriptId: mongoose.Types.ObjectId,
+        scriptVersion: string,
+        options: { preserveSourceLines?: boolean } = {}
+    ): Promise<void> {
         try {
             await vectorService.deleteSamplesByMasterScriptVersion(scriptId.toString(), scriptVersion);
         } catch (error) {
@@ -358,9 +475,146 @@ export class AdminService {
 
         await Promise.all([
             VoiceSample.deleteMany({ masterScriptId: scriptId, scriptVersion }),
-            MasterScriptSourceLine.deleteMany({ masterScriptId: scriptId, scriptVersion }),
+            ...(options.preserveSourceLines ? [] : [MasterScriptSourceLine.deleteMany({ masterScriptId: scriptId, scriptVersion })]),
             MasterScriptValidationReport.deleteMany({ masterScriptId: scriptId, scriptVersion })
         ]);
+    }
+
+    private buildSourceFromScriptInput(
+        rawContent?: string,
+        sourceFormat: MasterScriptSourceFormat = 'raw_text'
+    ): ExtractedMasterScriptSource {
+        if (!rawContent || rawContent.trim().length === 0) {
+            throw new Error('Script content is required');
+        }
+
+        return extractStructuredTextFromRawContent(rawContent, sourceFormat);
+    }
+
+    private applySourceMetadata(
+        target: {
+            sourceFormat?: MasterScriptSourceFormat;
+            pageCount?: number;
+            layoutVersion?: string;
+            ingestWarnings?: string[];
+        },
+        extractedSource: ExtractedMasterScriptSource
+    ): void {
+        target.sourceFormat = extractedSource.sourceFormat;
+        target.pageCount = extractedSource.pageCount;
+        target.layoutVersion = extractedSource.layoutVersion;
+        target.ingestWarnings = extractedSource.warnings;
+    }
+
+    private buildTitlePageSummary(lines: MasterScriptSourceLayoutLine[]): Record<string, string | string[]> {
+        const titleLines = lines
+            .filter(line => line.sourceKind === 'title_page' && !line.isBlank)
+            .map(line => line.rawText.trim())
+            .filter(Boolean);
+
+        if (titleLines.length === 0) {
+            return {};
+        }
+
+        const titlePage: Record<string, string | string[]> = {
+            'Title Page': titleLines
+        };
+
+        const keyValueLines = titleLines
+            .map(line => line.match(/^([A-Za-z ]+):\s*(.+)$/))
+            .filter((match): match is RegExpMatchArray => Boolean(match));
+
+        for (const match of keyValueLines) {
+            const key = match[1].trim();
+            const value = match[2].trim();
+            titlePage[key] = value;
+        }
+
+        if (!titlePage.Title && titleLines[0]) {
+            titlePage.Title = titleLines[0];
+        }
+
+        return titlePage;
+    }
+
+    private async readSourceLines(
+        masterScriptId: string | mongoose.Types.ObjectId,
+        scriptVersion: string
+    ): Promise<MasterScriptSourceLayoutLine[]> {
+        const sourceLines = await MasterScriptSourceLine.find({
+            masterScriptId,
+            scriptVersion
+        })
+            .sort({ lineNo: 1 })
+            .lean();
+
+        return sourceLines.map((line: any) => ({
+            lineNo: line.lineNo,
+            pageNo: line.pageNo || 1,
+            pageLineNo: line.pageLineNo || line.lineNo,
+            rawText: line.rawText || '',
+            isBlank: Boolean(line.isBlank),
+            indentColumns: line.indentColumns || 0,
+            lineHash: line.lineHash,
+            lineId: line.lineId,
+            sourceKind: line.sourceKind || 'body',
+            xStart: line.xStart,
+            yTop: line.yTop
+        }));
+    }
+
+    private async ensureSourceLayoutForVersion(
+        script: IMasterScript,
+        scriptVersion: string,
+        manifest: any
+    ): Promise<ExtractedMasterScriptSource> {
+        const existingLines = await this.readSourceLines(script._id, scriptVersion);
+        if (existingLines.length > 0) {
+            return {
+                sourceFormat: (manifest.sourceFormat || script.sourceFormat || 'raw_text') as MasterScriptSourceFormat,
+                layoutVersion: manifest.layoutVersion || script.layoutVersion || 'ms-layout-v1',
+                rawContent: existingLines.map(line => line.rawText).join('\n'),
+                pageCount: manifest.pageCount || script.pageCount || Math.max(1, ...existingLines.map(line => line.pageNo)),
+                warnings: manifest.ingestWarnings || script.ingestWarnings || [],
+                lines: existingLines
+            };
+        }
+
+        const extractedSource = this.buildSourceFromScriptInput(
+            script.rawContent,
+            (script.sourceFormat || 'raw_text') as MasterScriptSourceFormat
+        );
+
+        if (extractedSource.lines.length > 0) {
+            await MasterScriptSourceLine.insertMany(
+                extractedSource.lines.map(line => ({
+                    masterScriptId: script._id,
+                    scriptVersion,
+                    lineNo: line.lineNo,
+                    pageNo: line.pageNo,
+                    pageLineNo: line.pageLineNo,
+                    rawText: line.rawText,
+                    isBlank: line.isBlank,
+                    indentColumns: line.indentColumns,
+                    lineHash: line.lineHash,
+                    lineId: line.lineId,
+                    sourceKind: line.sourceKind,
+                    xStart: line.xStart,
+                    yTop: line.yTop
+                }))
+            );
+        }
+
+        script.rawContent = extractedSource.rawContent;
+        this.applySourceMetadata(script, extractedSource);
+        manifest.sourceFormat = extractedSource.sourceFormat;
+        manifest.pageCount = extractedSource.pageCount;
+        manifest.layoutVersion = extractedSource.layoutVersion;
+        manifest.ingestWarnings = extractedSource.warnings;
+        manifest.readerReady = extractedSource.lines.length > 0;
+        manifest.titlePage = this.buildTitlePageSummary(extractedSource.lines);
+
+        return extractedSource;
     }
 
     private async createSceneNodes(

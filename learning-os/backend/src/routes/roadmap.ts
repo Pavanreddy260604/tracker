@@ -1,4 +1,5 @@
 import express from 'express';
+import mongoose from 'mongoose';
 import { z } from 'zod';
 import { authenticate } from '../middleware/auth.js';
 import { RoadmapNode } from '../models/RoadmapNode.js';
@@ -29,15 +30,50 @@ const roadmapSyncSchema = z.object({
             x: z.number().finite(),
             y: z.number().finite()
         }).optional()
-    }).passthrough()).max(500),
+    }).passthrough().refine((node) => Boolean(node.nodeId || node.id), {
+        message: 'Each node must include id or nodeId'
+    })).max(500),
     edges: z.array(z.object({
         id: z.string().optional(),
         edgeId: z.string().optional(),
         roadmapId: z.string().optional(),
         source: z.string().min(1).max(200),
         target: z.string().min(1).max(200)
-    }).passthrough()).max(2000)
+    }).passthrough().refine((edge) => Boolean(edge.edgeId || edge.id), {
+        message: 'Each edge must include id or edgeId'
+    })).max(2000)
 }).strict();
+
+type RoadmapSyncPayload = z.infer<typeof roadmapSyncSchema>;
+
+function normalizeRoadmapNode(node: RoadmapSyncPayload['nodes'][number], userId: mongoose.Types.ObjectId) {
+    return {
+        userId,
+        roadmapId: node.roadmapId || 'default',
+        nodeId: node.nodeId || node.id || '',
+        type: node.type || 'roadmap',
+        data: {
+            label: node.data?.label || 'Unnamed',
+            status: node.data?.status || 'todo',
+            description: node.data?.description || '',
+            category: node.data?.category || 'general',
+            priority: node.data?.priority || 'medium',
+            estimatedHours: node.data?.estimatedHours || 0,
+            resourceUrl: node.data?.resourceUrl || ''
+        },
+        position: node.position || { x: 0, y: 0 }
+    };
+}
+
+function normalizeRoadmapEdge(edge: RoadmapSyncPayload['edges'][number], userId: mongoose.Types.ObjectId) {
+    return {
+        userId,
+        roadmapId: edge.roadmapId || 'default',
+        edgeId: edge.edgeId || edge.id || '',
+        source: edge.source,
+        target: edge.target
+    };
+}
 
 const patchNodeSchema = z.object({
     status: z.enum(ROADMAP_STATUSES).optional(),
@@ -77,46 +113,49 @@ router.post('/sync', authenticate, async (req, res) => {
             });
         }
 
+        if (!req.userId) {
+            return res.status(401).json({ success: false, error: 'Unauthorized' });
+        }
+
+        const userId = new mongoose.Types.ObjectId(req.userId);
         const { nodes, edges } = parsed.data;
-
-        // Clear and re-insert for the user
-        await Promise.all([
-            RoadmapNode.deleteMany({ userId: req.userId }),
-            RoadmapEdge.deleteMany({ userId: req.userId })
-        ]);
-
-        // Map nodes with all new fields
-        const typedNodes = nodes.map((n: any) => ({
-            userId: req.userId,
-            roadmapId: n.roadmapId || 'default',
-            nodeId: n.nodeId || n.id,
-            type: n.type || 'roadmap',
-            data: {
-                label: n.data?.label || 'Unnamed',
-                status: n.data?.status || 'todo',
-                description: n.data?.description || '',
-                category: n.data?.category || 'general',
-                priority: n.data?.priority || 'medium',
-                estimatedHours: n.data?.estimatedHours || 0,
-                resourceUrl: n.data?.resourceUrl || ''
-            },
-            position: n.position || { x: 0, y: 0 }
-        }));
-
-        const typedEdges = edges.map((e: any) => ({
-            userId: req.userId,
-            roadmapId: e.roadmapId || 'default',
-            edgeId: e.edgeId || e.id,
-            source: e.source,
-            target: e.target
-        }));
+        const typedNodes = nodes.map((node) => normalizeRoadmapNode(node, userId));
+        const typedEdges = edges.map((edge) => normalizeRoadmapEdge(edge, userId));
 
         if (typedNodes.length > 0) {
-            await RoadmapNode.insertMany(typedNodes);
+            await RoadmapNode.bulkWrite(typedNodes.map((node) => ({
+                updateOne: {
+                    filter: { userId, roadmapId: node.roadmapId, nodeId: node.nodeId },
+                    update: { $set: node },
+                    upsert: true
+                }
+            })));
         }
+
         if (typedEdges.length > 0) {
-            await RoadmapEdge.insertMany(typedEdges);
+            await RoadmapEdge.bulkWrite(typedEdges.map((edge) => ({
+                updateOne: {
+                    filter: { userId, roadmapId: edge.roadmapId, edgeId: edge.edgeId },
+                    update: { $set: edge },
+                    upsert: true
+                }
+            })));
         }
+
+        await Promise.all([
+            typedNodes.length > 0
+                ? RoadmapNode.deleteMany({
+                    userId,
+                    $nor: typedNodes.map((node) => ({ roadmapId: node.roadmapId, nodeId: node.nodeId }))
+                })
+                : RoadmapNode.deleteMany({ userId }),
+            typedEdges.length > 0
+                ? RoadmapEdge.deleteMany({
+                    userId,
+                    $nor: typedEdges.map((edge) => ({ roadmapId: edge.roadmapId, edgeId: edge.edgeId }))
+                })
+                : RoadmapEdge.deleteMany({ userId })
+        ]);
 
         res.json({ success: true, message: 'Roadmap synced successfully' });
     } catch (error: any) {

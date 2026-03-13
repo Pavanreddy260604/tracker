@@ -19,6 +19,36 @@ export interface IScene extends Document {
         type: 'instruction' | 'thought' | 'proposal' | 'chat';
         content: string;
         timestamp: Date;
+        retrievalMetadata?: {
+            mode?: 'ask' | 'edit' | 'agent';
+            target?: 'scene' | 'selection';
+            queryVariants?: Array<{ key: string; preview: string; length: number }>;
+            candidateCounts?: {
+                project: number;
+                master: number;
+                recent: number;
+                continuity: number;
+            };
+            sourceMix?: {
+                project: number;
+                master: number;
+                recent: number;
+                continuity: number;
+            };
+            selectedReferences?: Array<{
+                group: string;
+                sourceFamily: string;
+                label: string;
+                score: number;
+                sampleId?: string;
+                masterScriptId?: string;
+                chunkType?: string;
+                elementType?: string;
+            }>;
+            languageFallbackUsed?: boolean;
+            eligibleMasterScriptCount?: number;
+            exactLanguageMasterCount?: number;
+        };
     }[];
 
     // The "Critic" Output
@@ -121,7 +151,8 @@ const SceneSchema: Schema = new Schema({
         role: { type: String, enum: ['user', 'assistant'] },
         type: { type: String, enum: ['instruction', 'thought', 'proposal', 'chat'] },
         content: { type: String, maxlength: 100000 },
-        timestamp: { type: Date, default: Date.now }
+        timestamp: { type: Date, default: Date.now },
+        retrievalMetadata: { type: Schema.Types.Mixed }
     }],
 
     status: {

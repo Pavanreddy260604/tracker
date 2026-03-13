@@ -3,3 +3,8 @@ node_modules/
 dist/
 *.log
 .DS_Store
+full_tsc_output.txt
+tsc_errors.log
+tsc_new_errors.txt
+tsc_out.txt
+tsc_plain.txt

@@ -12,9 +12,12 @@ export type VoiceSampleChunkType =
     | 'section'
     | 'synopsis'
     | 'parenthetical'
+    | 'lyrics'
     | 'context'
     | 'scene'
-    | 'other';
+    | 'other'
+    | 'designation'
+    | 'setting';
 
 export type VoiceSampleElementType =
     | 'scene'
@@ -29,7 +32,10 @@ export type VoiceSampleElementType =
     | 'section'
     | 'synopsis'
     | 'parenthetical'
-    | 'other';
+    | 'lyrics'
+    | 'other'
+    | 'designation'
+    | 'setting';
 
 export interface IVoiceSample extends Document {
     bibleId: mongoose.Types.ObjectId;
@@ -78,14 +84,14 @@ const VoiceSampleSchema: Schema = new Schema({
     emotion: { type: String }, // PH 19
     chunkType: {
         type: String,
-        enum: ['dialogue', 'action', 'narration', 'slug', 'cue', 'transition', 'centered', 'note', 'section', 'synopsis', 'parenthetical', 'context', 'scene', 'other']
+        enum: ['dialogue', 'action', 'narration', 'slug', 'cue', 'transition', 'centered', 'note', 'section', 'synopsis', 'parenthetical', 'lyrics', 'context', 'scene', 'other', 'designation', 'setting']
     },
     chunkIndex: { type: Number },
     sceneSeq: { type: Number },
     elementSeq: { type: Number },
     elementType: {
         type: String,
-        enum: ['scene', 'dialogue', 'action', 'narration', 'slug', 'cue', 'transition', 'centered', 'note', 'section', 'synopsis', 'parenthetical', 'other']
+        enum: ['scene', 'dialogue', 'action', 'narration', 'slug', 'cue', 'transition', 'centered', 'note', 'section', 'synopsis', 'parenthetical', 'lyrics', 'other', 'designation', 'setting']
     },
     sourceStartLine: { type: Number },
     sourceEndLine: { type: Number },

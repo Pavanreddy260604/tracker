@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import type { Bible } from '../../services/project.api';
 import type { Act, Treatment } from '../../services/treatment.api';
 import { treatmentApi } from '../../services/treatment.api';
@@ -23,23 +23,7 @@ export function useScriptWriterTreatments({
     const [treatmentStyle, setTreatmentStyle] = useState('Save The Cat');
     const [treatmentLoading, setTreatmentLoading] = useState(false);
 
-    useEffect(() => {
-        if (activeProject?.logline && !treatmentLogline) {
-            setTreatmentLogline(activeProject.logline);
-        }
-    }, [activeProject?.logline]);
-
-    useEffect(() => {
-        if (!activeProjectId) {
-            setTreatments([]);
-            setTreatmentPreview(null);
-            setTreatmentLogline('');
-            return;
-        }
-        loadTreatments(activeProjectId);
-    }, [activeProjectId]);
-
-    const loadTreatments = async (projectId: string) => {
+    const loadTreatments = useCallback(async (projectId: string) => {
         setTreatmentLoading(true);
         try {
             const data = await treatmentApi.getTreatments(projectId);
@@ -49,7 +33,23 @@ export function useScriptWriterTreatments({
         } finally {
             setTreatmentLoading(false);
         }
-    };
+    }, [setError]);
+
+    useEffect(() => {
+        if (activeProject?.logline && !treatmentLogline) {
+            setTreatmentLogline(activeProject.logline);
+        }
+    }, [activeProject?.logline, treatmentLogline]);
+
+    useEffect(() => {
+        if (!activeProjectId) {
+            setTreatments([]);
+            setTreatmentPreview(null);
+            setTreatmentLogline('');
+            return;
+        }
+        void loadTreatments(activeProjectId);
+    }, [activeProjectId, loadTreatments]);
 
     const handleTreatmentGenerate = async () => {
         if (!treatmentLogline.trim()) return;

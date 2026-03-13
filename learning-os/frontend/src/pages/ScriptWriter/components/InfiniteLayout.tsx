@@ -41,7 +41,7 @@ export function InfiniteLayout({
                 {rightPanelOpen && (
                     <>
                         <div className="fixed inset-0 bg-black/50 z-40" />
-                        <div className="fixed top-0 right-0 bottom-0 w-[300px] max-w-[85vw] bg-zinc-950 border-l border-zinc-800 z-50 overflow-y-auto custom-scrollbar animate-in slide-in-from-right duration-300">
+                        <div className="fixed top-0 right-0 bottom-0 w-[340px] max-w-[88vw] bg-zinc-950 border-l border-zinc-800 z-50 overflow-y-auto custom-scrollbar animate-in slide-in-from-right duration-300">
                             {rightPanel}
                         </div>
                     </>
@@ -52,9 +52,9 @@ export function InfiniteLayout({
 
     // Tablet: narrower panels
     const leftWidth = isTablet ? 'w-52' : 'w-64';
-    const rightWidth = isTablet ? 'w-64' : 'w-80';
+    const rightWidth = isTablet ? 'w-72' : 'w-96';
     const leftInnerWidth = isTablet ? 'w-52' : 'w-64';
-    const rightInnerWidth = isTablet ? 'w-64' : 'w-80';
+    const rightInnerWidth = isTablet ? 'w-72' : 'w-96';
     const collapsedWidth = 'w-12';
 
     return (

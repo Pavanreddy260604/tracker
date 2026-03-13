@@ -3,7 +3,7 @@ import mongoose from 'mongoose';
 import { MasterScript } from './src/models/MasterScript';
 
 async function listScripts() {
-    const mongoUri = process.env.MONGODB_URI || 'mongodb://localhost:27017/script-writer';
+    const mongoUri = process.env.MONGODB_URI || 'mongodb://localhost:27017/learning-os';
     await mongoose.connect(mongoUri);
 
     const scripts = await MasterScript.find().sort({ createdAt: -1 }).limit(10);

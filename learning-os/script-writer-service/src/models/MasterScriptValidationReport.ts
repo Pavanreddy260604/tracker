@@ -31,6 +31,8 @@ export interface IMasterScriptValidationReport extends Document {
     status: 'passed' | 'failed';
     missingLines: IValidationLineIssue[];
     extraLines: IValidationLineIssue[];
+    layoutMismatches: IValidationLineIssue[];
+    classificationMismatches: IValidationLineIssue[];
     orderMismatches: IValidationOrderIssue[];
     reconstructionMismatch: boolean;
     hierarchyMismatches: IValidationHierarchyIssue[];
@@ -50,6 +52,16 @@ const MasterScriptValidationReportSchema: Schema = new Schema({
         detail: { type: String }
     }],
     extraLines: [{
+        lineNo: { type: Number, required: true },
+        lineId: { type: String },
+        detail: { type: String }
+    }],
+    layoutMismatches: [{
+        lineNo: { type: Number, required: true },
+        lineId: { type: String },
+        detail: { type: String }
+    }],
+    classificationMismatches: [{
         lineNo: { type: Number, required: true },
         lineId: { type: String },
         detail: { type: String }

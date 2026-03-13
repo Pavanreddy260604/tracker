@@ -9,8 +9,8 @@ import type { CharacterForm } from '../types';
 interface BiblePortalProps {
     activeProject: Bible | null;
     characters: Character[];
-    onUpdateProject?: (id: string, updates: any) => Promise<any>;
-    onDeleteProject?: (id: string) => Promise<any>;
+    onUpdateProject?: (id: string, updates: Partial<Bible>) => Promise<unknown> | void;
+    onDeleteProject?: (id: string) => Promise<unknown> | void;
     // Character Handlers
     characterForm?: CharacterForm;
     isSavingCharacter?: boolean;
@@ -23,7 +23,7 @@ interface BiblePortalProps {
     // RAG Handlers
     ingestingCharacterIds?: string[];
     voiceStatus?: string | null;
-    onVoiceIngest?: (file: File, characterId?: string) => Promise<any>;
+    onVoiceIngest?: (file: File, characterId?: string) => Promise<unknown>;
 }
 
 export function BiblePortal({
@@ -44,12 +44,14 @@ export function BiblePortal({
     onVoiceIngest
 }: BiblePortalProps) {
     const { dialog, showConfirm, closeDialog } = useDialog();
-    const [title, setTitle] = useState(activeProject?.title || '');
+    const [titleDrafts, setTitleDrafts] = useState<Record<string, string>>({});
     const [isAddingCharacter, setIsAddingCharacter] = useState(false);
     const [uploadingCharacterId, setUploadingCharacterId] = useState<string | null>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     if (!activeProject) return null;
+
+    const title = titleDrafts[activeProject._id] ?? activeProject.title ?? '';
 
     const handleFileUploadRequest = (characterId: string) => {
         setUploadingCharacterId(characterId);
@@ -313,7 +315,12 @@ export function BiblePortal({
                                     <input
                                         className="flex-1 bg-zinc-900/50 border border-zinc-800 rounded-xl px-4 py-3 text-lg text-zinc-100 focus:border-blue-500 outline-none transition-all"
                                         value={title}
-                                        onChange={(e) => setTitle(e.target.value)}
+                                        onChange={(e) => {
+                                            setTitleDrafts((prev) => ({
+                                                ...prev,
+                                                [activeProject._id]: e.target.value
+                                            }));
+                                        }}
                                         placeholder="Project Title"
                                     />
                                     <button

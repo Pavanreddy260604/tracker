@@ -2,7 +2,10 @@
 import { Router } from 'express';
 import { adminService } from '../services/admin.service';
 import multer from 'multer';
-import { extractTextFromFile } from '../utils/fileParser';
+import {
+    extractStructuredTextFromFile,
+    extractStructuredTextFromRawContent
+} from '../utils/fileParser';
 import { MasterScript } from '../models/MasterScript';
 
 const router = Router();
@@ -75,13 +78,15 @@ router.get('/master-scripts/:id/validation-report', async (req, res) => {
 router.post('/master-scripts', upload.single('file'), async (req, res) => {
     try {
         const { title, director, language, tags, rawContent } = req.body;
-        let finalContent = rawContent || '';
+        let extractedSource = rawContent
+            ? extractStructuredTextFromRawContent(String(rawContent), 'raw_text')
+            : undefined;
         let normalizedTags: string[] = [];
 
         // If a file was uploaded, parse its content and override manual rawContent
         if (req.file) {
             console.log(`[AdminAPI] Received file upload: ${req.file.originalname} (${req.file.mimetype})`);
-            finalContent = await extractTextFromFile(req.file.buffer, req.file.mimetype, req.file.originalname);
+            extractedSource = await extractStructuredTextFromFile(req.file.buffer, req.file.mimetype, req.file.originalname);
         }
 
         if (Array.isArray(tags)) {
@@ -97,7 +102,7 @@ router.post('/master-scripts', upload.single('file'), async (req, res) => {
             }
         }
 
-        if (!finalContent || finalContent.trim().length === 0) {
+        if (!extractedSource || extractedSource.rawContent.trim().length === 0) {
             return res.status(400).json({ error: 'Script content is required (either via file upload or raw text)' });
         }
 
@@ -107,7 +112,8 @@ router.post('/master-scripts', upload.single('file'), async (req, res) => {
             director,
             language,
             tags: normalizedTags,
-            rawContent: finalContent
+            rawContent: extractedSource.rawContent,
+            extractedSource
         };
 
         const script = await adminService.createMasterScript(scriptData);

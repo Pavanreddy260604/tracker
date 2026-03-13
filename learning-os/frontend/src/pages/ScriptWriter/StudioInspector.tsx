@@ -1,7 +1,7 @@
 import type { ComponentType } from 'react';
 import { PanelRight, BookOpen, FileText } from 'lucide-react';
 import type { Bible, IScene as Scene, CritiqueResult } from '../../services/project.api';
-import type { AssistantMessage, GenerationOptions, InspectorTab, ProjectForm, SceneForm, StudioMode } from './types';
+import type { AssistantMessage, AssistantRequest, GenerationOptions, InspectorTab, ProjectForm, SceneForm, StudioMode } from './types';
 import { InspectorProjectTab } from './InspectorProjectTab';
 import { InspectorSceneTab } from './InspectorSceneTab';
 import { AssistantPanel } from './components/AssistantPanel';
@@ -13,14 +13,14 @@ interface StudioInspectorProps {
     activeProject: Bible | null;
     projectForm: ProjectForm;
     projectDirty: boolean;
-    onProjectFormChange: (field: keyof ProjectForm, value: string) => void;
+    onProjectFormChange: <K extends keyof ProjectForm>(field: K, value: ProjectForm[K]) => void;
     onSaveProject: () => void;
     onExport: (format: 'fountain' | 'txt' | 'json' | 'pdf') => void;
     activeScene: Scene | null;
     sceneForm: SceneForm;
-    onSceneFormChange: (field: keyof SceneForm, value: string) => void;
+    onSceneFormChange: <K extends keyof SceneForm>(field: K, value: SceneForm[K]) => void;
     generationOptions: GenerationOptions;
-    onGenerationOptionChange: (field: keyof GenerationOptions, value: string) => void;
+    onGenerationOptionChange: <K extends keyof GenerationOptions>(field: K, value: GenerationOptions[K]) => void;
     onGenerateScene: () => void;
     onCritiqueScene: () => void;
     isGenerating: boolean;
@@ -32,7 +32,7 @@ interface StudioInspectorProps {
     // PH 36: Assistant Props
     assistantMessages: AssistantMessage[];
     isAssistantThinking: boolean;
-    onAssistantSendMessage: (content: string) => void;
+    onAssistantSendMessage: (request: AssistantRequest) => void;
     onApplyProposal: (messageId: string) => void;
     onDiscardProposal: (messageId: string) => void;
     onClearChat: () => void;
@@ -133,8 +133,10 @@ export function StudioInspector({
                 activeProject={activeProject}
                 messages={assistantMessages}
                 isGenerating={isAssistantThinking}
-                onSendMessage={(content) => onAssistantSendMessage(content)}
+                activeSceneName={activeScene?.slugline || undefined}
+                onSendMessage={onAssistantSendMessage}
                 onApplyProposal={(messageId) => onApplyProposal(messageId)}
+                onDiscardProposal={() => { }}
                 onDeleteMessage={() => { }}
                 onUpdateMessage={() => { }}
                 onClearChat={() => { }}
@@ -156,4 +158,3 @@ export function StudioInspector({
         </div>
     );
 }
-

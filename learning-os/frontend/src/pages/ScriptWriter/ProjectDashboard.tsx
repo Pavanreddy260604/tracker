@@ -6,6 +6,8 @@ import { ConfirmDialog } from '../../components/ui/ConfirmDialog';
 import type { Bible } from '../../services/project.api';
 import type { ProjectForm } from './types';
 
+type DashboardFilter = 'all' | 'recent' | 'admin';
+
 interface ProjectDashboardProps {
     projects: Bible[];
     loadingProjects: boolean;
@@ -15,7 +17,7 @@ interface ProjectDashboardProps {
     newProjectForm: ProjectForm;
     onNewProjectClick: () => void;
     onNewProjectCancel: () => void;
-    onNewProjectFieldChange: (field: keyof ProjectForm, value: string) => void;
+    onNewProjectFieldChange: <K extends keyof ProjectForm>(field: K, value: ProjectForm[K]) => void;
     onNewProjectSubmit: () => void;
     onProjectDelete?: (projectId: string) => void;
 }
@@ -34,7 +36,12 @@ export function ProjectDashboard({
     onProjectDelete
 }: ProjectDashboardProps) {
     const { dialog, showConfirm, closeDialog } = useDialog();
-    const [filter, setFilter] = useState<'all' | 'recent' | 'admin'>('all');
+    const [filter, setFilter] = useState<DashboardFilter>('all');
+    const filterTabs: Array<{ id: DashboardFilter; label: string; icon: typeof Layout }> = [
+        { id: 'all', label: 'All Projects', icon: Layout },
+        { id: 'recent', label: 'Recent', icon: Clock },
+        { id: 'admin', label: 'Master Feed', icon: Database }
+    ];
 
     const sortedProjects = [...projects].sort((a, b) => {
         return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
@@ -80,14 +87,10 @@ export function ProjectDashboard({
                     {/* Filters & Actions */}
                     <div className="flex items-center justify-between mb-8 border-b border-zinc-800 pb-6">
                         <div className="flex items-center gap-1 bg-zinc-950/50 p-1 rounded-xl border border-zinc-800">
-                            {[
-                                { id: 'all', label: 'All Projects', icon: Layout },
-                                { id: 'recent', label: 'Recent', icon: Clock },
-                                { id: 'admin', label: 'Master Feed', icon: Database }
-                            ].map(tab => (
+                            {filterTabs.map((tab) => (
                                 <button
                                     key={tab.id}
-                                    onClick={() => setFilter(tab.id as any)}
+                                    onClick={() => setFilter(tab.id)}
                                     className={`
                                         flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all
                                         ${filter === tab.id
@@ -275,6 +278,22 @@ export function ProjectDashboard({
                                 </div>
                             </div>
 
+                            <div className="flex items-center justify-between p-4 bg-blue-900/10 border border-blue-900/20 rounded-2xl">
+                                <div className="space-y-0.5">
+                                    <div className="text-[10px] font-black text-blue-400 uppercase tracking-widest">Phonetic Transliteration</div>
+                                    <div className="text-[11px] text-zinc-400 font-medium">Use English alphabet for native dialogue</div>
+                                </div>
+                                <label className="relative inline-flex items-center cursor-pointer">
+                                    <input
+                                        type="checkbox"
+                                        className="sr-only peer"
+                                        checked={newProjectForm.transliteration}
+                                        onChange={(e) => onNewProjectFieldChange('transliteration', e.target.checked)}
+                                    />
+                                    <div className="w-11 h-6 bg-zinc-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-zinc-400 after:border-zinc-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600 peer-checked:after:bg-white"></div>
+                                </label>
+                            </div>
+
                             <div className="space-y-2">
                                 <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest px-1">Hook / Logline</label>
                                 <textarea
@@ -320,4 +339,3 @@ export function ProjectDashboard({
         </div>
     );
 }
-

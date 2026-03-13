@@ -1,4 +1,5 @@
 import mongoose, { Schema, Document } from 'mongoose';
+import type { MasterScriptSourceFormat } from '../types/masterScriptLayout';
 
 export interface IMasterScript extends Document {
     title: string;
@@ -13,8 +14,15 @@ export interface IMasterScript extends Document {
     activeScriptVersion?: string;
     processingScriptVersion?: string;
     parserVersion?: string;
+    sourceFormat?: MasterScriptSourceFormat;
+    pageCount?: number;
+    layoutVersion?: string;
+    readerReady?: boolean;
+    ragReady?: boolean;
+    ingestWarnings?: string[];
     gateStatus?: 'pending' | 'passed' | 'failed';
     lastValidationSummary?: string;
+    sourceType: 'screenplay' | 'literature' | 'dictionary'; // PH Mixed RAG
     createdAt: Date;
 }
 
@@ -23,6 +31,11 @@ const MasterScriptSchema: Schema = new Schema({
     director: { type: String, required: true, trim: true },
     description: { type: String },
     language: { type: String, required: true, default: 'English' },
+    sourceType: {
+        type: String,
+        enum: ['screenplay', 'literature', 'dictionary'],
+        default: 'screenplay'
+    },
     tags: [{ type: String }],
     rawContent: { type: String, required: true },
     status: {
@@ -35,6 +48,15 @@ const MasterScriptSchema: Schema = new Schema({
     activeScriptVersion: { type: String },
     processingScriptVersion: { type: String },
     parserVersion: { type: String },
+    sourceFormat: {
+        type: String,
+        enum: ['pdf', 'docx', 'txt', 'md', 'fountain', 'script', 'raw_text']
+    },
+    pageCount: { type: Number, default: 1 },
+    layoutVersion: { type: String },
+    readerReady: { type: Boolean, default: false },
+    ragReady: { type: Boolean, default: false },
+    ingestWarnings: [{ type: String }],
     gateStatus: { type: String, enum: ['pending', 'passed', 'failed'] },
     lastValidationSummary: { type: String }
 }, { timestamps: true });

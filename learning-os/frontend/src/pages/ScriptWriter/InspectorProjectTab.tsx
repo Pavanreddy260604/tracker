@@ -6,7 +6,7 @@ interface InspectorProjectTabProps {
     activeProject: Bible | null;
     projectForm: ProjectForm;
     projectDirty: boolean;
-    onProjectFormChange: (field: keyof ProjectForm, value: string) => void;
+    onProjectFormChange: <K extends keyof ProjectForm>(field: K, value: ProjectForm[K]) => void;
     onSaveProject: () => void;
     onExport: (format: 'fountain' | 'txt' | 'json' | 'pdf') => void;
 }
@@ -71,6 +71,68 @@ export function InspectorProjectTab({
                     <option value="Spanish">Spanish</option>
                     <option value="French">French</option>
                 </select>
+            </div>
+            <div className="rounded-xl border border-zinc-800 bg-zinc-950/60 p-3 space-y-3">
+                <div>
+                    <label className="ide-label text-emerald-400">Assistant Preferences</label>
+                    <p className="text-[10px] text-zinc-500 mt-1">These defaults guide the chat assistant before you ask for edits.</p>
+                </div>
+                <div className="ide-field">
+                    <label className="ide-label">Default Assistant Mode</label>
+                    <select
+                        className="ide-input"
+                        value={projectForm.assistantPreferences.defaultMode}
+                        onChange={(event) => onProjectFormChange('assistantPreferences', {
+                            ...projectForm.assistantPreferences,
+                            defaultMode: event.target.value as ProjectForm['assistantPreferences']['defaultMode']
+                        })}
+                    >
+                        <option value="ask">Ask</option>
+                        <option value="edit">Edit</option>
+                        <option value="agent">Agent</option>
+                    </select>
+                </div>
+                <div className="ide-field">
+                    <label className="ide-label">Reply Language</label>
+                    <input
+                        className="ide-input"
+                        value={projectForm.assistantPreferences.replyLanguage || ''}
+                        onChange={(event) => onProjectFormChange('assistantPreferences', {
+                            ...projectForm.assistantPreferences,
+                            replyLanguage: event.target.value
+                        })}
+                        placeholder="Leave blank to follow the active project language"
+                    />
+                </div>
+                <div className="flex items-center justify-between rounded-lg border border-zinc-800 px-3 py-2">
+                    <div>
+                        <label className="ide-label">Assistant Transliteration</label>
+                        <p className="text-[10px] text-zinc-500 mt-1">Use English letters for non-English replies when enabled.</p>
+                    </div>
+                    <input
+                        type="checkbox"
+                        checked={Boolean(projectForm.assistantPreferences.transliteration)}
+                        onChange={(event) => onProjectFormChange('assistantPreferences', {
+                            ...projectForm.assistantPreferences,
+                            transliteration: event.target.checked
+                        })}
+                    />
+                </div>
+                <div className="ide-field">
+                    <label className="ide-label">Saved Assistant Directives</label>
+                    <textarea
+                        className="ide-textarea ide-textarea-sm"
+                        value={projectForm.assistantPreferences.savedDirectives.join('\n')}
+                        onChange={(event) => onProjectFormChange('assistantPreferences', {
+                            ...projectForm.assistantPreferences,
+                            savedDirectives: event.target.value
+                                .split('\n')
+                                .map((line) => line.trim())
+                                .filter(Boolean)
+                        })}
+                        placeholder="One stable instruction per line"
+                    />
+                </div>
             </div>
             <div className="space-y-2">
                 <label className="ide-label flex flex-col">

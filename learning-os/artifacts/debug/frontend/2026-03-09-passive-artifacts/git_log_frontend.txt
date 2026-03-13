@@ -1,0 +1,48 @@
+commit b9fff5322e6d30faf53a693b49fd1baeccc2ca5a
+Author: Pavanreddy260604 <pavanreddynallaaa@gmail.com>
+Date:   Mon Feb 9 00:22:19 2026 +0530
+
+    feat: add Groq AI support, fix provider validation, and enable hybrid language formatting
+
+commit cc7c728f0bc21449d9ba9800e79a549d82585a3d
+Author: Pavanreddy260604 <pavanreddynallaaa@gmail.com>
+Date:   Thu Feb 5 23:36:35 2026 +0530
+
+    feat: add scene length control + ChromaDB fix + UI improvements
+    
+    - Scene Length Control: short/medium/long/extended options
+    - Backend: ScriptRequest interface, prompt builder, scene routes
+    - Frontend: SceneEditor dropdown, auto-resize textarea
+    - ChromaDB: Fix v3.x client configuration (path vs host/port)
+    - UI: Paper-like editor feel, single scroll, VS Code layout fixes
+    - Resizable panels: Delta-based resize prevents layout corruption
+
+commit 3f95ff434b5815b4c3eb69a7410b48aa7ffca097
+Author: Pavanreddy260604 <pavanreddynallaaa@gmail.com>
+Date:   Sat Jan 24 00:38:29 2026 +0530
+
+    feat(script-writer): Add Jest testing deps and complete Phase 3 prompts
+    
+    - Added jest, ts-jest, @types/jest for testing
+    - Phase 3 complete: Hollywood prompt engineering
+    - Industry-standard styles (not director names)
+    - Ready for Phase 4+ tomorrow
+
+commit 8aceffeb239582bcebe8f9c01e99de241544d3bf
+Author: Pavanreddy260604 <pavanreddynallaaa@gmail.com>
+Date:   Sat Jan 24 00:32:03 2026 +0530
+
+    phase 3 completed
+
+commit e8322ccbdecd88515d7195979ebee7643492921c
+Author: Pavanreddy260604 <pavanreddynallaaa@gmail.com>
+Date:   Sat Jan 24 00:15:29 2026 +0530
+
+    feat: Add Script Writer AI microservice scaffold (Phase 1)
+    
+    - Created script-writer-service with Express + TypeScript
+    - Added MongoDB connection config
+    - Added templates endpoint for formats/styles
+    - Port 5001, ready for Phase 2 (Database Model)
+    
+    Also includes previous refactoring work from 10-phase cleanup

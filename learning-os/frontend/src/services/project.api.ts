@@ -1,11 +1,23 @@
 // Frontend interfaces (avoiding cross-project dependencies)
 
+export interface AssistantPreferences {
+    defaultMode: 'ask' | 'edit' | 'agent';
+    replyLanguage?: string;
+    transliteration?: boolean;
+    savedDirectives: string[];
+}
+
 export interface Bible {
     _id: string;
     title: string;
     logline: string;
     genre: string;
     tone: string;
+    language?: string;
+    transliteration?: boolean;
+    visualStyle?: string;
+    rules?: string[];
+    assistantPreferences?: AssistantPreferences;
     createdAt: string;
 }
 
@@ -23,6 +35,7 @@ export interface IScene {
     _id: string;
     bibleId: string;
     sequenceNumber: number;
+    title?: string;
     slugline: string;
     summary: string;
     content: string;
@@ -151,4 +164,3 @@ export const projectApi = {
         document.body.removeChild(a);
     },
 };
-

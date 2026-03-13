@@ -1,3 +1,5 @@
+import type { AssistantPreferences } from './project.api';
+
 export interface ScriptTemplates {
     formats: {
         id: string;
@@ -59,6 +61,12 @@ export interface IMasterScript {
     activeScriptVersion?: string;   // Added for structural versioning
     processingScriptVersion?: string; // Added for structural versioning
     parserVersion?: string;
+    sourceFormat?: 'pdf' | 'docx' | 'txt' | 'md' | 'fountain' | 'script' | 'raw_text';
+    pageCount?: number;
+    layoutVersion?: string;
+    readerReady?: boolean;
+    ragReady?: boolean;
+    ingestWarnings?: string[];
     gateStatus?: 'pending' | 'passed' | 'failed'; // Audit status
     lastValidationSummary?: string;
     createdAt: string;
@@ -78,6 +86,8 @@ export interface MasterScriptValidationReport {
     reconstructionMismatch: boolean;
     missingLines: Array<{ lineNo: number; lineId?: string; detail?: string }>;
     extraLines: Array<{ lineNo: number; lineId?: string; detail?: string }>;
+    layoutMismatches: Array<{ lineNo: number; lineId?: string; detail?: string }>;
+    classificationMismatches: Array<{ lineNo: number; lineId?: string; detail?: string }>;
     orderMismatches: Array<{ sceneSeq: number; elementSeq: number; detail: string }>;
     hierarchyMismatches: Array<{ chunkId?: string; detail: string }>;
     geAudit?: {
@@ -89,11 +99,33 @@ export interface MasterScriptValidationReport {
     };
 }
 
+export interface MasterScriptReconstructionLine {
+    lineNo: number;
+    pageNo: number;
+    pageLineNo: number;
+    rawText: string;
+    isBlank: boolean;
+    indentColumns: number;
+    lineHash: string;
+    lineId: string;
+    sourceKind: 'title_page' | 'body' | 'page_marker';
+    xStart?: number;
+    yTop?: number;
+}
+
 export interface MasterScriptReconstruction {
     scriptVersion: string;
     parserVersion?: string;
+    sourceFormat?: 'pdf' | 'docx' | 'txt' | 'md' | 'fountain' | 'script' | 'raw_text';
+    pageCount?: number;
+    layoutVersion?: string;
+    readerReady?: boolean;
+    ragReady?: boolean;
+    warnings?: string[];
     lineCount: number;
     content: string;
+    lines: MasterScriptReconstructionLine[];
+    titlePage?: Record<string, string | string[]>;
 }
 
 export interface VoiceIngestResult {
@@ -103,6 +135,58 @@ export interface VoiceIngestResult {
     characters: string[];
     sceneCount: number;
     message: string;
+}
+
+export interface AssistantSelectionPayload {
+    text: string;
+    start?: number;
+    end?: number;
+    lineStart?: number;
+    lineEnd?: number;
+    lineCount?: number;
+    charCount?: number;
+    preview?: string;
+}
+
+export interface AssistantContextPayload {
+    project?: {
+        id?: string;
+        title?: string;
+        logline?: string;
+        genre?: string;
+        tone?: string;
+        language?: string;
+    };
+    scene?: {
+        id?: string;
+        name?: string;
+    };
+    script?: {
+        excerpt?: string;
+    };
+    selection?: AssistantSelectionPayload | null;
+    reply?: {
+        language?: string;
+        transliteration?: boolean;
+    };
+    assistantPreferences?: AssistantPreferences;
+}
+
+export interface AssistedEditOptions {
+    language?: string;
+    mode?: 'ask' | 'edit' | 'agent';
+    target?: 'scene' | 'selection';
+    currentContent?: string;
+    selection?: AssistantSelectionPayload | null;
+    transliteration?: boolean;
+}
+
+export interface ProjectAssistantOptions {
+    language?: string;
+    mode?: 'ask';
+    target?: 'scene' | 'selection';
+    currentContext?: string | AssistantContextPayload;
+    selection?: AssistantSelectionPayload | null;
 }
 
 
@@ -235,10 +319,23 @@ class ScriptWriterApi {
         sceneId: string,
         instruction: string,
         onChunk: (chunk: string) => void,
-        options: { language?: string } = {},
+        options: AssistedEditOptions = {},
         signal?: AbortSignal
     ): Promise<void> {
         await baseApi.streamRequest(`/script/scene/${sceneId}/assisted-edit`, {
+            instruction,
+            ...options
+        }, onChunk, signal);
+    }
+
+    async projectAssistantStream(
+        bibleId: string,
+        instruction: string,
+        onChunk: (chunk: string) => void,
+        options: ProjectAssistantOptions = {},
+        signal?: AbortSignal
+    ): Promise<void> {
+        await baseApi.streamRequest(`/script/bible/${bibleId}/assistant`, {
             instruction,
             ...options
         }, onChunk, signal);
@@ -257,24 +354,21 @@ class ScriptWriterApi {
     }
 
     async getAssistantHistory(sceneId: string): Promise<any[]> {
-        const response = await baseApi.request<{ success: boolean, data: any[] }>(`/script/scene/${sceneId}/assistant-history`);
-        return response.data || [];
+        return baseApi.request<any[]>(`/script/scene/${sceneId}/assistant-history`);
     }
 
     async deleteAssistantHistory(sceneId: string, messageId?: string): Promise<any[]> {
-        const response = await baseApi.request<{ success: boolean, data: any[] }>(`/script/scene/${sceneId}/assistant-history`, {
+        return baseApi.request<any[]>(`/script/scene/${sceneId}/assistant-history`, {
             method: 'DELETE',
             body: JSON.stringify({ messageId })
         });
-        return response.data;
     }
 
     async updateAssistantHistory(sceneId: string, messageId: string, content: string): Promise<any[]> {
-        const response = await baseApi.request<{ success: boolean, data: any[] }>(`/script/scene/${sceneId}/assistant-history`, {
+        return baseApi.request<any[]>(`/script/scene/${sceneId}/assistant-history`, {
             method: 'PUT',
             body: JSON.stringify({ messageId, content })
         });
-        return response.data;
     }
 }
 

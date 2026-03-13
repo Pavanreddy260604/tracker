@@ -1,6 +1,8 @@
 import {
+    Fragment,
     memo,
     startTransition,
+    useCallback,
     useDeferredValue,
     useEffect,
     useMemo,
@@ -17,11 +19,13 @@ import {
     User,
     Hash,
     Minus,
-    Plus
+    Plus,
+    AlertCircle
 } from 'lucide-react';
 import {
     scriptWriterApi,
-    type MasterScriptReconstruction
+    type MasterScriptReconstruction,
+    type MasterScriptReconstructionLine
 } from '../../../services/scriptWriter.api';
 
 interface ChunkViewerModalProps {
@@ -44,11 +48,30 @@ type ScriptRenderKind =
     | 'dialogue'
     | 'action'
     | 'centered'
+    | 'lyrics'
     | 'note'
     | 'section'
     | 'synopsis'
     | 'other';
 type DualDialogueLane = 'left' | 'right' | null;
+
+type MasterScriptChunkRow = {
+    _id?: string;
+    chunkId?: string;
+    chunkIndex?: number;
+    chunkType?: string;
+    content?: string;
+    sourceStartLine?: number;
+    sceneSeq?: number;
+    elementSeq?: number;
+    speaker?: string;
+    dualDialogue?: boolean;
+    sceneNumber?: string;
+    nonPrinting?: boolean;
+    isHierarchicalNode?: boolean;
+    source?: string;
+    target?: string;
+};
 
 interface ScriptRenderLine {
     id: string;
@@ -83,7 +106,7 @@ export function ChunkViewerModal({
     scriptVersion,
     mode = 'modal'
 }: ChunkViewerModalProps) {
-    const [chunks, setChunks] = useState<any[]>([]);
+    const [chunks, setChunks] = useState<MasterScriptChunkRow[]>([]);
     const [reconstruction, setReconstruction] = useState<MasterScriptReconstruction | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -95,13 +118,7 @@ export function ChunkViewerModal({
     const [showLineNumbers, setShowLineNumbers] = useState(false);
     const deferredSearchQuery = useDeferredValue(searchQuery);
 
-    useEffect(() => {
-        if (isOpen && scriptId) {
-            void fetchModalData();
-        }
-    }, [isOpen, scriptId, scriptVersion]);
-
-    const fetchModalData = async () => {
+    const fetchModalData = useCallback(async () => {
         if (!isOpen || !scriptId) return;
 
         setLoading(true);
@@ -127,13 +144,19 @@ export function ChunkViewerModal({
                 setChunks([]);
                 setChunkError(getErrorMessage(chunkResult.reason));
             }
-        } catch (err: any) {
+        } catch (err) {
             console.error('Failed to fetch chunk viewer data:', err);
             setError(getErrorMessage(err));
         } finally {
             setLoading(false);
         }
-    };
+    }, [isOpen, scriptId, scriptVersion]);
+
+    useEffect(() => {
+        if (isOpen && scriptId) {
+            void fetchModalData();
+        }
+    }, [fetchModalData, isOpen, scriptId]);
 
     const handleCopy = (id: string, text: string) => {
         navigator.clipboard.writeText(text);
@@ -157,8 +180,14 @@ export function ChunkViewerModal({
         );
     }, [chunks, deferredSearchQuery, viewMode]);
 
+    const exactLines = reconstruction?.lines || [];
+
     const scriptLines = useMemo<ScriptRenderLine[]>(() => {
         if (viewMode !== 'script') {
+            return [];
+        }
+
+        if (exactLines.length > 0) {
             return [];
         }
 
@@ -182,7 +211,7 @@ export function ChunkViewerModal({
         }
 
         return [];
-    }, [chunks, reconstruction, viewMode]);
+    }, [chunks, exactLines.length, reconstruction, viewMode]);
 
     const screenplayScale = scriptZoom === 160
         ? { fontSize: '21px', lineHeight: '40px' }
@@ -219,271 +248,304 @@ export function ChunkViewerModal({
             ? 'h-full min-h-0 flex-1 rounded-[2rem] shadow-[0_30px_90px_rgba(0,0,0,0.35)]'
             : 'max-w-[1600px] h-[92vh] rounded-[2rem] shadow-[0_40px_120px_rgba(0,0,0,0.55)] animate-in zoom-in-95 duration-300'
             }`}>
-                <div className="relative overflow-hidden border-b border-zinc-900 bg-[radial-gradient(circle_at_top_left,rgba(59,130,246,0.14),transparent_32%),linear-gradient(180deg,rgba(24,24,27,1),rgba(9,9,11,1))]">
-                    <div className="flex items-start justify-between gap-4 px-4 py-3 sm:px-6">
-                        <div className="flex items-start gap-3 min-w-0">
-                            <button
-                                onClick={onClose}
-                                className={`mt-0.5 rounded-2xl border p-2.5 transition-all ${mode === 'page'
-                                    ? 'border-zinc-800 bg-zinc-900/70 text-zinc-300 hover:border-zinc-700 hover:text-white'
-                                    : 'border-zinc-900/0 bg-transparent text-zinc-500 hover:bg-zinc-900 hover:text-white'
-                                    }`}
-                            >
-                                {mode === 'page' ? <ArrowLeft size={20} /> : <X size={20} />}
-                            </button>
-                            <div className="mt-0.5 rounded-2xl border border-blue-500/20 bg-blue-500/10 p-2.5 shadow-[0_0_40px_rgba(59,130,246,0.12)]">
-                                <FileText className="text-blue-300" size={20} />
+            <div className="relative overflow-hidden border-b border-zinc-900 bg-[radial-gradient(circle_at_top_left,rgba(59,130,246,0.14),transparent_32%),linear-gradient(180deg,rgba(24,24,27,1),rgba(9,9,11,1))]">
+                <div className="flex items-start justify-between gap-4 px-4 py-3 sm:px-6">
+                    <div className="flex items-start gap-3 min-w-0">
+                        <button
+                            onClick={onClose}
+                            className={`mt-0.5 rounded-2xl border p-2.5 transition-all ${mode === 'page'
+                                ? 'border-zinc-800 bg-zinc-900/70 text-zinc-300 hover:border-zinc-700 hover:text-white'
+                                : 'border-zinc-900/0 bg-transparent text-zinc-500 hover:bg-zinc-900 hover:text-white'
+                                }`}
+                        >
+                            {mode === 'page' ? <ArrowLeft size={20} /> : <X size={20} />}
+                        </button>
+                        <div className="mt-0.5 rounded-2xl border border-blue-500/20 bg-blue-500/10 p-2.5 shadow-[0_0_40px_rgba(59,130,246,0.12)]">
+                            <FileText className="text-blue-300" size={20} />
+                        </div>
+                        <div className="min-w-0">
+                            <h2 className="truncate text-lg sm:text-xl font-black tracking-tight text-white">{scriptTitle}</h2>
+                            <div className="mt-1 text-xs font-medium text-zinc-400">
+                                Client reader
                             </div>
-                            <div className="min-w-0">
-                                <h2 className="truncate text-lg sm:text-xl font-black tracking-tight text-white">{scriptTitle}</h2>
-                                <div className="mt-1 text-xs font-medium text-zinc-400">
-                                    Client reader
-                                </div>
-                                <div className="mt-2 flex flex-wrap items-center gap-2 text-[9px] font-black uppercase tracking-[0.16em] text-zinc-500">
-                                    {scriptVersion && (
-                                        <span className="rounded-full border border-zinc-800 bg-zinc-900/90 px-2.5 py-1">
-                                            Version {scriptVersion}
-                                        </span>
-                                    )}
-                                    {reconstruction && (
-                                        <span className="rounded-full border border-zinc-800 bg-zinc-900/90 px-2.5 py-1">
-                                            {reconstruction.lineCount} source lines
-                                        </span>
-                                    )}
-                                    <span className={`rounded-full border px-2.5 py-1 ${chunkError
-                                        ? 'border-amber-500/20 bg-amber-500/10 text-amber-200'
-                                        : 'border-zinc-800 bg-zinc-900/90'
-                                        }`}>
-                                        {chunkError ? 'typed rows unavailable' : `${chunks.length} typed rows`}
+                            <div className="mt-2 flex flex-wrap items-center gap-2 text-[9px] font-black uppercase tracking-[0.16em] text-zinc-500">
+                                {scriptVersion && (
+                                    <span className="rounded-full border border-zinc-800 bg-zinc-900/90 px-2.5 py-1">
+                                        Version {scriptVersion}
                                     </span>
-                                </div>
+                                )}
+                                {reconstruction && (
+                                    <span className="rounded-full border border-zinc-800 bg-zinc-900/90 px-2.5 py-1">
+                                        {reconstruction.lineCount} source lines
+                                    </span>
+                                )}
+                                {reconstruction?.pageCount ? (
+                                    <span className="rounded-full border border-zinc-800 bg-zinc-900/90 px-2.5 py-1">
+                                        {reconstruction.pageCount} pages
+                                    </span>
+                                ) : null}
+                                {reconstruction?.readerReady ? (
+                                    <span className="rounded-full border border-emerald-500/20 bg-emerald-500/10 px-2.5 py-1 text-emerald-300">
+                                        Reader Ready
+                                    </span>
+                                ) : null}
+                                {typeof reconstruction?.ragReady === 'boolean' ? (
+                                    <span className={`rounded-full border px-2.5 py-1 ${reconstruction.ragReady
+                                        ? 'border-blue-500/20 bg-blue-500/10 text-blue-300'
+                                        : 'border-amber-500/20 bg-amber-500/10 text-amber-200'
+                                        }`}>
+                                        {reconstruction.ragReady ? 'RAG Ready' : 'RAG Pending'}
+                                    </span>
+                                ) : null}
+                                <span className={`rounded-full border px-2.5 py-1 ${chunkError
+                                    ? 'border-amber-500/20 bg-amber-500/10 text-amber-200'
+                                    : 'border-zinc-800 bg-zinc-900/90'
+                                    }`}>
+                                    {chunkError ? 'typed rows unavailable' : `${chunks.length} typed rows`}
+                                </span>
                             </div>
                         </div>
                     </div>
-                </div>
-
-                <div className={`border-b border-zinc-900 bg-zinc-950/95 px-4 py-3 sm:px-6 space-y-3 ${mode === 'page' ? 'sticky top-0 z-10 backdrop-blur supports-[backdrop-filter]:bg-zinc-950/85' : ''}`}>
-                    <div className="flex flex-wrap items-center gap-3">
-                        <button
-                            onClick={() => handleViewModeChange('chunks')}
-                            className={`min-w-[160px] rounded-2xl border px-5 py-3 text-sm font-black uppercase tracking-[0.16em] transition-all ${viewMode === 'chunks'
-                                ? 'border-blue-500/20 bg-blue-500/10 text-blue-300 shadow-[0_0_32px_rgba(59,130,246,0.08)]'
-                                : 'border-zinc-800 bg-zinc-900 text-zinc-500 hover:text-zinc-300'
-                                }`}
-                        >
-                            Chunks
-                        </button>
-                        <button
-                            onClick={() => handleViewModeChange('script')}
-                            className={`min-w-[200px] rounded-2xl border px-5 py-3 text-sm font-black uppercase tracking-[0.16em] transition-all ${viewMode === 'script'
-                                ? 'border-amber-400/20 bg-amber-400/10 text-amber-100 shadow-[0_0_32px_rgba(251,191,36,0.08)]'
-                                : 'border-zinc-800 bg-zinc-900 text-zinc-500 hover:text-zinc-300'
-                                }`}
-                        >
-                            Screenplay
-                        </button>
-
-                        <div className="ml-auto flex flex-wrap items-center gap-2">
-                            {viewMode === 'script' && (
-                                <>
-                                    <div className="flex items-center gap-1 rounded-2xl border border-zinc-800 bg-zinc-900 px-1.5 py-1">
-                                        <button
-                                            onClick={increaseZoom}
-                                            className="rounded-xl p-1.5 text-zinc-400 transition-colors hover:bg-zinc-800 hover:text-zinc-100"
-                                            title="Increase zoom"
-                                        >
-                                            <Plus size={14} />
-                                        </button>
-                                        <span className="min-w-14 text-center text-[10px] font-black uppercase tracking-[0.16em] text-zinc-400">
-                                            {scriptZoom}%
-                                        </span>
-                                        <button
-                                            onClick={decreaseZoom}
-                                            className="rounded-xl p-1.5 text-zinc-400 transition-colors hover:bg-zinc-800 hover:text-zinc-100"
-                                            title="Decrease zoom"
-                                        >
-                                            <Minus size={14} />
-                                        </button>
-                                    </div>
-
-                                    <button
-                                        onClick={() => startTransition(() => setShowLineNumbers(current => !current))}
-                                        className={`rounded-2xl border px-3.5 py-2 text-[11px] font-black uppercase tracking-[0.16em] transition-all ${showLineNumbers
-                                            ? 'border-amber-400/20 bg-amber-400/10 text-amber-100'
-                                            : 'border-zinc-800 bg-zinc-900 text-zinc-400 hover:text-zinc-100'
-                                            }`}
-                                    >
-                                        {showLineNumbers ? 'Hide Line Nos' : 'Show Line Nos'}
-                                    </button>
-
-                                    {reconstruction?.content && (
-                                        <button
-                                            onClick={() => handleCopy('reconstructed-script', reconstruction.content)}
-                                            className="flex items-center gap-2 rounded-2xl border border-zinc-800 bg-zinc-900 px-3.5 py-2 text-[11px] font-black uppercase tracking-[0.16em] text-zinc-300 transition-all hover:border-zinc-700 hover:text-white"
-                                        >
-                                            {copiedId === 'reconstructed-script' ? <Check size={14} /> : <Copy size={14} />}
-                                            Copy Script
-                                        </button>
-                                    )}
-                                </>
-                            )}
-                        </div>
-                    </div>
-
-                    {chunkError && (
-                        <div className="rounded-2xl border border-amber-500/20 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
-                            Chunk formatting is temporarily unavailable for this version. The screenplay tab still uses the exact reconstructed script.
-                        </div>
-                    )}
-
-                    {viewMode === 'chunks' && (
-                        <div className="relative">
-                            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-600" size={18} />
-                            <input
-                                type="text"
-                                placeholder="Search chunks by content or character..."
-                                className="w-full rounded-2xl border border-zinc-800 bg-zinc-900 pl-12 pr-4 py-3 text-sm text-zinc-200 outline-none transition-all focus:border-blue-500"
-                                value={searchQuery}
-                                onChange={event => setSearchQuery(event.target.value)}
-                            />
-                        </div>
-                    )}
-                </div>
-
-                <div className={`min-h-0 flex-1 overflow-y-auto overscroll-contain bg-[radial-gradient(circle_at_top,rgba(245,158,11,0.08),transparent_30%),linear-gradient(180deg,#09090b_0%,#111827_100%)] p-4 custom-scrollbar ${mode === 'page' ? 'sm:p-8 lg:p-10' : 'sm:p-6'}`}>
-                    {loading ? (
-                        <div className="flex h-full flex-col items-center justify-center gap-3">
-                            <div className="h-8 w-8 animate-spin rounded-full border-4 border-blue-500/20 border-t-blue-500" />
-                            <span className="text-xs font-bold uppercase tracking-[0.18em] text-zinc-600">Loading screenplay view...</span>
-                        </div>
-                    ) : error ? (
-                        <div className="flex h-full items-center justify-center">
-                            <div className="max-w-xl rounded-3xl border border-red-500/20 bg-red-500/10 px-5 py-4 text-sm text-red-300">
-                                {error}
-                            </div>
-                        </div>
-                    ) : viewMode === 'chunks' ? (
-                        chunkError ? (
-                            <div className="flex h-full items-center justify-center">
-                                <div className="max-w-2xl rounded-3xl border border-amber-500/20 bg-amber-500/10 px-5 py-4 text-sm text-amber-100">
-                                    Chunks are unavailable for this version right now.
-                                    <div className="mt-2 text-xs text-amber-200/80">{chunkError}</div>
-                                </div>
-                            </div>
-                        ) : filteredChunks.length === 0 ? (
-                            <div className="flex h-full flex-col items-center justify-center text-zinc-600">
-                                <Search size={48} className="mb-4 opacity-20" />
-                                <p className="font-bold">No chunks match your search.</p>
-                            </div>
-                        ) : (
-                            <div className="space-y-4">
-                                {filteredChunks.map((chunk, index) => (
-                                    <div
-                                        key={chunk._id}
-                                        className="group rounded-3xl border border-zinc-800/70 bg-zinc-900/50 p-5 transition-all hover:border-zinc-700 hover:bg-zinc-900/70"
-                                        style={CHUNK_CARD_VISIBILITY_STYLE}
-                                    >
-                                        <div className="mb-3 flex items-start justify-between gap-4">
-                                            <div className="flex flex-wrap items-center gap-3">
-                                                <div className="flex items-center gap-1.5 rounded-xl border border-zinc-800 bg-zinc-950 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.16em] text-zinc-500">
-                                                    <Hash size={12} className="text-blue-500/50" />
-                                                    Chunk {chunk.chunkIndex ?? index + 1}
-                                                </div>
-                                                {chunk.speaker && (
-                                                    <div className="flex items-center gap-1.5 rounded-xl border border-blue-500/20 bg-blue-500/10 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.16em] text-blue-300">
-                                                        <User size={12} />
-                                                        {chunk.speaker}
-                                                    </div>
-                                                )}
-                                                <div className="text-[10px] font-black uppercase tracking-[0.18em] text-zinc-500">
-                                                    {chunk.chunkType || 'dialogue'}
-                                                </div>
-                                                {chunk.sceneNumber && (
-                                                    <div className="text-[10px] font-black uppercase tracking-[0.18em] text-amber-300">
-                                                        #{chunk.sceneNumber}
-                                                    </div>
-                                                )}
-                                                {chunk.dualDialogue && (
-                                                    <div className="text-[10px] font-black uppercase tracking-[0.18em] text-purple-300">
-                                                        Dual
-                                                    </div>
-                                                )}
-                                                {chunk.nonPrinting && (
-                                                    <div className="text-[10px] font-black uppercase tracking-[0.18em] text-amber-200">
-                                                        Non-Print
-                                                    </div>
-                                                )}
-                                                {typeof chunk.sceneSeq === 'number' && (
-                                                    <div className="text-[10px] font-black uppercase tracking-[0.18em] text-zinc-600">
-                                                        Scene {chunk.sceneSeq} / Element {chunk.elementSeq}
-                                                    </div>
-                                                )}
-                                            </div>
-                                            <button
-                                                onClick={() => handleCopy(chunk._id, chunk.content)}
-                                                className="rounded-xl bg-zinc-950/60 p-2 text-zinc-500 transition-all hover:bg-zinc-800 hover:text-blue-300"
-                                                title="Copy content"
-                                            >
-                                                {copiedId === chunk._id ? <Check size={16} /> : <Copy size={16} />}
-                                            </button>
-                                        </div>
-
-                                        <div className="whitespace-pre-wrap font-serif text-sm leading-relaxed text-zinc-200 selection:bg-blue-500/30">
-                                            {chunk.content === '[BLANK_LINE]' ? '' : chunk.content}
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                        )
-                    ) : (
-                        scriptLines.length > 0 ? (
-                            <div className="relative mx-auto max-w-[1460px]">
-                                <div className="absolute inset-x-10 top-6 h-28 rounded-full bg-amber-200/15 blur-3xl" />
-                                <div className="relative overflow-hidden rounded-[2rem] border border-stone-300/80 bg-[linear-gradient(180deg,#faf7ef_0%,#f7f1e3_48%,#fffdf8_100%)] shadow-[0_30px_100px_rgba(0,0,0,0.35)]">
-                                    <div className="border-b border-stone-300/70 bg-[linear-gradient(180deg,rgba(255,255,255,0.88),rgba(245,239,225,0.94))] px-5 py-3 sm:px-8">
-                                        <div className="flex flex-wrap items-center justify-between gap-4">
-                                            <div>
-                                                <div className="text-[9px] font-black uppercase tracking-[0.2em] text-stone-500">
-                                                    Reconstructed Screenplay
-                                                </div>
-                                                <div className="mt-1 text-xs font-semibold text-stone-700">
-                                                    Exact script view for client reading.
-                                                </div>
-                                            </div>
-                                            <div className="rounded-full border border-stone-300 bg-white/70 px-3 py-1.5 text-[9px] font-black uppercase tracking-[0.16em] text-stone-500">
-                                                Scrollable Reader
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <div
-                                        className="px-3 py-5 sm:px-6 sm:py-8 md:px-10"
-                                        style={{
-                                            fontFamily: SCRIPT_FONT_FAMILY,
-                                            ...screenplayScale
-                                        }}
-                                    >
-                                        {scriptLines.map(line => (
-                                            <ScriptLineRow
-                                                key={line.id}
-                                                line={line}
-                                                copiedId={copiedId}
-                                                onCopy={handleCopy}
-                                                showLineNumbers={showLineNumbers}
-                                            />
-                                        ))}
-                                    </div>
-                                </div>
-                            </div>
-                        ) : (
-                            <div className="flex h-full flex-col items-center justify-center text-zinc-600">
-                                <FileText size={48} className="mb-4 opacity-20" />
-                                <p className="font-bold">No reconstructed script is available.</p>
-                            </div>
-                        )
-                    )}
                 </div>
             </div>
+
+            <div className={`border-b border-zinc-900 bg-zinc-950/95 px-4 py-3 sm:px-6 space-y-3 ${mode === 'page' ? 'sticky top-0 z-10 backdrop-blur supports-[backdrop-filter]:bg-zinc-950/85' : ''}`}>
+                <div className="flex flex-wrap items-center gap-3">
+                    <button
+                        onClick={() => handleViewModeChange('chunks')}
+                        className={`min-w-[160px] rounded-2xl border px-5 py-3 text-sm font-black uppercase tracking-[0.16em] transition-all flex items-center justify-center gap-2 ${viewMode === 'chunks'
+                            ? 'border-blue-500/20 bg-blue-500/10 text-blue-300 shadow-[0_0_32px_rgba(59,130,246,0.08)]'
+                            : 'border-zinc-800 bg-zinc-900 text-zinc-500 hover:text-zinc-300'
+                            }`}
+                    >
+                        <span>Structured Elements</span>
+                        <div className="group relative">
+                            <AlertCircle size={14} className="text-zinc-600 cursor-help" />
+                            <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 w-64 p-3 bg-zinc-900 border border-zinc-800 rounded-xl text-[10px] text-zinc-400 font-medium normal-case tracking-normal leading-relaxed shadow-2xl opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity z-50">
+                                <p className="text-blue-400 font-bold mb-1 uppercase tracking-widest">High-Accuracy RAG</p>
+                                Screenplays are indexed as individual dialogues and actions ("Leaf" nodes) inside scene containers. This granularity allows the AI to mimic exact style and rhythm from 5,000+ reference samples.
+                            </div>
+                        </div>
+                    </button>
+                    <button
+                        onClick={() => handleViewModeChange('script')}
+                        className={`min-w-[200px] rounded-2xl border px-5 py-3 text-sm font-black uppercase tracking-[0.16em] transition-all ${viewMode === 'script'
+                            ? 'border-amber-400/20 bg-amber-400/10 text-amber-100 shadow-[0_0_32px_rgba(251,191,36,0.08)]'
+                            : 'border-zinc-800 bg-zinc-900 text-zinc-500 hover:text-zinc-300'
+                            }`}
+                    >
+                        Screenplay
+                    </button>
+
+                    <div className="ml-auto flex flex-wrap items-center gap-2">
+                        {viewMode === 'script' && (
+                            <>
+                                <div className="flex items-center gap-1 rounded-2xl border border-zinc-800 bg-zinc-900 px-1.5 py-1">
+                                    <button
+                                        onClick={increaseZoom}
+                                        className="rounded-xl p-1.5 text-zinc-400 transition-colors hover:bg-zinc-800 hover:text-zinc-100"
+                                        title="Increase zoom"
+                                    >
+                                        <Plus size={14} />
+                                    </button>
+                                    <span className="min-w-14 text-center text-[10px] font-black uppercase tracking-[0.16em] text-zinc-400">
+                                        {scriptZoom}%
+                                    </span>
+                                    <button
+                                        onClick={decreaseZoom}
+                                        className="rounded-xl p-1.5 text-zinc-400 transition-colors hover:bg-zinc-800 hover:text-zinc-100"
+                                        title="Decrease zoom"
+                                    >
+                                        <Minus size={14} />
+                                    </button>
+                                </div>
+
+                                <button
+                                    onClick={() => startTransition(() => setShowLineNumbers(current => !current))}
+                                    className={`rounded-2xl border px-3.5 py-2 text-[11px] font-black uppercase tracking-[0.16em] transition-all ${showLineNumbers
+                                        ? 'border-amber-400/20 bg-amber-400/10 text-amber-100'
+                                        : 'border-zinc-800 bg-zinc-900 text-zinc-400 hover:text-zinc-100'
+                                        }`}
+                                >
+                                    {showLineNumbers ? 'Hide Line Nos' : 'Show Line Nos'}
+                                </button>
+
+                                {reconstruction?.content && (
+                                    <button
+                                        onClick={() => handleCopy('reconstructed-script', reconstruction.content)}
+                                        className="flex items-center gap-2 rounded-2xl border border-zinc-800 bg-zinc-900 px-3.5 py-2 text-[11px] font-black uppercase tracking-[0.16em] text-zinc-300 transition-all hover:border-zinc-700 hover:text-white"
+                                    >
+                                        {copiedId === 'reconstructed-script' ? <Check size={14} /> : <Copy size={14} />}
+                                        Copy Script
+                                    </button>
+                                )}
+                            </>
+                        )}
+                    </div>
+                </div>
+
+                {chunkError && (
+                    <div className="rounded-2xl border border-amber-500/20 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
+                        Chunk formatting is temporarily unavailable for this version. The screenplay tab still uses the exact source layout.
+                    </div>
+                )}
+
+                {viewMode === 'chunks' && (
+                    <div className="relative">
+                        <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-600" size={18} />
+                        <input
+                            type="text"
+                            placeholder="Search chunks by content or character..."
+                            className="w-full rounded-2xl border border-zinc-800 bg-zinc-900 pl-12 pr-4 py-3 text-sm text-zinc-200 outline-none transition-all focus:border-blue-500"
+                            value={searchQuery}
+                            onChange={event => setSearchQuery(event.target.value)}
+                        />
+                    </div>
+                )}
+            </div>
+
+            <div className={`min-h-0 flex-1 overflow-y-auto overscroll-contain bg-[radial-gradient(circle_at_top,rgba(245,158,11,0.08),transparent_30%),linear-gradient(180deg,#09090b_0%,#111827_100%)] p-4 custom-scrollbar ${mode === 'page' ? 'sm:p-8 lg:p-10' : 'sm:p-6'}`}>
+                {loading ? (
+                    <div className="flex h-full flex-col items-center justify-center gap-3">
+                        <div className="h-8 w-8 animate-spin rounded-full border-4 border-blue-500/20 border-t-blue-500" />
+                        <span className="text-xs font-bold uppercase tracking-[0.18em] text-zinc-600">Loading screenplay view...</span>
+                    </div>
+                ) : error ? (
+                    <div className="flex h-full items-center justify-center">
+                        <div className="max-w-xl rounded-3xl border border-red-500/20 bg-red-500/10 px-5 py-4 text-sm text-red-300">
+                            {error}
+                        </div>
+                    </div>
+                ) : viewMode === 'chunks' ? (
+                    chunkError ? (
+                        <div className="flex h-full items-center justify-center">
+                            <div className="max-w-2xl rounded-3xl border border-amber-500/20 bg-amber-500/10 px-5 py-4 text-sm text-amber-100">
+                                Structured Elements are unavailable for this version right now.
+                                <div className="mt-2 text-xs text-amber-200/80">{chunkError}</div>
+                            </div>
+                        </div>
+                    ) : filteredChunks.length === 0 ? (
+                        <div className="flex h-full flex-col items-center justify-center text-zinc-600">
+                            <Search size={48} className="mb-4 opacity-20" />
+                            <p className="font-bold">No chunks match your search.</p>
+                        </div>
+                    ) : (
+                        <div className="space-y-4">
+                            {filteredChunks.map((chunk, index) => (
+                                <div
+                                    key={chunk._id || chunk.chunkId || `chunk-${index + 1}`}
+                                    className="group rounded-3xl border border-zinc-800/70 bg-zinc-900/50 p-5 transition-all hover:border-zinc-700 hover:bg-zinc-900/70"
+                                    style={CHUNK_CARD_VISIBILITY_STYLE}
+                                >
+                                    <div className="mb-3 flex items-start justify-between gap-4">
+                                        <div className="flex flex-wrap items-center gap-3">
+                                            <div className="flex items-center gap-1.5 rounded-xl border border-zinc-800 bg-zinc-950 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.16em] text-zinc-500">
+                                                <Hash size={12} className="text-blue-500/50" />
+                                                Chunk {chunk.chunkIndex ?? index + 1}
+                                            </div>
+                                            {chunk.speaker && (
+                                                <div className="flex items-center gap-1.5 rounded-xl border border-blue-500/20 bg-blue-500/10 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.16em] text-blue-300">
+                                                    <User size={12} />
+                                                    {chunk.speaker}
+                                                </div>
+                                            )}
+                                            <div className="text-[10px] font-black uppercase tracking-[0.18em] text-zinc-500">
+                                                {chunk.chunkType || 'dialogue'}
+                                            </div>
+                                            {chunk.sceneNumber && (
+                                                <div className="text-[10px] font-black uppercase tracking-[0.18em] text-amber-300">
+                                                    #{chunk.sceneNumber}
+                                                </div>
+                                            )}
+                                            {chunk.dualDialogue && (
+                                                <div className="text-[10px] font-black uppercase tracking-[0.18em] text-purple-300">
+                                                    Dual
+                                                </div>
+                                            )}
+                                            {chunk.nonPrinting && (
+                                                <div className="text-[10px] font-black uppercase tracking-[0.18em] text-amber-200">
+                                                    Non-Print
+                                                </div>
+                                            )}
+                                            {typeof chunk.sceneSeq === 'number' && (
+                                                <div className="text-[10px] font-black uppercase tracking-[0.18em] text-zinc-600">
+                                                    Scene {chunk.sceneSeq} / Element {chunk.elementSeq}
+                                                </div>
+                                            )}
+                                        </div>
+                                        <button
+                                            onClick={() => handleCopy(chunk._id || chunk.chunkId || `chunk-${index + 1}`, chunk.content || '')}
+                                            className="rounded-xl bg-zinc-950/60 p-2 text-zinc-500 transition-all hover:bg-zinc-800 hover:text-blue-300"
+                                            title="Copy content"
+                                        >
+                                            {copiedId === (chunk._id || chunk.chunkId || `chunk-${index + 1}`) ? <Check size={16} /> : <Copy size={16} />}
+                                        </button>
+                                    </div>
+
+                                    <div className="whitespace-pre-wrap font-serif text-sm leading-relaxed text-zinc-200 selection:bg-blue-500/30">
+                                        {chunk.content === '[BLANK_LINE]' ? '' : chunk.content}
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    )
+                ) : (
+                    exactLines.length > 0 ? (
+                        <ExactSourceReader
+                            lines={exactLines}
+                            copiedId={copiedId}
+                            onCopy={handleCopy}
+                            showLineNumbers={showLineNumbers}
+                            screenplayScale={screenplayScale}
+                        />
+                    ) : scriptLines.length > 0 ? (
+                        <div className="relative mx-auto max-w-[1460px]">
+                            <div className="absolute inset-x-10 top-6 h-28 rounded-full bg-amber-200/15 blur-3xl" />
+                            <div className="relative overflow-hidden rounded-[2rem] border border-stone-300/80 bg-[linear-gradient(180deg,#faf7ef_0%,#f7f1e3_48%,#fffdf8_100%)] shadow-[0_30px_100px_rgba(0,0,0,0.35)]">
+                                <div className="border-b border-stone-300/70 bg-[linear-gradient(180deg,rgba(255,255,255,0.88),rgba(245,239,225,0.94))] px-5 py-3 sm:px-8">
+                                    <div className="flex flex-wrap items-center justify-between gap-4">
+                                        <div>
+                                            <div className="text-[9px] font-black uppercase tracking-[0.2em] text-stone-500">
+                                                Reconstructed Screenplay
+                                                稳定                                            </div>
+                                            <div className="mt-1 text-xs font-semibold text-stone-700">
+                                                Exact script view for client reading.
+                                            </div>
+                                        </div>
+                                        <div className="rounded-full border border-stone-300 bg-white/70 px-3 py-1.5 text-[9px] font-black uppercase tracking-[0.16em] text-stone-500">
+                                            Scrollable Reader
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div
+                                    className="px-3 py-5 sm:px-6 sm:py-8 md:px-10"
+                                    style={{
+                                        fontFamily: SCRIPT_FONT_FAMILY,
+                                        ...screenplayScale
+                                    }}
+                                >
+                                    {scriptLines.map(line => (
+                                        <ScriptLineRow
+                                            key={line.id}
+                                            line={line}
+                                            copiedId={copiedId}
+                                            onCopy={handleCopy}
+                                            showLineNumbers={showLineNumbers}
+                                        />
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
+                    ) : (
+                        <div className="flex h-full flex-col items-center justify-center text-zinc-600">
+                            <FileText size={48} className="mb-4 opacity-20" />
+                            <p className="font-bold">No reconstructed script is available.</p>
+                        </div>
+                    )
+                )}
+            </div>
+        </div>
     );
 
     if (mode === 'page') {
@@ -513,7 +575,7 @@ function getErrorMessage(error: unknown): string {
     return 'Failed to load script data';
 }
 
-function getScriptRenderKind(chunk: any): ScriptRenderKind {
+function getScriptRenderKind(chunk: MasterScriptChunkRow): ScriptRenderKind {
     const content = (chunk?.content || '').trim();
 
     if (!content || content === '[BLANK_LINE]') return 'blank';
@@ -524,6 +586,7 @@ function getScriptRenderKind(chunk: any): ScriptRenderKind {
     if (chunk?.chunkType === 'dialogue') return 'dialogue';
     if (chunk?.chunkType === 'action') return 'action';
     if (chunk?.chunkType === 'centered') return 'centered';
+    if (chunk?.chunkType === 'lyrics') return 'lyrics';
     if (chunk?.chunkType === 'note') return 'note';
     if (chunk?.chunkType === 'section') return 'section';
     if (chunk?.chunkType === 'synopsis') return 'synopsis';
@@ -531,7 +594,7 @@ function getScriptRenderKind(chunk: any): ScriptRenderKind {
     return 'other';
 }
 
-function looksLikeCharacterCue(chunk: any): boolean {
+function looksLikeCharacterCue(chunk: MasterScriptChunkRow): boolean {
     const content = (chunk?.content || '').trim();
     const speaker = (chunk?.speaker || '').trim();
     if (!content || !speaker) return false;
@@ -604,6 +667,9 @@ function inferRawScriptRenderLine(
     }
     if (/^>\s*.+\s*<$/.test(content)) {
         return { kind: 'centered' };
+    }
+    if (content.startsWith('~')) {
+        return { kind: 'lyrics' };
     }
 
     const isSlug = /^(INT\.?|EXT\.?|EST\.?|INT\/EXT\.?|INT\.\/EXT\.?|EXT\/INT\.?|EXT\.\/INT\.?|I\/E\.?)\s+.+$/i.test(withoutForcedDot);
@@ -693,6 +759,115 @@ function assignDualDialogueLayout(lines: ScriptRenderLine[]): ScriptRenderLine[]
     });
 }
 
+const ExactSourceReader = memo(function ExactSourceReader({
+    lines,
+    copiedId,
+    onCopy,
+    showLineNumbers,
+    screenplayScale
+}: {
+    lines: MasterScriptReconstructionLine[];
+    copiedId: string | null;
+    onCopy: (id: string, text: string) => void;
+    showLineNumbers: boolean;
+    screenplayScale: { fontSize: string; lineHeight: string };
+}) {
+    return (
+        <div className="relative mx-auto max-w-[1620px] overflow-x-auto">
+            <div className="absolute inset-x-10 top-6 h-28 rounded-full bg-amber-200/15 blur-3xl" />
+            <div className="relative min-w-[780px] overflow-hidden rounded-[2rem] border border-stone-300/80 bg-[linear-gradient(180deg,#faf7ef_0%,#f7f1e3_48%,#fffdf8_100%)] shadow-[0_30px_100px_rgba(0,0,0,0.35)]">
+                <div className="border-b border-stone-300/70 bg-[linear-gradient(180deg,rgba(255,255,255,0.88),rgba(245,239,225,0.94))] px-5 py-3 sm:px-8">
+                    <div className="flex flex-wrap items-center justify-between gap-4">
+                        <div>
+                            <div className="text-[9px] font-black uppercase tracking-[0.2em] text-stone-500">
+                                Exact Source Layout
+                            </div>
+                            <div className="mt-1 text-xs font-semibold text-stone-700">
+                                Verbatim screenplay lines with preserved indentation and page flow.
+                            </div>
+                        </div>
+                        <div className="rounded-full border border-stone-300 bg-white/70 px-3 py-1.5 text-[9px] font-black uppercase tracking-[0.16em] text-stone-500">
+                            Scrollable Exact Reader
+                        </div>
+                    </div>
+                </div>
+
+                <div
+                    className="px-3 py-5 sm:px-6 sm:py-8 md:px-10"
+                    style={{
+                        fontFamily: SCRIPT_FONT_FAMILY,
+                        ...screenplayScale
+                    }}
+                >
+                    {lines.map((line, index) => {
+                        const showPageBreak = index === 0 || lines[index - 1].pageNo !== line.pageNo;
+                        return (
+                            <Fragment key={line.lineId}>
+                                {showPageBreak && (
+                                    <div className="mb-5 mt-3 flex items-center gap-4 px-2">
+                                        <div className="h-px flex-1 bg-stone-300/80" />
+                                        <div className="rounded-full border border-stone-300 bg-white/80 px-4 py-1 text-[10px] font-black uppercase tracking-[0.18em] text-stone-500">
+                                            Page {line.pageNo}
+                                        </div>
+                                        <div className="h-px flex-1 bg-stone-300/80" />
+                                    </div>
+                                )}
+                                <ExactSourceLineRow
+                                    line={line}
+                                    copiedId={copiedId}
+                                    onCopy={onCopy}
+                                    showLineNumbers={showLineNumbers}
+                                />
+                            </Fragment>
+                        );
+                    })}
+                </div>
+            </div>
+        </div>
+    );
+});
+
+const ExactSourceLineRow = memo(function ExactSourceLineRow({
+    line,
+    copiedId,
+    onCopy,
+    showLineNumbers
+}: {
+    line: MasterScriptReconstructionLine;
+    copiedId: string | null;
+    onCopy: (id: string, text: string) => void;
+    showLineNumbers: boolean;
+}) {
+    return (
+        <div
+            className={`group flex items-start gap-3 rounded-2xl px-2 transition-colors hover:bg-white/35 ${line.sourceKind === 'page_marker' ? 'text-stone-500' : ''}`}
+            style={SCRIPT_LINE_VISIBILITY_STYLE}
+        >
+            <div className={`shrink-0 select-none pt-2 text-right text-[10px] font-black tracking-[0.2em] text-stone-400 transition-opacity ${showLineNumbers ? 'w-14 opacity-100' : 'w-0 overflow-hidden opacity-0'}`}>
+                {showLineNumbers ? line.lineNo : ''}
+            </div>
+            <div className="min-w-0 flex-1 overflow-hidden">
+                <div className={`whitespace-pre py-1 ${line.sourceKind === 'page_marker' ? 'italic text-stone-500' : 'text-stone-900'}`}>
+                    {line.rawText.length > 0 ? line.rawText : ' '}
+                </div>
+            </div>
+            <div className="pt-2">
+                {line.rawText ? (
+                    <button
+                        onClick={() => onCopy(line.lineId, line.rawText)}
+                        className="opacity-0 group-hover:opacity-100 rounded-xl border border-stone-300 bg-white/80 p-2 text-stone-400 transition-all hover:text-stone-900"
+                        title="Copy line"
+                    >
+                        {copiedId === line.lineId ? <Check size={14} /> : <Copy size={14} />}
+                    </button>
+                ) : (
+                    <div className="w-[34px]" />
+                )}
+            </div>
+        </div>
+    );
+});
+
 const ScriptLineRow = memo(function ScriptLineRow({
     line,
     copiedId,
@@ -717,7 +892,7 @@ const ScriptLineRow = memo(function ScriptLineRow({
     if (line.kind === 'blank') {
         return (
             <div
-                className="group flex min-h-[1.45rem] items-center gap-3 rounded-2xl px-2"
+                className="group flex min-h-[1.1rem] items-center gap-3 rounded-2xl px-2"
                 style={SCRIPT_LINE_VISIBILITY_STYLE}
             >
                 <div className={`select-none pt-1 text-right text-[10px] font-black tracking-[0.2em] text-stone-300 transition-opacity ${showLineNumbers ? 'w-14 opacity-100' : 'w-0 overflow-hidden opacity-0'}`}>
@@ -729,18 +904,22 @@ const ScriptLineRow = memo(function ScriptLineRow({
         );
     }
 
+    if (line.nonPrinting) {
+        return null;
+    }
+
     return (
         <div
-            className="group flex items-start gap-3 rounded-2xl px-2 py-0.5 transition-colors hover:bg-white/35"
+            className="group flex items-start gap-3 rounded-2xl px-2 transition-colors hover:bg-white/35"
             style={SCRIPT_LINE_VISIBILITY_STYLE}
         >
-            <div className={`shrink-0 select-none pt-1 text-right text-[10px] font-black tracking-[0.2em] text-stone-400 transition-opacity ${showLineNumbers ? 'w-14 opacity-100' : 'w-0 overflow-hidden opacity-0'}`}>
+            <div className={`shrink-0 select-none pt-4 text-right text-[10px] font-black tracking-[0.2em] text-stone-400 transition-opacity ${showLineNumbers ? 'w-14 opacity-100' : 'w-0 overflow-hidden opacity-0'}`}>
                 {showLineNumbers ? (line.lineNo || '') : ''}
             </div>
             <div className="min-w-0 flex-1">
                 <div className={getScriptLineClassName(line.kind, line.dualLane || null, Boolean(line.nonPrinting))}>
                     {line.kind === 'slug' && (typeof line.sceneSeq === 'number' || line.sceneNumber) && (
-                        <div className="mb-1 text-[0.58em] font-black uppercase tracking-[0.32em] text-stone-500">
+                        <div className="mb-2 text-[0.62em] font-black uppercase tracking-[0.35em] text-stone-500/80">
                             {line.sceneNumber ? `Scene ${line.sceneNumber}` : `Scene ${line.sceneSeq}`}
                         </div>
                     )}
@@ -749,10 +928,15 @@ const ScriptLineRow = memo(function ScriptLineRow({
                             {line.kind}
                         </div>
                     )}
-                    <div>{formatScriptLineText(line)}</div>
+                    {line.kind === 'lyrics' && (
+                        <div className="mb-1 text-[0.52em] font-black uppercase tracking-[0.32em] text-rose-500/70">
+                            Lyrics
+                        </div>
+                    )}
+                    <div className="leading-[1.6]">{formatScriptLineText(line)}</div>
                 </div>
             </div>
-            {sharedCopyButton}
+            <div className="pt-4">{sharedCopyButton}</div>
         </div>
     );
 });
@@ -782,6 +966,9 @@ function formatScriptLineText(line: ScriptRenderLine) {
             .replace(/\^\s*$/, '')
             .toUpperCase();
     }
+    if (line.kind === 'lyrics') {
+        return line.content.replace(/^~\s*/, '');
+    }
     return line.content.replace(/^!\s*/, '');
 }
 
@@ -800,35 +987,37 @@ function getScriptLineClassName(kind: ScriptRenderKind, dualLane: DualDialogueLa
 
     if (kind === 'cue' && dualLane) {
         return dualLane === 'right'
-            ? 'ml-[54%] md:ml-[58%] w-[30%] pt-5 text-center text-[0.95em] font-black uppercase tracking-[0.2em] text-stone-800'
-            : 'ml-[12%] md:ml-[18%] w-[30%] pt-5 text-center text-[0.95em] font-black uppercase tracking-[0.2em] text-stone-800';
+            ? 'ml-[54%] md:ml-[58%] w-[30%] pt-3 text-center text-[0.95em] font-black uppercase tracking-[0.2em] text-stone-800'
+            : 'ml-[12%] md:ml-[18%] w-[30%] pt-3 text-center text-[0.95em] font-black uppercase tracking-[0.2em] text-stone-800';
     }
 
     switch (kind) {
         case 'slug':
-            return 'w-full max-w-[96%] py-4 text-[1em] font-black uppercase tracking-[0.16em] text-stone-900';
+            return 'w-full max-w-[96%] pt-6 pb-3 text-[1em] font-black uppercase tracking-[0.16em] text-stone-900 border-t border-stone-200/50 mt-5 first:mt-0 first:border-0';
         case 'transition':
-            return 'ml-auto w-full max-w-[92%] py-2 text-right text-[1em] font-black uppercase tracking-[0.16em] text-stone-700';
+            return 'ml-auto w-full max-w-[92%] pt-3 pb-1 text-right text-[1em] font-black uppercase tracking-[0.16em] text-stone-700';
         case 'cue':
-            return 'ml-[12%] md:ml-[30%] w-[76%] md:w-[40%] pt-5 text-center text-[0.95em] font-black uppercase tracking-[0.2em] text-stone-800';
+            return 'ml-[12%] md:ml-[30%] w-[76%] md:w-[40%] pt-4 pb-0 text-center text-[0.95em] font-black uppercase tracking-[0.2em] text-stone-800';
         case 'parenthetical':
-            return 'ml-[10%] md:ml-[28%] w-[82%] md:w-[46%] text-[0.95em] italic text-stone-600';
+            return 'ml-[10%] md:ml-[28%] w-[82%] md:w-[46%] pb-0 text-[0.95em] italic text-stone-600';
         case 'dialogue':
-            return 'ml-[4%] md:ml-[20%] w-[92%] md:w-[60%] text-[1em] text-stone-900';
+            return 'ml-[4%] md:ml-[20%] w-[92%] md:w-[60%] pb-1 text-[1em] text-stone-900';
         case 'centered':
-            return 'mx-auto w-full max-w-[72%] py-3 text-center text-[1em] font-black uppercase tracking-[0.16em] text-stone-800';
+            return 'mx-auto w-full max-w-[72%] py-4 text-center text-[1em] font-black uppercase tracking-[0.16em] text-stone-800';
         case 'note':
-            return 'w-[96%] border-l-4 border-amber-300/80 pl-4 py-2 text-[0.92em] italic text-amber-900/80';
+            return 'w-[96%] border-l-4 border-amber-300/80 pl-4 py-3 text-[0.92em] italic text-amber-900/80 my-3';
         case 'section':
-            return 'w-[96%] py-3 text-[0.96em] font-black tracking-[0.18em] text-sky-800';
+            return 'w-[96%] py-4 text-[1.1em] font-black tracking-[0.22em] text-sky-900 border-b border-sky-100';
         case 'synopsis':
-            return 'w-[96%] py-2 text-[0.92em] italic text-stone-600';
+            return 'w-[96%] py-3 text-[0.92em] italic text-stone-600 bg-stone-50/50 px-4 rounded-xl my-1.5';
+        case 'lyrics':
+            return 'ml-[4%] md:ml-[20%] w-[92%] md:w-[60%] py-2 text-[1.05em] italic font-medium text-rose-900/80';
         case 'action':
-            return 'w-[98%] md:w-[92%] text-[1em] text-stone-800';
+            return 'w-[98%] md:w-[92%] py-1.5 text-[1em] leading-[1.6] text-stone-800';
         case 'other':
             return nonPrinting
-                ? 'w-[96%] text-[0.92em] text-stone-500'
-                : 'w-[98%] md:w-[92%] text-[1em] text-stone-700';
+                ? 'hidden'
+                : 'w-[98%] md:w-[92%] py-1.5 text-[1em] text-stone-700';
         default:
             return 'text-[1em] text-stone-800';
     }

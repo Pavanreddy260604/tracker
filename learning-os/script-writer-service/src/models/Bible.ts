@@ -1,5 +1,12 @@
 import mongoose, { Schema, Document } from 'mongoose';
 
+export interface IAssistantPreferences {
+    defaultMode: 'ask' | 'edit' | 'agent';
+    replyLanguage?: string;
+    transliteration?: boolean;
+    savedDirectives: string[];
+}
+
 export interface IBible extends Document {
     userId: string; // String to support various auth provider IDs
     title: string;
@@ -12,12 +19,33 @@ export interface IBible extends Document {
     globalOutline?: string[]; // 20-beat master story arc
     storySoFar?: string; // Cumulative summary of the entire plot
     sceneCount?: number; // Total scenes generated so far
+    transliteration?: boolean; // PH Transliteration Soul
+    assistantPreferences?: IAssistantPreferences;
     createdAt: Date;
     updatedAt: Date;
 }
 
 // Valid genre options
 const VALID_GENRES = ['Drama', 'Sci-Fi', 'Comedy', 'Thriller', 'Horror', 'Action', 'Romance', 'Documentary', 'Fantasy', 'Mystery'];
+
+const AssistantPreferencesSchema = new Schema<IAssistantPreferences>({
+    defaultMode: {
+        type: String,
+        enum: ['ask', 'edit', 'agent'],
+        default: 'ask'
+    },
+    replyLanguage: {
+        type: String,
+        maxlength: [50, 'Reply language cannot exceed 50 characters']
+    },
+    transliteration: {
+        type: Boolean
+    },
+    savedDirectives: [{
+        type: String,
+        maxlength: [500, 'Each assistant directive cannot exceed 500 characters']
+    }]
+}, { _id: false });
 
 const BibleSchema: Schema = new Schema({
     userId: {
@@ -74,6 +102,17 @@ const BibleSchema: Schema = new Schema({
     sceneCount: {
         type: Number,
         default: 0
+    },
+    transliteration: {
+        type: Boolean,
+        default: false
+    },
+    assistantPreferences: {
+        type: AssistantPreferencesSchema,
+        default: () => ({
+            defaultMode: 'ask',
+            savedDirectives: []
+        })
     }
 }, { timestamps: true });
 

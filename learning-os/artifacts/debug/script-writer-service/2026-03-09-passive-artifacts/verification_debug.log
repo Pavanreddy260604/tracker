@@ -1,0 +1,16 @@
+[LlamaIndex] Mastery Service Initialized with embedding models: bge-m3:latest (host=http://127.0.0.1:11434)
+[Test] Using Master Script ID: 69adc543cd237058c60574b8
+[Test] Leaf ID: 69adc56bcd237058c6058b2e
+[Test] Expected Parent: 69adc54ccd237058c6058a3d
+[Test] Parent Existence Check: FOUND
+[VectorService] ChromaVectorStore initialized for: voice_samples
+[VectorService] Querying Chroma NATIVELY with filters: [{"key":"masterScriptId","value":"69adc543cd237058c60574b8","operator":"=="},{"key":"isHierarchicalNode","value":false,"operator":"=="}] K=20
+[VectorService] Found 2 parents for 2 unique IDs
+[Test] Retrieved: 5
+HIERARCHICAL_SUCCESS
+[Test] Parent Sample: SCENE 1
+EXT. space - NIGHT1
+EXT. space - NIGHT1
+In Space, millions of twinkling stars.
+JAGGU (V.O.)
+...

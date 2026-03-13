@@ -23,6 +23,13 @@ chroma_data/
 
 # Local service logs
 error_log.txt
+*-dev.log
+*-dev.err.log
+dev-root.log
+dev-root.err.log
+*.tmp
+response.json
+sample_src_files.txt
 
 # IDEs
 .vscode/
@@ -32,6 +39,9 @@ error_log.txt
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+
+# Archived debug artifacts
+artifacts/debug/**/.DS_Store
 
 # System
 .DS_Store

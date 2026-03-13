@@ -55,12 +55,44 @@ export class MasterScriptValidatorService {
         const lineUsage = new Map<string, number>();
         const extraLines: { lineNo: number; lineId?: string; detail?: string }[] = [];
         const missingLines: { lineNo: number; lineId?: string; detail?: string }[] = [];
+        const layoutMismatches: { lineNo: number; lineId?: string; detail?: string }[] = [];
+        const classificationMismatches: { lineNo: number; lineId?: string; detail?: string }[] = [];
         const orderMismatches: { sceneSeq: number; elementSeq: number; detail: string }[] = [];
         const hierarchyMismatches: { chunkId?: string; detail: string }[] = [];
 
         let prevScene = Number.MIN_SAFE_INTEGER;
         let prevElement = Number.MIN_SAFE_INTEGER;
         const reconstructedLines: string[] = [];
+        let previousPageNo = 0;
+        let previousPageLineNo = 0;
+        let seenBodySection = false;
+        const cueIndentBySpeaker = new Map<string, number>();
+
+        for (const sourceLine of sourceLines) {
+            const pageNo = sourceLine.pageNo || 1;
+            const pageLineNo = sourceLine.pageLineNo || sourceLine.lineNo;
+
+            if (pageNo < previousPageNo || (pageNo === previousPageNo && pageLineNo <= previousPageLineNo)) {
+                layoutMismatches.push({
+                    lineNo: sourceLine.lineNo,
+                    lineId: sourceLine.lineId,
+                    detail: 'Source line page order regressed'
+                });
+            }
+
+            if (sourceLine.sourceKind !== 'title_page') {
+                seenBodySection = true;
+            } else if (seenBodySection) {
+                layoutMismatches.push({
+                    lineNo: sourceLine.lineNo,
+                    lineId: sourceLine.lineId,
+                    detail: 'Title page line appeared after screenplay body started'
+                });
+            }
+
+            previousPageNo = pageNo;
+            previousPageLineNo = pageLineNo;
+        }
 
         for (const chunk of chunks) {
             const sceneSeq = chunk.sceneSeq ?? -1;
@@ -111,6 +143,31 @@ export class MasterScriptValidatorService {
             }
 
             const sourceLineIds = Array.isArray(chunk.sourceLineIds) ? chunk.sourceLineIds : [];
+            const firstSourceLine = sourceByLineId.get(sourceLineIds[0]);
+            const cueKey = chunk.speaker ? `${sceneSeq}:${chunk.speaker}` : null;
+
+            if (chunk.chunkType === 'cue' && cueKey && firstSourceLine) {
+                cueIndentBySpeaker.set(cueKey, firstSourceLine.indentColumns || 0);
+            }
+
+            if (
+                cueKey &&
+                firstSourceLine &&
+                (chunk.chunkType === 'dialogue' || chunk.chunkType === 'parenthetical')
+            ) {
+                const cueIndent = cueIndentBySpeaker.get(cueKey);
+                if (typeof cueIndent === 'number' && cueIndent >= 18) {
+                    const minDialogueIndent = Math.max(0, cueIndent - 12);
+                    if ((firstSourceLine.indentColumns || 0) < minDialogueIndent && !firstSourceLine.isBlank) {
+                        classificationMismatches.push({
+                            lineNo: firstSourceLine.lineNo,
+                            lineId: firstSourceLine.lineId,
+                            detail: `Chunk ${chunk.chunkId || ''} looks like action/page prose but was classified as ${chunk.chunkType}`
+                        });
+                    }
+                }
+            }
+
             for (const lineId of sourceLineIds) {
                 const sourceLine = sourceByLineId.get(lineId);
                 if (!sourceLine) {
@@ -123,6 +180,30 @@ export class MasterScriptValidatorService {
                 }
                 lineUsage.set(lineId, (lineUsage.get(lineId) || 0) + 1);
                 reconstructedLines.push(sourceLine.rawText);
+
+                if (sourceLine.sourceKind === 'title_page' && (chunk.sceneSeq ?? 0) !== 0) {
+                    layoutMismatches.push({
+                        lineNo: sourceLine.lineNo,
+                        lineId: sourceLine.lineId,
+                        detail: 'Title page line was assigned to a screenplay scene'
+                    });
+                }
+
+                if (sourceLine.sourceKind === 'title_page' && chunk.chunkType !== 'other') {
+                    layoutMismatches.push({
+                        lineNo: sourceLine.lineNo,
+                        lineId: sourceLine.lineId,
+                        detail: 'Title page line was classified as a structured screenplay element'
+                    });
+                }
+
+                if (sourceLine.sourceKind === 'page_marker' && !chunk.nonPrinting) {
+                    layoutMismatches.push({
+                        lineNo: sourceLine.lineNo,
+                        lineId: sourceLine.lineId,
+                        detail: 'Page marker line must remain non-printing in structured chunks'
+                    });
+                }
             }
         }
 
@@ -154,13 +235,15 @@ export class MasterScriptValidatorService {
         const passed =
             missingLines.length === 0 &&
             extraLines.length === 0 &&
+            layoutMismatches.length === 0 &&
+            classificationMismatches.length === 0 &&
             orderMismatches.length === 0 &&
             hierarchyMismatches.length === 0 &&
             !reconstructionMismatch;
 
         const summary = passed
             ? `Validation passed for scriptVersion=${scriptVersion}. ${chunks.length} chunks, ${sourceLines.length} source lines.`
-            : `Validation failed for scriptVersion=${scriptVersion}. missing=${missingLines.length}, extra=${extraLines.length}, order=${orderMismatches.length}, hierarchy=${hierarchyMismatches.length}, reconstructionMismatch=${reconstructionMismatch}.`;
+            : `Validation failed for scriptVersion=${scriptVersion}. missing=${missingLines.length}, extra=${extraLines.length}, layout=${layoutMismatches.length}, classification=${classificationMismatches.length}, order=${orderMismatches.length}, hierarchy=${hierarchyMismatches.length}, reconstructionMismatch=${reconstructionMismatch}.`;
 
         const report = await MasterScriptValidationReport.findOneAndUpdate(
             { masterScriptId: scriptObjectId, scriptVersion },
@@ -169,6 +252,8 @@ export class MasterScriptValidatorService {
                     status: passed ? 'passed' : 'failed',
                     missingLines,
                     extraLines,
+                    layoutMismatches,
+                    classificationMismatches,
                     orderMismatches,
                     reconstructionMismatch,
                     hierarchyMismatches,

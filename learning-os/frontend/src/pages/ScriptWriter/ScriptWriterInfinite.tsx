@@ -38,6 +38,7 @@ function ScriptWriterInfiniteContent() {
         handleUpdateProject,
         handleDeleteProject,
         handleNewScene,
+        handleUpdateScene,
         handleDeleteScene,
         loadScenes,
         updateSceneInState,
@@ -96,19 +97,22 @@ function ScriptWriterInfiniteContent() {
                 setActiveScene(freshScene);
             }
         }
-    }, [projectScenes, activeProjectId, contextActiveScene?._id, setActiveScene]);
+    }, [projectScenes, activeProjectId, contextActiveScene, contextActiveScene?._id, setActiveScene]);
 
     // --- EDITOR HOOK ---
     const {
         editorContent,
+        editorSelection,
         saveState,
         wordCount,
         isGenerating,
+        generationProgress,
         isCritiquing,
         critique,
         sceneForm,
         generationOptions,
         handleContentChange,
+        handleSelectionChange,
         handleCritiqueScene,
         handleGenerateScene,
         handleFixScene,
@@ -168,6 +172,11 @@ function ScriptWriterInfiniteContent() {
                     scenes={activeProjectId ? (projectScenes[activeProjectId] || []) : []}
                     onNewScene={handleNewScene}
                     onDeleteScene={handleDeleteScene}
+                    onUpdateScene={async (sceneId, updates) => {
+                        if (activeProjectId) {
+                            await handleUpdateScene(activeProjectId, sceneId, updates);
+                        }
+                    }}
                 />
             }
             rightPanel={
@@ -191,9 +200,9 @@ function ScriptWriterInfiniteContent() {
                     eliteHighScore={eliteHighScore}
                     refreshScenes={loadScenes}
                     activeScene={activeScene}
+                    editorSelection={editorSelection}
                     pendingFix={pendingFix}
                     setPendingFix={setPendingFix}
-                    onAcceptFix={handleAcceptFix}
                     setError={setError}
                 />
             }
@@ -210,12 +219,15 @@ function ScriptWriterInfiniteContent() {
                             activeProject={activeProject}
                             activeScene={activeScene}
                             editorContent={editorContent}
+                            editorSelection={editorSelection}
                             onContentChange={handleContentChange}
+                            onSelectionChange={handleSelectionChange}
                             saveState={saveState}
                             wordCount={wordCount}
                             sceneCount={sceneCount}
                             characterCount={characters.length}
-
+                            isGenerating={isGenerating}
+                            generationProgress={generationProgress}
                         />
                     ) : (
                         <BiblePortal

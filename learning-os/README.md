@@ -2,6 +2,8 @@
 
 Learning OS is a monorepo for a personal learning platform with a modern React UI, a TypeScript backend API, and a dedicated script-writer microservice.
 
+Current active runtime surfaces are `backend`, `frontend`, and `script-writer-service`. Experimental areas such as `sample/` and `frontend-v2/` are intentionally left in place but are not part of the default runtime/build surface.
+
 ## Services
 
 | Service | Default Port | Purpose |
@@ -129,3 +131,9 @@ learning-os/
   script-writer-service/   # AI script-writer microservice
   chroma/                  # Chroma-related assets
 ```
+
+## Repository Notes
+
+- Active runtime surfaces and quarantined experiment areas: `docs/REPO_SURFACES.md`
+- Debug artifact handling and archive policy: `docs/DEBUG_ARTIFACT_POLICY.md`
+- Retained executable debug helpers: `docs/DEBUG_TOOL_INDEX.md`

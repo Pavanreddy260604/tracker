@@ -58,6 +58,7 @@ export interface FindSimilarOptions {
     era?: string;
     language?: string;
     scopeType?: 'bibleId' | 'masterScriptId'; // PH 29: Specify which ID to filter by
+    allowedScopeIds?: string[];
     interests?: {
         directors: string[];
         genres: string[];
@@ -171,8 +172,8 @@ export class VectorService {
 
         // 1. Build Filters
         const filters: MetadataFilter[] = [];
+        const filterKey = options?.scopeType || 'bibleId';
         if (bibleId !== "ALL") {
-            const filterKey = options?.scopeType || 'bibleId';
             filters.push({ key: filterKey, value: bibleId, operator: FilterOperator.EQ });
         }
         if (!options?.includeHierarchicalNodes) {
@@ -202,18 +203,28 @@ export class VectorService {
 
         // Convert LlamaIndex filters to Chroma's 'where' format
         const chromaWhere: any = {};
-        if (filters.length > 0) {
-            if (filters.length === 1) {
-                chromaWhere[filters[0].key] = { "$eq": filters[0].value };
+        const whereClauses: any[] = [];
+
+        if (options?.allowedScopeIds?.length) {
+            whereClauses.push({ [filterKey]: { "$in": options.allowedScopeIds } });
+        }
+
+        for (const filter of filters) {
+            whereClauses.push({ [filter.key]: { "$eq": filter.value } });
+        }
+
+        if (whereClauses.length > 0) {
+            if (whereClauses.length === 1) {
+                Object.assign(chromaWhere, whereClauses[0]);
             } else {
-                chromaWhere["$and"] = filters.map(f => ({ [f.key]: { "$eq": f.value } }));
+                chromaWhere["$and"] = whereClauses;
             }
         }
 
         const queryResult = await collection.query({
             queryEmbeddings: [queryEmbedding], // Chroma expects nested arrays for multi-query support
             nResults: similarityTopK,
-            where: filters.length > 0 ? chromaWhere : undefined,
+            where: whereClauses.length > 0 ? chromaWhere : undefined,
             include: ["metadatas", "documents", "distances"]
         });
 
@@ -333,14 +344,22 @@ export class VectorService {
                 .filter((id): id is string => !!id);
 
             if (parentIds.length > 0) {
-                const parents = await VoiceSample.find({ _id: { $in: parentIds } });
+                const uniqueParentIds = Array.from(new Set(parentIds));
+                const parents = await VoiceSample.find({ _id: { $in: uniqueParentIds } });
+                console.log(`[VectorService] Found ${parents.length} parents for ${uniqueParentIds.length} unique IDs`);
+
                 const parentMap = new Map(parents.map(p => [p._id.toString(), p.content]));
 
                 for (const sample of scoredSamples) {
                     if (sample.parentNodeId) {
                         sample.parentContent = parentMap.get(sample.parentNodeId);
+                        if (!sample.parentContent) {
+                            console.warn(`[VectorService] Parent Content not found for ID: ${sample.parentNodeId}`);
+                        }
                     }
                 }
+            } else {
+                console.log(`[VectorService] No parentNodeIds found in results`);
             }
         }
 

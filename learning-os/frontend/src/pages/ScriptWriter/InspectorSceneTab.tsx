@@ -7,7 +7,7 @@ interface InspectorSceneTabProps {
     sceneForm: SceneForm;
     onSceneFormChange: (field: keyof SceneForm, value: string) => void;
     generationOptions: GenerationOptions;
-    onGenerationOptionChange: (field: keyof GenerationOptions, value: string) => void;
+    onGenerationOptionChange: <K extends keyof GenerationOptions>(field: K, value: GenerationOptions[K]) => void;
     onGenerateScene: () => void;
     onCritiqueScene: () => void;
     isGenerating: boolean;
@@ -33,6 +33,15 @@ export function InspectorSceneTab({
 
     return (
         <div className="space-y-4">
+            <div className="ide-field">
+                <label className="ide-label">Scene Title</label>
+                <input
+                    className="ide-input font-bold"
+                    placeholder="e.g. The Betrayal"
+                    value={sceneForm.title}
+                    onChange={(event) => onSceneFormChange('title', event.target.value)}
+                />
+            </div>
             <div className="ide-field">
                 <label className="ide-label">Slugline</label>
                 <input
@@ -103,7 +112,7 @@ export function InspectorSceneTab({
                 <select
                     className="ide-select"
                     value={generationOptions.sceneLength}
-                    onChange={(event) => onGenerationOptionChange('sceneLength', event.target.value)}
+                    onChange={(event) => onGenerationOptionChange('sceneLength', event.target.value as GenerationOptions['sceneLength'])}
                 >
                     <option value="short">Short</option>
                     <option value="medium">Medium</option>

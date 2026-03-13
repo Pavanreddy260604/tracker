@@ -32,12 +32,7 @@ export function GeneratorPanel({
 }: GeneratorPanelProps) {
     const [showOutput, setShowOutput] = useState(false);
     const outputRef = useRef<HTMLDivElement>(null);
-
-    // Auto-show output when generating finishes or starts
-    useEffect(() => {
-        if (isScriptGenerating && !showOutput) setShowOutput(true);
-        if (scriptOutput && !showOutput && !isScriptGenerating) setShowOutput(true);
-    }, [isScriptGenerating, scriptOutput, showOutput]);
+    const outputVisible = showOutput || isScriptGenerating || Boolean(scriptOutput);
 
     // Auto-scroll output to bottom
     useEffect(() => {
@@ -106,7 +101,7 @@ export function GeneratorPanel({
             </div>
 
             {/* Output Section */}
-            {showOutput && (
+            {outputVisible && (
                 <div className="ide-card bg-zinc-900 border border-zinc-700 rounded-lg p-3 animate-in fade-in slide-in-from-bottom-2 duration-300">
                     <div className="flex justify-between items-center mb-2">
                         <span className="text-xs font-bold text-zinc-400 uppercase tracking-wider">Output</span>

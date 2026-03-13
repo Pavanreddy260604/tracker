@@ -1,5 +1,6 @@
 // Chat API Service
 import { baseApi } from './base.api';
+import type { AssistantContextPayload } from './scriptWriter.api';
 import type { ChatSession } from './types';
 
 export const chatApi = {
@@ -28,7 +29,7 @@ export const chatApi = {
         onChunk?: (chunk: string) => void,
         signal?: AbortSignal,
         assistantType?: 'learning-os' | 'script-writer',
-        context?: string
+        context?: string | AssistantContextPayload
     ) {
         if (!onChunk) {
             return baseApi.request('/chat/' + sessionId + '/message', {

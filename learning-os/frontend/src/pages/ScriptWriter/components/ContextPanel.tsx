@@ -4,8 +4,11 @@ import { useScriptWriter } from '../../../contexts/ScriptWriterContext';
 import { useScriptWriterGenerator } from '../useScriptWriterGenerator';
 import { useScriptWriterTreatments } from '../useScriptWriterTreatments';
 import { AssistantPanel } from './AssistantPanel';
-import type { CritiqueResult, IScene as Scene } from '../../../services/project.api';
+import type { Bible, CritiqueResult, IScene as Scene } from '../../../services/project.api';
 import { scriptWriterApi } from '../../../services/scriptWriter.api';
+import type { EditorSelection, GenerationOptions, PendingFixState, SceneForm } from '../types';
+
+type ContextPanelTab = 'generator' | 'story' | 'settings';
 
 interface ContextPanelProps {
     isGenerating?: boolean;
@@ -14,22 +17,22 @@ interface ContextPanelProps {
     onCritique?: () => void;
     onGenerate?: () => void;
     onFix?: () => void;
-    sceneForm?: any;
-    onSceneFormChange?: (field: any, value: any) => void;
-    generationOptions?: any;
-    onGenerationOptionChange?: (field: any, value: any) => void;
-    handleUpdateProject?: (projectId: string, updates: any) => void;
-    handleDeleteProject?: (projectId: string) => void;
-    activeProject?: any;
+    sceneForm?: SceneForm;
+    onSceneFormChange?: <K extends keyof SceneForm>(field: K, value: SceneForm[K]) => void;
+    generationOptions?: GenerationOptions;
+    onGenerationOptionChange?: <K extends keyof GenerationOptions>(field: K, value: GenerationOptions[K]) => void;
+    handleUpdateProject?: (projectId: string, updates: Partial<Bible>) => void | Promise<unknown>;
+    handleDeleteProject?: (projectId: string) => void | Promise<unknown>;
+    activeProject?: Bible | null;
     onExport?: (format: 'fountain' | 'txt' | 'json' | 'pdf') => void;
     refreshScenes?: (projectId: string, autoSelect?: boolean) => Promise<void>;
     canRefreshCritique?: boolean;
     pointsToRefresh?: number;
     eliteHighScore?: number;
-    pendingFix?: any | null;
+    pendingFix?: PendingFixState | null;
     activeScene?: Scene | null;
-    setPendingFix?: (fix: any) => void;
-    onAcceptFix?: () => void;
+    editorSelection?: EditorSelection | null;
+    setPendingFix?: (fix: PendingFixState | null) => void;
     setError: (message: string | null) => void;
 }
 
@@ -54,39 +57,39 @@ export function ContextPanel({
     eliteHighScore,
     pendingFix,
     activeScene,
+    editorSelection,
     setPendingFix,
-    onAcceptFix,
     setError
 }: ContextPanelProps) {
     const { uiState, setRightPanelTool, toggleRightPanel, activeProject: contextActiveProject, editorContent, setEditorContent } = useScriptWriter();
     const activeProject = propActiveProject || contextActiveProject;
     const { activeTool, rightPanelOpen } = uiState;
 
-    const [projectTitle, setProjectTitle] = useState(activeProject?.title || '');
+    const [projectTitleDrafts, setProjectTitleDrafts] = useState<Record<string, string>>({});
     const [aiProvider, setAiProvider] = useState<string>('ollama');
     const [isSwitchingProvider, setIsSwitchingProvider] = useState(false);
+    const projectTitle = activeProject ? projectTitleDrafts[activeProject._id] ?? activeProject.title ?? '' : '';
 
     useEffect(() => {
         scriptWriterApi.getAIProvider().then(setAiProvider).catch(console.error);
     }, []);
-
-    useEffect(() => {
-        if (activeProject?.title) setProjectTitle(activeProject.title);
-    }, [activeProject?.title]);
 
     const {
         assistantMessages,
         isAssistantThinking,
         handleAssistantSendMessage,
         handleApplyProposal,
+        handleDiscardProposal,
 
         handleDeleteAssistantMessage,
         handleUpdateAssistantMessage,
-        handleClearChat
+        handleClearChat,
+        assistantProgress
     } = useScriptWriterGenerator({
         activeProject,
         activeProjectId: activeProject?._id || null,
         activeSceneId: activeScene?._id || null,
+        activeSceneName: activeScene?.slugline || undefined,
         editorContext: editorContent,
         setEditorContent,
         setError
@@ -110,11 +113,11 @@ export function ContextPanel({
         refreshScenes
     });
 
-    const tabs = [
-        { id: 'generator', icon: Sparkles, label: 'Tools' },
+    const tabs: Array<{ id: ContextPanelTab; icon: typeof Sparkles; label: string }> = [
+        { id: 'generator', icon: Sparkles, label: 'Assistant' },
         { id: 'story', icon: Brain, label: 'Analysis' },
         { id: 'settings', icon: Settings, label: 'Settings' },
-    ] as const;
+    ];
 
     // Collapsed State (Rail)
     if (!rightPanelOpen) {
@@ -123,14 +126,14 @@ export function ContextPanel({
                 {tabs.map(tab => (
                     <button
                         key={tab.id}
-                        onClick={() => setRightPanelTool(tab.id as any)}
+                        onClick={() => setRightPanelTool(tab.id)}
                         className={`
-                            p-2 mb-2 rounded hover:bg-zinc-800 transition-colors
-                            ${activeTool === tab.id ? 'text-blue-400' : 'text-zinc-500'}
+                            mb-2 rounded-lg p-1.5 transition-colors hover:bg-zinc-900
+                            ${activeTool === tab.id ? 'text-zinc-200' : 'text-zinc-500'}
                         `}
                         title={tab.label}
                     >
-                        <tab.icon size={20} />
+                        <tab.icon size={18} />
                     </button>
                 ))}
             </div>
@@ -140,33 +143,33 @@ export function ContextPanel({
     return (
         <div className="flex flex-col h-full bg-zinc-950 text-zinc-300">
             {/* Tab Header - Context Switcher */}
-            <div className="h-10 border-b border-zinc-800 flex items-center bg-zinc-950 sticky top-0 z-10 overflow-hidden">
+            <div className="h-9 border-b border-zinc-800 flex items-center bg-zinc-950 sticky top-0 z-10 overflow-hidden">
                 <div className="flex-1 flex items-center overflow-x-auto no-scrollbar h-full">
                     {tabs.map(tab => (
                         <button
                             key={tab.id}
-                            onClick={() => setRightPanelTool(tab.id as any)}
+                            onClick={() => setRightPanelTool(tab.id)}
                             className={`
-                                flex-none flex items-center justify-center h-full px-3 text-[10px] font-bold uppercase tracking-wider border-b-2 transition-all
+                                flex-none flex items-center justify-center h-full px-2.5 text-[9px] font-semibold uppercase tracking-[0.16em] border-b transition-all
                                 ${activeTool === tab.id
-                                    ? 'border-blue-500 text-blue-400 bg-blue-500/5'
-                                    : 'border-transparent text-zinc-500 hover:text-zinc-300 hover:bg-zinc-900'}
+                                    ? 'border-zinc-600 text-zinc-100 bg-zinc-900/70'
+                                    : 'border-transparent text-zinc-500 hover:text-zinc-300 hover:bg-zinc-900/50'}
                             `}
                             title={tab.label}
                         >
-                            <tab.icon size={12} className="mr-1.5" />
+                            <tab.icon size={11} className="mr-1.5" />
                             <span>{tab.label}</span>
                         </button>
                     ))}
                 </div>
 
-                <div className="flex-none px-2 flex items-center border-l border-zinc-900 bg-zinc-950 h-full shadow-[-10px_0_15px_-5px_rgba(0,0,0,0.5)]">
+                <div className="flex-none px-2 flex items-center border-l border-zinc-900 bg-zinc-950 h-full">
                     <button
                         onClick={toggleRightPanel}
-                        className="p-1.5 hover:bg-zinc-800 rounded text-zinc-600 hover:text-zinc-300 transition-colors"
+                        className="rounded-md p-1 text-zinc-600 transition-colors hover:bg-zinc-900 hover:text-zinc-300"
                         title="Collapse"
                     >
-                        <ChevronRight size={14} />
+                        <ChevronRight size={13} />
                     </button>
                 </div>
             </div>
@@ -179,25 +182,70 @@ export function ContextPanel({
                             activeProject={activeProject}
                             messages={assistantMessages}
                             isGenerating={isAssistantThinking}
+                            progress={assistantProgress}
+                            activeSceneId={activeScene?._id || null}
                             activeSceneName={activeScene?.slugline || undefined}
-                            onSendMessage={(content) => handleAssistantSendMessage(content, activeScene?._id || null, (updatedContent, finished) => {
-                                if (setPendingFix) {
+                            selection={editorSelection || null}
+                            onSendMessage={(request) => handleAssistantSendMessage(request, activeScene?._id || null, (updatedContent, finished, activeRequest, proposalMessageId) => {
+                                if (setPendingFix && activeRequest?.mode !== 'ask' && activeRequest?.scope === 'scene') {
+                                    if (!updatedContent?.trim()) {
+                                        setPendingFix(null);
+                                        return;
+                                    }
                                     setPendingFix({
                                         content: updatedContent,
                                         mode: 'proposal',
-                                        isStreaming: !finished
+                                        isStreaming: !finished,
+                                        proposalMessageId,
+                                        commitProposal: proposalMessageId
+                                            ? async () => {
+                                                await handleApplyProposal(proposalMessageId, activeScene?._id || null);
+                                            }
+                                            : undefined,
+                                        discardProposal: proposalMessageId
+                                            ? async () => {
+                                                await handleDiscardProposal(proposalMessageId, activeScene?._id || null);
+                                            }
+                                            : undefined
                                     });
                                 }
                             })}
                             onApplyProposal={(id: string) => {
                                 handleApplyProposal(id, activeScene?._id || null);
-                                if (onAcceptFix) onAcceptFix();
+                                if (pendingFix?.proposalMessageId === id && setPendingFix) {
+                                    setPendingFix(null);
+                                }
+                            }}
+                            onDiscardProposal={(id: string) => {
+                                handleDiscardProposal(id, activeScene?._id || null);
+                                if (pendingFix?.proposalMessageId === id && setPendingFix) {
+                                    setPendingFix(null);
+                                }
                             }}
                             onDeleteMessage={(id: string) => handleDeleteAssistantMessage(id, activeScene?._id || null)}
                             onUpdateMessage={(id: string, content: string) => handleUpdateAssistantMessage(id, content, activeScene?._id || null)}
                             onClearChat={() => {
                                 handleClearChat(activeScene?._id || null);
                                 if (setPendingFix) setPendingFix(null);
+                            }}
+                            onSavePreferenceCandidate={async (candidate) => {
+                                if (!activeProject?._id || !handleUpdateProject) {
+                                    return;
+                                }
+
+                                const nextPreferences = {
+                                    defaultMode: candidate.updates.defaultMode || activeProject.assistantPreferences?.defaultMode || 'ask',
+                                    replyLanguage: candidate.updates.replyLanguage ?? activeProject.assistantPreferences?.replyLanguage,
+                                    transliteration: candidate.updates.transliteration ?? activeProject.assistantPreferences?.transliteration ?? activeProject.transliteration,
+                                    savedDirectives: Array.from(new Set([
+                                        ...(activeProject.assistantPreferences?.savedDirectives || []),
+                                        candidate.directive
+                                    ]))
+                                };
+
+                                await handleUpdateProject(activeProject._id, {
+                                    assistantPreferences: nextPreferences
+                                });
                             }}
                         />
                     </div>
@@ -214,6 +262,15 @@ export function ContextPanel({
 
                             {/* Scene Foundation Section */}
                             <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-4 space-y-4">
+                                <div className="space-y-1">
+                                    <label className="text-[10px] font-bold text-zinc-500 uppercase px-1">Scene Title</label>
+                                    <input
+                                        className="w-full bg-zinc-950 border border-zinc-800 rounded px-2 py-1.5 text-xs text-zinc-100 font-bold focus:border-blue-500 outline-none"
+                                        value={sceneForm?.title}
+                                        onChange={(e) => onSceneFormChange?.('title', e.target.value)}
+                                        placeholder="The Betrayal"
+                                    />
+                                </div>
                                 <div className="space-y-1">
                                     <label className="text-[10px] font-bold text-zinc-500 uppercase px-1">Scene Slugline</label>
                                     <input
@@ -363,7 +420,7 @@ export function ContextPanel({
                                         <select
                                             className="w-full bg-zinc-950 border border-zinc-800 rounded-lg px-2 py-1.5 text-xs text-zinc-300 outline-none"
                                             value={generationOptions?.sceneLength}
-                                            onChange={(e) => onGenerationOptionChange?.('sceneLength', e.target.value)}
+                                            onChange={(e) => onGenerationOptionChange?.('sceneLength', e.target.value as GenerationOptions['sceneLength'])}
                                         >
                                             <option value="short">Short (1-2 pages)</option>
                                             <option value="medium">Medium (3-5 pages)</option>
@@ -385,6 +442,24 @@ export function ContextPanel({
                                             <option value="French">French</option>
                                         </select>
                                     </div>
+
+                                    {(generationOptions?.language && generationOptions.language !== 'English') && (
+                                        <div className="flex items-center justify-between p-2 bg-blue-900/10 border border-blue-900/20 rounded-lg animate-in fade-in slide-in-from-top-2 duration-300">
+                                            <div className="space-y-0.5">
+                                                <div className="text-[9px] font-black text-blue-400 uppercase tracking-widest">Phonetic Soul</div>
+                                                <div className="text-[10px] text-zinc-500 font-medium">Use English script</div>
+                                            </div>
+                                            <label className="relative inline-flex items-center cursor-pointer scale-75">
+                                                <input
+                                                    type="checkbox"
+                                                    className="sr-only peer"
+                                                    checked={generationOptions?.transliteration}
+                                                    onChange={(e) => onGenerationOptionChange?.('transliteration', e.target.checked)}
+                                                />
+                                                <div className="w-11 h-6 bg-zinc-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-zinc-400 after:border-zinc-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600 peer-checked:after:bg-white"></div>
+                                            </label>
+                                        </div>
+                                    )}
                                 </div>
 
                                 <button
@@ -576,7 +651,15 @@ export function ContextPanel({
                                     <input
                                         className="flex-1 bg-zinc-950 border border-zinc-800 rounded px-3 py-2 text-sm text-zinc-100 focus:border-blue-500 outline-none"
                                         value={projectTitle}
-                                        onChange={(e) => setProjectTitle(e.target.value)}
+                                        onChange={(e) => {
+                                            if (!activeProject) {
+                                                return;
+                                            }
+                                            setProjectTitleDrafts((prev) => ({
+                                                ...prev,
+                                                [activeProject._id]: e.target.value
+                                            }));
+                                        }}
                                         placeholder="Enter project title"
                                     />
                                     <button

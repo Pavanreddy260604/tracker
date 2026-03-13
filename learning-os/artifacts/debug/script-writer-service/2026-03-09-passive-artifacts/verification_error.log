@@ -1,0 +1,21 @@
+[LlamaIndex] Mastery Service Initialized with embedding models: bge-m3:latest (host=http://127.0.0.1:11434)
+FOUND_LEAF:69ad70bece6daa50058ec40a
+LEAF_PARENT_ID:69ad7024ce6daa50058ec23d
+[VectorService] ChromaVectorStore initialized for: voice_samples
+[VectorService] Querying Chroma NATIVELY with filters: [{"key":"masterScriptId","value":"69ad6d755e9286c1914caf42","operator":"=="},{"key":"isHierarchicalNode","value":false,"operator":"=="}] K=20
+P:\Time pass\New folder\learning-os\script-writer-service\node_modules\@llamaindex\chroma\node_modules\chromadb\dist\cjs\chromadb.cjs:3538
+      return new InvalidArgumentError(message);
+             ^
+
+
+InvalidArgumentError: Collection expecting embedding with dimension of 1024, got 1536
+    at createErrorByType (P:\Time pass\New folder\learning-os\script-writer-service\node_modules\@llamaindex\chroma\node_modules\chromadb\dist\cjs\chromadb.cjs:3538:14)
+    at chromaFetch (P:\Time pass\New folder\learning-os\script-writer-service\node_modules\@llamaindex\chroma\node_modules\chromadb\dist\cjs\chromadb.cjs:4086:21)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async Collection.query (P:\Time pass\New folder\learning-os\script-writer-service\node_modules\@llamaindex\chroma\node_modules\chromadb\dist\cjs\chromadb.cjs:3766:12)
+    at async VectorService.findSimilarSamples (P:\Time pass\New folder\learning-os\script-writer-service\src\services\vector.service.ts:213:29)
+    at async verifyRAG (P:\Time pass\New folder\learning-os\script-writer-service\verify_rag_hardening.ts:25:25) {
+  cause: undefined
+}
+
+Node.js v22.14.0

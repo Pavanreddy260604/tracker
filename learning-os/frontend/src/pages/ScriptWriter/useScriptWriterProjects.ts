@@ -44,24 +44,7 @@ export function useScriptWriterProjects({
     const [isCreatingProject, setIsCreatingProject] = useState(false);
     const [creatingProject, setCreatingProject] = useState(false);
 
-    useEffect(() => {
-        loadProjects();
-    }, []);
-
-    useEffect(() => {
-        if (!activeProjectId) return;
-        if (!projectScenes[activeProjectId]) {
-            loadScenes(activeProjectId, false); // DO NOT auto-select, it overwrites specific scene clicks
-        }
-    }, [activeProjectId]);
-
-    useEffect(() => {
-        if (!activeProjectId) {
-            setActiveSceneId(null);
-        }
-    }, [activeProjectId]);
-
-    const loadProjects = async () => {
+    const loadProjects = useCallback(async () => {
         setLoadingProjects(true);
         setError(null);
         try {
@@ -73,9 +56,9 @@ export function useScriptWriterProjects({
         } finally {
             setLoadingProjects(false);
         }
-    };
+    }, [setError]);
 
-    const loadScenes = async (projectId: string, autoSelect?: boolean) => {
+    const loadScenes = useCallback(async (projectId: string, autoSelect?: boolean) => {
         try {
             setLoadingScenes((prev) => ({ ...prev, [projectId]: true }));
             const scenes = await projectApi.listScenes(projectId);
@@ -91,7 +74,24 @@ export function useScriptWriterProjects({
         } finally {
             setLoadingScenes((prev) => ({ ...prev, [projectId]: false }));
         }
-    };
+    }, [setActiveSceneId, setError]);
+
+    useEffect(() => {
+        void loadProjects();
+    }, [loadProjects]);
+
+    useEffect(() => {
+        if (!activeProjectId) return;
+        if (!projectScenes[activeProjectId]) {
+            void loadScenes(activeProjectId, false); // DO NOT auto-select, it overwrites specific scene clicks
+        }
+    }, [activeProjectId, loadScenes, projectScenes]);
+
+    useEffect(() => {
+        if (!activeProjectId) {
+            setActiveSceneId(null);
+        }
+    }, [activeProjectId, setActiveSceneId]);
 
     const updateSceneInState = useCallback((updatedScene: Scene, projectId: string | null) => {
         if (!projectId) return;
@@ -133,7 +133,10 @@ export function useScriptWriterProjects({
                 title: newProjectForm.title,
                 logline: newProjectForm.logline,
                 genre: newProjectForm.genre,
-                tone: newProjectForm.tone
+                tone: newProjectForm.tone,
+                language: newProjectForm.language,
+                transliteration: newProjectForm.transliteration,
+                assistantPreferences: newProjectForm.assistantPreferences
             });
             setProjects((prev) => [project, ...prev]);
             setActiveProjectId(project._id);
@@ -156,6 +159,7 @@ export function useScriptWriterProjects({
         setError(null);
         try {
             const newScene = await projectApi.createScene(projectId, {
+                title: 'New Scene',
                 slugline: 'INT. NEW SCENE - DAY',
                 summary: 'Describe the moment that anchors this scene.'
             });
@@ -168,6 +172,19 @@ export function useScriptWriterProjects({
             setActiveSceneId(newScene._id);
         } catch (err) {
             setError(getErrorMessage(err, 'Failed to create scene'));
+        }
+    };
+
+    const handleUpdateScene = async (projectId: string, sceneId: string, updates: Partial<Scene>) => {
+        setError(null);
+        try {
+            const updated = await projectApi.updateScene(sceneId, updates);
+            updateSceneInState(updated, projectId);
+            return updated;
+        } catch (err) {
+            const msg = getErrorMessage(err, 'Failed to update scene');
+            setError(msg);
+            toast.error(msg);
         }
     };
 
@@ -190,7 +207,7 @@ export function useScriptWriterProjects({
         }
     };
 
-    const handleUpdateProject = async (projectId: string, updates: Partial<ProjectForm>) => {
+    const handleUpdateProject = async (projectId: string, updates: Partial<Bible>) => {
         setError(null);
         try {
             const updated = await projectApi.updateProject(projectId, updates);
@@ -261,6 +278,7 @@ export function useScriptWriterProjects({
         handleSceneSelect,
         handleNewProject,
         handleNewScene,
+        handleUpdateScene,
         handleDeleteScene,
         handleUpdateProject,
         handleDeleteProject,

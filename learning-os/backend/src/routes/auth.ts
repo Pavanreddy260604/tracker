@@ -9,7 +9,13 @@ import { DailyLog } from '../models/DailyLog.js';
 import { DSAProblem } from '../models/DSAProblem.js';
 import { BackendTopic } from '../models/BackendTopic.js';
 import { ProjectStudy } from '../models/ProjectStudy.js';
+import { ChatSession } from '../models/ChatSession.js';
+import { InterviewSession } from '../models/InterviewSession.js';
 import { PasswordReset } from '../models/PasswordReset.js';
+import { RoadmapNode } from '../models/RoadmapNode.js';
+import { RoadmapEdge } from '../models/RoadmapEdge.js';
+import { Subscription } from '../models/Subscription.js';
+import { UserActivity } from '../models/UserActivity.js';
 import { emailService } from '../services/email.service.js';
 import { generateCsrfToken } from '../middleware/csrf.js';
 import { encrypt } from '../utils/encryption.js';
@@ -235,7 +241,7 @@ router.post('/login', authLimiter, async (req: Request, res: Response) => {
  * POST /api/auth/refresh
  * Refresh access token using httpOnly cookie refresh token
  */
-router.post('/refresh', async (req: Request, res: Response) => {
+export const refreshTokenHandler = async (req: Request, res: Response) => {
     try {
         const refreshToken = req.cookies?.refreshToken;
         if (!refreshToken) {
@@ -302,7 +308,7 @@ router.post('/refresh', async (req: Request, res: Response) => {
         console.error('Refresh token error:', error);
         res.status(500).json({ success: false, error: 'Failed to refresh token' });
     }
-});
+};
 
 /**
  * POST /api/auth/logout
@@ -674,14 +680,25 @@ router.get('/export', authenticate, async (req: Request, res: Response) => {
  */
 router.delete('/account', authenticate, async (req: Request, res: Response) => {
     try {
+        const userId = req.userId;
+
         await Promise.all([
-            User.findByIdAndDelete(req.userId),
-            DailyLog.deleteMany({ userId: req.userId }),
-            DSAProblem.deleteMany({ userId: req.userId }),
-            BackendTopic.deleteMany({ userId: req.userId }),
-            ProjectStudy.deleteMany({ userId: req.userId }),
+            User.findByIdAndDelete(userId),
+            DailyLog.deleteMany({ userId }),
+            DSAProblem.deleteMany({ userId }),
+            BackendTopic.deleteMany({ userId }),
+            ProjectStudy.deleteMany({ user: userId }),
+            ChatSession.deleteMany({ userId }),
+            InterviewSession.deleteMany({ userId }),
+            RefreshToken.deleteMany({ userId }),
+            PasswordReset.deleteMany({ userId }),
+            RoadmapNode.deleteMany({ userId }),
+            RoadmapEdge.deleteMany({ userId }),
+            UserActivity.deleteMany({ userId }),
+            Subscription.deleteMany({ userId }),
         ]);
 
+        res.clearCookie('refreshToken');
         res.json({ success: true, data: { message: 'Account deleted successfully' } });
     } catch (error) {
         console.error('Delete account error:', error);

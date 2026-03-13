@@ -1,17 +1,20 @@
-import { Check, X, Info, Layout, Brain, Sparkles, TrendingUp, TrendingDown, AlertTriangle, Loader2 } from 'lucide-react';
-import type { CritiqueResult } from '../../../services/project.api';
+import {
+    AlertTriangle,
+    Brain,
+    Check,
+    Info,
+    Layout,
+    Loader2,
+    Sparkles,
+    TrendingDown,
+    TrendingUp,
+    X
+} from 'lucide-react';
+import type { PendingFixState } from '../types';
 
 interface FixAuditorOverlayProps {
     originalContent: string;
-    pendingFix: {
-        content: string;
-        critique?: CritiqueResult;
-        auditNotes?: string;
-        isSuperior?: boolean;
-        benchmarkScore?: number;
-        mode?: 'fix' | 'proposal';
-        isStreaming?: boolean;
-    };
+    pendingFix: PendingFixState;
     onAccept: () => void;
     onDiscard: () => void;
 }
@@ -27,13 +30,13 @@ export function FixAuditorOverlay({
     const newScore = pendingFix.critique?.score ?? 0;
     const mode = pendingFix.mode || 'fix';
     const isProposal = mode === 'proposal';
-
-    // Helper to split audit notes into lines if they are bulleted
-    const auditLines = (pendingFix.auditNotes || '').split('\n').filter(line => line.trim().length > 0);
+    const auditLines = (pendingFix.auditNotes || '')
+        .split('\n')
+        .map((line) => line.replace(/^[•*-]\s*/, '').trim())
+        .filter((line) => line.length > 0);
 
     return (
-        <div className="absolute inset-0 z-[100] bg-zinc-950/90 backdrop-blur-sm flex flex-col animate-in fade-in zoom-in-95 duration-300">
-            {/* Upper Header: Professional Audit Status */}
+        <div className="absolute inset-0 z-[100] flex flex-col bg-zinc-950/90 backdrop-blur-sm animate-in fade-in zoom-in-95 duration-300">
             <div className="flex-none h-16 border-b border-zinc-800 bg-zinc-900/50 flex items-center justify-between px-6">
                 <div className="flex items-center gap-4">
                     <div className="flex items-center gap-2">
@@ -58,7 +61,6 @@ export function FixAuditorOverlay({
                 </div>
 
                 <div className="flex items-center gap-6">
-                    {/* Quality Delta - Only show if not a proposal or if scores exist */}
                     {!isProposal && currentScore > 0 && !pendingFix.isStreaming && (
                         <div className="flex items-center gap-3 bg-zinc-950 px-4 py-2 rounded-xl border border-zinc-800 shadow-inner">
                             <div className="text-center">
@@ -106,9 +108,7 @@ export function FixAuditorOverlay({
                 </div>
             </div>
 
-            {/* Main Content: Diff & Notes */}
             <div className="flex-1 overflow-hidden flex flex-row">
-                {/* Left Panel: Audit Notes - Hide if proposal and no notes */}
                 {(!isProposal || auditLines.length > 0) && (
                     <div className="w-80 border-r border-zinc-800 bg-zinc-900/30 p-6 space-y-8 overflow-y-auto custom-scrollbar">
                         <div className="space-y-4">
@@ -117,9 +117,9 @@ export function FixAuditorOverlay({
                                 {isProposal ? 'Revision Notes' : 'Auditor Notes'}
                             </h3>
                             <div className="space-y-3">
-                                {auditLines.map((line, i) => (
-                                    <div key={i} className="p-3 bg-zinc-900/50 rounded-xl border border-zinc-800/50 text-xs text-zinc-300 leading-relaxed font-serif italic border-l-2 border-l-blue-500 animate-in fade-in slide-in-from-bottom-1 duration-300">
-                                        {line.replace(/^[•\-\*]\s*/, '')}
+                                {auditLines.map((line, index) => (
+                                    <div key={`${line}-${index}`} className="p-3 bg-zinc-900/50 rounded-xl border border-zinc-800/50 text-xs text-zinc-300 leading-relaxed font-serif italic border-l-2 border-l-blue-500 animate-in fade-in slide-in-from-bottom-1 duration-300">
+                                        {line}
                                     </div>
                                 ))}
                                 {isProposal && auditLines.length === 0 && (
@@ -156,7 +156,6 @@ export function FixAuditorOverlay({
                     </div>
                 )}
 
-                {/* Right Panel: The Diff Editor (Side-by-Side View) */}
                 <div className="flex-1 flex overflow-hidden">
                     <div className="flex-1 flex flex-col border-r border-zinc-800">
                         <div className="h-8 bg-zinc-950 flex items-center px-4 border-b border-zinc-800">
@@ -182,7 +181,6 @@ export function FixAuditorOverlay({
                 </div>
             </div>
 
-            {/* Footer Status Bar */}
             <div className="flex-none h-8 bg-zinc-900 border-t border-zinc-800 px-6 flex items-center text-[9px] font-bold text-zinc-500 gap-4">
                 <span className="flex items-center gap-1.5"><Info size={10} /> READ-ONLY PREVIEW</span>
                 <span className="flex items-center gap-1.5"><Layout size={10} /> SIDE-BY-SIDE AUDIT MODE</span>
@@ -193,7 +191,7 @@ export function FixAuditorOverlay({
     );
 }
 
-function ChevronRight({ size = 16, className = "" }) {
+function ChevronRight({ size = 16, className = '' }: { size?: number; className?: string }) {
     return (
         <svg
             xmlns="http://www.w3.org/2000/svg"

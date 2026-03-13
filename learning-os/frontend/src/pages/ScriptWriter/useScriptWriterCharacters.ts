@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { Character } from '../../services/character.api';
 import { characterApi } from '../../services/character.api';
 import { scriptWriterApi } from '../../services/scriptWriter.api';
@@ -28,6 +28,19 @@ export function useScriptWriterCharacters({ activeProjectId, setError }: UseScri
         return characters.find((character) => character._id === activeCharacterId) || null;
     }, [characters, activeCharacterId]);
 
+    const loadCharacters = useCallback(async (projectId: string) => {
+        setLoadingCharacters(true);
+        try {
+            const data = await characterApi.getCharacters(projectId);
+            setCharacters(data);
+            setActiveCharacterId((current) => current || data[0]?._id || null);
+        } catch (err) {
+            setError(getErrorMessage(err, 'Failed to load characters'));
+        } finally {
+            setLoadingCharacters(false);
+        }
+    }, [setError]);
+
     useEffect(() => {
         if (!activeProjectId) {
             setCharacters([]);
@@ -41,8 +54,8 @@ export function useScriptWriterCharacters({ activeProjectId, setError }: UseScri
         setCharacterForm(DEFAULT_CHARACTER_FORM);
         setVoiceStatus(null);
         setIngestingCharacterIds([]);
-        loadCharacters(activeProjectId);
-    }, [activeProjectId]);
+        void loadCharacters(activeProjectId);
+    }, [activeProjectId, loadCharacters]);
 
     useEffect(() => {
         if (!activeCharacter) return;
@@ -55,22 +68,7 @@ export function useScriptWriterCharacters({ activeProjectId, setError }: UseScri
             motivation: activeCharacter.motivation || ''
         });
         // No longer tracking voiceCharacterId separately from activeCharacter
-    }, [activeCharacter?._id]);
-
-    const loadCharacters = async (projectId: string) => {
-        setLoadingCharacters(true);
-        try {
-            const data = await characterApi.getCharacters(projectId);
-            setCharacters(data);
-            if (data.length > 0 && !activeCharacterId) {
-                setActiveCharacterId(data[0]._id);
-            }
-        } catch (err) {
-            setError(getErrorMessage(err, 'Failed to load characters'));
-        } finally {
-            setLoadingCharacters(false);
-        }
-    };
+    }, [activeCharacter]);
 
     const handleCharacterSelect = (characterId: string | null) => {
         setActiveCharacterId(characterId);

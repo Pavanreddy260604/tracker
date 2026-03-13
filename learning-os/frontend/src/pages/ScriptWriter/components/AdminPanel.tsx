@@ -78,7 +78,7 @@ export function AdminPanel() {
             }
 
             fetchScripts();
-        } catch (err) {
+        } catch {
             alert('Failed to create script');
         }
     };
@@ -87,7 +87,7 @@ export function AdminPanel() {
         try {
             await scriptWriterApi.processMasterScript(id);
             fetchScripts();
-        } catch (err) {
+        } catch {
             alert('Processing failed');
         }
     };
@@ -99,7 +99,7 @@ export function AdminPanel() {
             setIsDeleting(id);
             await scriptWriterApi.deleteMasterScript(id);
             await fetchScripts();
-        } catch (err) {
+        } catch {
             alert('Failed to delete script');
         } finally {
             setIsDeleting(null);
@@ -124,8 +124,9 @@ export function AdminPanel() {
 
     const openReader = (script: IMasterScript) => {
         const params = new URLSearchParams();
-        if (script.activeScriptVersion) {
-            params.set('version', script.activeScriptVersion);
+        const preferredVersion = script.processingScriptVersion || script.activeScriptVersion;
+        if (preferredVersion) {
+            params.set('version', preferredVersion);
         }
         params.set('title', script.title);
         navigate(`/script-writer/master-script/${script._id}?${params.toString()}`);
@@ -215,13 +216,13 @@ export function AdminPanel() {
 
                         <div className="space-y-4 pt-2">
                             <div className="space-y-1.5">
-                                <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider">Upload Script Document (PDF, DOCX, TXT)</label>
+                                <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider">Upload Script Document (PDF, DOCX, TXT, FOUNTAIN, SCRIPT)</label>
                                 <div className="relative">
                                     <input
                                         type="file"
                                         id="script-file"
                                         className="hidden"
-                                        accept=".pdf,.docx,.txt,.md"
+                                        accept=".pdf,.docx,.txt,.md,.fountain,.script"
                                         onChange={e => {
                                             const file = e.target.files?.[0];
                                             if (file) setFormData({ ...formData, file, rawContent: '' });
@@ -277,8 +278,8 @@ export function AdminPanel() {
                                 <Database size={16} /> Ingest & Index Script
                             </button>
                         </div>
-                    </form>
-                </div>
+                    </form >
+                </div >
             ) : (
                 <div className="space-y-4">
                     <div className="relative mb-6">
@@ -340,6 +341,28 @@ export function AdminPanel() {
                                                         Parser {script.parserVersion}
                                                     </span>
                                                 )}
+                                                {script.processedChunks > 0 && (
+                                                    <span className="flex items-center gap-1.5 rounded-lg border border-purple-500/20 bg-purple-500/10 px-2 py-1 text-purple-300 group/tooltip relative">
+                                                        <Database size={10} />
+                                                        {script.processedChunks} Structured Elements
+                                                        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-48 p-2 bg-zinc-900 border border-zinc-800 rounded-lg text-[9px] text-zinc-400 font-medium normal-case tracking-normal leading-tight shadow-xl opacity-0 pointer-events-none group-hover/tooltip:opacity-100 transition-opacity z-10">
+                                                            High-granularity elements (dialogue, action, scenes) for precision RAG.
+                                                        </div>
+                                                    </span>
+                                                )}
+                                                {script.readerReady && (
+                                                    <span className="rounded-lg border border-emerald-500/20 bg-emerald-500/10 px-2 py-1 text-emerald-300">
+                                                        Reader Ready
+                                                    </span>
+                                                )}
+                                                {typeof script.ragReady === 'boolean' && (
+                                                    <span className={`rounded-lg border px-2 py-1 ${script.ragReady
+                                                        ? 'border-blue-500/20 bg-blue-500/10 text-blue-300'
+                                                        : 'border-amber-500/20 bg-amber-500/10 text-amber-300'
+                                                        }`}>
+                                                        {script.ragReady ? 'RAG Ready' : 'RAG Pending'}
+                                                    </span>
+                                                )}
                                             </div>
                                             {script.lastValidationSummary && (
                                                 <p className="mt-2 max-w-2xl text-xs text-zinc-400">
@@ -372,7 +395,7 @@ export function AdminPanel() {
                                                 </div>
                                             </div>
                                         )}
-                                        {script.status === 'indexed' && (
+                                        {script.readerReady && (
                                             <button
                                                 onClick={() => openReader(script)}
                                                 className="group/btn flex items-center gap-2 px-4 py-2 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-500 border border-emerald-500/20 rounded-xl text-xs font-black tracking-widest transition-all"
@@ -398,8 +421,9 @@ export function AdminPanel() {
                         </div>
                     )}
                 </div>
-            )}
+            )
+            }
 
-        </div>
+        </div >
     );
 }

@@ -22,3 +22,9 @@ Thumbs.db
 # Logs
 *.log
 npm-debug.log*
+audit_*.txt
+compile_errors.txt
+diagnostic_output.txt
+final_audit.txt
+pk_chunks_output.txt
+verification_*.log

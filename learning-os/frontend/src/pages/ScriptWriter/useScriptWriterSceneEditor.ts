@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { CritiqueResult, IScene as Scene } from '../../services/project.api';
 import { projectApi } from '../../services/project.api';
-import type { GenerationOptions, SceneForm } from './types';
+import { scriptWriterApi } from '../../services/scriptWriter.api';
+import type { EditorSelection, GenerationOptions, PendingFixState, SceneForm } from './types';
 import { DEFAULT_GENERATION, DEFAULT_SCENE_FORM, type SaveState } from './types';
 import { getErrorMessage } from './utils';
 
@@ -23,19 +24,13 @@ export function useScriptWriterSceneEditor({
     const [saveState, setSaveState] = useState<SaveState>('saved');
     const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
     const [isGenerating, setIsGenerating] = useState(false);
+    const [generationProgress, setGenerationProgress] = useState(0);
     const [isCritiquing, setIsCritiquing] = useState(false);
     const [critique, setCritique] = useState<CritiqueResult | null>(null);
     const [generationOptions, setGenerationOptions] = useState<GenerationOptions>(DEFAULT_GENERATION);
     const [selectedSceneCharacterIds, setSelectedSceneCharacterIds] = useState<string[]>([]);
-    const [pendingFix, setPendingFix] = useState<{
-        content: string;
-        critique?: CritiqueResult;
-        auditNotes?: string;
-        isSuperior?: boolean;
-        benchmarkScore?: number;
-        mode?: 'fix' | 'proposal';
-        isStreaming?: boolean;
-    } | null>(null);
+    const [editorSelection, setEditorSelection] = useState<EditorSelection | null>(null);
+    const [pendingFix, setPendingFix] = useState<PendingFixState | null>(null);
 
     const saveTimer = useRef<number | null>(null);
     const isHydrating = useRef(false);
@@ -49,6 +44,7 @@ export function useScriptWriterSceneEditor({
         if (!activeScene) return;
         isHydrating.current = true;
         setSceneForm({
+            title: activeScene.title || '',
             slugline: activeScene.slugline || '',
             summary: activeScene.summary || '',
             goal: activeScene.goal || '',
@@ -59,6 +55,7 @@ export function useScriptWriterSceneEditor({
         setSaveState('saved');
         setHasUnsavedChanges(false);
         setSelectedSceneCharacterIds([]);
+        setEditorSelection(null);
         setTimeout(() => {
             isHydrating.current = false;
         }, 0);
@@ -75,6 +72,7 @@ export function useScriptWriterSceneEditor({
             setSaveState('saving');
             try {
                 const updated = await projectApi.updateScene(activeScene._id, {
+                    title: sceneForm.title,
                     slugline: sceneForm.slugline,
                     summary: sceneForm.summary,
                     goal: sceneForm.goal,
@@ -93,9 +91,9 @@ export function useScriptWriterSceneEditor({
         return () => {
             if (saveTimer.current) window.clearTimeout(saveTimer.current);
         };
-    }, [editorContent, sceneForm, hasUnsavedChanges, activeScene?._id, isGenerating]);
+    }, [editorContent, sceneForm, hasUnsavedChanges, activeProjectId, activeScene, isGenerating, setError, updateSceneInState]);
 
-    const handleSceneFormChange = (field: keyof SceneForm, value: string) => {
+    const handleSceneFormChange = <K extends keyof SceneForm>(field: K, value: SceneForm[K]) => {
         setSceneForm((prev) => ({ ...prev, [field]: value }));
         setHasUnsavedChanges(true);
         setSaveState('unsaved');
@@ -107,14 +105,29 @@ export function useScriptWriterSceneEditor({
         setSaveState('unsaved');
     };
 
-    const handleGenerationOptionChange = (field: keyof GenerationOptions, value: string) => {
-        setGenerationOptions((prev) => ({ ...prev, [field]: value as GenerationOptions[keyof GenerationOptions] }));
+    const handleGenerationOptionChange = <K extends keyof GenerationOptions>(field: K, value: GenerationOptions[K]) => {
+        setGenerationOptions((prev) => ({ ...prev, [field]: value }));
+    };
+
+    const handleSelectionChange = (selection: EditorSelection | null) => {
+        setEditorSelection(selection);
     };
 
     const handleGenerateScene = async () => {
         if (!activeScene) return;
         setIsGenerating(true);
+        setGenerationProgress(5);
         setError(null);
+
+        // Simulated progress for thinking phase
+        const thinkingInterval = setInterval(() => {
+            setGenerationProgress(prev => {
+                if (prev < 40) return prev + 2.5;
+                if (prev < 50) return prev + 0.5;
+                return prev;
+            });
+        }, 800);
+
         try {
             const stream = await projectApi.generateScene(activeScene._id, 'current', {
                 style: generationOptions.style,
@@ -123,23 +136,41 @@ export function useScriptWriterSceneEditor({
                 language: generationOptions.language,
                 characterIds: selectedSceneCharacterIds
             });
+            
+            clearInterval(thinkingInterval);
+            setGenerationProgress(55);
+
             const reader = stream.getReader();
             const decoder = new TextDecoder();
             let fullText = '';
+            
+            // To estimate execution progress, we can use a heuristic or just crawl it
+            // Let's crawl from 55 to 98% during stream
             while (true) {
                 const { done, value } = await reader.read();
                 if (done) break;
                 fullText += decoder.decode(value, { stream: true });
                 setEditorContent(fullText);
+                
+                setGenerationProgress(prev => {
+                    const next = prev + 0.2;
+                    return next > 98 ? 98 : next;
+                });
             }
+            
             const updatedScene: Scene = { ...activeScene, content: fullText, status: 'drafted' };
+            setGenerationProgress(100);
             updateSceneInState(updatedScene, activeProjectId);
             setSaveState('saved');
             setHasUnsavedChanges(false);
         } catch (err) {
             setError(getErrorMessage(err, 'Generation failed'));
         } finally {
-            setIsGenerating(false);
+            clearInterval(thinkingInterval);
+            setTimeout(() => {
+                setIsGenerating(false);
+                setGenerationProgress(0);
+            }, 1000); // Leave progress bar at 100% briefly
         }
     };
 
@@ -237,19 +268,39 @@ export function useScriptWriterSceneEditor({
 
         setSaveState('saving');
         try {
-            // Apply to editor and state
             setEditorContent(fullText);
             setCritique(newCritique);
 
-            // Force immediate persistence to DB
-            const updated = await projectApi.updateScene(activeScene._id, {
-                slugline: sceneForm.slugline,
-                summary: sceneForm.summary,
-                goal: sceneForm.goal,
-                status: 'drafted',
-                content: fullText,
-                critique: newCritique || undefined
-            });
+            const updated = pendingFix.mode === 'proposal'
+                ? await (async () => {
+                    if (pendingFix.commitProposal) {
+                        await pendingFix.commitProposal();
+                    } else {
+                        console.log(`[SceneEditor] Committing assistant proposal for scene ${activeScene._id}`);
+                        const result = await scriptWriterApi.commitEdit(activeScene._id);
+                        console.log(`[SceneEditor] Commit result:`, result);
+                        if (!result || !result.success) {
+                            throw new Error('Failed to commit assistant proposal');
+                        }
+                    }
+
+                    return projectApi.updateScene(activeScene._id, {
+                        title: sceneForm.title,
+                        slugline: sceneForm.slugline,
+                        summary: sceneForm.summary,
+                        goal: sceneForm.goal,
+                        status: 'drafted'
+                    });
+                })()
+                : await projectApi.updateScene(activeScene._id, {
+                    title: sceneForm.title,
+                    slugline: sceneForm.slugline,
+                    summary: sceneForm.summary,
+                    goal: sceneForm.goal,
+                    status: 'drafted',
+                    content: fullText,
+                    critique: newCritique || undefined
+                });
 
             updateSceneInState(updated, activeProjectId);
             setSceneForm((prev) => ({ ...prev, status: 'drafted' }));
@@ -262,7 +313,22 @@ export function useScriptWriterSceneEditor({
         }
     };
 
-    const handleDiscardFix = () => {
+    const handleDiscardFix = async () => {
+        if (pendingFix?.mode === 'proposal' && activeScene) {
+            try {
+                if (pendingFix.discardProposal) {
+                    await pendingFix.discardProposal();
+                } else {
+                    console.log(`[SceneEditor] Discarding assistant proposal for scene ${activeScene._id}`);
+                    const result = await scriptWriterApi.discardEdit(activeScene._id);
+                    console.log(`[SceneEditor] Discard result:`, result);
+                }
+            } catch (err) {
+                console.error('[SceneEditor] Discard failed:', err);
+                setError(getErrorMessage(err, 'Failed to discard assistant proposal'));
+                return;
+            }
+        }
         setPendingFix(null);
     };
 
@@ -279,13 +345,16 @@ export function useScriptWriterSceneEditor({
         wordCount,
         hasUnsavedChanges,
         isGenerating,
+        generationProgress,
         isCritiquing,
         critique,
         generationOptions,
+        editorSelection,
         selectedSceneCharacterIds,
         setSelectedSceneCharacterIds,
         handleSceneFormChange,
         handleContentChange,
+        handleSelectionChange,
         handleGenerationOptionChange,
         handleGenerateScene,
         handleCritiqueScene,

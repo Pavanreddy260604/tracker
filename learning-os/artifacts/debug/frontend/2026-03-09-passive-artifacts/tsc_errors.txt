@@ -1,0 +1,6 @@
+src/pages/ScriptWriter/components/AssistantPanel.tsx(4,33): error TS6133: 'X' is declared but its value is never read.
+src/pages/ScriptWriter/components/AssistantPanel.tsx(36,5): error TS6133: 'onDiscardProposal' is declared but its value is never read.
+src/pages/ScriptWriter/components/StructurePanel.tsx(5,15): error TS2724: '"../../../services/project.api"' has no exported member named 'Scene'. Did you mean 'IScene'?
+src/pages/ScriptWriter/ScriptWriterInfinite.tsx(16,1): error TS6133: 'Scene' is declared but its value is never read.
+src/pages/ScriptWriter/StudioTopbar.tsx(2,22): error TS2724: '"../../services/project.api"' has no exported member named 'Scene'. Did you mean 'IScene'?
+src/pages/ScriptWriter/useScriptWriterGenerator.ts(2,22): error TS6196: 'IScene' is declared but never used.
