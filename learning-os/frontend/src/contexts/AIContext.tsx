@@ -1,24 +1,47 @@
 
-import { createContext, useContext, useState, useCallback, useEffect, type ReactNode } from 'react';
+import { createContext, useContext, useState, useCallback, useEffect, useRef, type ReactNode } from 'react';
 import { api } from '../services/api';
 import { useAuthStore } from '../stores/authStore';
 
 // ============================================
 // AI MODELS CONFIGURATION (Ollama + Groq)
 // ============================================
+// AI MODELS CONFIGURATION
+// Categorized by Provider/Capability
+// ============================================
 export const AI_MODELS = [
-    { id: 'deepseek-v3.1:671b-cloud', name: 'DeepSeek V3.1', description: 'Primary reasoning model' },
-    { id: 'deepseek-r1:32b', name: 'DeepSeek R1 32B', description: 'High reasoning (local)' },
-    { id: 'qwen3-coder:480b-cloud', name: 'Qwen3 Coder', description: 'Strong coding & logic' },
-    { id: 'gemma3:4b', name: 'Gemma 3 4B', description: 'Lightweight & fast' },
-    { id: 'groq:llama-3.3-70b-versatile', name: 'Groq Llama 3.3 70B', description: 'Ultra-fast cloud inference' },
+    // Groq Direct (Cloud)
+    { id: 'groq:llama-3.3-70b-versatile', name: 'Llama 3.3 70B', provider: 'Groq', category: 'Cloud', description: 'Ultra-fast cloud inference', supportsFiles: true },
+    { id: 'groq:llama-3.2-11b-vision-preview', name: 'Llama 3.2 Vision', provider: 'Groq', category: 'Cloud', description: 'Instant image recognition', supportsFiles: true },
+    
+    // Cloud Proxy (Ollama-Cloud)
+    { id: 'deepseek-v3.1:671b-cloud', name: 'DeepSeek V3.1', provider: 'Ollama-Cloud', category: 'Cloud Proxy', description: 'Cloud-proxied reasoning', supportsFiles: true },
+    { id: 'gpt-oss:120b-cloud', name: 'GPT OSS 120B', provider: 'Ollama-Cloud', category: 'Cloud Proxy', description: 'Cloud-proxied high capacity', supportsFiles: true },
+    { id: 'qwen3-coder:480b-cloud', name: 'Qwen3 Coder', provider: 'Ollama-Cloud', category: 'Cloud Proxy', description: 'Cloud-proxied coding', supportsFiles: true },
+    { id: 'glm-4.6:cloud', name: 'GLM 4.6', provider: 'Ollama-Cloud', category: 'Cloud Proxy', description: 'Cloud-proxied balanced', supportsFiles: true },
+    { id: 'qwen3-vl:235b-cloud', name: 'Qwen3 VL', provider: 'Ollama-Cloud', category: 'Cloud Proxy', description: 'Cloud-proxied multimodal', supportsFiles: true },
+    
+    // Local (GPU)
+    { id: 'gemma3:4b', name: 'Gemma 3 4B', provider: 'Local', category: 'Local (GPU)', description: 'Lightweight local model', supportsFiles: false },
+    { id: 'tinyllama:latest', name: 'TinyLlama', provider: 'Local', category: 'Local (GPU)', description: 'Minimal footprint', supportsFiles: false },
+    { id: 'hf.co/bartowski/Llama-3.2-1B-Instruct-GGUF:latest', name: 'Llama 3.2 1B', provider: 'Local', category: 'Local (GPU)', description: 'Optimized local model', supportsFiles: false },
 ];
+
+export interface Attachment {
+    name: string;
+    content: string;
+    type: string;
+    isImage?: boolean;
+    isBinary?: boolean;
+}
 
 export interface Message {
     id: string;
     role: 'user' | 'assistant';
     content: string;
     timestamp: Date;
+    attachments?: Attachment[];
+    status?: 'pending' | 'indexing' | 'completed' | 'failed';
 }
 
 interface AIContextType {
@@ -27,11 +50,14 @@ interface AIContextType {
     sessionId: string | null;
     setSessionId: (id: string | null) => void;
     messages: Message[];
+    setMessages: React.Dispatch<React.SetStateAction<Message[]>>;
     isLoading: boolean;
-    sendMessage: (content: string, onChunk?: (chunk: string) => void) => Promise<void>;
+    setIsLoading: React.Dispatch<React.SetStateAction<boolean>>;
+    sendMessage: (content: string, attachments?: Attachment[], onChunk?: (chunk: string) => void) => Promise<void>;
     clearMessages: () => void;
     selectedModel: string;
     setSelectedModel: (model: string) => void;
+    AI_MODELS: typeof AI_MODELS;
     context: any;
     setContext: (data: any) => void;
 }
@@ -50,8 +76,38 @@ export function AIProvider({ children }: { children: ReactNode }) {
         }
     ]);
     const [isLoading, setIsLoading] = useState(false);
-    const [selectedModel, setSelectedModel] = useState('deepseek-v3.1:671b-cloud');
+    const [selectedModel, setSelectedModel] = useState(() => {
+        if (typeof window !== 'undefined') {
+            return localStorage.getItem('learning-os-ai-model') || 'deepseek-v3.1:671b-cloud';
+        }
+        return 'deepseek-v3.1:671b-cloud';
+    });
+    const lastSyncedModelRef = useRef<string | null>(null);
     const [context, setContext] = useState<any>({});
+
+    // Persist model selection
+    useEffect(() => {
+        if (typeof window !== 'undefined') {
+            localStorage.setItem('learning-os-ai-model', selectedModel);
+        }
+    }, [selectedModel]);
+
+    // Sync model selection to active chat session metadata
+    useEffect(() => {
+        if (!sessionId) {
+            lastSyncedModelRef.current = null;
+            return;
+        }
+        if (!selectedModel || selectedModel === lastSyncedModelRef.current) return;
+
+        api.updateChatSession(sessionId, { model: selectedModel })
+            .then(() => {
+                lastSyncedModelRef.current = selectedModel;
+            })
+            .catch(() => {
+                // Non-blocking: keep UI responsive even if the update fails
+            });
+    }, [sessionId, selectedModel]);
 
     // System Awareness State
     const [systemContext, setSystemContext] = useState('');
@@ -95,8 +151,8 @@ export function AIProvider({ children }: { children: ReactNode }) {
         setSessionId(null);
     }, []);
 
-    const _sendMessage = useCallback(async (displayContent: string, hiddenPayload: string, onChunk?: (chunk: string) => void) => {
-        if (!displayContent.trim() || isLoading) return;
+    const _sendMessage = useCallback(async (displayContent: string, attachments: Attachment[] = [], hiddenPayload: string, onChunk?: (chunk: string) => void) => {
+        if (!displayContent.trim() && attachments.length === 0 || isLoading) return;
 
         setIsLoading(true);
 
@@ -104,7 +160,9 @@ export function AIProvider({ children }: { children: ReactNode }) {
             id: Date.now().toString(),
             role: 'user',
             content: displayContent.trim(),
-            timestamp: new Date()
+            timestamp: new Date(),
+            attachments: attachments.length > 0 ? attachments : undefined,
+            status: attachments.some(a => a.isBinary && !a.isImage) ? 'indexing' : undefined
         };
         setMessages(prev => [...prev, userMsg]);
 
@@ -120,13 +178,57 @@ export function AIProvider({ children }: { children: ReactNode }) {
         try {
             let activeId = sessionId;
             if (!activeId) {
-                const newSession = await api.createChatSession();
+                // Ensure model is set when creating session
+                const newSession = await api.createChatSession(undefined, selectedModel);
                 setSessionId(newSession._id);
                 activeId = newSession._id;
+                lastSyncedModelRef.current = selectedModel; // Avoid double sync on new session
             }
 
             let botContent = '';
-            const apiPayload = hiddenPayload ? `${hiddenPayload}\n${displayContent}` : displayContent;
+            let apiPayload = hiddenPayload ? `${hiddenPayload}\n${displayContent}` : displayContent;
+            const images: string[] = [];
+
+            // Handle RAG Indexing for non-image binary files
+            const binaryAttachments = attachments.filter(a => a.isBinary && !a.isImage);
+            const collectedAttachmentIds: string[] = [];
+            
+            if (binaryAttachments.length > 0) {
+                // We need to upload them to the backend for indexing
+                for (const att of binaryAttachments) {
+                    try {
+                        // Extract binary from dataURL
+                        const res = await fetch(att.content);
+                        const blob = await res.blob();
+                        const formData = new FormData();
+                        formData.append('file', blob, att.name);
+                        
+                        const uploadRes = await api.post(`/chat/${activeId}/attachments`, formData);
+                        if (uploadRes.success && uploadRes.data?.attachmentId) {
+                            collectedAttachmentIds.push(uploadRes.data.attachmentId);
+                        }
+                    } catch (uploadError) {
+                        console.error(`[AIContext] Failed to upload ${att.name}:`, uploadError);
+                    }
+                }
+            }
+
+            // Separate text attachments from binary/image attachments
+            if (attachments.length > 0) {
+                const textAttachments = attachments.filter(a => !a.isBinary && !a.isImage);
+                const imageAttachments = attachments.filter(a => a.isImage);
+                
+                if (textAttachments.length > 0) {
+                    const fileContext = textAttachments.map(a => `[File Attachment: ${a.name}]\n${a.content}`).join('\n\n');
+                    apiPayload = `CONTEXT FROM ATTACHED FILES:\n${fileContext}\n\nUSER MESSAGE: ${apiPayload}`;
+                }
+
+                imageAttachments.forEach(a => {
+                    const base64 = a.content.split(',')[1];
+                    if (base64) images.push(base64);
+                });
+            }
+
             let lastUpdate = Date.now();
             let pendingChunk = '';
 
@@ -135,7 +237,7 @@ export function AIProvider({ children }: { children: ReactNode }) {
                 pendingChunk += chunk;
 
                 const now = Date.now();
-                if (now - lastUpdate > 90) {
+                if (now - lastUpdate > 32) {
                     lastUpdate = now;
                     const throttledContent = botContent;
                     setMessages(prev => prev.map(msg =>
@@ -146,7 +248,7 @@ export function AIProvider({ children }: { children: ReactNode }) {
                     onChunk?.(pendingChunk);
                     pendingChunk = '';
                 }
-            });
+            }, undefined, 'learning-os', undefined, images, collectedAttachmentIds);
 
             // Final update
             if (pendingChunk) {
@@ -168,19 +270,21 @@ export function AIProvider({ children }: { children: ReactNode }) {
         } finally {
             setIsLoading(false);
         }
-    }, [sessionId, isLoading]);
+    }, [sessionId, isLoading, selectedModel]);
 
     // Fetch activity history when widget opens
     useEffect(() => {
         if (isOpen && token) {
             api.getActivityHistory(10)
                 .then(activities => {
-                    const formattedDetails = activities.map(a =>
+                    // Limit to last 5 activities to keep context lean and fast
+                    const topActivities = activities.slice(0, 5);
+                    const formattedDetails = topActivities.map(a =>
                         `- [${new Date(a.timestamp || Date.now()).toLocaleTimeString()}] ${a.description} (${a.type})`
                     ).join('\n');
 
                     if (formattedDetails) {
-                        setSystemContext(`Here is what the user has been doing recently (SYSTEM CONTEXT):\n${formattedDetails}\n\n`);
+                        setSystemContext(`USER ACTIVITY CONTEXT:\n${formattedDetails}\n\n`);
                     }
                 })
                 .catch(err => console.warn('Failed to fetch activity context:', err));
@@ -188,20 +292,23 @@ export function AIProvider({ children }: { children: ReactNode }) {
     }, [isOpen, token]);
 
     // Public wrapper to inject context
-    const sendMessage = useCallback(async (content: string, onChunk?: (chunk: string) => void) => {
+    const sendMessage = useCallback(async (content: string, attachments: Attachment[] = [], onChunk?: (chunk: string) => void) => {
         let injectedContext = '';
 
-        if (systemContext) {
-            injectedContext += systemContext + '\n';
+        if (systemContext && systemContext.trim()) {
+            injectedContext += systemContext.trim() + '\n\n';
             setSystemContext(''); // Clear it so we don't send it again next msg
         }
 
         // Inject real-time UI context if the user has a specific modal or card open
         if (context && Object.keys(context).length > 0) {
-            injectedContext += `[Current Data Context: ${JSON.stringify(context, null, 2)}]\n\n`;
+            const contextStr = JSON.stringify(context, null, 2);
+            // Limit UI context to 4000 chars to avoid overwhelming the payload
+            const safeContext = contextStr.length > 4000 ? contextStr.slice(0, 4000) + '...' : contextStr;
+            injectedContext += `[Current Data Context: ${safeContext}]\n\n`;
         }
 
-        await _sendMessage(content, injectedContext, onChunk);
+        await _sendMessage(content, attachments, injectedContext, onChunk);
     }, [_sendMessage, systemContext, context]);
 
     const value: AIContextType = {
@@ -210,11 +317,14 @@ export function AIProvider({ children }: { children: ReactNode }) {
         sessionId,
         setSessionId,
         messages,
+        setMessages,
         isLoading,
+        setIsLoading,
         sendMessage,
         clearMessages,
         selectedModel,
         setSelectedModel,
+        AI_MODELS,
         context,
         setContext,
     };

@@ -251,7 +251,7 @@
     }
 
     /* Hide model badge on mobile */
-    .chat-header .tracking-\[0\.15em\] {
+    .chat-header .chat-pro-badge {
         display: none !important;
     }
 

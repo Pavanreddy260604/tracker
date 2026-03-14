@@ -29,24 +29,29 @@ export const chatApi = {
         onChunk?: (chunk: string) => void,
         signal?: AbortSignal,
         assistantType?: 'learning-os' | 'script-writer',
-        context?: string | AssistantContextPayload
+        context?: string | AssistantContextPayload,
+        images?: string[],
+        attachmentIds?: string[]
     ) {
         if (!onChunk) {
             return baseApi.request('/chat/' + sessionId + '/message', {
                 method: 'POST',
-                body: JSON.stringify({ message, assistantType, context })
+                body: JSON.stringify({ message, assistantType, context, images, attachmentIds })
             });
         }
 
         await baseApi.streamRequest(
             `/chat/${sessionId}/message`,
-            { message, assistantType, context },
+            { message, assistantType, context, images, attachmentIds },
             onChunk,
             signal
         );
     },
 
-    async updateChatSession(id: string, updates: { title?: string }) {
+    async updateChatSession(
+        id: string,
+        updates: { title?: string; model?: string; assistantType?: 'learning-os' | 'script-writer' }
+    ) {
         return baseApi.request<ChatSession>(`/chat/${id}`, {
             method: 'PATCH',
             body: JSON.stringify(updates)

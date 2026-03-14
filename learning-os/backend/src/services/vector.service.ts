@@ -2,11 +2,12 @@ import { ChromaClient, Collection } from "chromadb";
 
 export interface KnowledgeDocument {
     _id: string; // Original MongoDB document ID
-    type: 'BackendTopic' | 'ProjectStudy' | 'DSAProblem' | 'InterviewSession';
+    type: 'BackendTopic' | 'ProjectStudy' | 'DSAProblem' | 'InterviewSession' | 'ChatAttachment';
     userId: string;
     title: string;
     content: string; // The full stringified text payload
     embedding: number[];
+    metadata?: Record<string, any>;
 }
 
 export interface ScoredKnowledge {
@@ -15,6 +16,7 @@ export interface ScoredKnowledge {
     type: string;
     title: string;
     content: string;
+    metadata?: any;
 }
 
 export class VectorService {
@@ -71,7 +73,8 @@ export class VectorService {
             type: doc.type,
             userId: doc.userId,
             title: doc.title,
-            preview: doc.content.slice(0, 150)
+            preview: doc.content.slice(0, 150),
+            ...(doc.metadata || {})
         };
 
         await this.collection.upsert({
@@ -95,22 +98,23 @@ export class VectorService {
     }
 
     /**
-     * Find semantically similar documents, securely filtered by userId.
+     * Find semantically similar documents, securely filtered by userId and optional metadata.
      */
-    async findSimilar(userId: string, queryEmbedding: number[], limit: number = 5, itemType?: string): Promise<ScoredKnowledge[]> {
+    async findSimilar(userId: string, queryEmbedding: number[], limit: number = 5, whereFilter?: any): Promise<ScoredKnowledge[]> {
         await this.init();
         if (!this.collection) return [];
 
-        const conditions: any[] = [{ userId }];
-        if (itemType) {
-            conditions.push({ type: itemType });
-        }
+        // Build the base 'where' clause with userId
+        let where: any = { userId };
 
-        let where: any = undefined;
-        if (conditions.length === 1) {
-            where = conditions[0];
-        } else if (conditions.length > 1) {
-            where = { "$and": conditions };
+        // If extra filters are provided, combine them with userId
+        if (whereFilter) {
+            where = {
+                "$and": [
+                    { userId },
+                    whereFilter
+                ]
+            };
         }
 
         const fetchLimit = limit * 2; // Fetch extra to account for exact distance filtering
@@ -141,7 +145,8 @@ export class VectorService {
                 score: similarity,
                 type: metadatas?.[i]?.type ?? 'unknown',
                 title: metadatas?.[i]?.title ?? 'Untitled',
-                content: documents?.[i] ?? ''
+                content: documents?.[i] ?? '',
+                metadata: metadatas?.[i]
             });
         }
 

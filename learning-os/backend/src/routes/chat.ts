@@ -4,11 +4,18 @@ import { authenticate } from '../middleware/auth.js';
 import { ChatSession } from '../models/ChatSession.js';
 import { AIServiceError } from '../services/aiClient.service.js';
 import { AIChatService } from '../services/aiChat.service.js';
+import { chatRagService } from '../services/chatRag.service.js';
+import { ChatAttachment } from '../models/ChatAttachment.js';
+import multer from 'multer';
+
+const upload = multer({
+    storage: multer.memoryStorage(),
+    limits: { fileSize: 10 * 1024 * 1024 } // 10MB limit
+});
 
 const router = express.Router();
-const aiChat = new AIChatService();
 
-const modelPattern = /^[a-zA-Z0-9:._-]+$/;
+const modelPattern = /^[a-zA-Z0-9:._\/-]+$/;
 const assistantPreferencesSchema = z.object({
     defaultMode: z.enum(['ask', 'edit', 'agent']).optional(),
     replyLanguage: z.string().trim().min(1).max(50).optional(),
@@ -53,19 +60,24 @@ const contextSchema = z.union([
 ]);
 
 const createSessionSchema = z.object({
-    message: z.string().trim().min(1).max(4000).optional(),
+    message: z.string().trim().min(1).max(32000).optional(),
     model: z.string().trim().min(1).max(64).regex(modelPattern, 'Invalid model identifier').optional(),
     assistantType: z.enum(['learning-os', 'script-writer']).optional(),
+    attachmentIds: z.array(z.string()).optional(),
 }).strict();
 
 const messageSchema = z.object({
-    message: z.string().trim().min(1).max(4000),
+    message: z.string().trim().min(1).max(32000),
     assistantType: z.enum(['learning-os', 'script-writer']).optional(),
     context: contextSchema.optional(),
+    images: z.array(z.string().min(1)).optional(),
+    attachmentIds: z.array(z.string()).optional(),
 }).strict();
 
 const updateSessionSchema = z.object({
-    title: z.string().trim().min(1).max(120),
+    title: z.string().trim().min(1).max(120).optional(),
+    model: z.string().trim().min(1).max(64).regex(modelPattern, 'Invalid model identifier').optional(),
+    assistantType: z.enum(['learning-os', 'script-writer']).optional(),
 }).strict();
 
 const toSessionTitle = (message?: string) =>
@@ -252,15 +264,35 @@ router.post('/:id/message', authenticate, async (req: any, res) => {
         if (!parsed.success) {
             return res.status(400).json({ success: false, error: parsed.error.errors[0].message });
         }
-        const { message, assistantType: requestedAssistantType, context } = parsed.data;
+        const { message, assistantType: requestedAssistantType, context, images, attachmentIds } = parsed.data;
         const sessionId = req.params.id;
+
+        // 0. RETRIEVAL: Get RAG Context if relevant
+        let ragContext = '';
+        try {
+            ragContext = await chatRagService.retrieveContext(
+                req.userId.toString(), 
+                sessionId, 
+                message,
+                attachmentIds
+            );
+        } catch (ragError) {
+            console.warn('[Chat RAG] Retrieval failed:', ragError);
+        }
 
         // 1. ATOMIC: Save User Message
         // Use findOneAndUpdate to ensure atomic append and return updated doc if needed
         const session = await ChatSession.findOneAndUpdate(
             { _id: sessionId, userId: req.userId },
             {
-                $push: { messages: { role: 'user', content: message, timestamp: new Date() } },
+                $push: { 
+                    messages: { 
+                        role: 'user', 
+                        content: message, 
+                        timestamp: new Date(),
+                        attachmentIds: attachmentIds || []
+                    } 
+                },
                 $set: { updatedAt: new Date() }
             },
             { new: true }
@@ -307,12 +339,13 @@ router.post('/:id/message', authenticate, async (req: any, res) => {
                 ? normalizeScriptWriterContext(context)
                 : '';
             const systemPrompt = getSystemPrompt(assistantType, normalizedContext);
+            const fullPrompt = ragContext ? `${systemPrompt}\n\n${ragContext}` : systemPrompt;
             const chatService = new AIChatService(sessionModel, req.userId);
 
             let assistantText = '';
 
             try {
-                for await (const chunk of chatService.generateChatStream(contextMessages, systemPrompt)) {
+                for await (const chunk of chatService.generateChatStream(contextMessages, fullPrompt)) {
                     if (!chunk) continue;
                     assistantText += chunk;
                     res.write(chunk);
@@ -321,7 +354,7 @@ router.post('/:id/message', authenticate, async (req: any, res) => {
                 console.warn('[chat] Streaming API unavailable, falling back to buffered response:', streamingError);
                 const responseText = await chatService.chat(
                     message,
-                    [{ role: 'system', content: systemPrompt }, ...contextMessages]
+                    [{ role: 'system', content: fullPrompt }, ...contextMessages]
                 );
                 if (responseText) {
                     // Keep fallback chunks small so the UI still gets incremental feedback.
@@ -373,9 +406,20 @@ router.patch('/:id', authenticate, async (req: any, res) => {
             return res.status(400).json({ success: false, error: parsed.error.errors[0].message });
         }
 
+        const { title, model, assistantType } = parsed.data;
+        const updates: Record<string, unknown> = {};
+
+        if (typeof title === 'string') updates.title = title;
+        if (typeof model === 'string') updates['metadata.model'] = model;
+        if (assistantType) updates['metadata.assistantType'] = assistantType;
+
+        if (Object.keys(updates).length === 0) {
+            return res.status(400).json({ success: false, error: 'No valid updates provided' });
+        }
+
         const session = await ChatSession.findOneAndUpdate(
             { _id: req.params.id, userId: req.userId },
-            { $set: parsed.data },
+            { $set: updates },
             { new: true }
         );
 
@@ -396,7 +440,30 @@ router.delete('/:id', authenticate, async (req: any, res) => {
     }
 });
 
+// POST /api/chat/:id/attachments
+// Upload and index a file for RAG
+router.post('/:id/attachments', authenticate, upload.single('file'), async (req: any, res) => {
+    try {
+        const sessionId = req.params.id;
+        const file = req.file;
+
+        if (!file) {
+            return res.status(400).json({ success: false, error: 'No file uploaded' });
+        }
+
+        const attachmentId = await chatRagService.indexFile(
+            req.userId.toString(),
+            sessionId,
+            file.originalname,
+            file.mimetype,
+            file.buffer
+        );
+
+        res.json({ success: true, data: { attachmentId } });
+    } catch (error: any) {
+        console.error('[Chat Attachment] Upload failed:', error);
+        res.status(500).json({ success: false, error: error.message || 'Failed to index file' });
+    }
+});
+
 export default router;
-
-
-

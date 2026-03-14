@@ -2,136 +2,20 @@ import { useState, useEffect, useRef, memo, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api, type ChatSession } from '../services/api';
 import { useAI } from '../contexts/AIContext';
-import { ArrowUp, Bot, Plus, Trash2, X, AlertTriangle, Edit, Square, Mic, PanelLeftClose, PanelLeftOpen, ArrowDown, Check } from 'lucide-react';
+import { useSpeech } from '../hooks/useSpeech';
+import { 
+    Plus, X, ArrowDown, 
+    PanelLeftOpen, PanelLeftClose, AlertTriangle, 
+    Bot, Check,
+    Trash2, Edit, Volume2, StopCircle, ArrowUp, Square, Mic
+} from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
-import ReactMarkdown from 'react-markdown';
-import remarkGfm from 'remark-gfm';
-import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
-import { vscDarkPlus, vs } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import { cn } from '../lib/utils';
 import { useMobile } from '../hooks/useMobile';
+import { AIChatMarkdown, getProviderIcon } from '../components/chat/AIChatRenderer';
+import { VoiceOverlay } from '../components/chat/VoiceOverlay';
 
-const MemoizedMarkdownBlock = memo(({
-    content,
-    isLoading,
-    isLast,
-    handleCopyCode,
-    copiedBlockId
-}: {
-    content: string,
-    isLoading: boolean,
-    isLast: boolean,
-    handleCopyCode: (code: string, id: string) => void,
-    copiedBlockId: string | null
-}) => {
-    const isDark = typeof document !== 'undefined' && document.documentElement.classList.contains('dark');
-    const syntaxTheme = isDark ? vscDarkPlus : vs;
-
-    const getCodeId = (code: string, lang?: string) => {
-        const seed = `${lang || 'text'}:${code.length}:${code.slice(0, 24)}`;
-        return seed.replace(/\s+/g, '-');
-    };
-
-    const normalizeTables = (text: string) => {
-        const lines = text.split('\n');
-        const normalized: string[] = [];
-
-        for (const line of lines) {
-            const hasTableMarker = /\|\s*:?-{3,}/.test(line);
-            const hasRowBreaks = /\|\s+\|/.test(line);
-            if (hasTableMarker && hasRowBreaks) {
-                const firstPipe = line.indexOf('|');
-                if (firstPipe > 0) {
-                    const prefix = line.slice(0, firstPipe).trim();
-                    if (prefix) normalized.push(prefix);
-                }
-                let tablePart = firstPipe >= 0 ? line.slice(firstPipe) : line;
-                tablePart = tablePart.replace(/\|\s+\|/g, '|\n|');
-                normalized.push(tablePart);
-            } else {
-                normalized.push(line);
-            }
-        }
-
-        return normalized.join('\n');
-    };
-
-    return (
-        <ReactMarkdown
-            remarkPlugins={[remarkGfm]}
-            components={{
-                code({ node, inline, className, children, ...props }: any) {
-                    const match = /language-(\w+)/.exec(className || '');
-                    const codeString = String(children).replace(/\n$/, '');
-                    if (!inline && match) {
-                        const codeId = getCodeId(codeString, match[1]);
-                        return (
-                            <div className="chat-code-block">
-                                <div className="chat-code-toolbar">
-                                    <span className="chat-code-lang">{match[1]}</span>
-                                    <button
-                                        type="button"
-                                        onClick={() => handleCopyCode(codeString, codeId)}
-                                        className="chat-code-copy"
-                                    >
-                                        {copiedBlockId === codeId ? 'Copied' : 'Copy'}
-                                    </button>
-                                </div>
-                                <SyntaxHighlighter
-                                    style={syntaxTheme}
-                                    language={match[1]}
-                                    PreTag="div"
-                                    customStyle={{ margin: 0, borderRadius: '0.75em', padding: '16px' }}
-                                    showLineNumbers
-                                    wrapLines
-                                    lineNumberStyle={{
-                                        color: isDark ? '#6b7280' : '#9ca3af',
-                                        opacity: 0.7
-                                    }}
-                                    {...props}
-                                >
-                                    {codeString}
-                                </SyntaxHighlighter>
-                            </div>
-                        );
-                    }
-                    return (
-                        <code className={`${className} chat-inline-code`} {...props}>
-                            {children}
-                        </code>
-                    );
-                },
-                table({ children }: any) {
-                    return (
-                        <div className="chat-table-wrap">
-                            <table>{children}</table>
-                        </div>
-                    );
-                },
-                th({ children }: any) {
-                    return <th className="chat-table-th">{children}</th>;
-                },
-                td({ children }: any) {
-                    return <td className="chat-table-td">{children}</td>;
-                },
-                h1({ children }: any) {
-                    return <h1 className="chat-h1">{children}</h1>;
-                },
-                h2({ children }: any) {
-                    return <h2 className="chat-h2">{children}</h2>;
-                },
-                h3({ children }: any) {
-                    return <h3 className="chat-h3">{children}</h3>;
-                },
-                h4({ children }: any) {
-                    return <h4 className="chat-h4">{children}</h4>;
-                }
-            }}
-        >
-            {normalizeTables(content) + (isLast && isLoading ? ' |' : '')}
-        </ReactMarkdown>
-    );
-});
+// Local renderer removed in favor of AIChatMarkdown from shared components
 
 /* ── MODULAR SUB-COMPONENTS ── */
 
@@ -244,7 +128,9 @@ const MessageRow = memo(({
     isLoading,
     isLast,
     handleCopyCode,
-    copiedBlockId
+    copiedBlockId,
+    onSpeak,
+    isSpeakingThis
 }: any) => {
     return (
         <motion.div
@@ -257,6 +143,17 @@ const MessageRow = memo(({
                 isLoading && isLast && msg.role === 'assistant' && "is-streaming"
             )}
         >
+            {/* Attachments (User Only) */}
+            {msg.role === 'user' && msg.attachments && msg.attachments.length > 0 && (
+                <div className="flex flex-wrap gap-2 mb-2 px-1 justify-end">
+                    {msg.attachments.map((file: any, i: number) => (
+                        <div key={i} className="flex items-center gap-1.5 px-2 py-1 rounded-lg bg-console-surface-2 border border-border-subtle text-[10px] font-medium text-text-secondary">
+                            <span className="truncate max-w-[120px]">{file.name}</span>
+                        </div>
+                    ))}
+                </div>
+            )}
+
             {/* Label & Identity */}
             <div className={cn(
                 "flex items-center gap-2 mb-1 px-1",
@@ -275,6 +172,19 @@ const MessageRow = memo(({
                 <span className="text-[11px] font-bold uppercase tracking-wider text-[color:var(--text-tertiary)] opacity-60">
                     {msg.role === 'user' ? "You" : "Assistant"}
                 </span>
+                
+                {msg.role === 'assistant' && msg.content && (
+                    <button
+                        onClick={() => onSpeak(msg.content)}
+                        className={cn(
+                            "p-1 rounded-md hover:bg-white/10 transition-colors",
+                            isSpeakingThis ? "text-accent-primary" : "text-text-tertiary opacity-40 hover:opacity-100"
+                        )}
+                        title={isSpeakingThis ? "Stop speaking" : "Speak message"}
+                    >
+                        {isSpeakingThis ? <StopCircle size={14} /> : <Volume2 size={14} />}
+                    </button>
+                )}
             </div>
 
             {/* Bubble */}
@@ -286,11 +196,40 @@ const MessageRow = memo(({
             >
                 <div className="chat-message prose prose-sm dark:prose-invert max-w-none break-words">
                     {!msg.content && isLoading && msg.role === 'assistant' ? (
-                        <div className="flex items-center gap-1 h-6">
-                            <div className="w-2.5 h-2.5 bg-[color:var(--accent-primary-dark)] rounded-full animate-pulse"></div>
+                        <div className="flex items-center gap-2 h-8 px-1">
+                            <motion.div 
+                                animate={{ 
+                                    scale: [1, 1.2, 1],
+                                    opacity: [0.4, 1, 0.4],
+                                    y: [0, -4, 0]
+                                }}
+                                transition={{ repeat: Infinity, duration: 1.2, ease: "easeInOut" }}
+                                className="w-2.5 h-2.5 bg-accent-primary rounded-full shadow-[0_0_8px_rgba(var(--accent-primary-rgb),0.5)]"
+                            />
+                            <motion.div 
+                                animate={{ 
+                                    scale: [1, 1.2, 1],
+                                    opacity: [0.4, 1, 0.4],
+                                    y: [0, -4, 0]
+                                }}
+                                transition={{ repeat: Infinity, duration: 1.2, ease: "easeInOut", delay: 0.2 }}
+                                className="w-2.5 h-2.5 bg-accent-primary/80 rounded-full shadow-[0_0_8px_rgba(var(--accent-primary-rgb),0.4)]"
+                            />
+                            <motion.div 
+                                animate={{ 
+                                    scale: [1, 1.2, 1],
+                                    opacity: [0.4, 1, 0.4],
+                                    y: [0, -4, 0]
+                                }}
+                                transition={{ repeat: Infinity, duration: 1.2, ease: "easeInOut", delay: 0.4 }}
+                                className="w-2.5 h-2.5 bg-accent-primary/60 rounded-full shadow-[0_0_8px_rgba(var(--accent-primary-rgb),0.3)]"
+                            />
+                            <span className="ml-2 text-[10px] font-bold uppercase tracking-widest text-accent-primary/50 animate-pulse">
+                                Thinking
+                            </span>
                         </div>
                     ) : (
-                        <MemoizedMarkdownBlock
+                        <AIChatMarkdown
                             content={msg.content}
                             isLoading={isLoading}
                             isLast={isLast}
@@ -308,15 +247,66 @@ const ChatInput = memo(({
     isLoading,
     handleSend,
     handleStop,
-    initialValue = ""
+    initialValue = "",
+    speech
 }: {
     isLoading: boolean,
-    handleSend: (content: string) => void,
+    handleSend: (content: string, attachments: any[]) => void,
     handleStop: () => void,
-    initialValue?: string
+    initialValue?: string,
+    speech: any
 }) => {
     const [localInput, setLocalInput] = useState(initialValue);
     const textareaRef = useRef<HTMLTextAreaElement>(null);
+    const fileInputRef = useRef<HTMLInputElement>(null);
+    const [attachments, setAttachments] = useState<any[]>([]);
+    
+    const { 
+        isListening, 
+        transcript, 
+        startListening, 
+        stopListening, 
+        volume, 
+        isSpeaking,
+        error 
+    } = speech;
+
+    const [showVoiceOverlay, setShowVoiceOverlay] = useState(false);
+    const [showModelMenu, setShowModelMenu] = useState(false);
+    const menuRef = useRef<HTMLDivElement>(null);
+
+    const { selectedModel, setSelectedModel, AI_MODELS } = useAI() as any;
+    const currentModel = AI_MODELS.find((m: any) => m.id === selectedModel);
+    const supportsFiles = currentModel?.supportsFiles ?? false;
+
+
+    // Close menu on outside click
+    useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+                setShowModelMenu(false);
+            }
+        };
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, []);
+
+    // Sync transcript to local input
+    useEffect(() => {
+        if (transcript) {
+            setLocalInput(transcript);
+        }
+    }, [transcript]);
+
+    const toggleRecording = () => {
+        if (isListening) {
+            stopListening();
+            setShowVoiceOverlay(false);
+        } else {
+            setShowVoiceOverlay(true);
+            startListening();
+        }
+    };
 
     // Sync external initial value changes (e.g. from prompt starters)
     useEffect(() => {
@@ -333,53 +323,232 @@ const ChatInput = memo(({
     }, [localInput]);
 
     const onSendClick = () => {
-        if (!localInput.trim() || isLoading) return;
-        handleSend(localInput.trim());
+        if ((!localInput.trim() && attachments.length === 0) || isLoading) return;
+        handleSend(localInput.trim(), attachments);
         setLocalInput('');
+        setAttachments([]);
+    };
+
+    const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const files = e.target.files;
+        if (!files) return;
+
+        Array.from(files).forEach(file => {
+            const isImage = file.type.startsWith('image/');
+            const isVideo = file.type.startsWith('video/');
+            const isDoc = file.type === 'application/pdf' || 
+                         file.type === 'application/msword' || 
+                         file.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+            const isBinary = isImage || isVideo || isDoc;
+
+            const reader = new FileReader();
+            reader.onload = (ev) => {
+                setAttachments(prev => [...prev, {
+                    name: file.name,
+                    type: file.type,
+                    content: ev.target?.result as string,
+                    isImage,
+                    isBinary
+                }]);
+            };
+
+            if (isBinary) {
+                reader.readAsDataURL(file);
+            } else {
+                reader.readAsText(file);
+            }
+        });
+        if (fileInputRef.current) fileInputRef.current.value = '';
+    };
+
+    const removeAttachment = (index: number) => {
+        setAttachments(prev => prev.filter((_, i) => i !== index));
     };
 
     return (
         <div className="chat-input-wrap px-4 pb-4 pt-2" style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 12px)' }}>
-            <div className="chat-input-container w-full max-w-3xl mx-auto flex flex-row items-center gap-3">
-                <button type="button" className="chat-input-icon hover:bg-black/10 dark:hover:bg-white/10 shrink-0" aria-label="Add attachment">
-                    <Plus size={22} className="opacity-80" />
-                </button>
+            <div className="flex flex-col max-w-3xl mx-auto gap-2">
+                <div className="chat-input-container w-full flex flex-row items-center gap-3">
+                    {/* Categorized Model Selector Moved Inside */}
+                    <div className="relative shrink-0" ref={menuRef}>
+                        <button
+                            onMouseDown={(e) => {
+                                e.stopPropagation();
+                                setShowModelMenu(!showModelMenu);
+                            }}
+                            className={cn(
+                                "group flex items-center justify-center w-9 h-9 rounded-xl border border-border-subtle/40 bg-console-surface-2/40 hover:bg-console-surface-3/60 transition-all duration-300",
+                                showModelMenu && "border-accent-primary/50 bg-accent-primary/5 shadow-sm"
+                            )}
+                            title={currentModel?.name}
+                        >
+                            {getProviderIcon(currentModel?.provider, 18)}
+                        </button>
 
-                <div className="flex-1 min-w-0">
-                    <textarea
-                        ref={textareaRef}
-                        value={localInput}
-                        onChange={(e) => setLocalInput(e.target.value)}
-                        onKeyDown={(e) => {
-                            if (e.key === 'Enter' && !e.shiftKey) {
-                                e.preventDefault();
-                                onSendClick();
-                            }
-                        }}
-                        placeholder="Ask anything"
-                        rows={1}
-                        inputMode="text"
-                        disabled={isLoading}
-                        className="chat-input w-full resize-none outline-none py-2 bg-transparent"
-                    />
-                </div>
+                        <AnimatePresence>
+                            {showModelMenu && (
+                                <motion.div
+                                    initial={{ opacity: 0, y: 8, scale: 0.95 }}
+                                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                                    exit={{ opacity: 0, y: 8, scale: 0.95 }}
+                                    transition={{ type: "spring", damping: 25, stiffness: 300 }}
+                                    className="absolute bottom-full left-0 mb-3 w-[260px] max-w-[calc(100vw-32px)] rounded-2xl border border-border-subtle/50 bg-console-header/95 backdrop-blur-xl shadow-2xl p-2 z-[100]"
+                                >
+                                    <div className="max-h-[320px] overflow-y-auto custom-scrollbar">
+                                        {Array.from(new Set(AI_MODELS.map((m: any) => m.provider))).map((provider: any) => {
+                                            const providerModels = AI_MODELS.filter((m: any) => m.provider === provider);
+                                            if (providerModels.length === 0) return null;
+                                            
+                                            return (
+                                                <div key={provider} className="mb-2 last:mb-0">
+                                                    <div className="px-2 py-1 flex items-center gap-2 border-b border-white/5 mb-1">
+                                                        {getProviderIcon(provider, 12)}
+                                                        <span className="text-[10px] font-black uppercase tracking-widest text-text-disabled opacity-40">
+                                                            {provider}
+                                                        </span>
+                                                    </div>
+                                                    <div className="space-y-0.5">
+                                                        {providerModels.map((model: any) => (
+                                                            <button
+                                                                key={model.id}
+                                                                onMouseDown={(e) => {
+                                                                    e.stopPropagation();
+                                                                    setSelectedModel(model.id);
+                                                                    setShowModelMenu(false);
+                                                                }}
+                                                                className={cn(
+                                                                    "w-full flex items-center justify-between px-2 py-2 rounded-xl transition-all duration-150 group/item",
+                                                                    selectedModel === model.id 
+                                                                        ? "bg-accent-primary/[0.08] text-accent-primary" 
+                                                                        : "hover:bg-white/5 text-text-secondary hover:text-text-primary"
+                                                                )}
+                                                            >
+                                                                <div className="flex flex-col items-start min-w-0">
+                                                                    <span className="text-[11px] font-semibold truncate w-full flex items-center gap-1.5">
+                                                                        {model.name}
+                                                                        {model.supportsFiles && (
+                                                                            <Plus size={8} className="text-accent-primary opacity-50" />
+                                                                        )}
+                                                                    </span>
+                                                                    <span className="text-[8px] opacity-50 truncate w-full text-left">
+                                                                        {model.category}
+                                                                    </span>
+                                                                </div>
+                                                                {selectedModel === model.id && (
+                                                                    <Check size={12} className="shrink-0" />
+                                                                )}
+                                                            </button>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                </motion.div>
+                            )}
+                        </AnimatePresence>
+                    </div>
 
-                <div className="flex items-center gap-2 shrink-0">
-                    <button type="button" className="chat-input-icon hover:bg-black/10 dark:hover:bg-white/10" aria-label="Voice">
-                        <Mic size={20} className="opacity-80" />
-                    </button>
-                    <button
-                        onClick={isLoading ? handleStop : onSendClick}
-                        disabled={!isLoading && !localInput.trim()}
-                        className={cn(
-                            "chat-send-button w-[36px] h-[36px]",
-                            isLoading ? "loading" : localInput.trim() ? "active" : "disabled"
+                    <div className="flex-1 flex flex-col min-w-0 min-h-[44px] justify-center ml-1">
+                        {/* Integrated Attachment Chips */}
+                        {attachments.length > 0 && (
+                            <div className="flex flex-wrap gap-1.5 py-1.5 border-b border-black/5 dark:border-white/5 mb-1.5 animate-in fade-in slide-in-from-top-1 duration-200">
+                                {attachments.map((file, i) => (
+                                    <div key={i} className="flex items-center gap-1.5 px-2 py-1 rounded-lg bg-black/5 dark:bg-white/5 border border-black/5 dark:border-white/5 text-[10px] text-text-secondary group/chip">
+                                        <span className="truncate max-w-[120px]">{file.name}</span>
+                                        <button 
+                                            onClick={() => removeAttachment(i)}
+                                            className="p-0.5 rounded-md hover:bg-red-500/10 hover:text-red-500 transition-colors"
+                                        >
+                                            <X size={12} />
+                                        </button>
+                                    </div>
+                                ))}
+                            </div>
                         )}
-                        aria-label={isLoading ? "Stop generating" : "Send message"}
-                    >
-                        {isLoading ? <Square size={16} fill="currentColor" /> : <ArrowUp size={20} strokeWidth={2.5} />}
-                    </button>
+
+                        <textarea
+                            ref={textareaRef}
+                            value={localInput}
+                            onChange={(e) => setLocalInput(e.target.value)}
+                            onKeyDown={(e) => {
+                                if (e.key === 'Enter' && !e.shiftKey) {
+                                    e.preventDefault();
+                                    onSendClick();
+                                }
+                            }}
+                            placeholder={isListening ? "Listening..." : "Ask anything"}
+                            rows={1}
+                            inputMode="text"
+                            disabled={isLoading}
+                            className={cn(
+                                "chat-input w-full resize-none outline-none py-2 bg-transparent transition-all",
+                                isListening && "placeholder:text-accent-primary animate-pulse"
+                            )}
+                        />
+                    </div>
+
+                    <div className="flex items-center gap-1 sm:gap-2 shrink-0 self-end mb-1">
+                        <AnimatePresence>
+                            {supportsFiles && (
+                                <motion.button 
+                                    initial={{ opacity: 0, scale: 0.8 }}
+                                    animate={{ opacity: 1, scale: 1 }}
+                                    exit={{ opacity: 0, scale: 0.8 }}
+                                    type="button" 
+                                    onClick={() => fileInputRef.current?.click()}
+                                    className="chat-input-icon hover:bg-black/10 dark:hover:bg-white/10 shrink-0" 
+                                    aria-label="Add attachment"
+                                >
+                                    <Plus size={22} className="opacity-80" />
+                                </motion.button>
+                            )}
+                        </AnimatePresence>
+                        <input 
+                            type="file" 
+                            ref={fileInputRef} 
+                            className="hidden" 
+                            multiple 
+                            accept="image/*,video/*,.pdf,.doc,.docx,.txt,.md,.js,.ts,.tsx,.py,.css,.html,.json"
+                            onChange={handleFileSelect}
+                        />
+                        <button 
+                            type="button" 
+                            onClick={toggleRecording}
+                            className={cn(
+                                "chat-input-icon hover:bg-black/10 dark:hover:bg-white/10",
+                                isListening && "bg-accent-primary/10 text-accent-primary"
+                            )} 
+                            aria-label="Voice"
+                        >
+                            <Mic size={20} className={cn("opacity-80", isListening && "animate-pulse")} />
+                        </button>
+                        <button
+                            onClick={isLoading ? handleStop : onSendClick}
+                            disabled={!isLoading && !localInput.trim() && attachments.length === 0}
+                            className={cn(
+                                "chat-send-button w-[36px] h-[36px]",
+                                isLoading ? "loading" : (localInput.trim() || attachments.length > 0) ? "active" : "disabled"
+                            )}
+                            aria-label={isLoading ? "Stop generating" : "Send message"}
+                        >
+                            {isLoading ? <Square size={16} fill="currentColor" /> : <ArrowUp size={20} strokeWidth={2.5} />}
+                        </button>
+                    </div>
                 </div>
+                {/* VoiceOverlay Integration */}
+                <VoiceOverlay 
+                    isOpen={showVoiceOverlay}
+                    onClose={() => {
+                        setShowVoiceOverlay(false);
+                        stopListening();
+                    }}
+                    transcript={localInput}
+                    volume={volume}
+                    isSpeaking={isSpeaking}
+                    isListening={isListening}
+                    error={error}
+                />
             </div>
             <div className="text-center text-[10px] sm:text-xs text-[color:var(--text-disabled)] mt-2 opacity-60">
                 AI Assistant can make mistakes. Check important info.
@@ -389,13 +558,23 @@ const ChatInput = memo(({
 });
 
 export default function ChatPage() {
-    const { sessionId, setSessionId } = useAI();
+    const {
+        sessionId,
+        setSessionId,
+        messages,
+        setMessages,
+        clearMessages,
+        setIsLoading: setGlobalLoading,
+        setSelectedModel
+    } = useAI();
     const { isMobile, isTablet } = useMobile();
     const [sessions, setSessions] = useState<ChatSession[]>([]);
     const [currentSession, setCurrentSession] = useState<ChatSession | null>(null);
     const [input, setInput] = useState(''); // Only used for prompt starter seeding
     const [isLoading, setIsLoading] = useState(false);
     const [sidebarOpen, setSidebarOpen] = useState(!isMobile);
+    const [shouldAutoScroll, setShouldAutoScroll] = useState(true);
+    const [isAtBottom, setIsAtBottom] = useState(true);
 
     // Modal & Menu States
     const [showExitConfirm, setShowExitConfirm] = useState(false);
@@ -409,11 +588,30 @@ export default function ChatPage() {
     const abortControllerRef = useRef<AbortController | null>(null);
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const messagesContainerRef = useRef<HTMLDivElement>(null);
-    const [shouldAutoScroll, setShouldAutoScroll] = useState(true);
-    const [isAtBottom, setIsAtBottom] = useState(true);
     const userInteractionRef = useRef<number>(0);
     const textareaRef = useRef<HTMLTextAreaElement>(null);
     const navigate = useNavigate();
+    const speech = useSpeech();
+    const { isSpeaking, speak, stopSpeaking } = speech;
+    const [speakingMessageId, setSpeakingMessageId] = useState<string | null>(null);
+
+    const visibleMessages = messages.filter(msg => msg.id !== 'welcome');
+    const isChatActive = sessionId || visibleMessages.length > 0;
+
+    const handleSpeak = useCallback((text: string, msgId: string) => {
+        if (speakingMessageId === msgId) {
+            stopSpeaking();
+            setSpeakingMessageId(null);
+        } else {
+            setSpeakingMessageId(msgId);
+            speak(text);
+        }
+    }, [speakingMessageId, speak, stopSpeaking]);
+
+    // Handle speech end naturally
+    useEffect(() => {
+        if (!isSpeaking) setSpeakingMessageId(null);
+    }, [isSpeaking]);
 
     useEffect(() => {
         setSidebarOpen(!isMobile);
@@ -446,9 +644,22 @@ export default function ChatPage() {
 
     const loadSession = async (id: string) => {
         setIsLoading(true);
+        setGlobalLoading(true);
         try {
             const session = await api.getChatSession(id);
             setCurrentSession(session);
+            // Sync with global context
+            const mappedMessages = (session.messages || []).map((m: any, idx: number) => ({
+                id: (m as any).id || `hist-${idx}-${Date.now()}`,
+                role: m.role === 'system' ? 'assistant' : m.role, // Fallback system to assistant for UI
+                content: m.content,
+                timestamp: new Date(m.timestamp)
+            }));
+            setMessages(mappedMessages as any);
+            if (session.metadata?.model) {
+                setSelectedModel(session.metadata.model);
+            }
+            
             // Move to top of list if exists
             setSessions(prev => {
                 const found = prev.find(s => s._id === id);
@@ -459,11 +670,12 @@ export default function ChatPage() {
             console.error('Failed to load session', error);
         } finally {
             setIsLoading(false);
+            setGlobalLoading(false);
         }
     };
 
     const handleNewChat = () => {
-        setSessionId(null);
+        clearMessages();
         setCurrentSession(null);
         setInput('');
         setShouldAutoScroll(true);
@@ -579,104 +791,6 @@ export default function ChatPage() {
         }
     }, []);
 
-    const handleSend = useCallback(async (content: string) => {
-        if (!content.trim() || isLoading) return;
-
-        const msgContent = content;
-        setInput('');
-        setShouldAutoScroll(true);
-        setIsLoading(true);
-
-        // Abort Controller Setup
-        abortControllerRef.current = new AbortController();
-        const signal = abortControllerRef.current.signal;
-
-        try {
-            let targetSessionId = sessionId;
-
-            if (!targetSessionId) {
-                // Create New Session (Empty)
-                const newSession = await api.createChatSession();
-                targetSessionId = newSession._id;
-                // Important: Set currentSession BEFORE sessionId to prevent useEffect reload race condition
-                setCurrentSession({ ...newSession, messages: [] });
-                setSessions(prev => [newSession, ...prev]);
-                setSessionId(targetSessionId);
-            }
-
-            // Optimistic Update
-            const userMsg = { role: 'user' as const, content: msgContent, timestamp: new Date().toISOString() };
-            setCurrentSession(prev => prev ? { ...prev, messages: [...prev.messages, userMsg] } : null);
-
-            // Stream Response
-            let botMsgContent = '';
-            const botMsgDate = new Date().toISOString();
-            let lastUpdate = Date.now();
-            let pendingChunk = '';
-
-            // Add placeholder bot message
-            setCurrentSession(prev => prev ? {
-                ...prev,
-                messages: [...prev.messages, { role: 'assistant', content: '', timestamp: botMsgDate }]
-            } : null);
-
-            await api.sendChatMessage(targetSessionId!, msgContent, (chunk) => {
-                botMsgContent += chunk;
-                pendingChunk += chunk;
-
-                const now = Date.now();
-                if (now - lastUpdate > 90) { // Bumped to 90ms for better perf
-                    lastUpdate = now;
-                    const currentBotContent = botMsgContent;
-                    setCurrentSession(prev => {
-                        if (!prev) return null;
-                        const newMsgs = [...prev.messages];
-                        const lastMsg = newMsgs[newMsgs.length - 1];
-                        if (lastMsg && lastMsg.role === 'assistant') {
-                            lastMsg.content = currentBotContent;
-                        }
-                        return { ...prev, messages: newMsgs };
-                    });
-
-                    // Synchronized scroll trigger
-                    if (shouldAutoScroll) {
-                        requestAnimationFrame(() => scrollToBottom('auto'));
-                    }
-                    pendingChunk = '';
-                }
-            }, signal);
-
-            // Final update and final scroll
-            if (pendingChunk) {
-                setCurrentSession(prev => {
-                    if (!prev) return null;
-                    const newMsgs = [...prev.messages];
-                    const lastMsg = newMsgs[newMsgs.length - 1];
-                    if (lastMsg && lastMsg.role === 'assistant') {
-                        lastMsg.content = botMsgContent;
-                    }
-                    return { ...prev, messages: newMsgs };
-                });
-                if (shouldAutoScroll) {
-                    requestAnimationFrame(() => scrollToBottom('auto'));
-                }
-            }
-
-            // Refresh history title after first message
-            if (!sessionId) loadHistory();
-
-        } catch (error: any) {
-            if (error.name === 'AbortError') {
-                console.log('Generation stopped by user');
-            } else {
-                console.error('Chat error', error);
-            }
-        } finally {
-            setIsLoading(false);
-            abortControllerRef.current = null;
-        }
-    }, [sessionId, isLoading, setSessions, loadHistory, loadSession, currentSession]);
-
     const scrollToBottom = useCallback((behavior: ScrollBehavior = 'smooth') => {
         if (messagesContainerRef.current) {
             // If user is interacting (scrolled/touched in last 1.5s), don't force scroll unless they are at the bottom
@@ -690,6 +804,32 @@ export default function ChatPage() {
             });
         }
     }, [isAtBottom]);
+
+    const { sendMessage: contextSendMessage } = useAI();
+
+    const handleSend = useCallback(async (content: string, attachments: any[] = []) => {
+        if (!content.trim() && attachments.length === 0 || isLoading) return;
+
+        const msgContent = content;
+        setInput('');
+        setShouldAutoScroll(true);
+        setIsLoading(true);
+
+        try {
+            await contextSendMessage(msgContent, attachments, () => {
+                if (shouldAutoScroll) {
+                    requestAnimationFrame(() => scrollToBottom('auto'));
+                }
+            });
+            
+            if (!sessionId) loadHistory();
+
+        } catch (error: any) {
+            console.error('Chat error', error);
+        } finally {
+            setIsLoading(false);
+        }
+    }, [sessionId, isLoading, contextSendMessage, loadHistory, shouldAutoScroll, scrollToBottom]);
 
     const handleInteraction = useCallback(() => {
         userInteractionRef.current = Date.now();
@@ -804,7 +944,7 @@ export default function ChatPage() {
                             {sidebarOpen ? <PanelLeftClose size={20} /> : <PanelLeftOpen size={20} />}
                         </button>
                         <span className="chat-title truncate max-w-[120px] sm:max-w-none max-sm:hidden">AI Chat</span>
-                        <span className="max-sm:hidden px-2 py-0.5 rounded-full text-[9px] sm:text-[11px] font-semibold uppercase tracking-[0.1em] bg-accent-primary/10 border border-accent-primary/20 text-accent-primary shrink-0">
+                        <span className="chat-pro-badge max-sm:hidden px-2 py-0.5 rounded-full text-[9px] sm:text-[11px] font-semibold uppercase tracking-[0.1em] bg-accent-primary/10 border border-accent-primary/20 text-accent-primary shrink-0">
                             Pro
                         </span>
                     </div>
@@ -835,7 +975,7 @@ export default function ChatPage() {
                     className="chat-messages flex-1 overflow-y-auto overflow-x-hidden p-4 custom-scrollbar relative"
                     style={{ overflowAnchor: 'auto', scrollBehavior: 'auto' } as any}
                 >
-                    {!currentSession || currentSession.messages.length === 0 ? (
+                    {!isChatActive ? (
                         <div className="chat-empty h-full flex flex-col items-center justify-center text-center gap-4 max-w-3xl mx-auto">
                             <div className="w-16 h-16 rounded-2xl flex items-center justify-center bg-transparent">
                                 <Bot size={40} className="text-[color:var(--text-primary)] opacity-80" />
@@ -866,15 +1006,17 @@ export default function ChatPage() {
                         </div>
                     ) : (
                         <div className="chat-content max-w-5xl mx-auto space-y-12 pb-36 px-4">
-                            {currentSession.messages.map((msg, idx) => (
+                            {visibleMessages.map((msg, idx) => (
                                 <MessageRow
                                     key={idx}
                                     msg={msg}
                                     idx={idx}
                                     isLoading={isLoading}
-                                    isLast={idx === currentSession.messages.length - 1}
+                                    isLast={idx === visibleMessages.length - 1}
                                     handleCopyCode={handleCopyCode}
                                     copiedBlockId={copiedBlockId}
+                                    onSpeak={(text: string) => handleSpeak(text, msg.id || `${idx}`)}
+                                    isSpeakingThis={speakingMessageId === (msg.id || `${idx}`)}
                                 />
                             ))}
                             <div ref={messagesEndRef} />
@@ -902,6 +1044,7 @@ export default function ChatPage() {
                     handleSend={handleSend}
                     handleStop={handleStop}
                     initialValue={input}
+                    speech={speech}
                 />
             </div>
 

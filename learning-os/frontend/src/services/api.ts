@@ -155,6 +155,26 @@ class ApiService {
         // The update endpoint returns { data: node }
         return response;
     }
+
+    // Generic helpers for new integrations
+    async post<T = any>(url: string, body: any, options: any = {}) {
+        const isFormData = body instanceof FormData;
+        
+        // If it's FormData, let the browser set the Content-Type with boundary
+        const headers = { ...options.headers };
+        if (isFormData) {
+            delete headers['Content-Type'];
+        } else if (!headers['Content-Type']) {
+            headers['Content-Type'] = 'application/json';
+        }
+
+        const response = await baseApi.request<T>(url, {
+            method: 'POST',
+            body: isFormData ? body : JSON.stringify(body),
+            headers
+        });
+        return response;
+    }
 }
 
 export const api = new ApiService();

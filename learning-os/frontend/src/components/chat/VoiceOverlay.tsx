@@ -1,0 +1,83 @@
+import { motion, AnimatePresence } from 'framer-motion';
+import { X, Mic, Volume2 } from 'lucide-react';
+import { cn } from '../../lib/utils';
+import { VoiceVisualizer } from './VoiceVisualizer';
+
+interface VoiceOverlayProps {
+    isOpen: boolean;
+    onClose: () => void;
+    transcript: string;
+    volume: number;
+    isSpeaking: boolean;
+    isListening: boolean;
+    error?: string | null;
+}
+
+export function VoiceOverlay({ 
+    isOpen, 
+    onClose, 
+    transcript, 
+    volume, 
+    isSpeaking, 
+    isListening,
+    error
+}: VoiceOverlayProps) {
+    return (
+        <AnimatePresence>
+            {isOpen && (
+                <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    className="fixed inset-0 z-[11000] flex items-center justify-center bg-black/40 backdrop-blur-2xl p-6"
+                >
+                    <button
+                        onClick={onClose}
+                        className="absolute top-8 right-8 p-3 rounded-full bg-white/10 hover:bg-white/20 transition-colors text-white"
+                    >
+                        <X size={24} />
+                    </button>
+
+                    <div className="max-w-xl w-full flex flex-col items-center gap-12">
+                        <div className="flex flex-col items-center gap-4 text-center">
+                            <motion.div
+                                animate={{ 
+                                    scale: isListening ? [1, 1.05, 1] : 1,
+                                    borderColor: error ? 'rgba(239, 68, 68, 0.5)' : (isListening ? 'rgba(16, 185, 129, 0.5)' : 'rgba(255, 255, 255, 0.1)')
+                                }}
+                                transition={{ repeat: Infinity, duration: 2 }}
+                                className="w-20 h-20 rounded-full border-2 flex items-center justify-center bg-white/5 shadow-2xl"
+                            >
+                                {isSpeaking ? <Volume2 size={32} className="text-indigo-400" /> : <Mic size={32} className={cn(error ? "text-red-400" : "text-emerald-400")} />}
+                            </motion.div>
+                            <h2 className={cn("text-2xl font-bold tracking-tight", error ? "text-red-400" : "text-white")}>
+                                {error || (isSpeaking ? "AI is speaking..." : isListening ? "Listening..." : "Paused")}
+                            </h2>
+                        </div>
+
+                        <VoiceVisualizer 
+                            volume={volume} 
+                            isSpeaking={isSpeaking} 
+                            isListening={isListening} 
+                        />
+
+                        <div className="w-full min-h-[120px] bg-white/5 rounded-3xl p-8 border border-white/10 shadow-inner">
+                            <p className="text-xl text-white/90 leading-relaxed font-medium">
+                                {transcript || (isListening ? "Say something..." : "")}
+                            </p>
+                        </div>
+
+                        {!isSpeaking && isListening && (
+                            <button
+                                onClick={onClose}
+                                className="px-8 py-4 rounded-2xl bg-emerald-500 text-white font-bold hover:bg-emerald-600 transition-all shadow-xl shadow-emerald-500/20 active:scale-95"
+                            >
+                                Send Prompt
+                            </button>
+                        )}
+                    </div>
+                </motion.div>
+            )}
+        </AnimatePresence>
+    );
+}

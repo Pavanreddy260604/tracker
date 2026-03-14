@@ -18,7 +18,7 @@ const historyMessageSchema = z.object({
 }).strict();
 
 const aiChatSchema = z.object({
-    message: z.string().trim().min(1).max(4000),
+    message: z.string().trim().min(1).max(32000),
     history: z.union([
         z.string(),
         z.array(historyMessageSchema),

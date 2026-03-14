@@ -308,6 +308,11 @@ export interface ChatSession {
     userId: string;
     title: string;
     messages: { role: 'user' | 'assistant' | 'system'; content: string; timestamp: string }[];
+    metadata?: {
+        model?: string;
+        tokensUsed?: number;
+        assistantType?: 'learning-os' | 'script-writer';
+    };
     createdAt: string;
     updatedAt: string;
 }

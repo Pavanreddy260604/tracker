@@ -1,10 +1,16 @@
 import axios, { AxiosRequestConfig, AxiosResponse } from 'axios';
+import http from 'http';
+import https from 'https';
 import { DailyLog } from '../models/DailyLog.js';
 import { DSAProblem } from '../models/DSAProblem.js';
 import { RoadmapNode } from '../models/RoadmapNode.js';
 import { RoadmapEdge } from '../models/RoadmapEdge.js';
 import { UserActivity } from '../models/UserActivity.js';
 import { BackendTopic } from '../models/BackendTopic.js';
+
+// Connection pooling for all AI requests
+const httpAgent = new http.Agent({ keepAlive: true, maxSockets: 100 });
+const httpsAgent = new https.Agent({ keepAlive: true, maxSockets: 100 });
 
 export type ChatRole = 'user' | 'assistant' | 'system' | 'tool';
 
@@ -58,8 +64,15 @@ export class AIServiceError extends Error {
     }
 }
 
+import { Groq } from 'groq-sdk';
+
+// Initialize Groq client
+const groq = new Groq({
+    apiKey: process.env.GROQ_API_KEY || '',
+});
+
 /**
- * Base abstract client for communicating with Ollama.
+ * Base abstract client for communicating with Ollama and Cloud providers.
  * Handles HTTP requests, retries, model fallbacks, streaming, and tool execution.
  */
 export class AIClientService {
@@ -70,7 +83,7 @@ export class AIClientService {
 
     constructor(model?: string, userId?: string) {
         this.baseUrl = process.env.OLLAMA_URL || 'http://localhost:11434';
-        this.primaryModel = model || process.env.OLLAMA_MODEL || 'deepseek-v3.1:671b-cloud';
+        this.primaryModel = model || process.env.OLLAMA_MODEL || 'mistral';
         this.fallbackModels = this.resolveFallbackModels();
         this.userId = userId;
     }
@@ -173,11 +186,54 @@ export class AIClientService {
         let lastError: Error | undefined;
 
         for (const model of modelsToTry) {
+            // Direct Groq Optimization
+            if (model.startsWith('groq:') && process.env.GROQ_API_KEY) {
+                // If it's a stream request, handle specially in relevant methods
+                if (payload.stream) {
+                    return { data: { groq_direct: true, model } } as AxiosResponse;
+                }
+                
+                try {
+                    const chatCompletion = await groq.chat.completions.create({
+                        messages: payload.messages as any,
+                        model: model.replace('groq:', ''),
+                        temperature: (payload.options as any)?.temperature ?? 0.7,
+                        max_tokens: (payload.options as any)?.num_predict ?? 2048,
+                    });
+                    
+                    return {
+                        data: {
+                            message: {
+                                role: 'assistant',
+                                content: chatCompletion.choices[0]?.message?.content || '',
+                            }
+                        }
+                    } as AxiosResponse;
+                } catch (e) {
+                    lastError = this.toError(e);
+                    attempts.push({ model, attempt: 1, message: this.getErrorMessage(e) });
+                    continue;
+                }
+            }
+
             for (let attempt = 1; attempt <= retries; attempt += 1) {
                 try {
-                    const currentPayload = { ...payload, model };
+                    const currentPayload = {
+                        ...payload,
+                        model,
+                        // High Performance Ollama Options
+                        options: {
+                            num_gpu: 99,
+                            num_ctx: 4096,
+                            ...(payload.options as object || {})
+                        },
+                        keep_alive: "10m" // Keep model loaded in memory for faster subsequent responses
+                    };
+
                     const response = await axios.post(`${this.baseUrl}${endpoint}`, currentPayload, {
                         timeout: 60_000,
+                        httpAgent,
+                        httpsAgent,
                         ...config,
                     });
                     return response;
@@ -203,8 +259,8 @@ export class AIClientService {
 
         const attemptsSummary = this.formatAttempts(attempts);
         throw new AIServiceError(
-            `All configured Ollama models failed${attemptsSummary ? ` (${attemptsSummary})` : ''}.`,
-            { recoverable: true, cause: lastError, context: 'ollama_request' }
+            `All configured models failed${attemptsSummary ? ` (${attemptsSummary})` : ''}.`,
+            { recoverable: true, cause: lastError, context: 'ai_request' }
         );
     }
 
@@ -254,7 +310,8 @@ export class AIClientService {
 
     public async *generateChatStream(
         messages: { role: string; content: string }[],
-        systemPrompt?: string
+        systemPrompt?: string,
+        images?: string[]
     ): AsyncGenerator<string, void, unknown> {
         const requestMessages = systemPrompt
             ? [{ role: 'system', content: systemPrompt }, ...messages]
@@ -263,10 +320,45 @@ export class AIClientService {
         try {
             const response = await this.makeRequest(
                 '/api/chat',
-                { messages: requestMessages, stream: true },
+                { messages: requestMessages, stream: true, images },
                 2,
                 { responseType: 'stream' }
             );
+
+            // Handle Direct Groq Streaming
+            if ((response.data as any)?.groq_direct) {
+                const modelId = (response.data as any).model.replace('groq:', '');
+                
+                // For Groq Vision, images must be part of the message content
+                const groqMessages = requestMessages.map((m, idx) => {
+                    if (idx === requestMessages.length - 1 && images && images.length > 0) {
+                        return {
+                            role: m.role,
+                            content: [
+                                { type: 'text', text: m.content },
+                                ...images.map(img => ({
+                                    type: 'image_url',
+                                    image_url: { url: `data:image/jpeg;base64,${img}` }
+                                }))
+                            ]
+                        };
+                    }
+                    return m;
+                });
+
+                const stream = await groq.chat.completions.create({
+                    messages: groqMessages as any,
+                    model: modelId,
+                    stream: true,
+                    temperature: 0.7,
+                });
+
+                for await (const chunk of stream) {
+                    const content = chunk.choices[0]?.delta?.content || '';
+                    if (content) yield content;
+                }
+                return;
+            }
 
             const stream = response.data as AsyncIterable<Buffer | string>;
             let buffer = '';

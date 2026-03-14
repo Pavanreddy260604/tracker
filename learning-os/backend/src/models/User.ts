@@ -124,7 +124,7 @@ userSchema.methods.comparePassword = async function (
 
 // Remove sensitive fields when converting to JSON
 userSchema.set('toJSON', {
-    transform: (_doc, ret) => {
+    transform: (_doc, ret: any) => {
         const { passwordHash, geminiApiKey, encryptionIV, verificationToken, verificationExpiry, __v, ...rest } = ret;
         return rest;
     },
