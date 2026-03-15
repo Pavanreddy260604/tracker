@@ -5,6 +5,7 @@ import { useDialog } from '../../hooks/useDialog';
 import { ConfirmDialog } from '../../components/ui/ConfirmDialog';
 import type { Bible } from '../../services/project.api';
 import type { ProjectForm } from './types';
+import { shouldOfferTransliteration } from './utils';
 
 type DashboardFilter = 'all' | 'recent' | 'admin';
 
@@ -263,36 +264,41 @@ export function ProjectDashboard({
                                 </div>
                                 <div className="space-y-2">
                                     <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest px-1">Target Language</label>
-                                    <select
-                                        className="w-full bg-zinc-900/50 border border-zinc-800 rounded-2xl px-4 py-3 text-zinc-300 outline-none focus:border-blue-500 transition-all cursor-pointer hover:border-zinc-700 font-bold text-blue-400"
+                                    <input
+                                        className="w-full bg-zinc-900/50 border border-zinc-800 rounded-2xl px-4 py-3 text-zinc-300 outline-none focus:border-blue-500 transition-all hover:border-zinc-700 font-bold text-blue-400"
+                                        list="script-language-options-new-project"
                                         value={newProjectForm.language}
                                         onChange={(e) => onNewProjectFieldChange('language', e.target.value)}
-                                    >
-                                        <option value="English">English</option>
-                                        <option value="Telugu">Telugu (తెలుగు)</option>
-                                        <option value="Hindi">Hindi (हिन्दी)</option>
-                                        <option value="Tamil">Tamil (தமிழ்)</option>
-                                        <option value="Spanish">Spanish</option>
-                                        <option value="French">French</option>
-                                    </select>
+                                        placeholder="English"
+                                    />
+                                    <datalist id="script-language-options-new-project">
+                                        <option value="English" />
+                                        <option value="Telugu" />
+                                        <option value="Hindi" />
+                                        <option value="Tamil" />
+                                        <option value="Spanish" />
+                                        <option value="French" />
+                                    </datalist>
                                 </div>
                             </div>
 
-                            <div className="flex items-center justify-between p-4 bg-blue-900/10 border border-blue-900/20 rounded-2xl">
-                                <div className="space-y-0.5">
-                                    <div className="text-[10px] font-black text-blue-400 uppercase tracking-widest">Phonetic Transliteration</div>
-                                    <div className="text-[11px] text-zinc-400 font-medium">Use English alphabet for native dialogue</div>
+                            {shouldOfferTransliteration(newProjectForm.language || 'English') && (
+                                <div className="flex items-center justify-between p-4 bg-blue-900/10 border border-blue-900/20 rounded-2xl">
+                                    <div className="space-y-0.5">
+                                        <div className="text-[10px] font-black text-blue-400 uppercase tracking-widest">Phonetic Transliteration</div>
+                                        <div className="text-[11px] text-zinc-400 font-medium">Use English alphabet for native dialogue</div>
+                                    </div>
+                                    <label className="relative inline-flex items-center cursor-pointer">
+                                        <input
+                                            type="checkbox"
+                                            className="sr-only peer"
+                                            checked={newProjectForm.transliteration}
+                                            onChange={(e) => onNewProjectFieldChange('transliteration', e.target.checked)}
+                                        />
+                                        <div className="w-11 h-6 bg-zinc-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-zinc-400 after:border-zinc-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600 peer-checked:after:bg-white"></div>
+                                    </label>
                                 </div>
-                                <label className="relative inline-flex items-center cursor-pointer">
-                                    <input
-                                        type="checkbox"
-                                        className="sr-only peer"
-                                        checked={newProjectForm.transliteration}
-                                        onChange={(e) => onNewProjectFieldChange('transliteration', e.target.checked)}
-                                    />
-                                    <div className="w-11 h-6 bg-zinc-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-zinc-400 after:border-zinc-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600 peer-checked:after:bg-white"></div>
-                                </label>
-                            </div>
+                            )}
 
                             <div className="space-y-2">
                                 <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest px-1">Hook / Logline</label>

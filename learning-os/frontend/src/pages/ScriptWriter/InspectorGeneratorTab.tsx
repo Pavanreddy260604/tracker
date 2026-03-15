@@ -106,18 +106,21 @@ export function InspectorGeneratorTab({
                 </div>
                 <div className="ide-field">
                     <label className="ide-label text-blue-400">Target Language</label>
-                    <select
+                    <input
                         className="ide-select font-bold text-blue-300"
+                        list="script-language-options-generator"
                         value={scriptLanguage}
                         onChange={(event) => onScriptLanguageChange(event.target.value)}
-                    >
-                        <option value="English">English</option>
-                        <option value="Telugu">Telugu (తెలుగు)</option>
-                        <option value="Hindi">Hindi (हिन्दी)</option>
-                        <option value="Tamil">Tamil (தமிழ்)</option>
-                        <option value="Spanish">Spanish</option>
-                        <option value="French">French</option>
-                    </select>
+                        placeholder="English"
+                    />
+                    <datalist id="script-language-options-generator">
+                        <option value="English" />
+                        <option value="Telugu" />
+                        <option value="Hindi" />
+                        <option value="Tamil" />
+                        <option value="Spanish" />
+                        <option value="French" />
+                    </datalist>
                 </div>
                 <div className="ide-field">
                     <label className="ide-label">Character RAG</label>

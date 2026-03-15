@@ -51,7 +51,14 @@ export const interviewApi = {
         return { reply: fullReply };
     },
 
-    async submitInterviewCode(sessionId: string, questionIndex: number, code: string, userAnswer?: string) {
+    async updateDraft(sessionId: string, questionIndex: number, code?: string, answer?: string) {
+        return baseApi.request<InterviewSession>(`/interview/${sessionId}/draft`, {
+            method: 'POST',
+            body: JSON.stringify({ questionIndex, code, answer }),
+        });
+    },
+
+    async submitInterviewCode(sessionId: string, questionIndex: number, code?: string, userAnswer?: string) {
         return baseApi.request<InterviewSubmitResult>('/interview/submit', {
             method: 'POST',
             body: JSON.stringify({ sessionId, questionIndex, code, userAnswer }),

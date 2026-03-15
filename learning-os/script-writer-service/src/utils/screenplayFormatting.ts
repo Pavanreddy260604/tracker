@@ -4,7 +4,8 @@ const STRUCTURED_SECTION_LABELS = [
     'SCENE_PLAN',
     'SCENE_SCRIPT',
     'CHARACTER_MEMORY_UPDATE',
-    'PLOT_STATE_UPDATE'
+    'PLOT_STATE_UPDATE',
+    'NARRATIVE_CRAFT'
 ] as const;
 
 function isIntentionalForcedBlankLine(line: string): boolean {
@@ -90,7 +91,11 @@ export function normalizeScreenplayWhitespace(content: string): string {
                 continue;
             }
 
-            if (normalizedLines.length > 0 && isEffectivelyBlankLine(normalizedLines[normalizedLines.length - 1])) {
+            const consecutiveBlanks = normalizedLines.length >= 2 && 
+                isEffectivelyBlankLine(normalizedLines[normalizedLines.length - 1]) &&
+                isEffectivelyBlankLine(normalizedLines[normalizedLines.length - 2]);
+
+            if (consecutiveBlanks) {
                 continue;
             }
 
@@ -115,7 +120,7 @@ export function cleanAssistantChatResponse(content: string): string {
 
 function buildStructuredSectionHeadingPattern(labels: readonly string[]): RegExp {
     return new RegExp(
-        `(?:^|\\n)\\s{0,3}#{0,6}\\s*(?:${labels.join('|')})(?:\\s*\\(JSON\\))?\\s*:?\\s*(?:\\n|$)`,
+        `(?:^|\\n)\\s{0,3}#{0,6}\\s*(?:STEP\\s*\\d+\\s*:\\s*)?(?:${labels.join('|')})(?:\\s*\\(JSON\\))?\\s*:?\\s*(?:\\n|$)`,
         'i'
     );
 }
@@ -218,36 +223,48 @@ export function extractBestEffortAssistantAnswer(content: string): string {
     const plan = extractStructuredSection(cleaned, 'SCENE_PLAN', [
         'SCENE_SCRIPT',
         'CHARACTER_MEMORY_UPDATE',
+        'PLOT_STATE_UPDATE',
+        'NARRATIVE_CRAFT'
+    ]);
+    const craft = extractStructuredSection(cleaned, 'NARRATIVE_CRAFT', [
         'PLOT_STATE_UPDATE'
     ]);
 
-    return [summary, plan].filter(Boolean).join('\n\n').trim();
+    return [summary, plan, craft].filter(Boolean).join('\n\n').trim();
 }
 
 export function extractStructuredAssistantSections(content: string): {
     summary?: string;
     plan?: string;
     script: string;
+    craft?: string;
 } {
     const summary = extractStructuredSection(content, 'STORY_CONTEXT_SUMMARY', [
         'SCENE_PLAN',
         'SCENE_SCRIPT',
         'CHARACTER_MEMORY_UPDATE',
-        'PLOT_STATE_UPDATE'
+        'PLOT_STATE_UPDATE',
+        'NARRATIVE_CRAFT'
     ]);
     const plan = extractStructuredSection(content, 'SCENE_PLAN', [
         'SCENE_SCRIPT',
         'CHARACTER_MEMORY_UPDATE',
-        'PLOT_STATE_UPDATE'
+        'PLOT_STATE_UPDATE',
+        'NARRATIVE_CRAFT'
     ]);
     const finalScriptText = extractStructuredSection(content, 'SCENE_SCRIPT', [
         'CHARACTER_MEMORY_UPDATE',
+        'PLOT_STATE_UPDATE',
+        'NARRATIVE_CRAFT'
+    ]);
+    const craft = extractStructuredSection(content, 'NARRATIVE_CRAFT', [
         'PLOT_STATE_UPDATE'
     ]);
 
     return {
         summary: summary || undefined,
         plan: plan || undefined,
-        script: normalizeScreenplayWhitespace(finalScriptText) || extractBestEffortScreenplay(content)
+        script: normalizeScreenplayWhitespace(finalScriptText) || extractBestEffortScreenplay(content),
+        craft: craft || undefined
     };
 }

@@ -9,7 +9,8 @@ import type { InterviewSession, InterviewTestResult } from '../../services/api';
 
 import { useDialog } from '../../hooks/useDialog';
 import { safeStorage } from '../../lib/safeStorage';
-import { useStrictProctoring } from '../../hooks/useStrictProctoring';
+import { useSecureProctoring } from '../../hooks/useSecureProctoring';
+import type { SecureViolation } from '../../hooks/useSecureProctoring';
 import { useInterviewContentProtection } from '../../hooks/useInterviewContentProtection';
 import { FullscreenLockdown } from '../../components/FullscreenLockdown';
 
@@ -79,14 +80,18 @@ export function InterviewRoom() {
   const isStrictMode = session?.config.strictMode ?? true;
   const MAX_VIOLATIONS = 2;
 
-  const handleViolation = useCallback((violation: { type: string; message: string }) => {
+  const handleViolation = useCallback(async (violation: SecureViolation) => {
     if (!id || proctoringSyncDisabledRef.current) {
       return;
     }
     api.updateProctoringData(id, {
       violationType: violation.type,
       violationMessage: violation.message,
-      timestamp: new Date().toISOString()
+      timestamp: new Date(violation.timestamp).toISOString(),
+      clientProof: violation.clientProof,
+      sequenceNumber: violation.sequenceNumber,
+      mouseTrail: violation.mouseTrail,
+      keystrokeDynamics: violation.keystrokeDynamics
     }).catch((error: unknown) => {
       const message = error instanceof Error ? error.message : String(error);
       const lowerMessage = message.toLowerCase();
@@ -119,15 +124,22 @@ export function InterviewRoom() {
     }, 3000);
   }, [session, testTerminated, id, navigate, showAlert]);
 
+  const proctoringSecret = (session as any)?.proctoringSecret || '';
+
   const {
     violations,
     violationCount,
     isLocked,
     enterFullscreen
-  } = useStrictProctoring({
+  } = useSecureProctoring({
+    sessionId: id || '',
+    secret: proctoringSecret,
     onViolation: handleViolation,
     onTerminate: handleTerminate,
-    maxViolations: MAX_VIOLATIONS
+    maxViolations: MAX_VIOLATIONS,
+    enableKeystrokeTracking: true,
+    enableMouseTracking: true,
+    enableIntegrityChecks: true
   });
 
   useInterviewContentProtection({

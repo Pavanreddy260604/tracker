@@ -179,6 +179,7 @@ export interface AssistedEditOptions {
     currentContent?: string;
     selection?: AssistantSelectionPayload | null;
     transliteration?: boolean;
+    model?: string;
 }
 
 export interface ProjectAssistantOptions {
@@ -187,6 +188,8 @@ export interface ProjectAssistantOptions {
     target?: 'scene' | 'selection';
     currentContext?: string | AssistantContextPayload;
     selection?: AssistantSelectionPayload | null;
+    transliteration?: boolean;
+    model?: string;
 }
 
 

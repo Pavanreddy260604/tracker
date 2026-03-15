@@ -164,6 +164,7 @@ export interface BackendTopic {
     // SRS
     nextReviewDate?: string;
     reviewStage?: number;
+    auditScore?: number;
     difficulty?: 'easy' | 'medium' | 'hard';
     timeSpent?: string;
 }

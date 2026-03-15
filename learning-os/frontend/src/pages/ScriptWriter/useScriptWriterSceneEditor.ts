@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import type { CritiqueResult, IScene as Scene } from '../../services/project.api';
+import type { Bible, CritiqueResult, IScene as Scene } from '../../services/project.api';
 import { projectApi } from '../../services/project.api';
 import { scriptWriterApi } from '../../services/scriptWriter.api';
 import type { EditorSelection, GenerationOptions, PendingFixState, SceneForm } from './types';
@@ -8,6 +8,7 @@ import { getErrorMessage } from './utils';
 
 interface UseScriptWriterSceneEditorProps {
     activeScene: Scene | null;
+    activeProject: Bible | null;
     activeProjectId: string | null;
     updateSceneInState: (scene: Scene, projectId: string | null) => void;
     setError: (message: string | null) => void;
@@ -15,6 +16,7 @@ interface UseScriptWriterSceneEditorProps {
 
 export function useScriptWriterSceneEditor({
     activeScene,
+    activeProject,
     activeProjectId,
     updateSceneInState,
     setError
@@ -60,6 +62,12 @@ export function useScriptWriterSceneEditor({
             isHydrating.current = false;
         }, 0);
     }, [activeScene]);
+
+    useEffect(() => {
+        if (activeProject?.language && (generationOptions.language === 'English' || !generationOptions.language)) {
+            setGenerationOptions(prev => ({ ...prev, language: activeProject.language || 'English' }));
+        }
+    }, [activeProject, generationOptions.language]);
 
     useEffect(() => {
         if (!activeScene || !hasUnsavedChanges || isHydrating.current || isGenerating) return;

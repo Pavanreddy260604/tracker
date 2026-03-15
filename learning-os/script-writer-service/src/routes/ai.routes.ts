@@ -23,6 +23,9 @@ const adminEmails = new Set(
 const adminUserIds = parseCsvSet(process.env.SCRIPT_WRITER_ADMIN_USER_IDS);
 
 function isProviderSwitchAdmin(req: express.Request): boolean {
+    // In development mode, allow anyone to switch providers for testing
+    if (process.env.NODE_ENV === 'development') return true;
+
     const email = (req.userEmail || '').toLowerCase();
     const userId = req.userId || '';
 

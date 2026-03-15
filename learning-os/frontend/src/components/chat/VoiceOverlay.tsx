@@ -1,11 +1,13 @@
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Mic, Volume2 } from 'lucide-react';
+import { useEffect } from 'react';
 import { cn } from '../../lib/utils';
 import { VoiceVisualizer } from './VoiceVisualizer';
 
 interface VoiceOverlayProps {
     isOpen: boolean;
     onClose: () => void;
+    onSend?: () => void;
     transcript: string;
     volume: number;
     isSpeaking: boolean;
@@ -16,29 +18,48 @@ interface VoiceOverlayProps {
 export function VoiceOverlay({ 
     isOpen, 
     onClose, 
+    onSend,
     transcript, 
     volume, 
     isSpeaking, 
     isListening,
     error
 }: VoiceOverlayProps) {
+    // Escape key handler
+    useEffect(() => {
+        if (!isOpen) return;
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if (e.key === 'Escape') onClose();
+        };
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [isOpen, onClose]);
+
     return (
         <AnimatePresence>
             {isOpen && (
                 <motion.div
+                    key="voice-overlay-backdrop"
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     exit={{ opacity: 0 }}
-                    className="fixed inset-0 z-[11000] flex items-center justify-center bg-black/40 backdrop-blur-2xl p-6"
+                    onClick={onClose}
+                    className="fixed inset-0 z-[11000] flex items-center justify-center bg-black/40 backdrop-blur-2xl p-6 cursor-pointer"
                 >
                     <button
-                        onClick={onClose}
-                        className="absolute top-8 right-8 p-3 rounded-full bg-white/10 hover:bg-white/20 transition-colors text-white"
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            onClose();
+                        }}
+                        className="absolute top-8 right-8 p-3 rounded-full bg-white/10 hover:bg-white/20 transition-colors text-white z-[11001]"
                     >
                         <X size={24} />
                     </button>
 
-                    <div className="max-w-xl w-full flex flex-col items-center gap-12">
+                    <div 
+                        className="max-w-xl w-full flex flex-col items-center gap-12 cursor-default"
+                        onClick={(e) => e.stopPropagation()}
+                    >
                         <div className="flex flex-col items-center gap-4 text-center">
                             <motion.div
                                 animate={{ 
@@ -69,7 +90,10 @@ export function VoiceOverlay({
 
                         {!isSpeaking && isListening && (
                             <button
-                                onClick={onClose}
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    if (onSend) onSend(); else onClose();
+                                }}
                                 className="px-8 py-4 rounded-2xl bg-emerald-500 text-white font-bold hover:bg-emerald-600 transition-all shadow-xl shadow-emerald-500/20 active:scale-95"
                             >
                                 Send Prompt

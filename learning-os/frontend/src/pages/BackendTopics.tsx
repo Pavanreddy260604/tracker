@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import {
-    Plus, Search, Server, Edit2, Trash2, RefreshCw, ChevronLeft, ChevronRight,
+    Plus, Search, Server, Edit2, Trash2, RefreshCw, ChevronLeft, ChevronRight, LayoutGrid,
     Database, Shield, Code, Settings, Zap, CheckCircle2, BookOpen, Clock, BarChart3, Copy, SlidersHorizontal, BrainCircuit
 } from 'lucide-react';
 import { Skeleton } from '../components/ui/Skeleton';
@@ -20,6 +20,8 @@ import { api, type BackendTopic } from '../services/api';
 import { toast } from '../stores/toastStore';
 import { BackendTopicViewModal } from '../components/ui/BackendTopicViewModal';
 import { useAI } from '../contexts/AIContext';
+import { SystemDesignCanvas } from '../components/learning/SystemDesignCanvas';
+import { cn } from '../lib/utils';
 
 const CATEGORIES = [
     { value: '', label: 'All Categories' },
@@ -81,6 +83,7 @@ export function BackendTopics() {
     const [isDeleting, setIsDeleting] = useState(false);
 
     const [viewModalTopicId, setViewModalTopicId] = useState<string | null>(null);
+    const [viewMode, setViewMode] = useState<'list' | 'canvas'>('list');
     const { toggleOpen } = useAI();
 
     const fetchTopics = useCallback(async () => {
@@ -234,6 +237,30 @@ export function BackendTopics() {
                 </div>
             </div>
 
+            {/* View Mode Toggle */}
+            <div className="flex justify-end p-1.5 bg-console-darker border border-border-subtle rounded-2xl w-fit ml-auto">
+                <button
+                    onClick={() => setViewMode('list')}
+                    className={cn(
+                        "px-4 py-2 rounded-xl text-xs font-bold transition-all duration-300 flex items-center gap-2",
+                        viewMode === 'list' ? "bg-accent-primary text-white shadow-premium" : "text-text-secondary hover:text-text-primary"
+                    )}
+                >
+                    <SlidersHorizontal size={14} />
+                    LIST VIEW
+                </button>
+                <button
+                    onClick={() => setViewMode('canvas')}
+                    className={cn(
+                        "px-4 py-2 rounded-xl text-xs font-bold transition-all duration-300 flex items-center gap-2",
+                        viewMode === 'canvas' ? "bg-accent-primary text-white shadow-premium" : "text-text-secondary hover:text-text-primary"
+                    )}
+                >
+                    <LayoutGrid size={14} />
+                    SYSTEM CANVAS
+                </button>
+            </div>
+
             {/* Dashboard Stats */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 {[
@@ -330,7 +357,7 @@ export function BackendTopics() {
                 </Button>
             </div>
 
-            {/* Topics List */}
+            {/* Topics List / Canvas */}
             {isLoading ? (
                 <div className="space-y-4">
                     {[1, 2, 3].map((i) => (
@@ -352,6 +379,17 @@ export function BackendTopics() {
                         </div>
                     ))}
                 </div>
+            ) : viewMode === 'canvas' ? (
+                <motion.div
+                    initial={{ opacity: 0, scale: 0.98 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    className="w-full"
+                >
+                    <SystemDesignCanvas 
+                        topics={filteredTopics} 
+                        onNodeClick={(id) => setViewModalTopicId(id)}
+                    />
+                </motion.div>
             ) : filteredTopics.length === 0 ? (
                 showReviewDueOnly ? (
                     <EmptyState

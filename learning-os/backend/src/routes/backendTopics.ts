@@ -4,6 +4,7 @@ import { BackendTopic } from '../models/BackendTopic.js';
 import { authenticate } from '../middleware/auth.js';
 import { writeLimiter } from '../middleware/rateLimiter.js';
 import { knowledgeSync } from '../services/knowledgeSync.service.js';
+import { aiMentorService } from '../services/aiMentor.service.js';
 
 const router = Router();
 router.use(authenticate);
@@ -139,6 +140,17 @@ router.delete('/:id', writeLimiter, async (req: Request, res: Response) => {
     } catch (error) {
         console.error('Delete topic error:', error);
         res.status(500).json({ success: false, error: 'Failed to delete topic' });
+    }
+});
+
+router.post('/:id/audit', async (req: Request, res: Response) => {
+    try {
+        const id = req.params.id as string;
+        const audit = await aiMentorService.auditTopic(id);
+        res.json({ success: true, data: audit });
+    } catch (error: any) {
+        console.error('Audit error:', error);
+        res.status(500).json({ success: false, error: error.message || 'Failed to perform audit' });
     }
 });
 

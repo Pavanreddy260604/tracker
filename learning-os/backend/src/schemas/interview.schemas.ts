@@ -23,6 +23,19 @@ export const proctoringUpdateSchema = z
         violationType: z.string().max(100).optional(),
         violationMessage: z.string().max(500).optional(),
         timestamp: z.string().datetime().optional(),
+        // Attestation fields for secure proctoring
+        clientProof: z.string().optional(),
+        sequenceNumber: z.number().int().min(0).optional(),
+        mouseTrail: z.array(z.object({
+            x: z.number(),
+            y: z.number(),
+            t: z.number()
+        })).optional(),
+        keystrokeDynamics: z.array(z.object({
+            key: z.string(),
+            pressTime: z.number(),
+            releaseTime: z.number()
+        })).optional(),
     })
     .refine((value) => Object.keys(value).length > 0, {
         message: 'At least one proctoring field is required',

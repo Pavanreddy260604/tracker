@@ -86,6 +86,7 @@ export type GenerationOptions = {
     sceneLength: ScriptRequest['sceneLength'];
     language: string;
     transliteration: boolean;
+    speedMode?: boolean;
 };
 
 export const DEFAULT_SCENE_FORM: SceneForm = {
@@ -123,7 +124,8 @@ export const DEFAULT_GENERATION: GenerationOptions = {
     format: 'film',
     sceneLength: 'medium',
     language: 'English',
-    transliteration: false
+    transliteration: false,
+    speedMode: false
 };
 
 export const DEFAULT_NEW_PROJECT: ProjectForm = {

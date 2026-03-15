@@ -5,6 +5,7 @@ import { ChatSession } from '../models/ChatSession.js';
 import { AIServiceError } from '../services/aiClient.service.js';
 import { AIChatService } from '../services/aiChat.service.js';
 import { chatRagService } from '../services/chatRag.service.js';
+import { knowledgeRagService } from '../services/knowledgeRag.service.js';
 import { ChatAttachment } from '../models/ChatAttachment.js';
 import multer from 'multer';
 
@@ -158,6 +159,40 @@ function normalizeScriptWriterContext(context?: z.infer<typeof contextSchema>): 
     return sections.join('\n\n').trim();
 }
 
+function hasResourceContext(context?: z.infer<typeof contextSchema>): boolean {
+    if (!context) return false;
+    if (typeof context === 'string') return context.trim().length > 0;
+
+    return Boolean(
+        context.project?.title ||
+        context.project?.logline ||
+        context.project?.genre ||
+        context.project?.tone ||
+        context.project?.language ||
+        context.scene?.id ||
+        context.scene?.name ||
+        context.script?.excerpt ||
+        context.selection?.text
+    );
+}
+
+function isSpecificQuery(message: string): boolean {
+    const text = message.trim().toLowerCase();
+    if (!text) return false;
+
+    const genericGreeting = /^(hi|hello|hey|thanks|thank you|ok|okay|cool|test|ping|yo|sup)\b/;
+    if (genericGreeting.test(text)) return false;
+
+    const resourceHints = /\b(file|files|document|doc|pdf|attachment|attachments|upload|uploaded|notes|notebook|kb|knowledge base|source|sources|cite|citation|context|from my|in my|from the doc|from the file|in the file|in the doc|in the pdf)\b/;
+    const taskHints = /\b(summarize|summary|explain|extract|find|search|compare|analyze|list|quote|show|give me|based on|according to|what does it say)\b/;
+
+    if (resourceHints.test(text) || taskHints.test(text)) return true;
+    if (text.length >= 80) return true;
+    if (text.includes('?') && text.length >= 20) return true;
+
+    return false;
+}
+
 const getSystemPrompt = (
     assistantType: 'learning-os' | 'script-writer',
     normalizedContext = ''
@@ -185,7 +220,16 @@ Default behavior:
 
     return `You are the "Learning OS Copilot", a specialized AI assistant in this workspace.
 Identify as the Learning OS Copilot. Be a senior software engineer and mentor.
-You have access to tools to see the user's roadmap, logs, and DSA progress-use them if the user asks about their state.`;
+You have access to tools to see the user's roadmap, logs, and DSA progress-use them if the user asks about their state.
+
+GROUNDEDNESS RULES:
+1. If "RELEVANT DOCUMENT CONTEXT" is provided, you MUST prioritize this information over your general knowledge.
+2. If the context contains the answer, cite the filename using (Source: <filename>).
+3. If the context is insufficient but relevant, combine it with your knowledge but clearly distinguish what comes from the document.
+4. If "RELEVANT KNOWLEDGE BASE CONTEXT" is provided, cite it as (Knowledge Base: <title>).
+5. If the user asks about something in their files and the context is missing, explicitly state "I don't see that information in the uploaded files."
+6. When you use any provided context, add a short "Sources Summary:" list with 1-line summaries for each cited source.
+7. DO NOT hallucinate or make up facts about the user's personal documents.`;
 };
 
 // GET /api/chat/history
@@ -267,19 +311,6 @@ router.post('/:id/message', authenticate, async (req: any, res) => {
         const { message, assistantType: requestedAssistantType, context, images, attachmentIds } = parsed.data;
         const sessionId = req.params.id;
 
-        // 0. RETRIEVAL: Get RAG Context if relevant
-        let ragContext = '';
-        try {
-            ragContext = await chatRagService.retrieveContext(
-                req.userId.toString(), 
-                sessionId, 
-                message,
-                attachmentIds
-            );
-        } catch (ragError) {
-            console.warn('[Chat RAG] Retrieval failed:', ragError);
-        }
-
         // 1. ATOMIC: Save User Message
         // Use findOneAndUpdate to ensure atomic append and return updated doc if needed
         const session = await ChatSession.findOneAndUpdate(
@@ -314,32 +345,65 @@ router.post('/:id/message', authenticate, async (req: any, res) => {
             content: m.content
         }));
 
-        // 3. Stream Response
+        // 3. Resolve assistant type + RAG context
+        const sessionModel = typeof session.metadata?.model === 'string' && session.metadata.model.trim().length > 0
+            ? session.metadata.model
+            : undefined;
+        const assistantType = requestedAssistantType
+            ? requestedAssistantType
+            : (session.metadata?.assistantType === 'script-writer' ? 'script-writer' : 'learning-os');
+
+        if (requestedAssistantType && session.metadata?.assistantType !== requestedAssistantType) {
+            await ChatSession.updateOne(
+                { _id: sessionId },
+                { $set: { 'metadata.assistantType': requestedAssistantType } }
+            );
+        }
+
+        const hasAttachmentIds = Array.isArray(attachmentIds) && attachmentIds.length > 0;
+        const sessionHasAttachments = session.messages.some(
+            (entry) => Array.isArray(entry.attachmentIds) && entry.attachmentIds.length > 0
+        );
+        const hasInlineContext = hasResourceContext(context);
+        const isSpecific = isSpecificQuery(message);
+        const shouldRetrieveChatRag = (hasAttachmentIds || sessionHasAttachments) && isSpecific;
+        const shouldRetrieveKnowledgeRag =
+            assistantType === 'learning-os' &&
+            (hasInlineContext || ((hasAttachmentIds || sessionHasAttachments) && isSpecific));
+
+        const [ragContext, knowledgeContext] = await Promise.all([
+            shouldRetrieveChatRag
+                ? chatRagService.retrieveContext(
+                    req.userId.toString(),
+                    sessionId,
+                    message,
+                    attachmentIds
+                ).catch((ragError) => {
+                    console.warn('[Chat RAG] Retrieval failed:', ragError);
+                    return '';
+                })
+                : Promise.resolve(''),
+            shouldRetrieveKnowledgeRag
+                ? knowledgeRagService.retrieveContext(req.userId.toString(), message).catch((ragError) => {
+                    console.warn('[Knowledge RAG] Retrieval failed:', ragError);
+                    return '';
+                })
+                : Promise.resolve('')
+        ]);
+
+        const normalizedContext = assistantType === 'script-writer'
+            ? normalizeScriptWriterContext(context)
+            : '';
+        const systemPrompt = getSystemPrompt(assistantType, normalizedContext);
+        const fullPrompt = [systemPrompt, ragContext, knowledgeContext].filter(Boolean).join('\n\n');
+
+        // 4. Stream Response
         res.setHeader('Content-Type', 'text/plain');
         res.setHeader('Transfer-Encoding', 'chunked');
 
         try {
             // User requested Ollama (local) usage.
             // We now initialize AIChatService with userId to enable "System Awareness" tools.
-            const sessionModel = typeof session.metadata?.model === 'string' && session.metadata.model.trim().length > 0
-                ? session.metadata.model
-                : undefined;
-            const assistantType = requestedAssistantType
-                ? requestedAssistantType
-                : (session.metadata?.assistantType === 'script-writer' ? 'script-writer' : 'learning-os');
-
-            if (requestedAssistantType && session.metadata?.assistantType !== requestedAssistantType) {
-                await ChatSession.updateOne(
-                    { _id: sessionId },
-                    { $set: { 'metadata.assistantType': requestedAssistantType } }
-                );
-            }
-
-            const normalizedContext = assistantType === 'script-writer'
-                ? normalizeScriptWriterContext(context)
-                : '';
-            const systemPrompt = getSystemPrompt(assistantType, normalizedContext);
-            const fullPrompt = ragContext ? `${systemPrompt}\n\n${ragContext}` : systemPrompt;
             const chatService = new AIChatService(sessionModel, req.userId);
 
             let assistantText = '';
@@ -433,7 +497,11 @@ router.patch('/:id', authenticate, async (req: any, res) => {
 // DELETE /api/chat/:id
 router.delete('/:id', authenticate, async (req: any, res) => {
     try {
-        await ChatSession.deleteOne({ _id: req.params.id, userId: req.userId });
+        const sessionId = req.params.id;
+        // Clean up RAG data first
+        await chatRagService.deleteSessionData(sessionId);
+        
+        await ChatSession.deleteOne({ _id: sessionId, userId: req.userId });
         res.json({ success: true });
     } catch (error) {
         res.status(500).json({ success: false, error: 'Failed to delete session' });

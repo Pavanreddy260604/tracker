@@ -6,9 +6,51 @@ import { useAI } from '../contexts/AIContext';
 import { useSpeech } from '../hooks/useSpeech';
 import { cn } from '../lib/utils';
 import { AIChatMarkdown, getProviderIcon } from './chat/AIChatRenderer';
-import { VoiceOverlay } from './chat/VoiceOverlay';
 
 // Local renderer removed in favor of AIChatMarkdown
+
+const TEXT_EXTENSIONS = new Set([
+    '.txt', '.md', '.markdown', '.json', '.js', '.jsx', '.ts', '.tsx', '.py', '.css', '.scss', '.sass',
+    '.html', '.htm', '.xml', '.csv', '.yml', '.yaml', '.toml', '.ini', '.conf', '.log', '.env',
+    '.sql', '.sh', '.bash', '.zsh', '.ps1', '.bat', '.cmd',
+    '.java', '.kt', '.swift', '.c', '.cpp', '.h', '.hpp', '.go', '.rs', '.rb', '.php', '.lua', '.r'
+]);
+
+const TEXT_MIME_TYPES = new Set([
+    'application/json',
+    'application/javascript',
+    'application/x-javascript',
+    'application/typescript',
+    'application/x-typescript',
+    'application/xml',
+    'text/xml',
+    'text/markdown',
+    'text/x-markdown',
+    'text/csv',
+    'application/csv',
+    'application/x-yaml',
+    'text/yaml',
+    'text/x-yaml',
+    'application/x-sh',
+    'text/x-shellscript',
+]);
+
+const isTextLikeFile = (file: File) => {
+    const type = (file.type || '').toLowerCase();
+    const name = file.name.toLowerCase();
+    const dotIndex = name.lastIndexOf('.');
+    const ext = dotIndex !== -1 ? name.slice(dotIndex) : '';
+    return type.startsWith('text/') || TEXT_MIME_TYPES.has(type) || (ext && TEXT_EXTENSIONS.has(ext));
+};
+
+const isDocFile = (file: File) => {
+    const type = (file.type || '').toLowerCase();
+    return (
+        type === 'application/pdf' ||
+        type === 'application/msword' ||
+        type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+    );
+};
 
 const AIChatInput = memo(({
     isLoading,
@@ -30,16 +72,14 @@ const AIChatInput = memo(({
         isListening, 
         transcript, 
         startListening, 
-        stopListening, 
-        volume, 
-        isSpeaking,
-        error 
+        stopListening,
+        volume 
     } = speech;
-    const [showVoiceOverlay, setShowVoiceOverlay] = useState(false);
 
-    const { selectedModel, setSelectedModel, AI_MODELS } = useAI() as any;
+    const { selectedModel, setSelectedModel, AI_MODELS, uploadAttachment } = useAI() as any;
     const currentModel = AI_MODELS.find((m: any) => m.id === selectedModel);
-    const supportsFiles = currentModel?.supportsFiles ?? false;
+    const supportsImages = currentModel?.supportsFiles ?? false;
+    const isIndexing = attachments.some((att: any) => att.status === 'indexing');
 
     // Close menu on outside click
     useEffect(() => {
@@ -52,17 +92,21 @@ const AIChatInput = memo(({
         return () => document.removeEventListener('mousedown', handleClickOutside);
     }, []);
 
-    // Sync transcript
+    // Sync transcript to local input (non-destructively)
+    const [baseInputBeforeVoice, setBaseInputBeforeVoice] = useState('');
+
+    // Sync transcript to local input (non-destructively)
     useEffect(() => {
-        if (transcript) setLocalInput(transcript);
-    }, [transcript]);
+        if (isListening && transcript) {
+            setLocalInput(baseInputBeforeVoice + transcript);
+        }
+    }, [transcript, isListening, baseInputBeforeVoice]);
 
     const toggleRecording = () => {
         if (isListening) {
             stopListening();
-            setShowVoiceOverlay(false);
         } else {
-            setShowVoiceOverlay(true);
+            setBaseInputBeforeVoice(localInput.trim() ? localInput.trim() + ' ' : '');
             startListening();
         }
     };
@@ -78,7 +122,7 @@ const AIChatInput = memo(({
 
     const onSendClick = (e?: React.FormEvent) => {
         if (e) e.preventDefault();
-        if ((!localInput.trim() && attachments.length === 0) || isLoading) return;
+        if ((!localInput.trim() && attachments.length === 0) || isLoading || isIndexing) return;
         handleSend(localInput.trim(), attachments);
         setLocalInput('');
         setAttachments([]);
@@ -91,26 +135,59 @@ const AIChatInput = memo(({
         Array.from(files).forEach(file => {
             const isImage = file.type.startsWith('image/');
             const isVideo = file.type.startsWith('video/');
-            const isDoc = file.type === 'application/pdf' || 
-                         file.type === 'application/msword' || 
-                         file.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
-            const isBinary = isImage || isVideo || isDoc;
+            const isDoc = isDocFile(file);
+            const isText = isTextLikeFile(file);
+            const shouldIndex = !isImage && (isDoc || isText);
+            const localId = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 
-            const reader = new FileReader();
-            reader.onload = (ev) => {
-                setAttachments(prev => [...prev, {
-                    name: file.name,
-                    type: file.type,
-                    content: ev.target?.result as string,
-                    isImage,
-                    isBinary
-                }]);
-            };
-            
-            if (isBinary) {
-                reader.readAsDataURL(file);
-            } else {
-                reader.readAsText(file);
+            if (isImage && !supportsImages) {
+                console.warn(`[AI Chat] Skipping image attachment (model does not support images): ${file.name}`);
+                return;
+            }
+            if (isVideo) {
+                console.warn(`[AI Chat] Video attachments are not supported yet: ${file.name}`);
+                return;
+            }
+            if (!isImage && !isDoc && !isText) {
+                console.warn(`[AI Chat] Unsupported attachment type: ${file.name}`);
+                return;
+            }
+
+            setAttachments(prev => [...prev, {
+                localId,
+                name: file.name,
+                type: file.type,
+                file,
+                isImage,
+                isBinary: isDoc,
+                isText,
+                shouldIndex,
+                status: shouldIndex ? 'indexing' : 'completed'
+            }]);
+
+            if (isImage || isText) {
+                const reader = new FileReader();
+                reader.onload = (ev) => {
+                    setAttachments(prev => prev.map(att => att.localId === localId
+                        ? { ...att, content: ev.target?.result as string }
+                        : att
+                    ));
+                };
+
+                if (isImage) {
+                    reader.readAsDataURL(file);
+                } else {
+                    reader.readAsText(file);
+                }
+            }
+
+            if (shouldIndex) {
+                uploadAttachment(file).then((attachmentId: string | null) => {
+                    setAttachments(prev => prev.map(att => att.localId === localId
+                        ? { ...att, attachmentId: attachmentId ?? undefined, status: attachmentId ? 'completed' : 'failed' }
+                        : att
+                    ));
+                });
             }
         });
         if (fileInputRef.current) fileInputRef.current.value = '';
@@ -221,29 +298,32 @@ const AIChatInput = memo(({
                                 ))}
                             </div>
                         )}
+                        {isIndexing && (
+                            <div className="text-[9px] text-text-secondary px-1 mb-1">
+                                Indexing attachments...
+                            </div>
+                        )}
 
                         <div className="flex items-center gap-2">
                             <AnimatePresence>
-                                {supportsFiles && (
-                                    <motion.button 
-                                        initial={{ opacity: 0, width: 0 }}
-                                        animate={{ opacity: 1, width: 'auto' }}
-                                        exit={{ opacity: 0, width: 0 }}
-                                        type="button" 
-                                        onClick={() => fileInputRef.current?.click()}
-                                        className="chat-input-icon hover:bg-black/10 dark:hover:bg-white/10 shrink-0" 
-                                        aria-label="Add attachment"
-                                    >
-                                        <Plus size={18} className="opacity-80" />
-                                    </motion.button>
-                                )}
+                                <motion.button 
+                                    initial={{ opacity: 0, width: 0 }}
+                                    animate={{ opacity: 1, width: 'auto' }}
+                                    exit={{ opacity: 0, width: 0 }}
+                                    type="button" 
+                                    onClick={() => fileInputRef.current?.click()}
+                                    className="chat-input-icon hover:bg-black/10 dark:hover:bg-white/10 shrink-0" 
+                                    aria-label="Add attachment"
+                                >
+                                    <Plus size={18} className="opacity-80" />
+                                </motion.button>
                             </AnimatePresence>
                             <input 
                                 type="file" 
                                 ref={fileInputRef} 
                                 className="hidden" 
                                 multiple 
-                                accept="image/*,video/*,.pdf,.doc,.docx,.txt,.md,.js,.ts,.tsx,.py,.css,.html,.json"
+                                accept={`${supportsImages ? 'image/*,' : ''}.pdf,.doc,.docx,.txt,.md,.markdown,.js,.jsx,.ts,.tsx,.py,.css,.scss,.html,.htm,.json,.yml,.yaml,.toml,.csv,.xml,.sql,.sh,.bash,.zsh,.ps1,.bat,.cmd,.java,.kt,.c,.cpp,.h,.hpp,.go,.rs,.rb,.php,.lua`}
                                 onChange={handleFileSelect}
                             />
 
@@ -254,11 +334,11 @@ const AIChatInput = memo(({
                                 onKeyDown={(e) => {
                                     if (e.key === 'Enter' && !e.shiftKey) {
                                         e.preventDefault();
-                                        onSendClick();
+                                        if (!isIndexing) onSendClick();
                                     }
                                 }}
                                 placeholder={isListening ? "Listening..." : "Ask anything..."}
-                                disabled={isLoading}
+                                disabled={isLoading || isIndexing}
                                 rows={1}
                                 className={cn(
                                     "chat-input flex-1 outline-none py-2 bg-transparent text-[13px] resize-none scrollbar-hide max-h-32",
@@ -274,34 +354,51 @@ const AIChatInput = memo(({
                             type="button" 
                             onClick={toggleRecording}
                             className={cn(
-                                "chat-input-icon hover:bg-black/10 dark:hover:bg-white/10 flex",
-                                isListening && "text-accent-primary"
+                                "chat-input-icon hover:bg-black/10 dark:hover:bg-white/10 flex relative overflow-hidden transition-all duration-300",
+                                isListening && "text-accent-primary bg-accent-primary/10 shadow-[0_0_10px_rgba(var(--accent-primary-rgb),0.2)]"
                             )} 
                             aria-label="Voice"
                         >
-                            <Mic size={18} className={cn("opacity-80", isListening && "animate-pulse")} />
+                            <Mic size={18} className={cn("opacity-80 z-10", isListening && "animate-pulse")} />
+                            {isListening && (
+                                <>
+                                    <motion.div
+                                        className="absolute inset-0 bg-accent-primary/30 rounded-full"
+                                        animate={{
+                                            scale: [1, 1 + (volume / 50)],
+                                            opacity: [0.3, 0]
+                                        }}
+                                        transition={{
+                                            duration: 0.5,
+                                            repeat: Infinity,
+                                            ease: "easeOut"
+                                        }}
+                                    />
+                                    <motion.div
+                                        className="absolute inset-0 bg-accent-primary/20 rounded-full"
+                                        animate={{
+                                            scale: [1, 1.2 + (volume / 40)],
+                                            opacity: [0.2, 0]
+                                        }}
+                                        transition={{
+                                            duration: 0.8,
+                                            repeat: Infinity,
+                                            delay: 0.2,
+                                            ease: "easeOut"
+                                        }}
+                                    />
+                                </>
+                            )}
                         </button>
                         <button
                             type="submit"
-                            disabled={isLoading || (!localInput.trim() && attachments.length === 0)}
+                            disabled={isLoading || isIndexing || (!localInput.trim() && attachments.length === 0)}
                             className="chat-send-button hover:bg-black/10 dark:hover:bg-white/10 disabled:opacity-50"
                         >
                             <Send size={18} />
                         </button>
                     </div>
                 </form>
-                <VoiceOverlay 
-                    isOpen={showVoiceOverlay}
-                    onClose={() => {
-                        setShowVoiceOverlay(false);
-                        stopListening();
-                    }}
-                    transcript={localInput}
-                    volume={volume}
-                    isSpeaking={isSpeaking}
-                    isListening={isListening}
-                    error={error}
-                />
             </div>
         </div>
     );

@@ -14,7 +14,7 @@ export interface IAIService {
     /**
      * Streaming chat completion.
      */
-    chatStream(messages: { role: string; content: string }[], systemPrompt?: string): AsyncGenerator<string, void, unknown>;
+    chatStream(messages: { role: string; content: string }[], systemPrompt?: string, options?: ChatOptions): AsyncGenerator<string, void, unknown>;
 
     /**
      * Generate vector embedding for text.

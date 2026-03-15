@@ -99,16 +99,21 @@ class ApiService {
     createBackendTopic = backendApi.createBackendTopic;
     updateBackendTopic = backendApi.updateBackendTopic;
     deleteBackendTopic = backendApi.deleteBackendTopic;
+    auditTopic = backendApi.auditTopic;
 
     // Project Studies
     getProjectStudies = projectsApi.getProjectStudies;
     createProjectStudy = projectsApi.createProjectStudy;
     updateProjectStudy = projectsApi.updateProjectStudy;
     deleteProjectStudy = projectsApi.deleteProjectStudy;
+    analyzeProject = projectsApi.analyzeProject;
+    validateProjectFlow = projectsApi.validateProjectFlow;
+    pulseProjectAudit = projectsApi.pulseProjectAudit;
 
     // Interview
     startInterview = interviewApi.startInterview;
     chatWithAI = interviewApi.chatWithAI;
+    updateDraft = interviewApi.updateDraft;
     submitInterviewCode = interviewApi.submitInterviewCode;
     runInterviewCode = interviewApi.runInterviewCode;
     endInterview = interviewApi.endInterview;

@@ -47,7 +47,7 @@ export class GroqService implements IAIService {
         }
     }
 
-    async *chatStream(messages: { role: string; content: string }[], systemPrompt?: string): AsyncGenerator<string, void, unknown> {
+    async *chatStream(messages: { role: string; content: string }[], systemPrompt?: string, options?: import('./ai.interface').ChatOptions): AsyncGenerator<string, void, unknown> {
         try {
             const formattedMessages = messages.map(msg => ({
                 role: msg.role === 'assistant' ? 'assistant' : 'user',
@@ -60,9 +60,10 @@ export class GroqService implements IAIService {
 
             const stream = await this.client.chat.completions.create({
                 messages: formattedMessages as any,
-                model: this.model,
+                model: options?.model || this.model,
                 stream: true,
-                temperature: 0.7
+                temperature: options?.temperature ?? 0.7,
+                max_tokens: options?.max_tokens
             });
 
             for await (const chunk of stream) {

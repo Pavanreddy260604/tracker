@@ -7,6 +7,7 @@ import { AssistantPanel } from './AssistantPanel';
 import type { Bible, CritiqueResult, IScene as Scene } from '../../../services/project.api';
 import { scriptWriterApi } from '../../../services/scriptWriter.api';
 import type { EditorSelection, GenerationOptions, PendingFixState, SceneForm } from '../types';
+import { shouldOfferTransliteration } from '../utils';
 
 type ContextPanelTab = 'generator' | 'story' | 'settings';
 
@@ -80,11 +81,12 @@ export function ContextPanel({
         handleAssistantSendMessage,
         handleApplyProposal,
         handleDiscardProposal,
-
         handleDeleteAssistantMessage,
         handleUpdateAssistantMessage,
         handleClearChat,
-        assistantProgress
+        assistantProgress,
+        aiModel,
+        setAiModel
     } = useScriptWriterGenerator({
         activeProject,
         activeProjectId: activeProject?._id || null,
@@ -183,7 +185,6 @@ export function ContextPanel({
                             messages={assistantMessages}
                             isGenerating={isAssistantThinking}
                             progress={assistantProgress}
-                            activeSceneId={activeScene?._id || null}
                             activeSceneName={activeScene?.slugline || undefined}
                             selection={editorSelection || null}
                             onSendMessage={(request) => handleAssistantSendMessage(request, activeScene?._id || null, (updatedContent, finished, activeRequest, proposalMessageId) => {
@@ -427,23 +428,45 @@ export function ContextPanel({
                                             <option value="long">Long (6-10 pages)</option>
                                         </select>
                                     </div>
-                                    <div className="space-y-1">
-                                        <label className="text-[10px] font-bold text-zinc-500 uppercase px-1">Language</label>
-                                        <select
-                                            className="w-full bg-zinc-950 border border-zinc-800 rounded-lg px-2 py-1.5 text-xs text-blue-300 font-bold outline-none"
-                                            value={generationOptions?.language || 'English'}
-                                            onChange={(e) => onGenerationOptionChange?.('language', e.target.value)}
+                                    
+                                    <div className="flex items-center justify-between p-2 bg-blue-500/10 rounded-md border border-blue-500/20">
+                                        <div className="flex items-center gap-2">
+                                            <div className={`p-1 rounded ${generationOptions?.speedMode ? 'bg-blue-500 text-white' : 'bg-zinc-800 text-zinc-500'}`}>
+                                                <Sparkles size={10} className={generationOptions?.speedMode ? 'animate-pulse' : ''} />
+                                            </div>
+                                            <div>
+                                                <div className="text-[10px] font-bold text-blue-400 uppercase tracking-tight">Lightning Speed</div>
+                                                <div className="text-[8px] text-zinc-500">Bypass RAG & Optimize AI</div>
+                                            </div>
+                                        </div>
+                                        <button 
+                                            onClick={() => onGenerationOptionChange?.('speedMode', !generationOptions?.speedMode)}
+                                            className={`relative inline-flex h-4 w-8 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${generationOptions?.speedMode ? 'bg-blue-600' : 'bg-zinc-800'}`}
                                         >
-                                            <option value="English">English</option>
-                                            <option value="Telugu">Telugu (తెలుగు)</option>
-                                            <option value="Hindi">Hindi (हिन्दी)</option>
-                                            <option value="Tamil">Tamil (தமிழ்)</option>
-                                            <option value="Spanish">Spanish</option>
-                                            <option value="French">French</option>
-                                        </select>
+                                            <span className={`pointer-events-none inline-block h-3 w-3 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${generationOptions?.speedMode ? 'translate-x-4' : 'translate-x-0'}`} />
+                                        </button>
                                     </div>
 
-                                    {(generationOptions?.language && generationOptions.language !== 'English') && (
+                                    <div className="space-y-1">
+                                        <label className="text-[10px] font-bold text-zinc-500 uppercase px-1">Language</label>
+                                        <input
+                                            className="w-full bg-zinc-950 border border-zinc-800 rounded-lg px-2 py-1.5 text-xs text-blue-300 font-bold outline-none"
+                                            list="script-language-options-scene"
+                                            value={generationOptions?.language || 'English'}
+                                            onChange={(e) => onGenerationOptionChange?.('language', e.target.value)}
+                                            placeholder="English"
+                                        />
+                                        <datalist id="script-language-options-scene">
+                                            <option value="English" />
+                                            <option value="Telugu" />
+                                            <option value="Hindi" />
+                                            <option value="Tamil" />
+                                            <option value="Spanish" />
+                                            <option value="French" />
+                                        </datalist>
+                                    </div>
+
+                                    {shouldOfferTransliteration(generationOptions?.language || 'English') && (
                                         <div className="flex items-center justify-between p-2 bg-blue-900/10 border border-blue-900/20 rounded-lg animate-in fade-in slide-in-from-top-2 duration-300">
                                             <div className="space-y-0.5">
                                                 <div className="text-[9px] font-black text-blue-400 uppercase tracking-widest">Phonetic Soul</div>
@@ -625,6 +648,49 @@ export function ContextPanel({
                                         Groq (Cloud)
                                     </button>
                                 </div>
+                            </div>
+
+                            {/* AI Model Selection */}
+                            <div className="space-y-1.5 pt-2 border-b border-zinc-800/50 pb-4">
+                                <label className="text-[10px] font-bold text-zinc-500 uppercase px-1">Specific AI Model</label>
+                                {aiProvider === 'groq' ? (
+                                    <select
+                                        className="w-full bg-zinc-950 border border-zinc-800 rounded px-2 py-1.5 text-xs text-orange-200 focus:border-orange-500 outline-none"
+                                        value={aiModel}
+                                        onChange={(e) => setAiModel(e.target.value)}
+                                    >
+                                        <option value="">Default (Fastest)</option>
+                                        <option value="llama-3.3-70b-versatile">Llama 3.3 70B (Smart)</option>
+                                        <option value="llama-3.1-8b-instant">Llama 3.1 8B (Instant)</option>
+                                        <option value="deepseek-r1-distill-llama-70b">DeepSeek R1 70B (Reasoning)</option>
+                                        <option value="mixtral-8x7b-32768">Mixtral 8x7B</option>
+                                    </select>
+                                ) : (
+                                    <div className="flex gap-2">
+                                        <input
+                                            className="flex-1 bg-zinc-950 border border-zinc-800 rounded px-2 py-1.5 text-xs text-zinc-300 focus:border-blue-500 outline-none"
+                                            value={aiModel}
+                                            onChange={(e) => setAiModel(e.target.value)}
+                                            placeholder="e.g. llama3, mistral, deepseek-r1:7b"
+                                        />
+                                        <select
+                                            className="bg-zinc-900 border border-zinc-800 rounded px-1 text-[10px] text-zinc-500 outline-none"
+                                            onChange={(e) => setAiModel(e.target.value)}
+                                            value=""
+                                        >
+                                            <option value="" disabled>Presets</option>
+                                            <option value="llama3">Llama 3</option>
+                                            <option value="mistral">Mistral</option>
+                                            <option value="deepseek-r1:7b">DeepSeek R1 7B</option>
+                                            <option value="phi3">Phi 3</option>
+                                        </select>
+                                    </div>
+                                )}
+                                <p className="text-[9px] text-zinc-600 px-1 italic">
+                                    {aiProvider === 'groq' 
+                                        ? 'Cloud models provide high-speed creative output.' 
+                                        : 'Local models require Ollama to be running on your machine.'}
+                                </p>
                             </div>
 
                             <div className="space-y-1.5 pt-2">

@@ -27,19 +27,26 @@ export function useSpeech(): SpeechHook {
 
     // Initial STT setup
     useEffect(() => {
-        if (typeof window !== 'undefined' && ('WebkitSpeechRecognition' in window || 'speechRecognition' in window)) {
-            const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+        const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+        
+        if (typeof window !== 'undefined' && SpeechRecognition) {
             recognitionRef.current = new SpeechRecognition();
             recognitionRef.current.continuous = true;
             recognitionRef.current.interimResults = true;
             recognitionRef.current.lang = 'en-US';
+            recognitionRef.current.maxAlternatives = 1;
 
             recognitionRef.current.onresult = (event: any) => {
-                let fullTranscript = '';
+                let currentTranscript = '';
                 for (let i = 0; i < event.results.length; ++i) {
-                    fullTranscript += event.results[i][0].transcript;
+                    const result = event.results[i];
+                    if (result.isFinal) {
+                        currentTranscript += result[0].transcript;
+                    } else {
+                        currentTranscript += result[0].transcript;
+                    }
                 }
-                setTranscript(fullTranscript);
+                setTranscript(currentTranscript);
             };
 
             recognitionRef.current.onstart = () => {
@@ -48,8 +55,16 @@ export function useSpeech(): SpeechHook {
             };
 
             recognitionRef.current.onend = () => {
-                // Only set listening false if we didn't stop it manually
-                // or if it truly should end.
+                // If isListening is still true but the engine stopped, it was likely a timeout
+                // or silent period. Auto-restart if we intended to be listening.
+                if (recognitionRef.current && (window as any)._isListeningIntended) {
+                    try {
+                        recognitionRef.current.start();
+                        return;
+                    } catch (e) {
+                        console.warn('Auto-restart failed:', e);
+                    }
+                }
                 setIsListening(false);
                 stopVolumeMonitoring();
             };
@@ -58,11 +73,16 @@ export function useSpeech(): SpeechHook {
                 console.error('STT Error:', err.error);
                 if (err.error === 'not-allowed') {
                     setError('Camera/Mic permission denied.');
+                    (window as any)._isListeningIntended = false;
                 } else if (err.error === 'no-speech') {
-                    // Ignore no-speech, just stay listening if continuous
+                    // This often triggers 'onend', where our auto-restart catches it
+                    return;
+                } else if (err.error === 'aborted') {
+                    // Manual stop, ignore error
                     return;
                 } else {
                     setError(`Speech error: ${err.error}`);
+                    (window as any)._isListeningIntended = false;
                 }
                 setIsListening(false);
                 stopVolumeMonitoring();
@@ -78,6 +98,9 @@ export function useSpeech(): SpeechHook {
 
     const startVolumeMonitoring = async () => {
         try {
+            // Already monitoring?
+            if (streamRef.current) return;
+
             if (!audioContextRef.current) {
                 audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
             }
@@ -86,11 +109,13 @@ export function useSpeech(): SpeechHook {
                 await audioContextRef.current.resume();
             }
 
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            streamRef.current = stream;
+
             analyserRef.current = audioContextRef.current.createAnalyser();
             analyserRef.current.fftSize = 256;
 
-            streamRef.current = await navigator.mediaDevices.getUserMedia({ audio: true });
-            const source = audioContextRef.current.createMediaStreamSource(streamRef.current);
+            const source = audioContextRef.current.createMediaStreamSource(stream);
             source.connect(analyserRef.current);
 
             const dataArray = new Uint8Array(analyserRef.current.frequencyBinCount);
@@ -102,14 +127,13 @@ export function useSpeech(): SpeechHook {
                     sum += dataArray[i];
                 }
                 const average = sum / dataArray.length;
-                // Higher sensitivity for visualizer
                 setVolume(Math.min(100, Math.round((average / 100) * 100)));
                 animationFrameRef.current = requestAnimationFrame(updateVolume);
             };
             updateVolume();
         } catch (err) {
             console.warn('Volume monitoring failed:', err);
-            setError('Could not access microphone.');
+            // Don't set global error if recognition is still possible
         }
     };
 
@@ -124,16 +148,31 @@ export function useSpeech(): SpeechHook {
     const startListening = useCallback(() => {
         setTranscript('');
         setError(null);
-        try {
-            recognitionRef.current?.start();
-            startVolumeMonitoring();
-        } catch (e) {
-            console.error('Failed to start recognition', e);
-            // Already started?
+        if (!recognitionRef.current) {
+            setError('Speech recognition not supported in this browser.');
+            return;
         }
-    }, []);
+
+        try {
+            (window as any)._isListeningIntended = true;
+            recognitionRef.current.start();
+            setIsListening(true);
+            startVolumeMonitoring();
+        } catch (e: any) {
+            console.error('Failed to start recognition', e);
+            if (e.name === 'InvalidStateError') {
+                // Already started, just ensure state is sync
+                setIsListening(true);
+            } else {
+                setError(`Failed to start: ${e.message}`);
+                setIsListening(false);
+                (window as any)._isListeningIntended = false;
+            }
+        }
+    }, [startVolumeMonitoring]);
 
     const stopListening = useCallback(() => {
+        (window as any)._isListeningIntended = false;
         recognitionRef.current?.stop();
     }, []);
 

@@ -28,11 +28,17 @@ export const AI_MODELS = [
 ];
 
 export interface Attachment {
+    localId?: string;
     name: string;
-    content: string;
+    content?: string;
     type: string;
+    file?: File;
+    attachmentId?: string;
+    status?: 'pending' | 'indexing' | 'completed' | 'failed';
     isImage?: boolean;
     isBinary?: boolean;
+    isText?: boolean;
+    shouldIndex?: boolean;
 }
 
 export interface Message {
@@ -42,6 +48,8 @@ export interface Message {
     timestamp: Date;
     attachments?: Attachment[];
     status?: 'pending' | 'indexing' | 'completed' | 'failed';
+    loadingLabel?: 'thinking' | 'knowledge';
+    resourceSummary?: string[];
 }
 
 interface AIContextType {
@@ -60,6 +68,8 @@ interface AIContextType {
     AI_MODELS: typeof AI_MODELS;
     context: any;
     setContext: (data: any) => void;
+    ensureChatSession: () => Promise<string>;
+    uploadAttachment: (file: File) => Promise<string | null>;
 }
 
 const AIContext = createContext<AIContextType | undefined>(undefined);
@@ -84,6 +94,8 @@ export function AIProvider({ children }: { children: ReactNode }) {
     });
     const lastSyncedModelRef = useRef<string | null>(null);
     const [context, setContext] = useState<any>({});
+    const sessionInitPromiseRef = useRef<Promise<string> | null>(null);
+    const messagesRef = useRef<Message[]>([]);
 
     // Persist model selection
     useEffect(() => {
@@ -112,6 +124,31 @@ export function AIProvider({ children }: { children: ReactNode }) {
     // System Awareness State
     const [systemContext, setSystemContext] = useState('');
     const { token } = useAuthStore();
+
+    useEffect(() => {
+        messagesRef.current = messages;
+    }, [messages]);
+
+    const isSpecificChatQuery = useCallback((value: string) => {
+        const text = value.trim().toLowerCase();
+        if (!text) return false;
+
+        const genericGreeting = /^(hi|hello|hey|thanks|thank you|ok|okay|cool|test|ping|yo|sup)\b/;
+        if (genericGreeting.test(text)) return false;
+
+        const resourceHints = /\b(file|files|document|doc|pdf|attachment|attachments|upload|uploaded|notes|notebook|kb|knowledge base|source|sources|cite|citation|context|from my|in my|from the doc|from the file|in the file|in the doc|in the pdf)\b/;
+        const taskHints = /\b(summarize|summary|explain|extract|find|search|compare|analyze|list|quote|show|give me|based on|according to|what does it say)\b/;
+
+        if (resourceHints.test(text) || taskHints.test(text)) return true;
+        if (text.length >= 80) return true;
+        if (text.includes('?') && text.length >= 20) return true;
+
+        return false;
+    }, []);
+
+    const isResourceAttachment = useCallback((att: Attachment) => {
+        return Boolean(att.shouldIndex || att.isText || (!att.isImage && !att.isBinary));
+    }, []);
 
     const toggleOpen = useCallback(() => setIsOpen(prev => !prev), []);
 
@@ -151,8 +188,56 @@ export function AIProvider({ children }: { children: ReactNode }) {
         setSessionId(null);
     }, []);
 
+    const ensureChatSession = useCallback(async () => {
+        if (sessionId) return sessionId;
+        if (sessionInitPromiseRef.current) return sessionInitPromiseRef.current;
+
+        const createPromise = (async () => {
+            const newSession = await api.createChatSession(undefined, selectedModel);
+            setSessionId(newSession._id);
+            lastSyncedModelRef.current = selectedModel;
+            return newSession._id;
+        })();
+
+        sessionInitPromiseRef.current = createPromise;
+        try {
+            return await createPromise;
+        } finally {
+            sessionInitPromiseRef.current = null;
+        }
+    }, [sessionId, selectedModel]);
+
+    const uploadAttachment = useCallback(async (file: File): Promise<string | null> => {
+        try {
+            const activeId = await ensureChatSession();
+            const formData = new FormData();
+            formData.append('file', file, file.name);
+            const uploadRes = await api.post(`/chat/${activeId}/attachments`, formData);
+            if (uploadRes?.success && uploadRes?.data?.attachmentId) {
+                return uploadRes.data.attachmentId as string;
+            }
+            return null;
+        } catch (error) {
+            console.error('[AIContext] Attachment upload failed:', error);
+            return null;
+        }
+    }, [ensureChatSession]);
+
     const _sendMessage = useCallback(async (displayContent: string, attachments: Attachment[] = [], hiddenPayload: string, onChunk?: (chunk: string) => void) => {
         if (!displayContent.trim() && attachments.length === 0 || isLoading) return;
+
+        const priorResources = messagesRef.current
+            .flatMap((msg) => msg.attachments || [])
+            .filter(isResourceAttachment)
+            .map((att) => att.name);
+        const currentResources = attachments
+            .filter(isResourceAttachment)
+            .map((att) => att.name);
+        const resourceSummary = Array.from(new Set([...priorResources, ...currentResources]));
+        const isSpecific = isSpecificChatQuery(displayContent);
+        const loadingLabel: Message['loadingLabel'] = resourceSummary.length > 0 && isSpecific
+            ? 'knowledge'
+            : 'thinking';
 
         setIsLoading(true);
 
@@ -162,7 +247,7 @@ export function AIProvider({ children }: { children: ReactNode }) {
             content: displayContent.trim(),
             timestamp: new Date(),
             attachments: attachments.length > 0 ? attachments : undefined,
-            status: attachments.some(a => a.isBinary && !a.isImage) ? 'indexing' : undefined
+            status: attachments.some(a => a.shouldIndex && !a.isImage && !a.attachmentId) ? 'indexing' : undefined
         };
         setMessages(prev => [...prev, userMsg]);
 
@@ -172,7 +257,9 @@ export function AIProvider({ children }: { children: ReactNode }) {
             id: botMsgId,
             role: 'assistant',
             content: '',
-            timestamp: new Date()
+            timestamp: new Date(),
+            loadingLabel,
+            resourceSummary: resourceSummary.slice(0, 6)
         }]);
 
         try {
@@ -189,42 +276,78 @@ export function AIProvider({ children }: { children: ReactNode }) {
             let apiPayload = hiddenPayload ? `${hiddenPayload}\n${displayContent}` : displayContent;
             const images: string[] = [];
 
-            // Handle RAG Indexing for non-image binary files
-            const binaryAttachments = attachments.filter(a => a.isBinary && !a.isImage);
-            const collectedAttachmentIds: string[] = [];
+            // Handle RAG Indexing for non-image files (docs + text/code)
+            const collectedAttachmentIds: string[] = attachments
+                .filter(a => a.attachmentId)
+                .map(a => a.attachmentId as string);
+            const indexedAttachmentNames: string[] = attachments
+                .filter(a => a.attachmentId)
+                .map(a => a.name);
+            const indexableAttachments = attachments.filter(a => a.shouldIndex && !a.isImage && !a.attachmentId);
+            const failedTextAttachments: Attachment[] = [];
             
-            if (binaryAttachments.length > 0) {
+            if (indexableAttachments.length > 0) {
                 // We need to upload them to the backend for indexing
-                for (const att of binaryAttachments) {
+                for (const att of indexableAttachments) {
                     try {
-                        // Extract binary from dataURL
-                        const res = await fetch(att.content);
-                        const blob = await res.blob();
-                        const formData = new FormData();
-                        formData.append('file', blob, att.name);
-                        
-                        const uploadRes = await api.post(`/chat/${activeId}/attachments`, formData);
+                        const uploadRes = att.file
+                            ? await (async () => {
+                                const formData = new FormData();
+                                formData.append('file', att.file as File, att.name);
+                                return api.post(`/chat/${activeId}/attachments`, formData);
+                            })()
+                            : await (async () => {
+                                if (!att.content) throw new Error('Missing attachment content');
+                                let blob: Blob;
+                                if (att.content.startsWith('data:')) {
+                                    // Extract binary from dataURL
+                                    const res = await fetch(att.content);
+                                    blob = await res.blob();
+                                } else {
+                                    blob = new Blob([att.content], { type: att.type || 'text/plain' });
+                                }
+                                const formData = new FormData();
+                                formData.append('file', blob, att.name);
+                                return api.post(`/chat/${activeId}/attachments`, formData);
+                            })();
                         if (uploadRes.success && uploadRes.data?.attachmentId) {
                             collectedAttachmentIds.push(uploadRes.data.attachmentId);
+                            indexedAttachmentNames.push(att.name);
+                        } else if (att.isText) {
+                            failedTextAttachments.push(att);
                         }
                     } catch (uploadError) {
                         console.error(`[AIContext] Failed to upload ${att.name}:`, uploadError);
+                        if (att.isText) failedTextAttachments.push(att);
                     }
                 }
             }
 
-            // Separate text attachments from binary/image attachments
+            // Separate text attachments from image attachments
             if (attachments.length > 0) {
-                const textAttachments = attachments.filter(a => !a.isBinary && !a.isImage);
+                const textAttachments = attachments.filter(a => a.isText && !a.isImage);
                 const imageAttachments = attachments.filter(a => a.isImage);
                 
-                if (textAttachments.length > 0) {
-                    const fileContext = textAttachments.map(a => `[File Attachment: ${a.name}]\n${a.content}`).join('\n\n');
-                    apiPayload = `CONTEXT FROM ATTACHED FILES:\n${fileContext}\n\nUSER MESSAGE: ${apiPayload}`;
+                const fallbackTextAttachments = textAttachments
+                    .filter(a => !a.shouldIndex || (!a.attachmentId && !indexedAttachmentNames.includes(a.name)))
+                    .concat(failedTextAttachments);
+                const indexedNotice = indexedAttachmentNames.length > 0
+                    ? `ATTACHED FILES INDEXED FOR RETRIEVAL:\n- ${indexedAttachmentNames.join('\n- ')}\n\n`
+                    : '';
+
+                if (fallbackTextAttachments.length > 0) {
+                    const fileContext = fallbackTextAttachments.map(a => {
+                        const rawContent = typeof a.content === 'string' ? a.content : '';
+                        const safeContent = rawContent.length > 6000 ? `${rawContent.slice(0, 6000)}...` : rawContent;
+                        return `[File Attachment: ${a.name}]\n${safeContent}`;
+                    }).join('\n\n');
+                    apiPayload = `${indexedNotice}CONTEXT FROM ATTACHED FILES (upload skipped or failed):\n${fileContext}\n\nUSER MESSAGE: ${apiPayload}`;
+                } else if (indexedNotice) {
+                    apiPayload = `${indexedNotice}USER MESSAGE: ${apiPayload}`;
                 }
 
                 imageAttachments.forEach(a => {
-                    const base64 = a.content.split(',')[1];
+                    const base64 = typeof a.content === 'string' ? a.content.split(',')[1] : '';
                     if (base64) images.push(base64);
                 });
             }
@@ -270,7 +393,7 @@ export function AIProvider({ children }: { children: ReactNode }) {
         } finally {
             setIsLoading(false);
         }
-    }, [sessionId, isLoading, selectedModel]);
+    }, [sessionId, isLoading, selectedModel, isSpecificChatQuery, isResourceAttachment]);
 
     // Fetch activity history when widget opens
     useEffect(() => {
@@ -327,6 +450,8 @@ export function AIProvider({ children }: { children: ReactNode }) {
         AI_MODELS,
         context,
         setContext,
+        ensureChatSession,
+        uploadAttachment,
     };
 
     return (

@@ -127,6 +127,7 @@ function ScriptWriterInfiniteContent() {
         setPendingFix
     } = useScriptWriterSceneEditor({
         activeScene,
+        activeProject,
         activeProjectId,
         updateSceneInState,
         setError

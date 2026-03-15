@@ -118,7 +118,7 @@ export class OllamaService implements IAIService {
                     messages: messages,
                     stream: true,
                     options: {
-                        temperature: 0.9, // Higher temp for creative writing
+                        temperature: 0.9, num_ctx: 4096, num_thread: 8, f16_kv: true, // Faster
                         top_p: 0.95
                     }
                 };
@@ -238,7 +238,7 @@ export class OllamaService implements IAIService {
                     format: options?.format === 'json' ? 'json' : undefined,
                     options: {
                         temperature: options?.temperature ?? 0.7,
-                        num_predict: options?.max_tokens
+                        num_predict: options?.max_tokens, num_ctx: 4096, num_thread: 8, f16_kv: true
                     }
                 };
 

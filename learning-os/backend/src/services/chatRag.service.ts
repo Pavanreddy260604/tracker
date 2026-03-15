@@ -1,48 +1,161 @@
 import { ChatAttachment } from '../models/ChatAttachment';
 import { vectorService } from './vector.service';
 import { embeddingService } from './embedding.service';
-import pdf from 'pdf-parse';
-import mammoth from 'mammoth';
+import * as mammoth from 'mammoth';
 import mongoose from 'mongoose';
 import pLimit from 'p-limit';
 
 export class ChatRagService {
     private limit = pLimit(3); // Limit concurrent embeddings to avoid overloading Ollama
+    private static readonly TEXT_EXTENSIONS = new Set([
+        '.txt', '.md', '.markdown', '.json', '.js', '.jsx', '.ts', '.tsx', '.py', '.css', '.scss', '.sass',
+        '.html', '.htm', '.xml', '.csv', '.yml', '.yaml', '.toml', '.ini', '.conf', '.log', '.env',
+        '.sql', '.sh', '.bash', '.zsh', '.ps1', '.bat', '.cmd',
+        '.java', '.kt', '.swift', '.c', '.cpp', '.h', '.hpp', '.go', '.rs', '.rb', '.php', '.lua', '.r'
+    ]);
+
+    private static readonly TEXT_MIME_TYPES = new Set([
+        'application/json',
+        'application/javascript',
+        'application/x-javascript',
+        'application/typescript',
+        'application/x-typescript',
+        'application/xml',
+        'text/xml',
+        'text/markdown',
+        'text/x-markdown',
+        'text/csv',
+        'application/csv',
+        'application/x-yaml',
+        'text/yaml',
+        'text/x-yaml',
+        'application/x-sh',
+        'text/x-shellscript',
+        'text/x-python',
+        'application/x-python',
+        'application/x-httpd-php',
+        'text/x-java-source',
+        'text/x-c',
+        'text/x-c++',
+        'text/x-go',
+        'text/x-rust',
+        'text/x-sql',
+    ]);
 
     /**
      * Parse file content based on type
      */
-    private async extractText(buffer: Buffer, fileType: string): Promise<string> {
-        if (fileType === 'application/pdf') {
-            const data = await (pdf as any)(buffer);
-            return data.text;
+    private async extractText(buffer: Buffer, fileType: string, fileName?: string): Promise<string> {
+        const normalizedType = (fileType || '').toLowerCase();
+        if (normalizedType === 'application/pdf') {
+            const { PDFParse } = await import('pdf-parse');
+            const parser = new PDFParse({ data: buffer });
+            try {
+                const result = await parser.getText();
+                return result.text || '';
+            } finally {
+                await parser.destroy().catch(() => undefined);
+            }
         } else if (
-            fileType === 'application/msword' ||
-            fileType === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+            normalizedType === 'application/msword' ||
+            normalizedType === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
         ) {
             const result = await mammoth.extractRawText({ buffer });
             return result.value;
-        } else if (fileType.startsWith('text/') || fileType === 'application/json') {
+        } else if (normalizedType.startsWith('text/') || ChatRagService.TEXT_MIME_TYPES.has(normalizedType)) {
+            return buffer.toString('utf-8');
+        } else if (this.hasTextExtension(fileName)) {
+            return buffer.toString('utf-8');
+        } else if (this.isProbablyText(buffer)) {
             return buffer.toString('utf-8');
         }
         return '';
     }
 
-    /**
-     * Chunk text into smaller segments for better retrieval
-     */
-    private chunkText(text: string, size: number = 1000, overlap: number = 100): string[] {
-        const chunks: string[] = [];
-        let start = 0;
-        const normalizedText = text.replace(/\s+/g, ' ').trim();
-
-        while (start < normalizedText.length) {
-            const end = start + size;
-            chunks.push(normalizedText.slice(start, end));
-            start += (size - overlap);
-        }
-        return chunks;
+    private hasTextExtension(fileName?: string): boolean {
+        if (!fileName) return false;
+        const lower = fileName.toLowerCase();
+        const dotIndex = lower.lastIndexOf('.');
+        if (dotIndex === -1) return false;
+        const ext = lower.slice(dotIndex);
+        return ChatRagService.TEXT_EXTENSIONS.has(ext);
     }
+
+    private isProbablyText(buffer: Buffer): boolean {
+        const sample = buffer.slice(0, 2048);
+        if (sample.length === 0) return false;
+
+        let printable = 0;
+        for (let i = 0; i < sample.length; i++) {
+            const byte = sample[i];
+            if (byte === 0) return false; // null byte => likely binary
+            if (
+                byte === 9 ||
+                byte === 10 ||
+                byte === 13 ||
+                (byte >= 32 && byte <= 126) ||
+                byte >= 128
+            ) {
+                printable += 1;
+            }
+        }
+
+        return printable / sample.length > 0.8;
+    }
+
+    /**
+     * Chunk text into smaller segments for better retrieval using a recursive strategy
+     */
+    private chunkText(text: string, size: number = 1000, overlap: number = 200): string[] {
+        const chunks: string[] = [];
+        const normalizedText = text.trim();
+
+        // 1. Split by double newlines (paragraphs/code blocks)
+        const paragraphs = normalizedText.split(/\n\n+/);
+        
+        let currentChunk = "";
+
+        for (const para of paragraphs) {
+            // If adding this paragraph exceeds size, push current and start new
+            if (currentChunk.length + para.length > size) {
+                if (currentChunk) chunks.push(currentChunk.trim());
+                
+                // If paragraph itself is huge, split by single newline or sentence
+                if (para.length > size) {
+                    const lines = para.split(/\n/);
+                    for (const line of lines) {
+                        if (currentChunk.length + line.length > size) {
+                            if (currentChunk) chunks.push(currentChunk.trim());
+                            currentChunk = line + "\n";
+                        } else {
+                            currentChunk += line + "\n";
+                        }
+                    }
+                } else {
+                    currentChunk = para + "\n\n";
+                }
+            } else {
+                currentChunk += para + "\n\n";
+            }
+        }
+
+        if (currentChunk) chunks.push(currentChunk.trim());
+        
+        // Final pass: Ensure no chunks are truly massive (safety)
+        const finalChunks: string[] = [];
+        for (const chunk of chunks) {
+            if (chunk.length > size + overlap) {
+                for (let i = 0; i < chunk.length; i += size - overlap) {
+                    finalChunks.push(chunk.slice(i, i + size));
+                }
+            } else {
+                finalChunks.push(chunk);
+            }
+        }
+
+        return finalChunks;
+    }
+
 
     /**
      * Index a file for a specific chat session
@@ -66,12 +179,19 @@ export class ChatRagService {
         await attachment.save();
 
         try {
-            const text = await this.extractText(buffer, fileType);
-            if (!text.trim()) {
-                throw new Error("No readable text found in file.");
+            console.log(`[ChatRagService] Indexing file: ${fileName} (${fileType}, ${buffer.length} bytes)`);
+            const text = await this.extractText(buffer, fileType, fileName);
+            
+            if (!text || !text.trim()) {
+                console.warn(`[ChatRagService] No text extracted from ${fileName}. Content might be empty or unreadable.`);
+                throw new Error("No readable text found in file. Please ensure it is a valid, text-containing file.");
             }
 
+            console.log(`[ChatRagService] Extracted ${text.length} characters from ${fileName}.`);
+
             const chunks = this.chunkText(text);
+            console.log(`[ChatRagService] Split ${fileName} into ${chunks.length} chunks.`);
+            
             const vectorIds: string[] = [];
 
             // Index chunks in batches
@@ -98,6 +218,7 @@ export class ChatRagService {
             );
 
             await Promise.all(indexPromises);
+            console.log(`[ChatRagService] Successfully indexed ${chunks.length} chunks for ${fileName}.`);
 
             attachment.status = 'completed';
             attachment.vectorIds = vectorIds;
@@ -113,9 +234,9 @@ export class ChatRagService {
         }
     }
 
-    async retrieveContext(userId: string, sessionId: string, query: string, attachmentIds?: string[], limit: number = 4): Promise<string> {
+    async retrieveContext(userId: string, sessionId: string, query: string, attachmentIds?: string[], limit: number = 10): Promise<string> {
         try {
-            // Lifecycle: Update lastAccessed for these attachments so they aren't cleaned up
+            // Mark session activity
             await ChatAttachment.updateMany(
                 { sessionId, status: 'completed' },
                 { $set: { lastAccessed: new Date() } }
@@ -125,29 +246,33 @@ export class ChatRagService {
             
             // Build optimized ChromaDB filter
             let whereFilter: any = { sessionId };
-            
-            // If specific attachments are targeted, filter by them too
+
+            /**
+             * Multi-File Optimization:
+             * If we have many specific target attachments, check total session attachments.
+             * If the target set is large (e.g. > 10), it's more efficient to just filter by sessionId 
+             * and let the semantic search find the most relevant chunks across all files.
+             */
             if (attachmentIds && attachmentIds.length > 0) {
-                if (attachmentIds.length === 1) {
-                    whereFilter = {
-                        "$and": [
-                            { sessionId },
-                            { attachmentId: attachmentIds[0] }
-                        ]
+                if (attachmentIds.length <= 10) {
+                    whereFilter = { 
+                        sessionId, 
+                        attachmentId: attachmentIds.length === 1 ? attachmentIds[0] : { "$in": attachmentIds } 
                     };
                 } else {
-                    whereFilter = {
-                        "$and": [
-                            { sessionId },
-                            { attachmentId: { "$in": attachmentIds } }
-                        ]
-                    };
+                    console.log(`[ChatRagService] Large attachment set (${attachmentIds.length}). Using session-wide filter.`);
+                    whereFilter = { sessionId };
                 }
             }
             
             const results = await vectorService.findSimilar(userId, queryEmbedding, limit, whereFilter);
             
-            if (results.length === 0) return '';
+            if (results.length === 0) {
+                console.log(`[ChatRagService] No results found for query: "${query.slice(0, 50)}..."`);
+                return '';
+            }
+
+            console.log(`[ChatRagService] Found ${results.length} relevant chunks for context.`);
 
             // Group results by file for better context presentation
             const grouped = results.reduce((acc: any, r) => {
@@ -158,12 +283,12 @@ export class ChatRagService {
             }, {});
 
             let contextText = '### RELEVANT DOCUMENT CONTEXT\n';
-            contextText += 'The following information was retrieved from the user\'s uploaded files for this session.\n\n';
+            contextText += 'The following information was retrieved from the user\'s uploaded files for this session. ABSOLUTELY ground your answer in this text if it is relevant. If you cite something, use (Source: <filename>).\n\n';
 
             for (const [title, chunks] of Object.entries(grouped)) {
                 contextText += `#### Source: ${title}\n`;
                 (chunks as string[]).forEach((chunk, i) => {
-                    contextText += `[Excerpt ${i + 1}]:\n${chunk}\n\n`;
+                    contextText += `${chunk}\n\n`;
                 });
             }
 
@@ -173,6 +298,25 @@ export class ChatRagService {
             return '';
         }
     }
+
+    /**
+     * Delete all RAG data for a session
+     */
+    async deleteSessionData(sessionId: string): Promise<void> {
+        try {
+            const attachments = await ChatAttachment.find({ sessionId });
+            for (const att of attachments) {
+                for (const vid of att.vectorIds) {
+                    await vectorService.deleteDocument(vid);
+                }
+                await att.deleteOne();
+            }
+            console.log(`[ChatRagService] Cleaned up all attachments for session ${sessionId}`);
+        } catch (error) {
+            console.error(`[ChatRagService] Failed to delete session data for ${sessionId}:`, error);
+        }
+    }
+
 
     /**
      * Cleanup inactive session data

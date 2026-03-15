@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { ChevronDown } from 'lucide-react';
 import type { AssistantPreferences, Bible } from '../../../services/project.api';
-import type { AssistantMessage, AssistantMode, AssistantRequest, AssistantScope, EditorSelection } from '../types';
+import type { AssistantMessage, AssistantRequest, AssistantScope, EditorSelection } from '../types';
 import { suggestions } from './AssistantPanelConfig';
 import {
     AssistantComposer,
@@ -11,9 +11,7 @@ import {
 } from './AssistantPanelShared';
 import { AssistantThread } from './AssistantPanelThread';
 import {
-    detectPreferenceSaveCandidate,
-    classifyAssistantIntent,
-    getIntentHint
+    detectPreferenceSaveCandidate
 } from '../utils';
 
 interface AssistantPanelProps {
@@ -21,7 +19,6 @@ interface AssistantPanelProps {
     messages: AssistantMessage[];
     isGenerating: boolean;
     progress?: number;
-    activeSceneId?: string | null;
     activeSceneName?: string;
     selection?: EditorSelection | null;
     onSendMessage: (request: AssistantRequest) => void;
@@ -41,7 +38,6 @@ export function AssistantPanel({
     messages,
     isGenerating,
     progress = 0,
-    activeSceneId,
     activeSceneName,
     selection,
     onSendMessage,
@@ -53,8 +49,6 @@ export function AssistantPanel({
     onSavePreferenceCandidate
 }: AssistantPanelProps) {
     const [inputValue, setInputValue] = useState('');
-    const projectDefaultMode = activeProject?.assistantPreferences?.defaultMode ?? 'ask';
-    const [mode, setMode] = useState<AssistantMode>(projectDefaultMode);
     const [scopePreference, setScopePreference] = useState<AssistantScope>(selection?.text ? 'selection' : 'scene');
     const [editingId, setEditingId] = useState<string | null>(null);
     const [editValue, setEditValue] = useState('');
@@ -77,12 +71,7 @@ export function AssistantPanel({
         dismissedSelectionTrayKey !== selectionKey
     );
     const contextTrayOpen = isContextTrayOpen || autoOpenSelectionTray;
-    const quickActions = useMemo(() => suggestions(mode, effectiveScope, hasSelection), [mode, effectiveScope, hasSelection]);
-    const draftIntent = useMemo(
-        () => mode === 'ask' ? classifyAssistantIntent(inputValue, effectiveScope, hasSelection) : 'chat',
-        [effectiveScope, hasSelection, inputValue, mode]
-    );
-    const intentHint = useMemo(() => getIntentHint(draftIntent), [draftIntent]);
+    const quickActions = useMemo(() => suggestions(effectiveScope, hasSelection), [effectiveScope, hasSelection]);
     const preferenceCandidate = useMemo(
         () => activeProject ? detectPreferenceSaveCandidate(inputValue) : null,
         [activeProject, inputValue]
@@ -121,13 +110,8 @@ export function AssistantPanel({
         el.style.height = `${Math.min(el.scrollHeight, 120)}px`;
     }, [inputValue]);
 
-    useEffect(() => {
-        setMode(projectDefaultMode);
-    }, [activeSceneId, activeProject?._id, projectDefaultMode]);
-
     const resetPanelState = () => {
         setInputValue('');
-        setMode(projectDefaultMode);
         setScopePreference(hasSelection ? 'selection' : 'scene');
         setEditingId(null);
         setEditValue('');
@@ -136,9 +120,9 @@ export function AssistantPanel({
         setDismissedSelectionTrayKey(null);
     };
 
-    const buildRequest = (requestMode: AssistantMode): AssistantRequest => ({
+    const buildRequest = (): AssistantRequest => ({
         content: inputValue.trim(),
-        mode: requestMode,
+        mode: 'ask',
         scope: effectiveScope,
         selection: effectiveScope === 'selection' ? selection : null
     });
@@ -168,17 +152,10 @@ export function AssistantPanel({
     const send = () => {
         if (!inputValue.trim() || isGenerating) return;
 
-        onSendMessage(buildRequest(mode));
+        onSendMessage(buildRequest());
 
         setInputValue('');
         inputRef.current?.focus();
-    };
-
-    const rerunInMode = (nextMode: AssistantMode) => {
-        if (!inputValue.trim() || isGenerating) return;
-        onSendMessage(buildRequest(nextMode));
-        setInputValue('');
-        setMode(nextMode);
     };
 
     const copyMessage = async (content: string, id: string) => {
@@ -212,10 +189,7 @@ export function AssistantPanel({
 
     return (
         <div className="flex h-full flex-col overflow-hidden bg-zinc-950 text-zinc-100">
-            <AssistantHeader
-                mode={mode}
-                onModeChange={setMode}
-            />
+            <AssistantHeader />
 
             <ContextTray
                 activeSceneName={activeSceneName}
@@ -239,7 +213,6 @@ export function AssistantPanel({
                     messages={messages}
                     isGenerating={isGenerating}
                     progress={progress}
-                    mode={mode}
                     effectiveScope={effectiveScope}
                     quickActions={quickActions}
                     copiedId={copiedId}
@@ -277,20 +250,14 @@ export function AssistantPanel({
             </div>
 
             <AssistantGuidance
-                intentHint={mode === 'ask' ? intentHint : ''}
-                draftIntent={draftIntent}
-                isGenerating={isGenerating}
                 showPreferenceCandidate={showPreferenceCandidate}
                 preferenceCandidateLabel={preferenceCandidate?.directive}
                 isSavingPreference={isSavingPreference}
                 onSavePreferenceCandidate={savePreferenceCandidate}
-                onRerunInEdit={() => rerunInMode('edit')}
-                onRerunInAgent={() => rerunInMode('agent')}
             />
 
             <AssistantComposer
                 inputValue={inputValue}
-                mode={mode}
                 effectiveScope={effectiveScope}
                 isGenerating={isGenerating}
                 activeSceneName={activeSceneName}

@@ -4,6 +4,7 @@ import { ProjectStudy } from '../models/ProjectStudy.js';
 import { authenticate } from '../middleware/auth.js';
 import { writeLimiter } from '../middleware/rateLimiter.js';
 import { knowledgeSync } from '../services/knowledgeSync.service.js';
+import { projectAnalyzerService } from '../services/projectAnalyzer.service.js';
 
 const router = Router();
 router.use(authenticate);
@@ -167,6 +168,39 @@ router.delete('/:id', writeLimiter, async (req: Request, res: Response) => {
     } catch (error) {
         console.error('Delete study error:', error);
         res.status(500).json({ success: false, error: 'Failed to delete study' });
+    }
+});
+
+router.post('/:id/analyze', async (req: Request, res: Response) => {
+    try {
+        const id = req.params.id as string;
+        const analysis = await projectAnalyzerService.generateArchitectureMap(id);
+        res.json({ success: true, data: analysis });
+    } catch (error: any) {
+        console.error('Project analysis error:', error);
+        res.status(500).json({ success: false, error: error.message || 'Failed to analyze project' });
+    }
+});
+
+router.post('/:id/validate-flow', async (req: Request, res: Response) => {
+    try {
+        const id = req.params.id as string;
+        const validation = await projectAnalyzerService.validateFlow(id);
+        res.json({ success: true, data: validation });
+    } catch (error: any) {
+        console.error('Flow validation error:', error);
+        res.status(500).json({ success: false, error: error.message || 'Failed to validate flow' });
+    }
+});
+
+router.post('/:id/pulse-audit', async (req: Request, res: Response) => {
+    try {
+        const id = req.params.id as string;
+        const pulse = await projectAnalyzerService.performPulseAnalysis(id);
+        res.json({ success: true, data: pulse });
+    } catch (error: any) {
+        console.error('Pulse audit error:', error);
+        res.status(500).json({ success: false, error: error.message || 'Failed to perform pulse audit' });
     }
 });
 

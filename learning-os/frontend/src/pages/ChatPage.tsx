@@ -13,9 +13,51 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { cn } from '../lib/utils';
 import { useMobile } from '../hooks/useMobile';
 import { AIChatMarkdown, getProviderIcon } from '../components/chat/AIChatRenderer';
-import { VoiceOverlay } from '../components/chat/VoiceOverlay';
 
 // Local renderer removed in favor of AIChatMarkdown from shared components
+
+const TEXT_EXTENSIONS = new Set([
+    '.txt', '.md', '.markdown', '.json', '.js', '.jsx', '.ts', '.tsx', '.py', '.css', '.scss', '.sass',
+    '.html', '.htm', '.xml', '.csv', '.yml', '.yaml', '.toml', '.ini', '.conf', '.log', '.env',
+    '.sql', '.sh', '.bash', '.zsh', '.ps1', '.bat', '.cmd',
+    '.java', '.kt', '.swift', '.c', '.cpp', '.h', '.hpp', '.go', '.rs', '.rb', '.php', '.lua', '.r'
+]);
+
+const TEXT_MIME_TYPES = new Set([
+    'application/json',
+    'application/javascript',
+    'application/x-javascript',
+    'application/typescript',
+    'application/x-typescript',
+    'application/xml',
+    'text/xml',
+    'text/markdown',
+    'text/x-markdown',
+    'text/csv',
+    'application/csv',
+    'application/x-yaml',
+    'text/yaml',
+    'text/x-yaml',
+    'application/x-sh',
+    'text/x-shellscript',
+]);
+
+const isTextLikeFile = (file: File) => {
+    const type = (file.type || '').toLowerCase();
+    const name = file.name.toLowerCase();
+    const dotIndex = name.lastIndexOf('.');
+    const ext = dotIndex !== -1 ? name.slice(dotIndex) : '';
+    return type.startsWith('text/') || TEXT_MIME_TYPES.has(type) || (ext && TEXT_EXTENSIONS.has(ext));
+};
+
+const isDocFile = (file: File) => {
+    const type = (file.type || '').toLowerCase();
+    return (
+        type === 'application/pdf' ||
+        type === 'application/msword' ||
+        type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+    );
+};
 
 /* ── MODULAR SUB-COMPONENTS ── */
 
@@ -132,6 +174,9 @@ const MessageRow = memo(({
     onSpeak,
     isSpeakingThis
 }: any) => {
+    const loadingLabel = msg.loadingLabel === 'knowledge' ? 'Searching knowledge base...' : 'Thinking...';
+    const resourceSummary = Array.isArray(msg.resourceSummary) ? msg.resourceSummary : [];
+
     return (
         <motion.div
             initial={{ opacity: 0, y: 10 }}
@@ -224,9 +269,16 @@ const MessageRow = memo(({
                                 transition={{ repeat: Infinity, duration: 1.2, ease: "easeInOut", delay: 0.4 }}
                                 className="w-2.5 h-2.5 bg-accent-primary/60 rounded-full shadow-[0_0_8px_rgba(var(--accent-primary-rgb),0.3)]"
                             />
-                            <span className="ml-2 text-[10px] font-bold uppercase tracking-widest text-accent-primary/50 animate-pulse">
-                                Thinking
-                            </span>
+                            <div className="ml-2 flex flex-col gap-0.5">
+                                <span className="text-[10px] font-bold uppercase tracking-widest text-accent-primary/50 animate-pulse">
+                                    {loadingLabel}
+                                </span>
+                                {msg.loadingLabel === 'knowledge' && resourceSummary.length > 0 && (
+                                    <span className="text-[9px] uppercase tracking-wider text-text-tertiary/70">
+                                        Resources: {resourceSummary.join(', ')}
+                                    </span>
+                                )}
+                            </div>
                         </div>
                     ) : (
                         <AIChatMarkdown
@@ -260,24 +312,24 @@ const ChatInput = memo(({
     const textareaRef = useRef<HTMLTextAreaElement>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
     const [attachments, setAttachments] = useState<any[]>([]);
-    
     const { 
         isListening, 
         transcript, 
         startListening, 
         stopListening, 
-        volume, 
-        isSpeaking,
-        error 
+        isSpeaking, 
+        speak, 
+        stopSpeaking,
+        volume 
     } = speech;
 
-    const [showVoiceOverlay, setShowVoiceOverlay] = useState(false);
     const [showModelMenu, setShowModelMenu] = useState(false);
     const menuRef = useRef<HTMLDivElement>(null);
 
-    const { selectedModel, setSelectedModel, AI_MODELS } = useAI() as any;
+    const { selectedModel, setSelectedModel, AI_MODELS, uploadAttachment } = useAI() as any;
     const currentModel = AI_MODELS.find((m: any) => m.id === selectedModel);
-    const supportsFiles = currentModel?.supportsFiles ?? false;
+    const supportsImages = currentModel?.supportsFiles ?? false;
+    const isIndexing = attachments.some((att: any) => att.status === 'indexing');
 
 
     // Close menu on outside click
@@ -291,19 +343,20 @@ const ChatInput = memo(({
         return () => document.removeEventListener('mousedown', handleClickOutside);
     }, []);
 
-    // Sync transcript to local input
+    const [baseInputBeforeVoice, setBaseInputBeforeVoice] = useState('');
+
+    // Sync transcript to local input (non-destructively)
     useEffect(() => {
-        if (transcript) {
-            setLocalInput(transcript);
+        if (isListening && transcript) {
+            setLocalInput(baseInputBeforeVoice + transcript);
         }
-    }, [transcript]);
+    }, [transcript, isListening, baseInputBeforeVoice]);
 
     const toggleRecording = () => {
         if (isListening) {
             stopListening();
-            setShowVoiceOverlay(false);
         } else {
-            setShowVoiceOverlay(true);
+            setBaseInputBeforeVoice(localInput.trim() ? localInput.trim() + ' ' : '');
             startListening();
         }
     };
@@ -323,7 +376,7 @@ const ChatInput = memo(({
     }, [localInput]);
 
     const onSendClick = () => {
-        if ((!localInput.trim() && attachments.length === 0) || isLoading) return;
+        if ((!localInput.trim() && attachments.length === 0) || isLoading || isIndexing) return;
         handleSend(localInput.trim(), attachments);
         setLocalInput('');
         setAttachments([]);
@@ -336,26 +389,59 @@ const ChatInput = memo(({
         Array.from(files).forEach(file => {
             const isImage = file.type.startsWith('image/');
             const isVideo = file.type.startsWith('video/');
-            const isDoc = file.type === 'application/pdf' || 
-                         file.type === 'application/msword' || 
-                         file.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
-            const isBinary = isImage || isVideo || isDoc;
+            const isDoc = isDocFile(file);
+            const isText = isTextLikeFile(file);
+            const shouldIndex = !isImage && (isDoc || isText);
+            const localId = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 
-            const reader = new FileReader();
-            reader.onload = (ev) => {
-                setAttachments(prev => [...prev, {
-                    name: file.name,
-                    type: file.type,
-                    content: ev.target?.result as string,
-                    isImage,
-                    isBinary
-                }]);
-            };
+            if (isImage && !supportsImages) {
+                console.warn(`[AI Chat] Skipping image attachment (model does not support images): ${file.name}`);
+                return;
+            }
+            if (isVideo) {
+                console.warn(`[AI Chat] Video attachments are not supported yet: ${file.name}`);
+                return;
+            }
+            if (!isImage && !isDoc && !isText) {
+                console.warn(`[AI Chat] Unsupported attachment type: ${file.name}`);
+                return;
+            }
 
-            if (isBinary) {
-                reader.readAsDataURL(file);
-            } else {
-                reader.readAsText(file);
+            setAttachments(prev => [...prev, {
+                localId,
+                name: file.name,
+                type: file.type,
+                file,
+                isImage,
+                isBinary: isDoc,
+                isText,
+                shouldIndex,
+                status: shouldIndex ? 'indexing' : 'completed'
+            }]);
+
+            if (isImage || isText) {
+                const reader = new FileReader();
+                reader.onload = (ev) => {
+                    setAttachments(prev => prev.map(att => att.localId === localId
+                        ? { ...att, content: ev.target?.result as string }
+                        : att
+                    ));
+                };
+
+                if (isImage) {
+                    reader.readAsDataURL(file);
+                } else {
+                    reader.readAsText(file);
+                }
+            }
+
+            if (shouldIndex) {
+                uploadAttachment(file).then((attachmentId: string | null) => {
+                    setAttachments(prev => prev.map(att => att.localId === localId
+                        ? { ...att, attachmentId: attachmentId ?? undefined, status: attachmentId ? 'completed' : 'failed' }
+                        : att
+                    ));
+                });
             }
         });
         if (fileInputRef.current) fileInputRef.current.value = '';
@@ -466,6 +552,11 @@ const ChatInput = memo(({
                                 ))}
                             </div>
                         )}
+                        {isIndexing && (
+                            <div className="text-[10px] text-text-secondary px-1 mb-1">
+                                Indexing attachments...
+                            </div>
+                        )}
 
                         <textarea
                             ref={textareaRef}
@@ -474,13 +565,13 @@ const ChatInput = memo(({
                             onKeyDown={(e) => {
                                 if (e.key === 'Enter' && !e.shiftKey) {
                                     e.preventDefault();
-                                    onSendClick();
+                                    if (!isIndexing) onSendClick();
                                 }
                             }}
                             placeholder={isListening ? "Listening..." : "Ask anything"}
                             rows={1}
                             inputMode="text"
-                            disabled={isLoading}
+                            disabled={isLoading || isIndexing}
                             className={cn(
                                 "chat-input w-full resize-none outline-none py-2 bg-transparent transition-all",
                                 isListening && "placeholder:text-accent-primary animate-pulse"
@@ -490,45 +581,72 @@ const ChatInput = memo(({
 
                     <div className="flex items-center gap-1 sm:gap-2 shrink-0 self-end mb-1">
                         <AnimatePresence>
-                            {supportsFiles && (
-                                <motion.button 
-                                    initial={{ opacity: 0, scale: 0.8 }}
-                                    animate={{ opacity: 1, scale: 1 }}
-                                    exit={{ opacity: 0, scale: 0.8 }}
-                                    type="button" 
-                                    onClick={() => fileInputRef.current?.click()}
-                                    className="chat-input-icon hover:bg-black/10 dark:hover:bg-white/10 shrink-0" 
-                                    aria-label="Add attachment"
-                                >
-                                    <Plus size={22} className="opacity-80" />
-                                </motion.button>
-                            )}
+                            <motion.button 
+                                initial={{ opacity: 0, scale: 0.8 }}
+                                animate={{ opacity: 1, scale: 1 }}
+                                exit={{ opacity: 0, scale: 0.8 }}
+                                type="button" 
+                                onClick={() => fileInputRef.current?.click()}
+                                className="chat-input-icon hover:bg-black/10 dark:hover:bg-white/10 shrink-0" 
+                                aria-label="Add attachment"
+                            >
+                                <Plus size={22} className="opacity-80" />
+                            </motion.button>
                         </AnimatePresence>
                         <input 
                             type="file" 
                             ref={fileInputRef} 
                             className="hidden" 
                             multiple 
-                            accept="image/*,video/*,.pdf,.doc,.docx,.txt,.md,.js,.ts,.tsx,.py,.css,.html,.json"
+                            accept={`${supportsImages ? 'image/*,' : ''}.pdf,.doc,.docx,.txt,.md,.markdown,.js,.jsx,.ts,.tsx,.py,.css,.scss,.html,.htm,.json,.yml,.yaml,.toml,.csv,.xml,.sql,.sh,.bash,.zsh,.ps1,.bat,.cmd,.java,.kt,.c,.cpp,.h,.hpp,.go,.rs,.rb,.php,.lua`}
                             onChange={handleFileSelect}
                         />
                         <button 
                             type="button" 
                             onClick={toggleRecording}
                             className={cn(
-                                "chat-input-icon hover:bg-black/10 dark:hover:bg-white/10",
-                                isListening && "bg-accent-primary/10 text-accent-primary"
+                                "chat-input-icon hover:bg-black/10 dark:hover:bg-white/10 relative overflow-hidden transition-all duration-300",
+                                isListening && "bg-accent-primary/20 text-accent-primary scale-110 shadow-[0_0_15px_rgba(var(--accent-primary-rgb),0.3)]"
                             )} 
                             aria-label="Voice"
                         >
-                            <Mic size={20} className={cn("opacity-80", isListening && "animate-pulse")} />
+                            <Mic size={20} className={cn("opacity-80 z-10", isListening && "animate-pulse")} />
+                            {isListening && (
+                                <>
+                                    <motion.div
+                                        className="absolute inset-0 bg-accent-primary/30 rounded-full"
+                                        animate={{
+                                            scale: [1, 1 + (volume / 50)],
+                                            opacity: [0.3, 0]
+                                        }}
+                                        transition={{
+                                            duration: 0.5,
+                                            repeat: Infinity,
+                                            ease: "easeOut"
+                                        }}
+                                    />
+                                    <motion.div
+                                        className="absolute inset-0 bg-accent-primary/20 rounded-full"
+                                        animate={{
+                                            scale: [1, 1.2 + (volume / 40)],
+                                            opacity: [0.2, 0]
+                                        }}
+                                        transition={{
+                                            duration: 0.8,
+                                            repeat: Infinity,
+                                            delay: 0.2,
+                                            ease: "easeOut"
+                                        }}
+                                    />
+                                </>
+                            )}
                         </button>
                         <button
                             onClick={isLoading ? handleStop : onSendClick}
-                            disabled={!isLoading && !localInput.trim() && attachments.length === 0}
+                            disabled={isIndexing || (!isLoading && !localInput.trim() && attachments.length === 0)}
                             className={cn(
                                 "chat-send-button w-[36px] h-[36px]",
-                                isLoading ? "loading" : (localInput.trim() || attachments.length > 0) ? "active" : "disabled"
+                                isLoading ? "loading" : (localInput.trim() || attachments.length > 0) && !isIndexing ? "active" : "disabled"
                             )}
                             aria-label={isLoading ? "Stop generating" : "Send message"}
                         >
@@ -536,19 +654,6 @@ const ChatInput = memo(({
                         </button>
                     </div>
                 </div>
-                {/* VoiceOverlay Integration */}
-                <VoiceOverlay 
-                    isOpen={showVoiceOverlay}
-                    onClose={() => {
-                        setShowVoiceOverlay(false);
-                        stopListening();
-                    }}
-                    transcript={localInput}
-                    volume={volume}
-                    isSpeaking={isSpeaking}
-                    isListening={isListening}
-                    error={error}
-                />
             </div>
             <div className="text-center text-[10px] sm:text-xs text-[color:var(--text-disabled)] mt-2 opacity-60">
                 AI Assistant can make mistakes. Check important info.
@@ -594,6 +699,8 @@ export default function ChatPage() {
     const speech = useSpeech();
     const { isSpeaking, speak, stopSpeaking } = speech;
     const [speakingMessageId, setSpeakingMessageId] = useState<string | null>(null);
+    const isInitialSessionCreation = useRef(false);
+
 
     const visibleMessages = messages.filter(msg => msg.id !== 'welcome');
     const isChatActive = sessionId || visibleMessages.length > 0;
@@ -625,11 +732,26 @@ export default function ChatPage() {
         if (sessionId) {
             // Prevent reloading if we already have the correct session (fixes New Chat race condition)
             if (currentSession?._id === sessionId) return;
+
+            // If this is the initial creation from handleSend, we don't want to load full history
+            // because it will overwrite the local message we just added
+            if (isInitialSessionCreation.current) {
+                api.getChatSession(sessionId).then(session => {
+                    setCurrentSession(session);
+                    isInitialSessionCreation.current = false;
+                }).catch(err => {
+                    console.error("Failed to load session metadata", err);
+                    isInitialSessionCreation.current = false;
+                });
+                return;
+            }
+
             loadSession(sessionId);
         } else {
             setCurrentSession(null);
         }
     }, [sessionId]);
+
 
 
 
@@ -810,7 +932,12 @@ export default function ChatPage() {
     const handleSend = useCallback(async (content: string, attachments: any[] = []) => {
         if (!content.trim() && attachments.length === 0 || isLoading) return;
 
+        if (!sessionId) {
+            isInitialSessionCreation.current = true;
+        }
+
         const msgContent = content;
+
         setInput('');
         setShouldAutoScroll(true);
         setIsLoading(true);

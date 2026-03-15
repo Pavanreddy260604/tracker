@@ -3,11 +3,12 @@
     "version": "1.0.0",
     "private": true,
     "scripts": {
-        "dev": "npx concurrently --kill-others-on-fail -c \"bgBlue.bold,bgMagenta.bold,bgCyan.bold,bgYellow.bold\" \"npm:backend\" \"npm:frontend\" \"npm:script-writer\" \"npm:chroma\"",
+        "dev": "docker compose up -d redis && npx concurrently --kill-others-on-fail -c \"bgBlue.bold,bgMagenta.bold,bgCyan.bold,bgYellow.bold\" \"npm:backend\" \"npm:frontend\" \"npm:script-writer\" \"npm:chroma\"",
         "backend": "cd backend && npm run dev",
         "frontend": "cd frontend && npm run dev",
         "script-writer": "cd script-writer-service && npm run dev",
-        "chroma": "chroma run --host localhost --port 8000"
+        "chroma": "chroma run --host localhost --port 8000",
+        "redis": "docker compose up -d redis"
     },
     "devDependencies": {
         "@types/pdfkit": "^0.17.5",

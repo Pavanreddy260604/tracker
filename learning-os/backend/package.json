@@ -10,17 +10,21 @@
     "test": "jest"
   },
   "dependencies": {
+    "@opentelemetry/api": "^1.9.0",
     "axios": "^1.13.2",
     "bcryptjs": "^2.4.3",
+    "bull": "^4.16.5",
     "chromadb": "^3.3.1",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.5",
+    "dockerode": "^4.0.4",
     "dotenv": "^16.4.5",
     "express": "^4.21.2",
     "express-rate-limit": "^7.5.0",
     "groq-sdk": "^0.37.0",
     "helmet": "^8.0.0",
     "install": "^0.13.0",
+    "ioredis": "^5.6.0",
     "jsonwebtoken": "^9.0.2",
     "mammoth": "^1.12.0",
     "mongoose": "^8.9.4",
@@ -28,12 +32,14 @@
     "nodemailer": "^8.0.1",
     "p-limit": "^7.3.0",
     "pdf-parse": "^2.4.5",
-    "zod": "^3.24.1"
+    "zod": "^3.24.1",
+    "zod-to-json-schema": "^3.24.5"
   },
   "devDependencies": {
     "@types/bcryptjs": "^2.4.6",
     "@types/cookie-parser": "^1.4.10",
     "@types/cors": "^2.8.17",
+    "@types/dockerode": "^3.3.35",
     "@types/express": "^5.0.0",
     "@types/jsonwebtoken": "^9.0.7",
     "@types/multer": "^2.0.0",

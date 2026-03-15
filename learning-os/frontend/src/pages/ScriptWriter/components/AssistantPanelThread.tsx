@@ -2,8 +2,8 @@ import type { ComponentPropsWithoutRef, ReactNode } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { ArrowRight, Check, Copy, Loader2, Pencil, Scissors, Trash2 } from 'lucide-react';
-import type { AssistantMessage, AssistantMode, AssistantScope } from '../types';
-import { getModeConfig, statusText } from './AssistantPanelConfig';
+import type { AssistantMessage, AssistantScope } from '../types';
+import { statusText } from './AssistantPanelConfig';
 import { EmptyState } from './AssistantPanelShared';
 import { ProgressBar } from '../../../components/ui/ProgressBar';
 
@@ -110,7 +110,6 @@ function MessageCard({
 }) {
     const isUser = msg.role === 'user';
     const isEditing = msg.type === 'instruction' && editingId === msg.id;
-    const config = getModeConfig(msg.mode);
     const wrapperClass = isUser ? 'ml-auto w-full max-w-[88%]' : 'w-full';
     const metaAlignClass = isUser ? 'justify-end' : 'justify-start';
     const bubbleClass = isUser
@@ -124,7 +123,6 @@ function MessageCard({
         <div className={wrapperClass}>
             <div className={`mb-1.5 flex flex-wrap items-center gap-2 text-[10px] uppercase tracking-[0.14em] text-zinc-500 ${metaAlignClass}`}>
                 <span className="font-semibold text-zinc-400">{isUser ? 'You' : 'Assistant'}</span>
-                {msg.mode && <span className={`rounded-full border px-2 py-0.5 normal-case tracking-normal ${config.badgeClass}`}>{config.label}</span>}
                 {msg.selectionLabel && <span className="rounded-full border border-zinc-800 bg-zinc-900 px-2 py-0.5 normal-case tracking-normal text-zinc-400">{msg.selectionLabel}</span>}
             </div>
 
@@ -175,20 +173,27 @@ function MessageCard({
                     ) : (
                         <div className="prose prose-invert prose-sm max-w-none pr-14 text-zinc-200">
                             {isStreamingPlaceholder ? (
-                                <div className="py-2">
-                                    <ProgressBar 
-                                        progress={progress} 
-                                        label={msg.type === 'proposal' ? 'Drafting screenplay...' : 'Thinking...'} 
-                                        showPercentage={true}
-                                        className="mb-2"
-                                    />
-                                    <div className="flex items-center gap-2 text-zinc-500">
-                                        <Loader2 size={10} className="animate-spin" />
-                                        <span className="text-[10px] italic">
-                                            {msg.type === 'proposal' ? 'Analyzing context and shaping the revision...' : 'Preparing a response...'}
-                                        </span>
+                                msg.type === 'proposal' ? (
+                                    <div className="py-2">
+                                        <ProgressBar 
+                                            progress={progress} 
+                                            label="Drafting screenplay..." 
+                                            showPercentage={true}
+                                            className="mb-2"
+                                        />
+                                        <div className="flex items-center gap-2 text-zinc-500">
+                                            <Loader2 size={10} className="animate-spin" />
+                                            <span className="text-[10px] italic">
+                                                Analyzing context and shaping the revision...
+                                            </span>
+                                        </div>
                                     </div>
-                                </div>
+                                ) : (
+                                    <div className="flex items-center gap-2 py-2 text-[11px] text-zinc-500">
+                                        <Loader2 size={12} className="animate-spin" />
+                                        <span>Thinking...</span>
+                                    </div>
+                                )
                             ) : (
                                 <ReactMarkdown
                                     remarkPlugins={[remarkGfm]}
@@ -245,7 +250,6 @@ export function AssistantThread({
     messages,
     isGenerating,
     progress = 0,
-    mode,
     effectiveScope,
     quickActions,
     copiedId,
@@ -264,7 +268,6 @@ export function AssistantThread({
     messages: AssistantMessage[];
     isGenerating: boolean;
     progress?: number;
-    mode: AssistantMode;
     effectiveScope: AssistantScope;
     quickActions: string[];
     copiedId: string | null;
@@ -312,11 +315,14 @@ export function AssistantThread({
                     progress={progress}
                 />
             ))}
-            {isGenerating && visibleMessages[visibleMessages.length - 1]?.type !== 'thought' && visibleMessages[visibleMessages.length - 1]?.status !== 'streaming' && (
+            {isGenerating
+                && visibleMessages[visibleMessages.length - 1]?.type === 'proposal'
+                && visibleMessages[visibleMessages.length - 1]?.status !== 'streaming'
+                && (
                 <div className="inline-flex w-full flex-col gap-2 rounded-lg border border-zinc-800 bg-zinc-950/80 px-3 py-2.5">
                     <ProgressBar 
                         progress={progress} 
-                        label={statusText(mode, effectiveScope)} 
+                        label={statusText(effectiveScope)} 
                     />
                 </div>
             )}

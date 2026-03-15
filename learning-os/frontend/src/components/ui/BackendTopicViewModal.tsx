@@ -11,13 +11,17 @@ import {
     FileCode,
     Bug,
     ExternalLink,
-    Brain
+    Brain,
+    Zap,
+    Shield,
+    Target
 } from 'lucide-react';
 import { Modal } from './Modal';
 import { Button } from './Button';
 import { Badge, StatusBadge } from './Badge';
 import { api, type BackendTopic } from '../../services/api';
 import { useAI } from '../../contexts/AIContext';
+import { cn } from '../../lib/utils';
 
 interface BackendTopicViewModalProps {
     isOpen: boolean;
@@ -28,6 +32,8 @@ interface BackendTopicViewModalProps {
 export function BackendTopicViewModal({ isOpen, onClose, topicId }: BackendTopicViewModalProps) {
     const [topic, setTopic] = useState<BackendTopic | null>(null);
     const [isLoading, setIsLoading] = useState(false);
+    const [isAuditing, setIsAuditing] = useState(false);
+    const [auditData, setAuditData] = useState<any>(null);
     const [error, setError] = useState('');
     const { toggleOpen, setContext } = useAI();
 
@@ -80,6 +86,22 @@ export function BackendTopicViewModal({ isOpen, onClose, topicId }: BackendTopic
             setTopic(response.topic);
         } catch (error) {
             console.error('Review failed:', error);
+        }
+    };
+
+    const handleAudit = async () => {
+        if (!topicId) return;
+        setIsAuditing(true);
+        try {
+            const response = await api.auditTopic(topicId);
+            setAuditData(response);
+            // Also refresh topic to get new auditScore
+            const topicResponse = await api.getBackendTopic(topicId);
+            setTopic(topicResponse.topic);
+        } catch (err) {
+            console.error('Audit failed:', err);
+        } finally {
+            setIsAuditing(false);
         }
     };
 
@@ -179,6 +201,23 @@ export function BackendTopicViewModal({ isOpen, onClose, topicId }: BackendTopic
                                         </Button>
                                     )}
                                 </div>
+                                
+                                <div className="border-t border-border-subtle pt-4 flex flex-col gap-2">
+                                    <label className="text-[11px] font-bold text-text-secondary uppercase tracking-wider">AI Architect</label>
+                                    <Button
+                                        onClick={handleAudit}
+                                        isLoading={isAuditing}
+                                        disabled={isAuditing}
+                                        variant="primary"
+                                        className="w-full shadow-premium"
+                                        leftIcon={<Shield size={16} />}
+                                    >
+                                        Run Scalability Audit
+                                    </Button>
+                                    <p className="text-[10px] text-text-disabled text-center mt-1 italic">
+                                        Detects architectural leaks using RAG
+                                    </p>
+                                </div>
                             </motion.div>
 
                             {/* Completion Stats */}
@@ -202,6 +241,82 @@ export function BackendTopicViewModal({ isOpen, onClose, topicId }: BackendTopic
 
                         {/* Right Column: Content */}
                         <div className="md:col-span-2 space-y-5">
+                            {/* Scalability Audit Insights */}
+                            {(auditData || (topic.auditScore !== undefined && topic.auditScore > 0)) && (
+                                <motion.div
+                                    initial={{ opacity: 0, scale: 0.98 }}
+                                    animate={{ opacity: 1, scale: 1 }}
+                                    className="bg-console-darker border-2 border-accent-primary/20 rounded-2xl p-6 shadow-strong overflow-hidden relative"
+                                >
+                                    <div className="absolute top-0 right-0 p-4 opacity-10">
+                                        <Shield size={120} className="text-accent-primary" />
+                                    </div>
+                                    
+                                    <div className="flex items-center justify-between mb-6 relative z-10">
+                                        <div className="flex items-center gap-3">
+                                            <div className="p-2.5 bg-accent-primary/20 rounded-xl">
+                                                <Zap size={20} className="text-accent-primary animate-pulse" />
+                                            </div>
+                                            <div>
+                                                <h3 className="text-lg font-black text-text-primary tracking-tight">Scalability Audit</h3>
+                                                <p className="text-[10px] font-bold text-text-secondary uppercase tracking-[0.2em]">Architecture Insight v2.0</p>
+                                            </div>
+                                        </div>
+                                        <div className="text-center">
+                                            <div className="text-3xl font-black text-accent-primary line-none">
+                                                {auditData?.score || topic.auditScore}%
+                                            </div>
+                                            <div className="text-[9px] font-bold text-text-disabled uppercase">Readiness</div>
+                                        </div>
+                                    </div>
+
+                                    {auditData ? (
+                                        <div className="space-y-6 relative z-10">
+                                            <div>
+                                                <h4 className="text-xs font-bold text-text-primary uppercase mb-3 flex items-center gap-2">
+                                                    <Target size={14} className="text-status-warning" /> Critical Gotchas
+                                                </h4>
+                                                <div className="space-y-2">
+                                                    {auditData.gotchas.map((gotcha: string, i: number) => (
+                                                        <div key={i} className="text-[13px] text-text-primary/90 bg-console-surface/50 border border-border-subtle p-3 rounded-lg leading-relaxed">
+                                                            {gotcha}
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </div>
+
+                                            <div>
+                                                <h4 className="text-xs font-bold text-text-primary uppercase mb-3 flex items-center gap-2">
+                                                    <CheckCircle2 size={14} className="text-status-ok" /> Production Checklist
+                                                </h4>
+                                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                                    {auditData.checklist.map((item: any, i: number) => (
+                                                        <div key={i} className="flex items-center gap-2 p-2 rounded-lg bg-black/10 border border-border-subtle/30">
+                                                            <div className={cn(
+                                                                "w-1.5 h-1.5 rounded-full shrink-0",
+                                                                item.importance === 'high' ? 'bg-status-error' :
+                                                                item.importance === 'medium' ? 'bg-status-warning' : 'bg-status-ok'
+                                                            )} />
+                                                            <span className="text-[11px] font-medium text-text-secondary truncate">{item.task}</span>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                            
+                                            <div className="pt-4 border-t border-border-subtle/30">
+                                                <p className="text-sm italic text-text-secondary leading-relaxed">
+                                                    "{auditData.summary}"
+                                                </p>
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        <div className="text-center py-8">
+                                            <p className="text-sm text-text-disabled">Historical score available. Run new audit for updated deep insights.</p>
+                                        </div>
+                                    )}
+                                </motion.div>
+                            )}
+
                             {/* Checklist */}
                             {topic.subTopics && topic.subTopics.length > 0 && (
                                 <motion.div

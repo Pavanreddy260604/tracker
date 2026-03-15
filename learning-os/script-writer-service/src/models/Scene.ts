@@ -19,6 +19,12 @@ export interface IScene extends Document {
         type: 'instruction' | 'thought' | 'proposal' | 'chat';
         content: string;
         timestamp: Date;
+        metadata?: {
+            explanation?: string[];
+            analysis?: string;
+            plan?: string;
+            craft?: string;
+        };
         retrievalMetadata?: {
             mode?: 'ask' | 'edit' | 'agent';
             target?: 'scene' | 'selection';
@@ -152,6 +158,7 @@ const SceneSchema: Schema = new Schema({
         type: { type: String, enum: ['instruction', 'thought', 'proposal', 'chat'] },
         content: { type: String, maxlength: 100000 },
         timestamp: { type: Date, default: Date.now },
+        metadata: { type: Schema.Types.Mixed },
         retrievalMetadata: { type: Schema.Types.Mixed }
     }],
 

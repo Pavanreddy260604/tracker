@@ -98,6 +98,48 @@ export class VectorService {
     }
 
     /**
+     * Recursively flattens a MongoDB-style filter object into a series of 
+     * single-key objects wrapped in $and / $or for ChromaDB compatibility.
+     */
+    private flattenFilter(filter: any): any {
+        if (!filter || typeof filter !== 'object' || Array.isArray(filter)) return filter;
+
+        const keys = Object.keys(filter as any);
+        if (keys.length <= 1 && !keys.some(k => k.startsWith('$'))) {
+            // Already a potentially valid single-key object, or needs wrapping if it's a plain value
+            const key = keys[0];
+            const val = filter[key];
+            if (val && typeof val === 'object' && !Array.isArray(val)) {
+                return filter; // e.g. { age: { $gt: 10 } }
+            }
+            return { [key]: { "$eq": val } }; // auto-convert { userId: "abc" } to { userId: { "$eq": "abc" } }
+        }
+
+        const conditions: any[] = [];
+
+        for (const [key, value] of Object.entries(filter)) {
+            if (key === '$and') {
+                if (Array.isArray(value)) {
+                    conditions.push({ "$and": value.map(v => this.flattenFilter(v)) });
+                }
+            } else if (key === '$or') {
+                if (Array.isArray(value)) {
+                    conditions.push({ "$or": value.map(v => this.flattenFilter(v)) });
+                }
+            } else {
+                // Plane key: value or key: { $op: val }
+                const condition = value !== null && typeof value === 'object' && !Array.isArray(value) && Object.keys(value as object).some(k => k.startsWith('$'))
+                    ? { [key]: value }
+                    : { [key]: { "$eq": value } };
+                conditions.push(condition);
+            }
+        }
+
+        if (conditions.length === 1) return conditions[0];
+        return { "$and": conditions };
+    }
+
+    /**
      * Find semantically similar documents, securely filtered by userId and optional metadata.
      */
     async findSimilar(userId: string, queryEmbedding: number[], limit: number = 5, whereFilter?: any): Promise<ScoredKnowledge[]> {
@@ -105,17 +147,22 @@ export class VectorService {
         if (!this.collection) return [];
 
         // Build the base 'where' clause with userId
-        let where: any = { userId };
-
-        // If extra filters are provided, combine them with userId
+        const baseFilter = { userId };
+        
+        let where: any;
         if (whereFilter) {
-            where = {
-                "$and": [
-                    { userId },
+            // Combine userId with the provided filter
+            where = this.flattenFilter({
+                $and: [
+                    baseFilter,
                     whereFilter
                 ]
-            };
+            });
+        } else {
+            where = this.flattenFilter(baseFilter);
         }
+
+        console.log(`[VectorService] Querying ChromaDB with filter:`, JSON.stringify(where));
 
         const fetchLimit = limit * 2; // Fetch extra to account for exact distance filtering
         const results: any = await this.collection.query({
@@ -135,10 +182,14 @@ export class VectorService {
         const scoredDocs: ScoredKnowledge[] = [];
         for (let i = 0; i < ids.length; i++) {
             const distance = distances?.[i] ?? 1;
-            const similarity = Math.max(0, 1 - (distance * distance) / 2);
-
-            // Minimum 30% relevance threshold
-            if (similarity < 0.3) continue;
+            
+            // ChromaDB distance mapping (handles both Cosine and L2)
+            let similarity = distance < 2 
+                ? 1 - distance 
+                : Math.max(0, 1 - (distance / 1000));
+            
+            // Threshold: 20% relevance
+            if (similarity < 0.2) continue;
 
             scoredDocs.push({
                 id: ids[i],

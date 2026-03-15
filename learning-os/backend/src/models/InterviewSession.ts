@@ -19,6 +19,7 @@ export interface IInterviewQuestion {
     }[];
     timeSpent?: number; // in seconds
     submittedAt?: Date;
+    lastModified?: Date; // For draft tracking
 }
 
 export interface IInterviewSection {
@@ -102,6 +103,7 @@ const interviewQuestionSchema = new Schema<IInterviewQuestion>(
         ],
         timeSpent: { type: Number },
         submittedAt: { type: Date },
+        lastModified: { type: Date }, // For draft tracking
     },
     { _id: false }
 );

@@ -13,7 +13,10 @@ import {
     extractBestEffortAssistantAnswer,
     extractStructuredAssistantSections,
     getErrorMessage,
-    normalizeScreenplayWhitespace
+    normalizeScreenplayWhitespace,
+    classifyAssistantIntent,
+    detectLanguageOverride,
+    detectTransliteration
 } from './utils';
 import type { AssistantMessage, AssistantRequest, AssistantScope, EditorSelection } from './types';
 
@@ -23,10 +26,34 @@ type AssistantHistoryEntry = {
     type?: string;
     content: string;
     timestamp: string | number | Date;
+    metadata?: {
+        explanation?: string[];
+        analysis?: string;
+        plan?: string;
+        craft?: string;
+    };
 };
 
 const ASSISTANT_EMPTY_RESPONSE = 'No response from assistant.';
 const ASSISTANT_FAILURE_RESPONSE = 'Assistant request failed. Please retry.';
+const ASSISTANT_V2_ENABLED = String(import.meta.env?.VITE_ASSISTANT_V2 ?? 'true').toLowerCase() !== 'false';
+
+const isPatchProposal = (content: string) => content.includes('<<<SEARCH>>>') && content.includes('<<<REPLACE>>>');
+
+const formatExplanationBlock = (explanations?: string[]) => {
+    if (!explanations || explanations.length === 0) return '';
+    const bullets = explanations.slice(0, 7).map((item) => `- ${item}`);
+    return ['**What I improved**', ...bullets].join('\n');
+};
+
+const buildCombinedProposalContent = (proposal: string, explanations?: string[]) => {
+    const explanationBlock = formatExplanationBlock(explanations);
+    if (!explanationBlock) return proposal;
+    if (isPatchProposal(proposal)) {
+        return `${explanationBlock}\n\n${proposal}`;
+    }
+    return `${explanationBlock}\n\n**Revised Scene**\n\n\`\`\`fountain\n${proposal}\n\`\`\``;
+};
 
 interface UseScriptWriterGeneratorProps {
     activeProject: Bible | null;
@@ -61,6 +88,7 @@ export function useScriptWriterGenerator({
     const [isAssistantThinking, setIsAssistantThinking] = useState(false);
     const [assistantProgress, setAssistantProgress] = useState(0);
     const [assistantSessionId, setAssistantSessionId] = useState<string | null>(null);
+    const [aiModel, setAiModel] = useState<string>('');
 
     const loadAssistantHistory = useCallback(async (sceneId: string) => {
         try {
@@ -74,7 +102,15 @@ export function useScriptWriterGenerator({
                     ? message.type
                     : 'chat',
                 content: message.type === 'proposal'
-                    ? normalizeScreenplayWhitespace(extractStructuredAssistantSections(message.content).script || message.content)
+                    ? (() => {
+                        const isPatch = isPatchProposal(message.content);
+                        const baseContent = isPatch
+                            ? message.content
+                            : normalizeScreenplayWhitespace(extractStructuredAssistantSections(message.content).script || message.content);
+                        return ASSISTANT_V2_ENABLED
+                            ? buildCombinedProposalContent(baseContent, message.metadata?.explanation)
+                            : baseContent;
+                    })()
                     : extractBestEffortAssistantAnswer(message.content) || message.content,
                 timestamp: new Date(message.timestamp).getTime(),
                 status: message.type === 'proposal' ? 'pending' : undefined
@@ -115,22 +151,30 @@ export function useScriptWriterGenerator({
             setScriptIdea(activeProject.logline);
         }
         // Default to project language if available
-        if (activeProject?.language) {
+        if (activeProject?.language && (scriptLanguage === 'English' || !scriptLanguage)) {
             setScriptLanguage(activeProject.language);
         }
-    }, [activeProject, scriptIdea]);
+    }, [activeProject, scriptIdea, scriptLanguage]);
+
+    const [lastLoadedSceneId, setLastLoadedSceneId] = useState<string | null>(null);
 
     useEffect(() => {
-        setSelectedScriptCharacterIds([]);
-        setAssistantMessages([]); // Clear chat temporarily
-        setAssistantSessionId(null);
-        if (activeSceneId) {
+        if (activeSceneId && activeSceneId !== lastLoadedSceneId && !isAssistantThinking) {
+            setLastLoadedSceneId(activeSceneId);
+            setSelectedScriptCharacterIds([]);
+            setAssistantMessages([]); 
+            setAssistantSessionId(null);
             void loadAssistantHistory(activeSceneId);
         }
+    }, [activeSceneId, lastLoadedSceneId, isAssistantThinking, loadAssistantHistory]);
+
+    useEffect(() => {
         if (!activeProjectId) {
             setScriptIdea('');
+            setAssistantMessages([]);
+            setAssistantSessionId(null);
         }
-    }, [activeProjectId, activeSceneId, loadAssistantHistory]);
+    }, [activeProjectId]);
 
     const handleScriptGenerate = async () => {
         if (!scriptIdea.trim() || !scriptFormat || !scriptStyle) return;
@@ -149,6 +193,7 @@ export function useScriptWriterGenerator({
                 bibleId: activeProjectId || undefined,
                 characterIds: selectedScriptCharacterIds,
                 currentContent: editorContext,
+                model: aiModel || undefined,
             };
 
             await scriptWriterApi.generateScriptStream(request, (chunk) => {
@@ -207,7 +252,9 @@ export function useScriptWriterGenerator({
 
     const buildAssistantContext = (
         selection?: EditorSelection | null,
-        scope: AssistantScope = 'scene'
+        scope: AssistantScope = 'scene',
+        replyLanguageOverride?: string,
+        transliterationOverride?: boolean
     ): AssistantContextPayload => {
         const selectionPayload = scope === 'selection' ? buildSelectionPayload(selection) : null;
 
@@ -229,8 +276,8 @@ export function useScriptWriterGenerator({
                 : undefined,
             selection: selectionPayload,
             reply: {
-                language: assistantReplyLanguage,
-                transliteration: assistantTransliteration
+                language: replyLanguageOverride || assistantReplyLanguage,
+                transliteration: transliterationOverride ?? assistantTransliteration
             },
             assistantPreferences: activeProject?.assistantPreferences
         };
@@ -238,7 +285,6 @@ export function useScriptWriterGenerator({
 
     const buildAssistantPlaceholder = (
         type: AssistantMessage['type'],
-        mode: AssistantRequest['mode'],
         scope: AssistantScope,
         selectionLabel?: string
     ): AssistantMessage => ({
@@ -248,7 +294,6 @@ export function useScriptWriterGenerator({
         content: '',
         status: 'streaming',
         timestamp: Date.now(),
-        mode,
         scope,
         selectionLabel
     });
@@ -288,8 +333,35 @@ export function useScriptWriterGenerator({
         const scope: AssistantScope = request.scope === 'selection' && request.selection?.text?.trim()
             ? 'selection'
             : 'scene';
-        const isEditLike = request.mode !== 'ask';
         const selectionLabel = buildSelectionLabel(request.selection);
+        const intentDecision = classifyAssistantIntent(trimmedContent, scope, Boolean(request.selection?.text?.trim()));
+        const intent = intentDecision.intent;
+        const isEditLike = intent === 'selection_edit' || intent === 'scene_edit';
+        const requestForPending: AssistantRequest = {
+            ...request,
+            mode: isEditLike ? 'agent' : 'ask'
+        };
+
+        const baseLanguage = activeProject?.language || scriptLanguage;
+        const overrideLanguage = detectLanguageOverride(trimmedContent);
+        const replyLanguage = overrideLanguage || assistantReplyLanguage || baseLanguage;
+        const fallbackTransliteration = Boolean(assistantTransliteration);
+        const transliterationDecision = detectTransliteration(trimmedContent, overrideLanguage || replyLanguage || baseLanguage, fallbackTransliteration);
+        const requestTransliteration = transliterationDecision.enabled;
+        const targetLanguage = overrideLanguage || baseLanguage;
+
+        if (ASSISTANT_V2_ENABLED) {
+            console.info('[AssistantV2] routing', {
+                intent,
+                confidence: intentDecision.confidence,
+                targetLanguage,
+                replyLanguage,
+                overrideLanguage: overrideLanguage || null,
+                transliteration: requestTransliteration,
+                transliterationConfidence: transliterationDecision.confidence,
+                transliterationReason: transliterationDecision.reason
+            });
+        }
 
         const userMsg: AssistantMessage = {
             id: createLocalMessageId(),
@@ -297,22 +369,35 @@ export function useScriptWriterGenerator({
             type: isEditLike ? 'instruction' : 'chat',
             content: trimmedContent,
             timestamp: Date.now(),
-            mode: request.mode,
             scope,
             selectionLabel
         };
 
         setAssistantMessages(prev => [...prev, userMsg]);
-        setIsAssistantThinking(true);
-        setAssistantProgress(10);
 
-        const thinkingInterval = setInterval(() => {
+        if (intent === 'ambiguous') {
+            const clarification: AssistantMessage = {
+                id: createLocalMessageId(),
+                role: 'assistant',
+                type: 'chat',
+                content: 'Do you want analysis or a rewrite? If you want changes, tell me what to change or say \"rewrite it\".',
+                timestamp: Date.now(),
+                scope,
+                selectionLabel
+            };
+            setAssistantMessages(prev => [...prev, clarification]);
+            return;
+        }
+
+        setIsAssistantThinking(true);
+        setAssistantProgress(5);
+
+        let thinkingInterval: any = setInterval(() => {
             setAssistantProgress(prev => {
-                if (prev < 45) return prev + 2;
-                if (prev < 60) return prev + 0.5;
+                if (prev < 40) return prev + (40 - prev) * 0.1;
                 return prev;
             });
-        }, 1000);
+        }, 800);
 
         let assistantPlaceholderId: string | null = null;
         const selectionPayload = buildSelectionPayload(scope === 'selection' ? request.selection : null);
@@ -323,9 +408,8 @@ export function useScriptWriterGenerator({
                     id: createLocalMessageId(),
                     role: 'assistant',
                     type: 'chat',
-                    content: 'Select a scene first. Edit and agent modes work against an active scene in the editor.',
+                    content: 'Select a scene first to apply changes. If you want analysis without a scene, ask a question.',
                     timestamp: Date.now(),
-                    mode: request.mode,
                     scope,
                     selectionLabel
                 };
@@ -334,14 +418,13 @@ export function useScriptWriterGenerator({
             }
 
             if (activeSceneId) {
-                const placeholder = buildAssistantPlaceholder(request.mode === 'ask' ? 'chat' : 'proposal', request.mode, scope, selectionLabel);
+                const placeholder = buildAssistantPlaceholder(isEditLike ? 'proposal' : 'chat', scope, selectionLabel);
                 assistantPlaceholderId = placeholder.id;
                 setAssistantMessages((prev) => [...prev, placeholder]);
 
-                clearInterval(thinkingInterval);
-                setAssistantProgress(65);
+                // Interval will be cleared when first chunk arrives OR in finally block
 
-                if (request.mode === 'ask') {
+                if (!isEditLike) {
                     let botContent = '';
                     await scriptWriterApi.assistedEditStream(activeSceneId, trimmedContent, (chunk) => {
                         botContent += chunk;
@@ -350,16 +433,21 @@ export function useScriptWriterGenerator({
                             content: botContent
                         }));
                         setAssistantProgress(prev => {
-                            const next = prev + 0.15;
+                            if (thinkingInterval) {
+                                clearInterval(thinkingInterval);
+                                thinkingInterval = null;
+                            }
+                            const next = prev + (98 - prev) * 0.05;
                             return next > 98 ? 98 : next;
                         });
                     }, {
-                        language: assistantReplyLanguage,
+                        language: replyLanguage,
                         mode: 'ask',
                         target: scope,
                         currentContent: editorContext,
                         selection: selectionPayload,
-                        transliteration: assistantTransliteration
+                        transliteration: requestTransliteration,
+                        model: aiModel || undefined
                     });
 
                     updateAssistantMessage(assistantPlaceholderId, (message) => ({
@@ -379,19 +467,24 @@ export function useScriptWriterGenerator({
                         content: preview
                     }));
                     setAssistantProgress(prev => {
-                        const next = prev + 0.15;
+                        if (thinkingInterval) {
+                            clearInterval(thinkingInterval);
+                            thinkingInterval = null;
+                        }
+                        const next = prev + (98 - prev) * 0.05;
                         return next > 98 ? 98 : next;
                     });
                     if (onUpdatePending && scope === 'scene') {
-                        onUpdatePending(preview, false, request, assistantPlaceholderId ?? undefined);
+                        onUpdatePending(preview, false, requestForPending, assistantPlaceholderId ?? undefined);
                     }
                 }, {
-                    language: scriptLanguage,
-                    mode: request.mode,
+                    language: targetLanguage,
+                    mode: 'agent',
                     target: scope,
                     currentContent: editorContext,
                     selection: selectionPayload,
-                    transliteration: assistantTransliteration
+                    transliteration: requestTransliteration,
+                    model: aiModel || undefined
                 });
 
                 const finalProposal = normalizeProposalPreview(accumulated, scope);
@@ -403,30 +496,44 @@ export function useScriptWriterGenerator({
                         status: 'error'
                     }));
                     if (onUpdatePending && scope === 'scene') {
-                        onUpdatePending(null, true, request, assistantPlaceholderId ?? undefined);
+                        onUpdatePending(null, true, requestForPending, assistantPlaceholderId ?? undefined);
                     }
                     return;
                 }
 
+                let enhancedProposal = finalProposal;
+                if (ASSISTANT_V2_ENABLED && activeSceneId) {
+                    try {
+                        const history = await scriptWriterApi.getAssistantHistory(activeSceneId);
+                        const latest = [...(history as AssistantHistoryEntry[])].reverse().find((entry) => entry.role === 'assistant' && entry.type === 'proposal' && entry.metadata?.explanation?.length);
+                        if (latest?.metadata?.explanation?.length) {
+                            enhancedProposal = buildCombinedProposalContent(finalProposal, latest.metadata.explanation);
+                        }
+                    } catch (err) {
+                        console.warn('[AssistantV2] Failed to load explanation metadata:', err);
+                    }
+                }
+
                 updateAssistantMessage(assistantPlaceholderId, (message) => ({
                     ...message,
-                    content: finalProposal,
+                    content: enhancedProposal,
                     status: 'pending'
                 }));
                 if (onUpdatePending && scope === 'scene') {
-                    onUpdatePending(finalProposal, true, request, assistantPlaceholderId ?? undefined);
+                    onUpdatePending(finalProposal, true, requestForPending, assistantPlaceholderId ?? undefined);
                 }
                 return;
             }
 
-            const placeholder = buildAssistantPlaceholder('chat', request.mode, scope, selectionLabel);
+            const placeholder = buildAssistantPlaceholder('chat', scope, selectionLabel);
             assistantPlaceholderId = placeholder.id;
             setAssistantMessages((prev) => [...prev, placeholder]);
 
-            clearInterval(thinkingInterval);
-            setAssistantProgress(65);
+            clearInterval(thinkingInterval!);
+            thinkingInterval = null;
+            // No jump to 65%
 
-            if (activeProjectId && request.mode === 'ask') {
+            if (activeProjectId) {
                 let botContent = '';
                 await scriptWriterApi.projectAssistantStream(activeProjectId, trimmedContent, (chunk) => {
                     botContent += chunk;
@@ -434,12 +541,18 @@ export function useScriptWriterGenerator({
                         ...message,
                         content: botContent
                     }));
+                    setAssistantProgress(prev => {
+                        const next = prev + (98 - prev) * 0.05;
+                        return next > 98 ? 98 : next;
+                    });
                 }, {
-                    language: assistantReplyLanguage,
+                    language: replyLanguage,
                     mode: 'ask',
                     target: scope,
-                    currentContext: buildAssistantContext(request.selection, scope),
-                    selection: selectionPayload
+                    currentContext: buildAssistantContext(request.selection, scope, replyLanguage, requestTransliteration),
+                    selection: selectionPayload,
+                    transliteration: requestTransliteration,
+                    model: aiModel || undefined
                 });
 
                 updateAssistantMessage(assistantPlaceholderId, (message) => ({
@@ -462,7 +575,7 @@ export function useScriptWriterGenerator({
 
             let botContent = '';
             let lastUiUpdate = Date.now();
-            const sceneContext = buildAssistantContext(request.selection, scope);
+            const sceneContext = buildAssistantContext(request.selection, scope, replyLanguage, requestTransliteration);
 
             await chatApi.sendChatMessage(sessionId, trimmedContent, (chunk) => {
                 botContent += chunk;
@@ -475,6 +588,10 @@ export function useScriptWriterGenerator({
                         ...message,
                         content: currentText
                     }));
+                    setAssistantProgress(prev => {
+                        const next = prev + (98 - prev) * 0.05;
+                        return next > 98 ? 98 : next;
+                    });
                 }
             }, undefined, 'script-writer', sceneContext);
 
@@ -494,10 +611,10 @@ export function useScriptWriterGenerator({
                 }));
             }
             if (onUpdatePending && scope === 'scene' && isEditLike) {
-                onUpdatePending(null, true, request, assistantPlaceholderId ?? undefined);
+                onUpdatePending(null, true, requestForPending, assistantPlaceholderId ?? undefined);
             }
         } finally {
-            clearInterval(thinkingInterval);
+            if (thinkingInterval) clearInterval(thinkingInterval);
             setAssistantProgress(100);
             setTimeout(() => {
                 setIsAssistantThinking(false);
@@ -514,47 +631,51 @@ export function useScriptWriterGenerator({
             const [realMsgId, base64Patch] = messageId.split('|');
             try {
                 const patchContent = decodeURIComponent(atob(base64Patch));
-                const searchIndex = patchContent.indexOf('<<<SEARCH>>>');
-                const replaceIndex = patchContent.indexOf('<<<REPLACE>>>');
+                const searchMarker = '<<<SEARCH>>>';
+                const replaceMarker = '<<<REPLACE>>>';
+                const searchIndex = patchContent.indexOf(searchMarker);
+                const replaceIndex = patchContent.indexOf(replaceMarker);
 
                 if (searchIndex !== -1 && replaceIndex !== -1 && editorContext) {
-                    const oldTextRaw = patchContent.substring(searchIndex + 12, replaceIndex);
-                    const newTextRaw = patchContent.substring(replaceIndex + 13);
+                    const oldTextRaw = patchContent.substring(searchIndex + searchMarker.length, replaceIndex);
+                    const newTextRaw = patchContent.substring(replaceIndex + replaceMarker.length);
 
-                    // Clean and normalize both
-                    const oldText = oldTextRaw.replace(/^\r?\n/, '').replace(/\r?\n$/, '');
-                    const newText = newTextRaw.replace(/^\r?\n/, '').replace(/\r?\n$/, '');
+                    // Clean and normalize
+                    const clean = (t: string) => t.replace(/\r/g, '').replace(/^\n/, '').replace(/\n$/, '');
+                    const oldText = clean(oldTextRaw);
+                    const newText = clean(newTextRaw);
 
-                    // Helper for robust search
-                    const normalizeForSearch = (t: string) => t.replace(/\r/g, '').trim();
-                    const normalizedEditor = normalizeForSearch(editorContext);
-                    const normalizedOld = normalizeForSearch(oldText);
-
-                    if (editorContext.includes(oldText)) {
-                        // Perfect match
-                        const updated = editorContext.replace(oldText, newText);
-                        if (setEditorContent) setEditorContent(updated);
-                    } else if (normalizedEditor.includes(normalizedOld)) {
-                        // Whitespace-normalized match
-                        // We need to find the actual start in the original editorContext to avoid breaking formatting
-                        // This is a bit tricky, but we can attempt a simpler replacement if the first one fails
-                        const regexOld = new RegExp(oldText.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/\s+/g, '\\s+'), 'g');
-                        const updated = editorContext.replace(regexOld, newText);
+                    const normalizedEditor = editorContext.replace(/\r/g, '');
+                    
+                    if (normalizedEditor.includes(oldText)) {
+                        // Match found in normalized (line endings ignored)
+                        // We must perform the replacement on the original editorContext to preserve CRLF if present
+                        // But wait, if normalizedEditor includes it, replace might still fail if editor uses \r\n
+                        const searchPattern = oldText.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/\n/g, '\\r?\\n');
+                        const regex = new RegExp(searchPattern, 'g');
+                        const updated = editorContext.replace(regex, newText);
 
                         if (updated !== editorContext) {
                             if (setEditorContent) setEditorContent(updated);
                         } else {
-                            setError('Patch failed: The text was found but could not be safely replaced due to formatting conflicts.');
+                            setError('Patch failed: Content found but could not be safely replaced.');
                             return;
                         }
                     } else {
-                        console.warn('Surgical patch target not found in editor.');
-                        console.log('Normalized Old:', JSON.stringify(normalizedOld));
+                        // Try ultra-normalized (ignore all leading/trailing whitespace of the search block)
+                        const ultraOld = oldText.trim();
+                        const searchPatternUltra = ultraOld.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/\s+/g, '\\s+');
+                        const regexUltra = new RegExp(searchPatternUltra, 'g');
+                        const updatedUltra = editorContext.replace(regexUltra, newText);
 
-                        // Fallback: Notify user with specific context
-                        const preview = oldText.length > 50 ? oldText.slice(0, 50) + '...' : oldText;
-                        setError(`Could not apply patch. The original text ("${preview}") was not found exactly as expected. Please apply manually or try a new edit request.`);
-                        return;
+                        if (updatedUltra !== editorContext) {
+                            if (setEditorContent) setEditorContent(updatedUltra);
+                        } else {
+                            console.warn('Surgical patch target not found in editor.');
+                            const preview = ultraOld.length > 50 ? ultraOld.slice(0, 50) + '...' : ultraOld;
+                            setError(`Could not apply patch. The text "${preview}" was not found. Please try again with a clearer selection.`);
+                            return;
+                        }
                     }
                 }
             } catch (err) {
@@ -679,6 +800,8 @@ export function useScriptWriterGenerator({
         handleUpdateAssistantMessage,
         handleClearChat,
         handleScriptHistorySelect,
-        toggleScriptCharacter
+        toggleScriptCharacter,
+        aiModel,
+        setAiModel
     };
 }

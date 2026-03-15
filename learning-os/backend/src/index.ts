@@ -11,7 +11,9 @@ const startServer = async () => {
         await connectDB();
 
         app.listen(PORT, () => {
-            console.log(`[server] Learning OS backend running on http://localhost:${PORT}`);
+            console.log(`[server] Learning OS backend starting on port ${PORT}...`);
+            console.log(`[server] Database: ${env.MONGODB_URI.split('@').pop()}`);
+            console.log(`[server] Redis: ${process.env.REDIS_HOST || 'localhost'}:${process.env.REDIS_PORT || '6379'}`);
             console.log(`[server] Health check: http://localhost:${PORT}/health`);
 
             // Initialize RAG Cleanup Job (Runs every 24 hours)

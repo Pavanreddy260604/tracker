@@ -59,38 +59,26 @@ export function InspectorProjectTab({
             </div>
             <div className="ide-field">
                 <label className="ide-label text-blue-400">Target Language</label>
-                <select
+                <input
                     className="ide-input font-bold text-blue-300"
+                    list="script-language-options-project"
                     value={projectForm.language}
                     onChange={(event) => onProjectFormChange('language', event.target.value)}
-                >
-                    <option value="English">English</option>
-                    <option value="Telugu">Telugu (తెలుగు)</option>
-                    <option value="Hindi">Hindi (हिन्दी)</option>
-                    <option value="Tamil">Tamil (தமிழ்)</option>
-                    <option value="Spanish">Spanish</option>
-                    <option value="French">French</option>
-                </select>
+                    placeholder="English"
+                />
+                <datalist id="script-language-options-project">
+                    <option value="English" />
+                    <option value="Telugu" />
+                    <option value="Hindi" />
+                    <option value="Tamil" />
+                    <option value="Spanish" />
+                    <option value="French" />
+                </datalist>
             </div>
             <div className="rounded-xl border border-zinc-800 bg-zinc-950/60 p-3 space-y-3">
                 <div>
                     <label className="ide-label text-emerald-400">Assistant Preferences</label>
                     <p className="text-[10px] text-zinc-500 mt-1">These defaults guide the chat assistant before you ask for edits.</p>
-                </div>
-                <div className="ide-field">
-                    <label className="ide-label">Default Assistant Mode</label>
-                    <select
-                        className="ide-input"
-                        value={projectForm.assistantPreferences.defaultMode}
-                        onChange={(event) => onProjectFormChange('assistantPreferences', {
-                            ...projectForm.assistantPreferences,
-                            defaultMode: event.target.value as ProjectForm['assistantPreferences']['defaultMode']
-                        })}
-                    >
-                        <option value="ask">Ask</option>
-                        <option value="edit">Edit</option>
-                        <option value="agent">Agent</option>
-                    </select>
                 </div>
                 <div className="ide-field">
                     <label className="ide-label">Reply Language</label>

@@ -4,34 +4,14 @@ import {
     Loader2,
     Send,
 } from 'lucide-react';
-import type { AssistantIntent, AssistantMode, AssistantScope, EditorSelection } from '../types';
-import { MODES, getModeConfig, placeholder } from './AssistantPanelConfig';
+import type { AssistantScope, EditorSelection } from '../types';
+import { placeholder } from './AssistantPanelConfig';
 
-export function AssistantHeader({
-    mode,
-    onModeChange
-}: {
-    mode: AssistantMode;
-    onModeChange: (mode: AssistantMode) => void;
-}) {
+export function AssistantHeader() {
     return (
         <div className="border-b border-zinc-800/80 px-3 py-2.5">
-            <div className="inline-flex rounded-xl border border-zinc-800 bg-zinc-900/70 p-0.5">
-                {MODES.map((item) => {
-                    const isActive = mode === item.id;
-                    return (
-                        <button
-                            key={item.id}
-                            type="button"
-                            onClick={() => onModeChange(item.id)}
-                            className={`rounded-lg px-3 py-1.5 text-[11px] font-medium transition-colors ${
-                                isActive ? 'bg-zinc-800 text-zinc-100' : 'text-zinc-500 hover:text-zinc-200'
-                            }`}
-                        >
-                            {item.label}
-                        </button>
-                    );
-                })}
+            <div className="inline-flex rounded-xl border border-zinc-800 bg-zinc-900/70 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.16em] text-zinc-400">
+                Assistant
             </div>
         </div>
     );
@@ -188,90 +168,44 @@ export function EmptyState({
 }
 
 export function AssistantGuidance({
-    intentHint,
-    draftIntent,
-    isGenerating,
     showPreferenceCandidate,
     preferenceCandidateLabel,
     isSavingPreference,
-    onSavePreferenceCandidate,
-    onRerunInEdit,
-    onRerunInAgent
+    onSavePreferenceCandidate
 }: {
-    intentHint: string;
-    draftIntent: AssistantIntent;
-    isGenerating: boolean;
     showPreferenceCandidate: boolean;
     preferenceCandidateLabel?: string;
     isSavingPreference: boolean;
     onSavePreferenceCandidate: () => void;
-    onRerunInEdit: () => void;
-    onRerunInAgent: () => void;
 }) {
-    const showIntentActions = Boolean(intentHint);
-    if (!showIntentActions && !showPreferenceCandidate) {
+    if (!showPreferenceCandidate) {
         return null;
     }
 
     return (
         <div className="border-t border-zinc-800/70 bg-zinc-950/95 px-3 py-2">
-            {showIntentActions && (
-                <div className="rounded-xl border border-zinc-800 bg-zinc-900/50 px-3 py-2">
-                    <p className="text-[11px] leading-relaxed text-zinc-300">{intentHint}</p>
-                    <div className="mt-2 flex flex-wrap gap-2">
-                        <button
-                            type="button"
-                            disabled={isGenerating}
-                            onClick={onRerunInEdit}
-                            className={`rounded-full border px-3 py-1 text-[10px] font-medium transition-colors ${
-                                draftIntent === 'selection_edit'
-                                    ? 'border-amber-500/30 bg-amber-500/10 text-amber-300'
-                                    : 'border-zinc-700 bg-zinc-950 text-zinc-300 hover:border-zinc-600 hover:text-zinc-100'
-                            }`}
-                        >
-                            Run as Edit
-                        </button>
-                        <button
-                            type="button"
-                            disabled={isGenerating}
-                            onClick={onRerunInAgent}
-                            className={`rounded-full border px-3 py-1 text-[10px] font-medium transition-colors ${
-                                draftIntent === 'scene_edit'
-                                    ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300'
-                                    : 'border-zinc-700 bg-zinc-950 text-zinc-300 hover:border-zinc-600 hover:text-zinc-100'
-                            }`}
-                        >
-                            Run as Agent
-                        </button>
+            <div className="rounded-xl border border-sky-500/20 bg-sky-500/5 px-3 py-2">
+                <div className="flex items-center justify-between gap-3">
+                    <div className="min-w-0">
+                        <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-sky-300">Save To Project</p>
+                        <p className="truncate text-[11px] text-zinc-300">{preferenceCandidateLabel}</p>
                     </div>
+                    <button
+                        type="button"
+                        disabled={isSavingPreference}
+                        onClick={onSavePreferenceCandidate}
+                        className="rounded-full border border-sky-500/30 bg-zinc-950 px-3 py-1 text-[10px] font-medium text-sky-200 transition-colors hover:border-sky-400/40 hover:text-white disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                        {isSavingPreference ? 'Saving...' : 'Save preference'}
+                    </button>
                 </div>
-            )}
-
-            {showPreferenceCandidate && (
-                <div className={`${showIntentActions ? 'mt-2' : ''} rounded-xl border border-sky-500/20 bg-sky-500/5 px-3 py-2`}>
-                    <div className="flex items-center justify-between gap-3">
-                        <div className="min-w-0">
-                            <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-sky-300">Save To Project</p>
-                            <p className="truncate text-[11px] text-zinc-300">{preferenceCandidateLabel}</p>
-                        </div>
-                        <button
-                            type="button"
-                            disabled={isSavingPreference}
-                            onClick={onSavePreferenceCandidate}
-                            className="rounded-full border border-sky-500/30 bg-zinc-950 px-3 py-1 text-[10px] font-medium text-sky-200 transition-colors hover:border-sky-400/40 hover:text-white disabled:cursor-not-allowed disabled:opacity-60"
-                        >
-                            {isSavingPreference ? 'Saving...' : 'Save preference'}
-                        </button>
-                    </div>
-                </div>
-            )}
+            </div>
         </div>
     );
 }
 
 export function AssistantComposer({
     inputValue,
-    mode,
     effectiveScope,
     isGenerating,
     activeSceneName,
@@ -280,7 +214,6 @@ export function AssistantComposer({
     inputRef
 }: {
     inputValue: string;
-    mode: AssistantMode;
     effectiveScope: AssistantScope;
     isGenerating: boolean;
     activeSceneName?: string;
@@ -288,8 +221,6 @@ export function AssistantComposer({
     onSend: () => void;
     inputRef: RefObject<HTMLTextAreaElement | null>;
 }) {
-    const config = getModeConfig(mode);
-
     return (
         <div className="border-t border-zinc-800/80 bg-zinc-950/90 px-3 py-2.5">
             <div className="relative overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-900/60 transition-colors focus-within:border-zinc-700">
@@ -297,7 +228,7 @@ export function AssistantComposer({
                     ref={inputRef}
                     className="min-h-[56px] w-full resize-none bg-transparent px-3 py-3 pr-12 text-[13px] leading-relaxed text-zinc-100 outline-none placeholder:text-zinc-500 custom-scrollbar"
                     rows={1}
-                    placeholder={placeholder(mode, effectiveScope, activeSceneName)}
+                    placeholder={placeholder(effectiveScope, activeSceneName)}
                     value={inputValue}
                     onChange={(e) => onInputChange(e.target.value)}
                     onKeyDown={(e) => {
@@ -312,14 +243,14 @@ export function AssistantComposer({
                     {isGenerating ? (
                         <div className="inline-flex items-center gap-1 rounded-full border border-zinc-800 bg-zinc-950 px-2 py-1 text-[10px] font-medium text-zinc-500">
                             <Loader2 size={11} className="animate-spin" />
-                            Working
+                            Collaborating
                         </div>
                     ) : (
                         <button
                             type="button"
                             onClick={onSend}
                             disabled={!inputValue.trim()}
-                            aria-label={`Send ${config.label.toLowerCase()} request`}
+                            aria-label="Send assistant request"
                             className={`inline-flex h-8 w-8 items-center justify-center rounded-full transition-colors ${
                                 inputValue.trim() ? 'bg-zinc-100 text-zinc-900 hover:bg-white' : 'cursor-not-allowed bg-zinc-800 text-zinc-600'
                             }`}

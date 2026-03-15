@@ -136,7 +136,6 @@ function formatAssistantContext(raw: unknown): string | undefined {
             : [];
         const preferenceLines = [
             'SAVED ASSISTANT PREFERENCES',
-            typeof context.assistantPreferences.defaultMode === 'string' ? `Default Mode: ${context.assistantPreferences.defaultMode}` : '',
             typeof context.assistantPreferences.replyLanguage === 'string' ? `Preferred Reply Language: ${context.assistantPreferences.replyLanguage}` : '',
             typeof context.assistantPreferences.transliteration === 'boolean'
                 ? `Preferred Transliteration: ${context.assistantPreferences.transliteration ? 'enabled' : 'disabled'}`
@@ -245,7 +244,7 @@ router.get('/:id', async (req, res) => {
 
 // POST /api/bible/:id/assistant - Project-scoped assistant for Ask mode without an active scene
 router.post('/:id/assistant', async (req, res) => {
-    const { instruction, language, target, currentContext } = req.body;
+    const { instruction, language, target, currentContext, model, transliteration } = req.body;
     if (!instruction || typeof instruction !== 'string' || !instruction.trim()) {
         return res.status(400).json({ error: 'Instruction is required' });
     }
@@ -276,7 +275,9 @@ router.post('/:id/assistant', async (req, res) => {
             mode: 'ask',
             target: normalizedTarget,
             currentContent: formatAssistantContext(currentContext),
-            selection
+            selection,
+            model,
+            transliteration
         });
 
         for await (const chunk of stream) {

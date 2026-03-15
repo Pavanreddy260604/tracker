@@ -1,12 +1,16 @@
 import axios, { AxiosRequestConfig, AxiosResponse } from 'axios';
-import http from 'http';
-import https from 'https';
+import * as http from 'http';
+import * as https from 'https';
 import { DailyLog } from '../models/DailyLog.js';
 import { DSAProblem } from '../models/DSAProblem.js';
 import { RoadmapNode } from '../models/RoadmapNode.js';
 import { RoadmapEdge } from '../models/RoadmapEdge.js';
 import { UserActivity } from '../models/UserActivity.js';
 import { BackendTopic } from '../models/BackendTopic.js';
+import { ProjectStudy } from '../models/ProjectStudy.js';
+import { InterviewSession } from '../models/InterviewSession.js';
+import { embeddingService } from './embedding.service.js';
+import { vectorService } from './vector.service.js';
 
 // Connection pooling for all AI requests
 const httpAgent = new http.Agent({ keepAlive: true, maxSockets: 100 });
@@ -193,27 +197,37 @@ export class AIClientService {
                     return { data: { groq_direct: true, model } } as AxiosResponse;
                 }
                 
-                try {
-                    const chatCompletion = await groq.chat.completions.create({
-                        messages: payload.messages as any,
-                        model: model.replace('groq:', ''),
-                        temperature: (payload.options as any)?.temperature ?? 0.7,
-                        max_tokens: (payload.options as any)?.num_predict ?? 2048,
-                    });
-                    
-                    return {
-                        data: {
-                            message: {
-                                role: 'assistant',
-                                content: chatCompletion.choices[0]?.message?.content || '',
+                // Retry logic for Groq direct
+                for (let groqAttempt = 1; groqAttempt <= 2; groqAttempt++) {
+                    try {
+                        const chatCompletion = await groq.chat.completions.create({
+                            messages: payload.messages as any,
+                            model: model.replace('groq:', ''),
+                            temperature: (payload.options as any)?.temperature ?? 0.7,
+                            max_tokens: (payload.options as any)?.num_predict ?? 2048,
+                        }, { timeout: 60_000 }); // Explicit 60s timeout
+                        
+                        return {
+                            data: {
+                                message: {
+                                    role: 'assistant',
+                                    content: chatCompletion.choices[0]?.message?.content || '',
+                                }
                             }
+                        } as AxiosResponse;
+                    } catch (e: any) {
+                        const isTimeout = e.code === 'ETIMEDOUT' || e.name === 'TimeoutError';
+                        if (isTimeout && groqAttempt < 2) {
+                            console.warn(`[Groq] ${model} timeout. Retrying (${groqAttempt}/2)...`);
+                            await this.delay(2000);
+                            continue;
                         }
-                    } as AxiosResponse;
-                } catch (e) {
-                    lastError = this.toError(e);
-                    attempts.push({ model, attempt: 1, message: this.getErrorMessage(e) });
-                    continue;
+                        lastError = this.toError(e);
+                        attempts.push({ model, attempt: groqAttempt, message: this.getErrorMessage(e) });
+                        break;
+                    }
                 }
+                continue;
             }
 
             for (let attempt = 1; attempt <= retries; attempt += 1) {
@@ -224,7 +238,7 @@ export class AIClientService {
                         // High Performance Ollama Options
                         options: {
                             num_gpu: 99,
-                            num_ctx: 4096,
+                            num_ctx: 16384,
                             ...(payload.options as object || {})
                         },
                         keep_alive: "10m" // Keep model loaded in memory for faster subsequent responses
@@ -346,18 +360,30 @@ export class AIClientService {
                     return m;
                 });
 
-                const stream = await groq.chat.completions.create({
-                    messages: groqMessages as any,
-                    model: modelId,
-                    stream: true,
-                    temperature: 0.7,
-                });
+                for (let groqStreamAttempt = 1; groqStreamAttempt <= 2; groqStreamAttempt++) {
+                    try {
+                        const stream = await groq.chat.completions.create({
+                            messages: groqMessages as any,
+                            model: modelId,
+                            stream: true,
+                            temperature: 0.7,
+                        }, { timeout: 60_000 });
 
-                for await (const chunk of stream) {
-                    const content = chunk.choices[0]?.delta?.content || '';
-                    if (content) yield content;
+                        for await (const chunk of stream) {
+                            const content = chunk.choices[0]?.delta?.content || '';
+                            if (content) yield content;
+                        }
+                        return;
+                    } catch (e: any) {
+                        const isTimeout = e.code === 'ETIMEDOUT' || e.name === 'TimeoutError';
+                        if (isTimeout && groqStreamAttempt < 2) {
+                            console.warn(`[Groq Stream] ${modelId} timeout. Retrying (${groqStreamAttempt}/2)...`);
+                            await this.delay(2000);
+                            continue;
+                        }
+                        throw e;
+                    }
                 }
-                return;
             }
 
             const stream = response.data as AsyncIterable<Buffer | string>;
@@ -691,8 +717,52 @@ export class AIClientService {
                     return topics;
                 }
 
-                // Note: The rest of the tool executions (getProjectStudies, getInterviewHistory, searchKnowledgeBase) 
-                // would be implemented here, but are omitted for brevity as they just require model imports.
+                case 'getProjectStudies': {
+                    const studies = await ProjectStudy.find({ user: this.userId })
+                        .sort({ updatedAt: -1 })
+                        .limit(10)
+                        .select('projectName moduleStudied flowUnderstanding coreComponents keyTakeaways tasks updatedAt')
+                        .lean();
+
+                    return studies;
+                }
+
+                case 'getInterviewHistory': {
+                    const sessions = await InterviewSession.find({ userId: this.userId })
+                        .sort({ updatedAt: -1 })
+                        .limit(5)
+                        .select('status totalScore overallFeedback startedAt endedAt config.difficulty config.language analytics')
+                        .lean();
+
+                    return sessions;
+                }
+
+                case 'searchKnowledgeBase': {
+                    const query = typeof args.query === 'string' ? args.query.trim() : '';
+                    if (!query) {
+                        return { results: [], error: 'Query is required' };
+                    }
+
+                    const embedding = await embeddingService.generateEmbedding(query);
+                    const results = await vectorService.findSimilar(
+                        this.userId,
+                        embedding,
+                        5,
+                        { type: { "$in": ['BackendTopic', 'ProjectStudy', 'DSAProblem', 'InterviewSession'] } }
+                    );
+
+                    return {
+                        results: results.map((result) => ({
+                            id: result.id,
+                            score: result.score,
+                            type: result.type,
+                            title: result.title,
+                            content: (result.content || '').slice(0, 1200),
+                            metadata: result.metadata
+                        }))
+                    };
+                }
+
                 default:
                     return { error: `Tool ${name} not implemented` };
             }

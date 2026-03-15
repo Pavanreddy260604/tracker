@@ -37,7 +37,8 @@ app.get('/health', (req, res) => {
     res.json({
         status: 'ok',
         service: 'script-writer',
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
+        v: 2
     });
 });
 

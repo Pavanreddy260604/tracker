@@ -1,6 +1,6 @@
 import dotenv from 'dotenv';
 
-dotenv.config();
+dotenv.config({ override: true });
 
 const NODE_ENV_VALUES = new Set(['development', 'test', 'production']);
 const REQUIRED_APP_ENV = ['MONGODB_URI', 'JWT_SECRET', 'ENCRYPTION_KEY'] as const;

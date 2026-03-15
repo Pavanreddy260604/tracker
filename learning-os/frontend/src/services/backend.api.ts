@@ -31,5 +31,11 @@ export const backendApi = {
         return baseApi.request<{ message: string }>(`/backend-topics/${id}`, {
             method: 'DELETE',
         });
+    },
+    
+    async auditTopic(id: string) {
+        return baseApi.request<{ success: boolean; data: any }>(`/backend-topics/${id}/audit`, {
+            method: 'POST'
+        });
     }
 };

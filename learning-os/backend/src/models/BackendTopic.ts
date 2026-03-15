@@ -29,6 +29,7 @@ export interface IBackendTopic extends Document {
         text: string;
         isCompleted: boolean;
     }[];
+    auditScore?: number;
     resources?: {
         title: string;
         url: string;
@@ -109,6 +110,10 @@ const backendTopicSchema = new Schema<IBackendTopic>(
         reviewStage: {
             type: Number,
             default: 1, // Start at Stage 1 (Review in 1 day)
+        },
+        auditScore: {
+            type: Number,
+            default: 0,
         },
     },
     {

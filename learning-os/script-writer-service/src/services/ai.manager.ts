@@ -86,7 +86,7 @@ export class AIServiceManager implements IAIService {
         }
     }
 
-    async *chatStream(messages: { role: string; content: string }[], systemPrompt?: string): AsyncGenerator<string, void, unknown> {
+    async *chatStream(messages: { role: string; content: string }[], systemPrompt?: string, options?: import('./ai.interface').ChatOptions): AsyncGenerator<string, void, unknown> {
         const primaryProvider = this.activeProvider;
         const fallbackProvider: AIProvider = primaryProvider === 'groq' ? 'ollama' : 'groq';
 
@@ -99,7 +99,7 @@ export class AIServiceManager implements IAIService {
         let primaryError: any = null;
 
         try {
-            for await (const chunk of primary.chatStream(messages, systemPrompt)) {
+            for await (const chunk of primary.chatStream(messages, systemPrompt, options)) {
                 emittedFromPrimary = true;
                 yield chunk;
             }
@@ -120,7 +120,7 @@ export class AIServiceManager implements IAIService {
         }
 
         try {
-            for await (const chunk of fallback.chatStream(messages, systemPrompt)) {
+            for await (const chunk of fallback.chatStream(messages, systemPrompt, options)) {
                 yield chunk;
             }
         } catch (fallbackError: any) {
