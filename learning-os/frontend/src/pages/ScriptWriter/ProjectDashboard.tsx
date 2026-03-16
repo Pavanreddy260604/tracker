@@ -264,21 +264,21 @@ export function ProjectDashboard({
                                 </div>
                                 <div className="space-y-2">
                                     <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest px-1">Target Language</label>
-                                    <input
-                                        className="w-full bg-zinc-900/50 border border-zinc-800 rounded-2xl px-4 py-3 text-zinc-300 outline-none focus:border-blue-500 transition-all hover:border-zinc-700 font-bold text-blue-400"
-                                        list="script-language-options-new-project"
+                                    <select
+                                        className="w-full bg-zinc-900/50 border border-zinc-800 rounded-2xl px-4 py-3 text-zinc-300 outline-none focus:border-blue-500 transition-all hover:border-zinc-700 font-bold text-blue-400 cursor-pointer"
                                         value={newProjectForm.language}
                                         onChange={(e) => onNewProjectFieldChange('language', e.target.value)}
-                                        placeholder="English"
-                                    />
-                                    <datalist id="script-language-options-new-project">
-                                        <option value="English" />
-                                        <option value="Telugu" />
-                                        <option value="Hindi" />
-                                        <option value="Tamil" />
-                                        <option value="Spanish" />
-                                        <option value="French" />
-                                    </datalist>
+                                    >
+                                        <option value="English">English</option>
+                                        <option value="Telugu">Telugu</option>
+                                        <option value="Hindi">Hindi</option>
+                                        <option value="Tamil">Tamil</option>
+                                        <option value="Kannada">Kannada</option>
+                                        <option value="Malayalam">Malayalam</option>
+                                        <option value="Spanish">Spanish</option>
+                                        <option value="French">French</option>
+                                        <option value="German">German</option>
+                                    </select>
                                 </div>
                             </div>
 
@@ -299,6 +299,18 @@ export function ProjectDashboard({
                                     </label>
                                 </div>
                             )}
+
+                            <div className="grid grid-cols-1 gap-4">
+                                <div className="space-y-2">
+                                    <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest px-1">Target Scene Count</label>
+                                    <input
+                                        type="number"
+                                        className="w-full bg-zinc-900/50 border border-zinc-800 rounded-2xl px-4 py-3 text-zinc-300 outline-none focus:border-blue-500 transition-all hover:border-zinc-700"
+                                        value={newProjectForm.targetSceneCount || 60}
+                                        onChange={(e) => onNewProjectFieldChange('targetSceneCount', parseInt(e.target.value) || 0)}
+                                    />
+                                </div>
+                            </div>
 
                             <div className="space-y-2">
                                 <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest px-1">Hook / Logline</label>

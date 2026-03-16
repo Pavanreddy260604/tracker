@@ -73,7 +73,8 @@ const AIChatInput = memo(({
         transcript, 
         startListening, 
         stopListening,
-        volume 
+        volume,
+        error
     } = speech;
 
     const { selectedModel, setSelectedModel, AI_MODELS, uploadAttachment } = useAI() as any;
@@ -347,6 +348,11 @@ const AIChatInput = memo(({
                                 autoComplete="off"
                             />
                         </div>
+                        {error && (
+                            <div className="mt-1 px-1 text-[10px] text-status-error">
+                                {error}
+                            </div>
+                        )}
                     </div>
 
                     <div className="flex items-center gap-1 shrink-0">

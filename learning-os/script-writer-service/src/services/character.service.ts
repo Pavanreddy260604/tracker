@@ -8,6 +8,15 @@ export class CharacterService {
      * Create a new character for a bible (project).
      */
     async createCharacter(data: Partial<ICharacter>): Promise<ICharacter> {
+        if (data.name && data.bibleId) {
+            const existing = await Character.findOne({
+                bibleId: data.bibleId,
+                name: { $regex: new RegExp(`^${data.name.trim()}$`, 'i') }
+            });
+            if (existing) {
+                throw new Error(`A character named "${data.name}" already exists in this project.`);
+            }
+        }
         const character = new Character(data);
         return await character.save();
     }
@@ -30,6 +39,19 @@ export class CharacterService {
      * Update a character.
      */
     async updateCharacter(id: string, updates: Partial<ICharacter>): Promise<ICharacter | null> {
+        if (updates.name) {
+            const character = await Character.findById(id);
+            if (character && updates.name.toLowerCase() !== character.name.toLowerCase()) {
+                const existing = await Character.findOne({
+                    bibleId: character.bibleId,
+                    name: { $regex: new RegExp(`^${updates.name.trim()}$`, 'i') },
+                    _id: { $ne: id }
+                });
+                if (existing) {
+                    throw new Error(`A character named "${updates.name}" already exists in this project.`);
+                }
+            }
+        }
         return await Character.findByIdAndUpdate(id, updates, { new: true });
     }
 

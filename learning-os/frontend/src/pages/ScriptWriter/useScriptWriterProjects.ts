@@ -136,6 +136,7 @@ export function useScriptWriterProjects({
                 tone: newProjectForm.tone,
                 language: newProjectForm.language,
                 transliteration: newProjectForm.transliteration,
+                targetSceneCount: newProjectForm.targetSceneCount,
                 assistantPreferences: newProjectForm.assistantPreferences
             });
             setProjects((prev) => [project, ...prev]);

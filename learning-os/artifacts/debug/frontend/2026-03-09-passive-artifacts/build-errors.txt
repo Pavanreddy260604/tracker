@@ -1,4 +1,0 @@
-src/pages/ScriptWriter/components/ContextPanel.tsx(87,9): error TS6133: 'handleScriptGenerate' is declared but its value is never read.
-src/pages/ScriptWriter/components/ContextPanel.tsx(197,29): error TS2322: Type '(() => void) | undefined' is not assignable to type '() => void'.
-  Type 'undefined' is not assignable to type '() => void'.
-src/pages/ScriptWriter/ScriptWriterDashboard.tsx(34,11): error TS6133: 'handleProjectCreated' is declared but its value is never read.

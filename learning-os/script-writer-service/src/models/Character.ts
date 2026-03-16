@@ -86,7 +86,13 @@ const CharacterSchema: Schema = new Schema({
     }]
 }, { timestamps: true });
 
-// Index for efficient queries
-CharacterSchema.index({ bibleId: 1, name: 1 });
+// Index for efficient queries and case-insensitive uniqueness
+CharacterSchema.index(
+    { bibleId: 1, name: 1 },
+    { 
+        unique: true, 
+        collation: { locale: 'en', strength: 2 } 
+    }
+);
 
 export const Character = mongoose.model<ICharacter>('Character', CharacterSchema);

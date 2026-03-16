@@ -303,35 +303,32 @@ export function extractStructuredAssistantSections(content: string): {
     };
 }
 
+const SMALL_TALK_PATTERN = /^(hi|hello|hey|greetings|thanks|thank you|thx|bye|goodbye|who are you|what can you do)\b/i;
+
 export function classifyAssistantIntent(content: string, scope: AssistantScope, hasSelection = false): IntentDecision {
     const trimmed = content.trim();
     if (!trimmed) {
         return { intent: 'chat', confidence: 0 };
     }
 
-    const rewriteVerb = REWRITE_VERB_PATTERN.test(trimmed);
-    const languageOverride = detectLanguageOverride(trimmed);
-    const startsWithRewriteVerb = STARTS_WITH_REWRITE_VERB_PATTERN.test(trimmed);
-    const hasExplicitTarget = REWRITE_OBJECT_PATTERN.test(trimmed) || Boolean(languageOverride) || startsWithRewriteVerb;
+    // Instant Small Talk Detection (Frontend Heuristic)
+    const normalized = trimmed.toLowerCase().replace(/[^\w\s]/g, '').trim();
+    if (SMALL_TALK_PATTERN.test(normalized)) {
+        return { intent: 'chat', confidence: 0.99 };
+    }
+
+    // Explicit Analysis/Question Detection
     const asksQuestion = trimmed.includes('?') || QUESTION_START_PATTERN.test(trimmed);
     const asksForAnalysis = ANALYSIS_PATTERN.test(trimmed);
-    const rewriteRequest = rewriteVerb && (hasExplicitTarget || (hasSelection && !asksQuestion && !asksForAnalysis));
-    const isAmbiguous = rewriteRequest && asksForAnalysis;
-
-    if (isAmbiguous) {
-        return { intent: 'ambiguous', confidence: 0.35 };
+    
+    // If it's a very short question or analysis, we lean Chat but mark as ML for safety
+    if (asksForAnalysis || (asksQuestion && trimmed.length < 50)) {
+        return { intent: 'chat', confidence: 0.7 };
     }
 
-    // If it's a question or analysis request, default to chat unless it's clearly a rewrite ask
-    if (!rewriteRequest || asksForAnalysis) {
-        return { intent: 'chat', confidence: asksQuestion || asksForAnalysis ? 0.8 : 0.6 };
-    }
-
-    if (scope === 'selection' || hasSelection || /\b(selection|selected|these lines|this line|lines|dialogue block)\b/i.test(trimmed)) {
-        return { intent: 'selection_edit', confidence: 0.85 };
-    }
-
-    return { intent: 'scene_edit', confidence: 0.85 };
+    // For everything else, we signal that Elite ML should handle the routing
+    // We return 'ambiguous' or 'chat' as a baseline, but useScriptWriterGenerator will see the low confidence
+    return { intent: 'chat', confidence: 0.1 }; 
 }
 
 export function getIntentHint(intent: AssistantIntent): string {

@@ -12,7 +12,7 @@ import { useAuthStore } from '../stores/authStore';
 export const AI_MODELS = [
     // Groq Direct (Cloud)
     { id: 'groq:llama-3.3-70b-versatile', name: 'Llama 3.3 70B', provider: 'Groq', category: 'Cloud', description: 'Ultra-fast cloud inference', supportsFiles: true },
-    { id: 'groq:llama-3.2-11b-vision-preview', name: 'Llama 3.2 Vision', provider: 'Groq', category: 'Cloud', description: 'Instant image recognition', supportsFiles: true },
+    { id: 'groq:llama-3.2-90b-vision-preview', name: 'Llama 3.2 90B Vision', provider: 'Groq', category: 'Cloud', description: 'High-performance vision', supportsFiles: true },
     
     // Cloud Proxy (Ollama-Cloud)
     { id: 'deepseek-v3.1:671b-cloud', name: 'DeepSeek V3.1', provider: 'Ollama-Cloud', category: 'Cloud Proxy', description: 'Cloud-proxied reasoning', supportsFiles: true },

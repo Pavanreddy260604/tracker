@@ -39,6 +39,7 @@ export interface ToolCall {
 }
 
 const DEFAULT_FALLBACK_MODELS = [
+    'groq:llama-3.3-70b-versatile',
     'gpt-oss:120b-cloud',
     'glm-4.6:cloud',
     'qwen3-coder:480b-cloud',

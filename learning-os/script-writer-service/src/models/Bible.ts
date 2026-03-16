@@ -20,6 +20,7 @@ export interface IBible extends Document {
     storySoFar?: string; // Cumulative summary of the entire plot
     sceneCount?: number; // Total scenes generated so far
     transliteration?: boolean; // PH Transliteration Soul
+    targetSceneCount?: number; // Target number of scenes for the script
     assistantPreferences?: IAssistantPreferences;
     createdAt: Date;
     updatedAt: Date;
@@ -106,6 +107,10 @@ const BibleSchema: Schema = new Schema({
     transliteration: {
         type: Boolean,
         default: false
+    },
+    targetSceneCount: {
+        type: Number,
+        default: 60
     },
     assistantPreferences: {
         type: AssistantPreferencesSchema,

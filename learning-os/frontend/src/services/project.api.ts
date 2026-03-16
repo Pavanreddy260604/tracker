@@ -17,6 +17,7 @@ export interface Bible {
     transliteration?: boolean;
     visualStyle?: string;
     rules?: string[];
+    targetSceneCount?: number;
     assistantPreferences?: AssistantPreferences;
     createdAt: string;
 }

@@ -9,6 +9,7 @@ import { User } from '../models/User';
 import { Bible } from '../models/Bible';
 import { Scene } from '../models/Scene';
 import { assistantRagService } from './assistantRag.service';
+import { characterDiscoveryService } from './characterDiscovery.service';
 import {
     cleanAssistantChatResponse,
     extractBestEffortAssistantAnswer,
@@ -216,10 +217,7 @@ export class ScriptGeneratorService {
         // PH 20: Inject Character States
         let stateGuidance = '';
         if (castContext.length > 0) {
-            stateGuidance = '\n\n## CHARACTER CONTINUITY (CURRENT STATE):\n';
-            castContext.forEach(char => {
-                stateGuidance += `- ${char.name}: ${char.currentStatus || 'Stable'}. Held: ${char.heldItems?.join(', ') || 'None'}\n`;
-            });
+            stateGuidance = '\n\n## CHARACTER CONTINUITY & ROBUST VOICE:\n' + this.buildCharacterContext(castContext) + '\n';
         }
 
         // 1.5 Generate Beat Sheet
@@ -255,7 +253,10 @@ export class ScriptGeneratorService {
             await scriptDoc.save();
 
             // PH 20: Trigger background state update
-            console.log('[ScriptGen] PH 20: Character State Update triggered');
+            console.log('[ScriptGen] PH 20: Character State Update & Discovery triggered');
+            if (request.bibleId) {
+                characterDiscoveryService.discoverAndSave(request.bibleId, finalContent).catch(e => console.error('[Discovery] Error:', e));
+            }
             self.extractAndSaveState(finalContent, castContext).catch(e => console.error('[StateUpdate] Error:', e));
 
         } catch (error) {
@@ -318,14 +319,7 @@ export class ScriptGeneratorService {
 
         const retrievedScenesText = similarSamples.map(s => `--- SAMPLE ---\n${s.content}`).join('\n\n');
 
-        let characterMemoryText = '';
-        castContext.forEach(c => {
-            let relations = '';
-            if (c.relationships?.length) {
-                relations = ` | Relationships: ${c.relationships.map((r: any) => `${r.targetCharName}: ${r.dynamic}`).join(', ')}`;
-            }
-            characterMemoryText += `- ${c.name}: ${c.currentStatus || 'Stable'}. Items: ${c.heldItems?.join(', ') || 'None'}${relations}\n`;
-        });
+        const characterMemoryText = this.buildCharacterContext(castContext);
 
         const plotStateText = request.previousContext || 'Starting a new narrative thread.';
         const globalOutlineText = bible?.globalOutline?.join('\n') || 'No global outline established yet.';
@@ -428,9 +422,15 @@ export class ScriptGeneratorService {
     }
 
     private async ensureGlobalOutline(bible: any): Promise<void> {
-        if (bible.globalOutline && bible.globalOutline.length >= 20) return;
+        // If outline exists and is sufficient, don't regenerate by default
+        // But for "High Detail" we might want to check length against target scale
+        const targetScale = Math.max(20, Math.floor((bible.targetSceneCount || 60) / 3));
+        if (bible.globalOutline && bible.globalOutline.length >= targetScale) return;
+        
         const { MASTER_OUTLINE_PROMPT } = require('../prompts/hollywood');
-        const prompt = MASTER_OUTLINE_PROMPT.replace('{{logline}}', bible.logline || bible.title);
+        const prompt = MASTER_OUTLINE_PROMPT
+            .replace('{{logline}}', bible.logline || bible.title)
+            .replace('{{target_scale}}', targetScale.toString());
         try {
             console.log('[GlobalOutline] Generating for logline:', bible.logline || bible.title);
             const response = await aiServiceManager.chat(prompt, { format: 'json' });
@@ -568,6 +568,39 @@ export class ScriptGeneratorService {
             .trim();
         if (!normalized) return false;
         return SMALL_TALK_PATTERN.test(normalized);
+    }
+
+    private async classifyIntentElite(instruction: string, context: { hasScene: boolean, hasSelection: boolean, currentMode: string }): Promise<{ intent: 'scene_edit' | 'selection_edit' | 'chat', confidence: number }> {
+        const { ELITE_INTENT_CLASSIFIER_PROMPT } = require('../prompts/hollywood');
+        
+        const prompt = ELITE_INTENT_CLASSIFIER_PROMPT
+            .replace('{{hasScene}}', String(context.hasScene))
+            .replace('{{hasSelection}}', String(context.hasSelection))
+            .replace('{{currentMode}}', context.currentMode)
+            .replace('{{instruction}}', instruction.trim());
+
+        try {
+            // Use Groq for ultra-fast intent classification (low latency is "Top Class")
+            const response = await aiServiceManager.chat(prompt, { 
+                temperature: 0, 
+                format: 'json',
+                model: 'llama-3-8b-8192' // Speed-optimized model for single-token/JSON tasks
+            });
+
+            const jsonPayload = this.extractJsonPayload(response);
+            if (jsonPayload) {
+                const parsed = JSON.parse(jsonPayload);
+                return {
+                    intent: parsed.intent || 'chat',
+                    confidence: parsed.confidence || 0.5
+                };
+            }
+        } catch (error) {
+            console.error('[EliteClassifier] Failed:', error);
+        }
+
+        // Resilient Fallback: If ML fails, we stay conservative
+        return { intent: 'chat', confidence: 0 };
     }
 
     private async generateSmallTalkResponse(message: string): Promise<string> {
@@ -888,25 +921,16 @@ export class ScriptGeneratorService {
             ? (options.language || assistantPreferences.replyLanguage || bible?.language || 'English')
             : (options.language || bible?.language || 'English');
         const originalContent = options.currentContent ?? scene.content ?? '';
-        let characterMemoryText = 'No specific character data available.';
         let castContext: any[] = [];
-        if (ASSISTANT_V2_ENABLED) {
-            console.info('[AssistantV2] assistedEdit', {
-                sceneId,
-                mode,
-                target,
-                language,
-                hasSelection: Boolean(options.selection?.text)
-            });
-        }
+        
         if (scene.charactersInvolved?.length) {
             castContext = await Character.find({ _id: { $in: scene.charactersInvolved } }).lean();
-            characterMemoryText = castContext.map(c => {
-                let relations = '';
-                if (c.relationships?.length) relations = ` | Relationships: ${c.relationships.map((r: any) => `${r.targetCharName}: ${r.dynamic}`).join(', ')}`;
-                return `- ${c.name}: ${c.currentStatus || 'Stable'}. Items: ${c.heldItems?.join(', ') || 'None'}${relations}`;
-            }).join('\n');
+        } else if (bible?._id) {
+            castContext = await Character.find({ bibleId: bible._id }).lean();
         }
+        
+        const characterMemoryText = this.buildCharacterContext(castContext);
+        
         const plotState = scene.summary || 'Developing current scene.';
         const selectionBlock = this.buildAssistantSelectionBlock(options.selection);
         const transliteration = options.transliteration !== undefined
@@ -915,9 +939,25 @@ export class ScriptGeneratorService {
         const assistantPreferencesBlock = this.buildAssistantPreferencesBlock(assistantPreferences, language, Boolean(transliteration));
         const { TACTICS_LIBRARY, SUBTEXT_MANDATE } = require('../prompts/hollywood');
         const tacticsStr = Object.entries(TACTICS_LIBRARY).map(([n, d]) => `${n.toUpperCase()}: ${d}`).join('\n');
-        const askIntent = mode === 'ask'
-            ? this.classifyAskIntent(instruction, target, options.selection)
-            : 'chat';
+
+        // Elite ML Intent Detection
+        const intentContext = {
+            hasScene: !!scene,
+            hasSelection: target === 'selection',
+            currentMode: mode
+        };
+        const eliteDecision = await this.classifyIntentElite(instruction, intentContext);
+        
+        // Confidence-based Routing Logic
+        let effectiveIntent = eliteDecision.intent;
+        if (eliteDecision.confidence < 0.6) {
+            const defaultMode = assistantPreferences.defaultMode || 'ask';
+            if (defaultMode === 'edit') effectiveIntent = target === 'selection' ? 'selection_edit' : 'scene_edit';
+            else effectiveIntent = 'chat';
+        }
+
+        const askIntent: AskIntent = effectiveIntent === 'chat' ? 'chat' : 
+                                    (effectiveIntent === 'selection_edit' ? 'selection_edit' : 'scene_edit');
 
         const priorChatHistory = this.buildAssistantChatHistoryText(
             (scene.assistantChatHistory || []).map((entry) => ({
@@ -930,42 +970,32 @@ export class ScriptGeneratorService {
         scene.assistantChatHistory.push({ role: 'user', type: mode === 'ask' ? 'chat' : 'instruction', content: instruction, timestamp: new Date() });
         await scene.save();
 
+        // 1. Instant Small Talk
         if (mode === 'ask' && this.isSmallTalk(instruction)) {
             const smallTalkResponse = await this.generateSmallTalkResponse(instruction);
             yield smallTalkResponse;
-
             scene.assistantChatHistory.push({
                 role: 'assistant',
                 type: 'chat',
                 content: smallTalkResponse,
                 timestamp: new Date()
             } as any);
-
             await scene.save();
             return;
         }
 
-        if (mode === 'ask') {
-            const shortCircuitResponse = this.buildAskIntentGuidance(askIntent);
-            if (shortCircuitResponse) {
-                yield shortCircuitResponse;
-
-                scene.assistantChatHistory.push({
-                    role: 'assistant',
-                    type: 'chat',
-                    content: shortCircuitResponse,
-                    timestamp: new Date()
-                } as any);
-
-                await scene.save();
-                return;
-            }
+        // 2. WORLD CLASS AUTO-PROMOTION
+        // If it's an edit request in Chat mode, promote it.
+        let effectiveMode = mode;
+        if (mode === 'ask' && (askIntent === 'selection_edit' || askIntent === 'scene_edit')) {
+            effectiveMode = 'agent';
+            console.info('[EliteClassifier] Auto-Promoting Chat request to Agent mode for execution.');
         }
 
         const userInterests = await this.getUserInterestsForBible(bible);
         const refPack = await assistantRagService.buildAssistantReferencePack({
             instruction,
-            mode,
+            mode: effectiveMode,
             target,
             language,
             currentContent: originalContent,
@@ -975,9 +1005,10 @@ export class ScriptGeneratorService {
             userInterests
         });
 
-        if (mode === 'ask') {
+        // 3. Execution Selection
+        if (effectiveMode === 'ask') {
             const prompt = this.buildEditorAssistantPrompt(SCRIPT_EDITOR_AGENT_PROMPT, {
-                mode,
+                mode: 'ask',
                 target,
                 storySoFar,
                 slugline: scene.slugline || 'Current Scene',
@@ -990,44 +1021,34 @@ export class ScriptGeneratorService {
                 chatHistory: priorChatHistory,
                 similarSamples: refPack.promptSections,
                 instruction,
-                outputContract: this.buildAssistantOutputContract(mode, target, options.selection),
+                outputContract: this.buildAssistantOutputContract('ask', target, options.selection),
                 assistantPreferences: assistantPreferencesBlock
             });
 
-            try {
-                const stream = aiServiceManager.chatStream([{ role: 'user', content: prompt }], undefined, { model: options.model });
-                let fullResponse = '';
-
-                for await (const chunk of stream) {
-                    fullResponse += chunk;
-                    yield chunk;
-                }
-
-                const visibleResponse = cleanAssistantChatResponse(fullResponse).trim();
-
-                if (!visibleResponse) {
-                    throw new Error('Assistant produced no visible response.');
-                }
-
-                scene.assistantChatHistory.push({
-                    role: 'assistant',
-                    type: 'chat',
-                    content: visibleResponse,
-                    timestamp: new Date(),
-                    retrievalMetadata: refPack.retrievalMetadata
-                } as any);
-
-                await scene.save();
-                return;
-            } catch (error) {
-                throw error;
+            const stream = aiServiceManager.chatStream([{ role: 'user', content: prompt }], undefined, { model: options.model });
+            let fullResponse = '';
+            for await (const chunk of stream) {
+                fullResponse += chunk;
+                yield chunk;
             }
+
+            const visibleResponse = cleanAssistantChatResponse(fullResponse).trim();
+            scene.assistantChatHistory.push({
+                role: 'assistant',
+                type: 'chat',
+                content: visibleResponse || 'My apologies, I could not generate a response.',
+                timestamp: new Date(),
+                retrievalMetadata: refPack.retrievalMetadata
+            } as any);
+            await scene.save();
+            return;
         }
 
-        if (target === 'selection') {
+        // 4. Edit Execution (Selection vs Scene)
+        if (target === 'selection' && options.selection?.text?.trim()) {
             const prompt = this.buildEditorAssistantPrompt(SCRIPT_EDITOR_AGENT_PROMPT, {
-                mode,
-                target,
+                mode: effectiveMode,
+                target: 'selection',
                 storySoFar,
                 slugline: scene.slugline || 'Current Scene',
                 summary: scene.summary || 'No summary available.',
@@ -1039,61 +1060,47 @@ export class ScriptGeneratorService {
                 chatHistory: priorChatHistory,
                 similarSamples: refPack.promptSections,
                 instruction,
-                outputContract: this.buildAssistantOutputContract(mode, target, options.selection),
+                outputContract: this.buildAssistantOutputContract(effectiveMode, 'selection', options.selection),
                 assistantPreferences: assistantPreferencesBlock
             });
 
             const stream = aiServiceManager.chatStream([{ role: 'system', content: prompt }], undefined, { model: options.model });
             let fullResponse = '';
-
-            try {
-                for await (const chunk of stream) {
-                    fullResponse += chunk;
-                    yield chunk;
-                }
-
-                const visibleResponse = cleanAssistantChatResponse(fullResponse).replace(/\r\n?/g, '\n').trim();
-
-                if (!visibleResponse.trim()) {
-                    throw new Error('Assistant produced no visible response.');
-                }
-
-                let explanation: string[] | null = null;
-                if (ASSISTANT_V2_ENABLED) {
-                    const patchSegments = this.extractPatchSegments(visibleResponse);
-                    const original = patchSegments?.searchText || options.selection?.text || '';
-                    const revised = patchSegments?.replaceText || '';
-                    if (original && revised) {
-                        explanation = await this.generateEditExplanation({
-                            original,
-                            revised,
-                            instruction,
-                            language: assistantPreferences.replyLanguage || language
-                        });
-                    }
-                }
-
-                scene.assistantChatHistory.push({
-                    role: 'assistant',
-                    type: 'proposal',
-                    content: visibleResponse,
-                    timestamp: new Date(),
-                    retrievalMetadata: refPack.retrievalMetadata,
-                    metadata: explanation ? { explanation } : undefined
-                } as any);
-
-                scene.lastInstruction = instruction;
-                await scene.save();
-                return;
-            } catch (error) {
-                throw error;
+            for await (const chunk of stream) {
+                fullResponse += chunk;
+                yield chunk;
             }
+
+            const visibleResponse = cleanAssistantChatResponse(fullResponse).trim();
+            let explanation: string[] | null = null;
+            if (ASSISTANT_V2_ENABLED && visibleResponse) {
+                const patchSegments = this.extractPatchSegments(visibleResponse);
+                explanation = await this.generateEditExplanation({
+                    original: patchSegments?.searchText || options.selection.text,
+                    revised: patchSegments?.replaceText || '',
+                    instruction,
+                    language
+                });
+            }
+
+            scene.assistantChatHistory.push({
+                role: 'assistant',
+                type: 'proposal',
+                content: visibleResponse,
+                timestamp: new Date(),
+                retrievalMetadata: refPack.retrievalMetadata,
+                metadata: { explanation: explanation || undefined }
+            } as any);
+            scene.lastInstruction = instruction;
+            await scene.save();
+            return;
         }
 
+        // 5. Full Scene Edit (Main Path)
         const finalPrompt = this.replacePromptTokens(HYBRID_ASSISTANT_ULTIMATE_PROMPT, {
             '{{instruction}}': instruction,
-            '{{mode}}': mode,
-            '{{target}}': target,
+            '{{mode}}': effectiveMode,
+            '{{target}}': 'scene',
             '{{language}}': language,
             '{{transliteration}}': transliteration ? 'ENABLED' : 'DISABLED',
             '{{global_outline}}': globalOutline,
@@ -1102,7 +1109,7 @@ export class ScriptGeneratorService {
             '{{plot_state}}': plotState,
             '{{similar_samples}}': refPack.promptSections,
             '{{original_content}}': originalContent,
-            '{{selection_block}}': selectionBlock,
+            '{{selection_block}}': '',
             '{{assistant_preferences}}': assistantPreferencesBlock,
             '{{subtext_mandate}}': SUBTEXT_MANDATE,
             '{{tactics_library}}': tacticsStr
@@ -1117,17 +1124,11 @@ export class ScriptGeneratorService {
         try {
             for await (const chunk of stream) {
                 fullResponse += chunk;
-                if (!isYieldingScript && /SCENE_SCRIPT:/i.test(fullResponse)) {
-                    isYieldingScript = true;
-                }
-                if (!isYieldingScript) {
-                    continue;
-                }
+                if (!isYieldingScript && /SCENE_SCRIPT:/i.test(fullResponse)) isYieldingScript = true;
+                if (!isYieldingScript) continue;
 
                 const scriptMatch = fullResponse.match(/SCENE_SCRIPT:\s*([\s\S]*)$/i);
-                if (!scriptMatch) {
-                    continue;
-                }
+                if (!scriptMatch) continue;
 
                 const scriptText = scriptMatch[1];
                 const markerMatch = scriptText.match(/(STORY_CONTEXT_SUMMARY|SCENE_PLAN|CHARACTER_MEMORY_UPDATE|PLOT_STATE_UPDATE)/i);
@@ -1140,12 +1141,8 @@ export class ScriptGeneratorService {
                     yield safeDelta;
                     alreadyYieldedLength += safeDelta.length;
                 }
-
                 lastScriptLength = normalizedScript.length;
-
-                if (markerMatch) {
-                    isYieldingScript = false;
-                }
+                if (markerMatch) isYieldingScript = false;
             }
 
             const sections = extractStructuredAssistantSections(fullResponse);
@@ -1154,16 +1151,16 @@ export class ScriptGeneratorService {
             if (!finalScriptText.trim() && alreadyYieldedLength === 0) {
                 finalScriptText = await this.recoverSceneProposalWithEditorPrompt({
                     template: SCRIPT_EDITOR_AGENT_PROMPT,
-                    mode: mode === 'agent' ? 'agent' : 'edit',
+                    mode: 'agent',
                     target: 'scene',
                     storySoFar,
                     slugline: scene.slugline || 'Current Scene',
                     summary: scene.summary || 'No summary available.',
-                    characters: castContext.length > 0 ? castContext.map((character) => character.name).join(', ') : 'No characters specified.',
+                    characters: characterMemoryText,
                     language,
                     transliteration: Boolean(transliteration),
                     originalContent: originalContent || 'No active scene selected.',
-                    selectionBlock,
+                    selectionBlock: '',
                     chatHistory: priorChatHistory,
                     similarSamples: refPack.promptSections,
                     instruction,
@@ -1171,24 +1168,18 @@ export class ScriptGeneratorService {
                 });
             }
 
-            if (!finalScriptText.trim()) {
-                throw new Error('Assistant produced no usable screenplay output.');
-            }
-
             if (finalScriptText && lastScriptLength < finalScriptText.length) {
                 const finalDelta = finalScriptText.slice(alreadyYieldedLength);
-                if (finalDelta) {
-                    yield finalDelta;
-                }
+                if (finalDelta) yield finalDelta;
             }
 
             let explanation: string[] | null = null;
-            if (ASSISTANT_V2_ENABLED) {
+            if (ASSISTANT_V2_ENABLED && finalScriptText) {
                 explanation = await this.generateEditExplanation({
                     original: originalContent,
                     revised: finalScriptText,
                     instruction,
-                    language: assistantPreferences.replyLanguage || language
+                    language
                 });
             }
 
@@ -1211,6 +1202,12 @@ export class ScriptGeneratorService {
 
             const memoryMatch = fullResponse.match(/CHARACTER_MEMORY_UPDATE \(JSON\):\s*(\{[\s\S]*?\})/);
             if (memoryMatch && castContext.length > 0) this.pendingTasks.add(this.extractAndSaveState(fullResponse, castContext));
+
+            // Trigger character discovery in background
+            if (bible?._id) {
+                this.pendingTasks.add(characterDiscoveryService.discoverAndSave(bible._id.toString(), fullResponse));
+            }
+
             const plotMatch = fullResponse.match(/PLOT_STATE_UPDATE \(JSON\):\s*(\{[\s\S]*?\})/);
             if (plotMatch) {
                 try {
@@ -1219,11 +1216,9 @@ export class ScriptGeneratorService {
                         scene.summary = plotUpdate.summary;
                         await scene.save();
                     }
-                } catch (e) { }
+                } catch (e) {}
             }
-        } catch (error) {
-            throw error;
-        }
+        } catch (error) { throw error; }
     }
 
     async *assistProject(bibleId: string, instruction: string, options: AssistedEditOptions & { model?: string } = {}): AsyncGenerator<string, void, unknown> {
@@ -1240,25 +1235,33 @@ export class ScriptGeneratorService {
             yield smallTalkResponse;
             return;
         }
-        const shortCircuitResponse = this.buildAskIntentGuidance(this.classifyAskIntent(instruction, target, options.selection));
+        const intentContext = {
+            hasScene: false,
+            hasSelection: target === 'selection',
+            currentMode: options.mode || 'ask'
+        };
+        const eliteDecision = await this.classifyIntentElite(instruction, intentContext);
+        const askIntent: AskIntent = eliteDecision.intent === 'chat' ? 'chat' : 
+                                    (eliteDecision.intent === 'selection_edit' ? 'selection_edit' : 'scene_edit');
+
+        const shortCircuitResponse = this.buildAskIntentGuidance(askIntent);
         if (shortCircuitResponse) {
             yield shortCircuitResponse;
             return;
         }
+        const cast = await Character.find({ bibleId }).lean();
+        const characterMemoryText = this.buildCharacterContext(cast);
+        
         const userInterests = await this.getUserInterestsForBible(bible);
-        const cast = await Character.find({ bibleId }).select('name').lean();
-        const characterNames = cast.length > 0 ? cast.slice(0, 12).map((character) => character.name).join(', ') : 'No characters specified.';
-        let ragPack = { promptSections: '', retrievalMetadata: undefined as any };
-        try {
-            ragPack = await assistantRagService.buildAssistantReferencePack({ instruction, mode: 'ask', target, language, currentContent, selection: options.selection, bible, scene: null, userInterests: userInterests ?? undefined });
-        } catch (error) { }
+        const ragPack = await assistantRagService.buildAssistantReferencePack({ instruction, mode: 'ask', target, language, currentContent, selection: options.selection, bible, scene: null, userInterests: userInterests ?? undefined });
+        
         const prompt = this.buildEditorAssistantPrompt(SCRIPT_EDITOR_AGENT_PROMPT, {
             mode: 'ask',
             target,
             storySoFar: bible.storySoFar || 'No context provided.',
             slugline: `${bible.title} - PROJECT QUESTION`,
             summary: bible.logline || 'Project-level assistant question with no active scene selected.',
-            characters: characterNames,
+            characters: characterMemoryText,
             language,
             transliteration,
             originalContent: currentContent || 'No active scene selected.',
@@ -1355,6 +1358,33 @@ export class ScriptGeneratorService {
                 }
             }
         } catch (err) { }
+    }
+
+    private buildCharacterContext(cast: any[]): string {
+        if (!cast || cast.length === 0) return 'No specific character data available.';
+        return cast.map(c => {
+            let bio = `- **${c.name.toUpperCase()}** (${c.role || 'supporting'})`;
+            if (c.traits?.length) bio += ` | Traits: ${c.traits.join(', ')}`;
+            if (c.motivation) bio += ` | Motivation: ${c.motivation}`;
+            if (c.currentStatus) bio += ` | Current Status: ${c.currentStatus}`;
+            
+            // Voice Robustness
+            if (c.voice) {
+                let voiceInfo = '';
+                if (c.voice.description) voiceInfo += `Voice: ${c.voice.description}. `;
+                if (c.voice.accent) voiceInfo += `Accent: ${c.voice.accent}. `;
+                if (c.voice.sampleLines?.length) {
+                    voiceInfo += `Sample Dialogue: "${c.voice.sampleLines.join('" / "')}"`;
+                }
+                if (voiceInfo) bio += ` | ${voiceInfo.trim()}`;
+            }
+
+            let relations = '';
+            if (c.relationships?.length) {
+                relations = ` | Relationships: ${c.relationships.map((r: any) => `${r.targetCharName}: ${r.dynamic}`).join(', ')}`;
+            }
+            return bio + relations;
+        }).join('\n');
     }
 }
 

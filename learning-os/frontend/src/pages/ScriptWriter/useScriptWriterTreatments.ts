@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import type { Bible } from '../../services/project.api';
 import type { Act, Treatment } from '../../services/treatment.api';
+import type { Character } from '../../services/character.api';
 import { treatmentApi } from '../../services/treatment.api';
 import { getErrorMessage } from './utils';
 
@@ -9,18 +10,22 @@ interface UseScriptWriterTreatmentsProps {
     activeProjectId: string | null;
     setError: (message: string | null) => void;
     refreshScenes?: (projectId: string, autoSelect?: boolean) => Promise<void>;
+    characters?: Character[];
 }
 
 export function useScriptWriterTreatments({
     activeProject,
     activeProjectId,
     setError,
-    refreshScenes
+    refreshScenes,
+    characters = []
 }: UseScriptWriterTreatmentsProps) {
     const [treatments, setTreatments] = useState<Treatment[]>([]);
     const [treatmentPreview, setTreatmentPreview] = useState<Act[] | null>(null);
     const [treatmentLogline, setTreatmentLogline] = useState('');
     const [treatmentStyle, setTreatmentStyle] = useState('Save The Cat');
+    const [treatmentSceneCount, setTreatmentSceneCount] = useState(60);
+    // minutes
     const [treatmentLoading, setTreatmentLoading] = useState(false);
 
     const loadTreatments = useCallback(async (projectId: string) => {
@@ -36,10 +41,13 @@ export function useScriptWriterTreatments({
     }, [setError]);
 
     useEffect(() => {
+        if (activeProject?.targetSceneCount && treatmentSceneCount === 60) {
+            setTreatmentSceneCount(activeProject.targetSceneCount);
+        }
         if (activeProject?.logline && !treatmentLogline) {
             setTreatmentLogline(activeProject.logline);
         }
-    }, [activeProject?.logline, treatmentLogline]);
+    }, [activeProject, treatmentLogline, treatmentSceneCount]);
 
     useEffect(() => {
         if (!activeProjectId) {
@@ -55,7 +63,7 @@ export function useScriptWriterTreatments({
         if (!treatmentLogline.trim()) return;
         setTreatmentLoading(true);
         try {
-            const acts = await treatmentApi.generateTreatment(treatmentLogline, treatmentStyle);
+            const acts = await treatmentApi.generateTreatment(treatmentLogline, treatmentStyle, treatmentSceneCount, characters, activeProjectId || undefined);
             setTreatmentPreview(acts);
         } catch (err) {
             setError(getErrorMessage(err, 'Failed to generate treatment'));
@@ -99,9 +107,11 @@ export function useScriptWriterTreatments({
         treatmentPreview,
         treatmentLogline,
         treatmentStyle,
+        treatmentSceneCount,
         treatmentLoading,
         setTreatmentLogline,
         setTreatmentStyle,
+        setTreatmentSceneCount,
         handleTreatmentGenerate,
         handleTreatmentSave,
         handleTreatmentConvert

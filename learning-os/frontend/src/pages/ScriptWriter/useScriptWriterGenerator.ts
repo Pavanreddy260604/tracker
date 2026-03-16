@@ -150,11 +150,11 @@ export function useScriptWriterGenerator({
         if (activeProject?.logline && !scriptIdea) {
             setScriptIdea(activeProject.logline);
         }
-        // Default to project language if available
-        if (activeProject?.language && (scriptLanguage === 'English' || !scriptLanguage)) {
+        // Default to project language if available and not yet customized
+        if (activeProject?.language && scriptLanguage === 'English' && activeProject.language !== 'English') {
             setScriptLanguage(activeProject.language);
         }
-    }, [activeProject, scriptIdea, scriptLanguage]);
+    }, [activeProject, scriptIdea]); // Removed scriptLanguage from deps to prevent re-sync after user change
 
     const [lastLoadedSceneId, setLastLoadedSceneId] = useState<string | null>(null);
 
@@ -335,7 +335,18 @@ export function useScriptWriterGenerator({
             : 'scene';
         const selectionLabel = buildSelectionLabel(request.selection);
         const intentDecision = classifyAssistantIntent(trimmedContent, scope, Boolean(request.selection?.text?.trim()));
-        const intent = intentDecision.intent;
+        let intent = intentDecision.intent;
+        
+        // Elite ML Bias: If frontend is unsure, lean on project preferences
+        if (intentDecision.confidence < 0.6) {
+            const defaultMode = activeProject?.assistantPreferences?.defaultMode || 'ask';
+            if (defaultMode === 'edit') {
+                intent = scope === 'selection' ? 'selection_edit' : 'scene_edit';
+            } else {
+                intent = 'chat';
+            }
+        }
+
         const isEditLike = intent === 'selection_edit' || intent === 'scene_edit';
         const requestForPending: AssistantRequest = {
             ...request,

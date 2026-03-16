@@ -8,8 +8,12 @@ interface InspectorTreatmentTabProps {
     treatmentPreview: Act[] | null;
     treatmentLogline: string;
     treatmentStyle: string;
+    treatmentSceneCount: number;
+    intendedRuntime: number;
     onTreatmentLoglineChange: (value: string) => void;
     onTreatmentStyleChange: (value: string) => void;
+    onTreatmentSceneCountChange: (value: number) => void;
+    onIntendedRuntimeChange: (value: number) => void;
     onGenerateTreatment: () => void;
     onSaveTreatment: () => void;
     onConvertTreatment: (id: string) => void;
@@ -22,13 +26,27 @@ export function InspectorTreatmentTab({
     treatmentPreview,
     treatmentLogline,
     treatmentStyle,
+    treatmentSceneCount,
+    intendedRuntime,
     onTreatmentLoglineChange,
     onTreatmentStyleChange,
+    onTreatmentSceneCountChange,
+    onIntendedRuntimeChange,
     onGenerateTreatment,
     onSaveTreatment,
     onConvertTreatment,
     treatmentLoading
 }: InspectorTreatmentTabProps) {
+    const getRecommendedScenes = (mins: number) => {
+        if (mins <= 60) return mins;
+        if (mins <= 120) return Math.round(mins * 1.25);
+        return Math.round(mins * 1.66);
+    };
+
+    const handleRuntimeChange = (val: number) => {
+        onIntendedRuntimeChange(val);
+        onTreatmentSceneCountChange(getRecommendedScenes(val));
+    };
     if (!activeProject) {
         return <div className="ide-empty-hint">Select a project to work with treatments.</div>;
     }
@@ -61,6 +79,26 @@ export function InspectorTreatmentTab({
                         <option value="Three Act">Three Act</option>
                         <option value="TV Beat Sheet">TV Beat Sheet</option>
                     </select>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                    <div className="ide-field">
+                        <label className="ide-label">Intended Runtime (min)</label>
+                        <input
+                            type="number"
+                            className="ide-input"
+                            value={intendedRuntime}
+                            onChange={(e) => handleRuntimeChange(parseInt(e.target.value) || 0)}
+                        />
+                    </div>
+                    <div className="ide-field">
+                        <label className="ide-label">Target Scenes</label>
+                        <input
+                            type="number"
+                            className="ide-input"
+                            value={treatmentSceneCount}
+                            onChange={(e) => onTreatmentSceneCountChange(parseInt(e.target.value) || 0)}
+                        />
+                    </div>
                 </div>
                 <div className="ide-inline-actions">
                     <button

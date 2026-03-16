@@ -2,6 +2,7 @@ import { Treatment, ITreatment } from '../models/Treatment';
 import { Scene } from '../models/Scene';
 import { aiServiceManager } from './ai.manager';
 import { buildBeatSheetPrompt } from '../prompts/hollywood';
+import { characterDiscoveryService } from './characterDiscovery.service';
 import mongoose from 'mongoose';
 
 export class TreatmentService {
@@ -17,14 +18,26 @@ export class TreatmentService {
      * Generates a Beat Sheet (Treatment) from a logline using Ollama.
      * Returns the structured object (preview) but does not save it yet.
      */
-    async generatePreview(logline: string, style: string = 'Save The Cat'): Promise<any> {
-        const prompt = buildBeatSheetPrompt(logline, style);
+    async generatePreview(logline: string, style: string = 'Save The Cat', sceneCount: number = 60, cast: any[] = [], bibleId?: string): Promise<any> {
+        const prompt = buildBeatSheetPrompt(logline, style, sceneCount, cast);
 
         console.log(`[TreatmentService] Generating beat sheet for: "${logline}"`);
 
         try {
             // Use non-streaming chat with JSON mode enabled for reliability
-            const response = await aiServiceManager.chat(prompt, { format: 'json' });
+            // Larger scene counts require more tokens (estimate ~150 per scene + prompt overhead)
+            const maxTokens = Math.max(4000, sceneCount * 150);
+            const response = await aiServiceManager.chat(prompt, { 
+                format: 'json',
+                max_tokens: maxTokens
+            });
+
+            // Trigger character discovery in background if bibleId is available
+            if (bibleId) {
+                characterDiscoveryService.discoverAndSave(bibleId, response).catch(err => {
+                    console.error('[TreatmentService] Character discovery background error:', err);
+                });
+            }
 
             let jsonStr = response.trim();
 
@@ -39,8 +52,20 @@ export class TreatmentService {
                 jsonStr = jsonStr.substring(firstBrace, lastBrace + 1);
             }
 
-            const data = JSON.parse(jsonStr);
-            return data;
+            try {
+                const data = JSON.parse(jsonStr);
+                // Defensive Check: Ensure the structure is { acts: [...] }
+                if (Array.isArray(data)) {
+                    return { acts: data };
+                }
+                if (!data.acts && Array.isArray(data.data)) {
+                    return { acts: data.data };
+                }
+                return data;
+            } catch (error) {
+                console.error('[TreatmentService] JSON Parse Error:', error, 'Raw Output:', jsonStr);
+                throw new Error('AI output was not valid JSON.');
+            }
         } catch (error) {
             console.error('[TreatmentService] Failed to generate/parse Beat Sheet JSON:', error);
             throw new Error('AI failed to generate a valid Beat Sheet structure. Please try again.');
@@ -51,11 +76,22 @@ export class TreatmentService {
      * Saves a confirmed Treatment to database.
      */
     async saveTreatment(bibleId: string, logline: string, acts: any[], style: string = 'Save The Cat'): Promise<ITreatment> {
+        // Validation Fallback: Ensure every beat has the required 'name' and 'description' fields
+        const sanitizedActs = acts.map(act => ({
+            ...act,
+            name: act.name || 'Untitled Act',
+            beats: (act.beats || []).map((beat: any) => ({
+                ...beat,
+                name: beat.name || beat.title || 'Untitled Beat',
+                description: beat.description || beat.summary || beat.tactic || 'No description provided.'
+            }))
+        }));
+
         const treatment = await Treatment.create({
             bibleId: new mongoose.Types.ObjectId(bibleId),
             logline,
             style,
-            acts
+            acts: sanitizedActs
         });
         return treatment;
     }

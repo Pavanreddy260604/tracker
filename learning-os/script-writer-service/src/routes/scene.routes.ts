@@ -479,7 +479,6 @@ router.post('/:id/assisted-edit', async (req, res) => {
             : null;
 
         res.setHeader('Content-Type', 'text/plain; charset=utf-8');
-        res.setHeader('Transfer-Encoding', 'chunked');
 
         const stream = scriptGenerator.assistedEdit(req.params.id, instruction, {
             language,

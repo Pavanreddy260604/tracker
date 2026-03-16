@@ -136,10 +136,11 @@ export function StudioEditor({
                         )}
                         <textarea
                             ref={textareaRef}
-                            className="ide-script-editor"
+                            className={`ide-script-editor ${isGenerating ? 'is-locked opacity-80 cursor-not-allowed select-none' : ''}`}
                             value={editorContent}
-                            onChange={(event) => onContentChange(event.target.value)}
-                            placeholder="Begin with INT. or EXT. and write your scene..."
+                            onChange={(event) => !isGenerating && onContentChange(event.target.value)}
+                            readOnly={isGenerating}
+                            placeholder={isGenerating ? "AI is drafting... Editor locked." : "Begin with INT. or EXT. and write your scene..."}
                             spellCheck={false}
                             onFocus={onFocus}
                             onBlur={onBlur}

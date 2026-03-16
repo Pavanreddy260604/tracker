@@ -120,6 +120,35 @@ export function InspectorSceneTab({
                     <option value="extended">Extended</option>
                 </select>
             </div>
+            <div className="ide-field">
+                <label className="ide-label text-blue-400">Target Language</label>
+                <select
+                    className="ide-select font-bold text-blue-300"
+                    value={generationOptions.language}
+                    onChange={(event) => onGenerationOptionChange('language', event.target.value)}
+                >
+                    <option value="English">English</option>
+                    <option value="Telugu">Telugu</option>
+                    <option value="Hindi">Hindi</option>
+                    <option value="Tamil">Tamil</option>
+                    <option value="Kannada">Kannada</option>
+                    <option value="Malayalam">Malayalam</option>
+                    <option value="Spanish">Spanish</option>
+                    <option value="French">French</option>
+                    <option value="German">German</option>
+                </select>
+            </div>
+            <div className="flex items-center justify-between rounded-lg border border-zinc-800 px-3 py-2">
+                <div>
+                    <label className="ide-label">Transliteration</label>
+                    <p className="text-[10px] text-zinc-500 mt-1">Use English letters for non-English screenplay text.</p>
+                </div>
+                <input
+                    type="checkbox"
+                    checked={Boolean(generationOptions.transliteration)}
+                    onChange={(event) => onGenerationOptionChange('transliteration', event.target.checked)}
+                />
+            </div>
             <div className="ide-inline-actions">
                 <button
                     className="ide-btn ide-btn-primary ide-btn-full"

@@ -6,6 +6,7 @@ import { useScriptWriterTreatments } from '../useScriptWriterTreatments';
 import { AssistantPanel } from './AssistantPanel';
 import type { Bible, CritiqueResult, IScene as Scene } from '../../../services/project.api';
 import { scriptWriterApi } from '../../../services/scriptWriter.api';
+import type { Character } from '../../../services/character.api';
 import type { EditorSelection, GenerationOptions, PendingFixState, SceneForm } from '../types';
 import { shouldOfferTransliteration } from '../utils';
 
@@ -35,6 +36,7 @@ interface ContextPanelProps {
     editorSelection?: EditorSelection | null;
     setPendingFix?: (fix: PendingFixState | null) => void;
     setError: (message: string | null) => void;
+    characters?: Character[];
 }
 
 export function ContextPanel({
@@ -60,7 +62,8 @@ export function ContextPanel({
     activeScene,
     editorSelection,
     setPendingFix,
-    setError
+    setError,
+    characters = []
 }: ContextPanelProps) {
     const { uiState, setRightPanelTool, toggleRightPanel, activeProject: contextActiveProject, editorContent, setEditorContent } = useScriptWriter();
     const activeProject = propActiveProject || contextActiveProject;
@@ -102,9 +105,11 @@ export function ContextPanel({
         treatmentPreview,
         treatmentLogline,
         treatmentStyle,
+        treatmentSceneCount,
         treatmentLoading,
         setTreatmentLogline,
         setTreatmentStyle,
+        setTreatmentSceneCount,
         handleTreatmentGenerate,
         handleTreatmentSave,
         handleTreatmentConvert
@@ -112,7 +117,8 @@ export function ContextPanel({
         activeProject,
         activeProjectId: activeProject?._id || null,
         setError,
-        refreshScenes
+        refreshScenes,
+        characters
     });
 
     const tabs: Array<{ id: ContextPanelTab; icon: typeof Sparkles; label: string }> = [
@@ -449,21 +455,21 @@ export function ContextPanel({
 
                                     <div className="space-y-1">
                                         <label className="text-[10px] font-bold text-zinc-500 uppercase px-1">Language</label>
-                                        <input
+                                        <select
                                             className="w-full bg-zinc-950 border border-zinc-800 rounded-lg px-2 py-1.5 text-xs text-blue-300 font-bold outline-none"
-                                            list="script-language-options-scene"
                                             value={generationOptions?.language || 'English'}
                                             onChange={(e) => onGenerationOptionChange?.('language', e.target.value)}
-                                            placeholder="English"
-                                        />
-                                        <datalist id="script-language-options-scene">
-                                            <option value="English" />
-                                            <option value="Telugu" />
-                                            <option value="Hindi" />
-                                            <option value="Tamil" />
-                                            <option value="Spanish" />
-                                            <option value="French" />
-                                        </datalist>
+                                        >
+                                            <option value="English">English</option>
+                                            <option value="Telugu">Telugu</option>
+                                            <option value="Hindi">Hindi</option>
+                                            <option value="Tamil">Tamil</option>
+                                            <option value="Kannada">Kannada</option>
+                                            <option value="Malayalam">Malayalam</option>
+                                            <option value="Spanish">Spanish</option>
+                                            <option value="French">French</option>
+                                            <option value="German">German</option>
+                                        </select>
                                     </div>
 
                                     {shouldOfferTransliteration(generationOptions?.language || 'English') && (
@@ -516,7 +522,15 @@ export function ContextPanel({
                                         onChange={(e) => setTreatmentLogline(e.target.value)}
                                     />
                                 </div>
-
+                                <div className="space-y-1">
+                                    <label className="text-[10px] font-bold text-zinc-500 uppercase px-1">Target Scenes</label>
+                                    <input
+                                        type="number"
+                                        className="w-full bg-zinc-950 border border-zinc-800 rounded-lg px-2 py-1.5 text-xs text-zinc-300 outline-none"
+                                        value={treatmentSceneCount}
+                                        onChange={(e) => setTreatmentSceneCount(parseInt(e.target.value) || 0)}
+                                    />
+                                </div>
                                 <div className="flex gap-2">
                                     <select
                                         className="flex-1 bg-zinc-900 border border-zinc-800 rounded-lg px-2 py-1.5 text-[11px] text-zinc-400 outline-none"

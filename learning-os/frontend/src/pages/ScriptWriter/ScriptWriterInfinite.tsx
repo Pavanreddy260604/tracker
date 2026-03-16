@@ -205,6 +205,7 @@ function ScriptWriterInfiniteContent() {
                     pendingFix={pendingFix}
                     setPendingFix={setPendingFix}
                     setError={setError}
+                    characters={characters}
                 />
             }
         >

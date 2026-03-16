@@ -1,3 +1,4 @@
+// @refresh reset
 import { useState, useCallback, useRef, useEffect } from 'react';
 
 interface SpeechHook {
@@ -24,6 +25,8 @@ export function useSpeech(): SpeechHook {
     const analyserRef = useRef<AnalyserNode | null>(null);
     const streamRef = useRef<MediaStream | null>(null);
     const animationFrameRef = useRef<number | undefined>(undefined);
+    const silenceStartRef = useRef<number | null>(null);
+    const hasDetectedAudioRef = useRef(false);
 
     // Initial STT setup
     useEffect(() => {
@@ -70,16 +73,18 @@ export function useSpeech(): SpeechHook {
             };
 
             recognitionRef.current.onerror = (err: any) => {
-                console.error('STT Error:', err.error);
-                if (err.error === 'not-allowed') {
-                    setError('Camera/Mic permission denied.');
-                    (window as any)._isListeningIntended = false;
-                } else if (err.error === 'no-speech') {
-                    // This often triggers 'onend', where our auto-restart catches it
+                if (err.error === 'no-speech') {
+                    // Expected when there's silence; onend will handle restart if needed.
                     return;
-                } else if (err.error === 'aborted') {
+                }
+                if (err.error === 'aborted') {
                     // Manual stop, ignore error
                     return;
+                }
+                console.error('STT Error:', err.error);
+                if (err.error === 'not-allowed') {
+                    setError('Microphone permission denied.');
+                    (window as any)._isListeningIntended = false;
                 } else {
                     setError(`Speech error: ${err.error}`);
                     (window as any)._isListeningIntended = false;
@@ -96,10 +101,37 @@ export function useSpeech(): SpeechHook {
         };
     }, []);
 
-    const startVolumeMonitoring = async () => {
+    const getMicErrorMessage = (err: any): string => {
+        const name = err?.name || err?.error || '';
+        switch (name) {
+            case 'NotAllowedError':
+                return 'Microphone permission denied.';
+            case 'NotFoundError':
+                return 'No microphone found.';
+            case 'NotReadableError':
+                return 'Microphone is in use by another app.';
+            case 'OverconstrainedError':
+                return 'Selected microphone is not supported.';
+            case 'SecurityError':
+                return 'Microphone requires HTTPS or localhost.';
+            default:
+                return 'Microphone access blocked or unavailable.';
+        }
+    };
+
+    const startVolumeMonitoring = async (): Promise<{ ok: boolean; message?: string }> => {
         try {
             // Already monitoring?
-            if (streamRef.current) return;
+            if (streamRef.current) return { ok: true };
+
+            if (!navigator.mediaDevices?.getUserMedia) {
+                // No mic access API available; allow recognition to proceed without volume meter.
+                return { ok: true };
+            }
+
+            if (typeof window !== 'undefined' && !window.isSecureContext && location.hostname !== 'localhost') {
+                return { ok: false, message: 'Microphone requires HTTPS or localhost.' };
+            }
 
             if (!audioContextRef.current) {
                 audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
@@ -119,21 +151,43 @@ export function useSpeech(): SpeechHook {
             source.connect(analyserRef.current);
 
             const dataArray = new Uint8Array(analyserRef.current.frequencyBinCount);
+            const timeDomainArray = new Uint8Array(analyserRef.current.fftSize);
+            const noInputMessage = 'No microphone input detected yet. Check mic selection or mute.';
             const updateVolume = () => {
                 if (!analyserRef.current) return;
                 analyserRef.current.getByteFrequencyData(dataArray);
+                analyserRef.current.getByteTimeDomainData(timeDomainArray);
                 let sum = 0;
                 for (let i = 0; i < dataArray.length; i++) {
                     sum += dataArray[i];
                 }
                 const average = sum / dataArray.length;
+                let sumSquares = 0;
+                for (let i = 0; i < timeDomainArray.length; i++) {
+                    const v = (timeDomainArray[i] - 128) / 128;
+                    sumSquares += v * v;
+                }
+                const rms = Math.sqrt(sumSquares / timeDomainArray.length);
+                const hasAudio = rms > 0.005;
+                if (hasAudio) {
+                    hasDetectedAudioRef.current = true;
+                    silenceStartRef.current = null;
+                    setError(prev => (prev === noInputMessage ? null : prev));
+                } else if (!hasDetectedAudioRef.current) {
+                    if (silenceStartRef.current === null) {
+                        silenceStartRef.current = Date.now();
+                    } else if (Date.now() - silenceStartRef.current > 6000) {
+                        setError(prev => (prev ? prev : noInputMessage));
+                    }
+                }
                 setVolume(Math.min(100, Math.round((average / 100) * 100)));
                 animationFrameRef.current = requestAnimationFrame(updateVolume);
             };
             updateVolume();
+            return { ok: true };
         } catch (err) {
             console.warn('Volume monitoring failed:', err);
-            // Don't set global error if recognition is still possible
+            return { ok: false, message: getMicErrorMessage(err) };
         }
     };
 
@@ -142,10 +196,12 @@ export function useSpeech(): SpeechHook {
         streamRef.current?.getTracks().forEach(track => track.stop());
         // Don't close context, just suspend it to reuse
         audioContextRef.current?.suspend();
+        silenceStartRef.current = null;
+        hasDetectedAudioRef.current = false;
         setVolume(0);
     };
 
-    const startListening = useCallback(() => {
+    const startListening = useCallback(async () => {
         setTranscript('');
         setError(null);
         if (!recognitionRef.current) {
@@ -153,11 +209,21 @@ export function useSpeech(): SpeechHook {
             return;
         }
 
+        (window as any)._isListeningIntended = true;
+        silenceStartRef.current = null;
+        hasDetectedAudioRef.current = false;
+        const micStatus = await startVolumeMonitoring();
+        if (!(window as any)._isListeningIntended) return;
+        if (!micStatus.ok) {
+            setError(micStatus.message || 'Microphone access blocked or unavailable.');
+            setIsListening(false);
+            (window as any)._isListeningIntended = false;
+            return;
+        }
+
         try {
-            (window as any)._isListeningIntended = true;
             recognitionRef.current.start();
             setIsListening(true);
-            startVolumeMonitoring();
         } catch (e: any) {
             console.error('Failed to start recognition', e);
             if (e.name === 'InvalidStateError') {

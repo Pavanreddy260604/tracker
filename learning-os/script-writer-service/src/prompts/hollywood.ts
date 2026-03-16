@@ -372,8 +372,8 @@ export function buildScriptPrompt(
     sceneLength?: 'short' | 'medium' | 'long' | 'extended';
     polarityShift?: string;
   },
-  voiceSamples?: any[], // New argument
-  cast?: any[] // New argument: List of characters to include
+  voiceSamples?: any[],
+  cast?: any[]
 ): string {
   const formatInfo = FORMAT_TEMPLATES[format] || FORMAT_TEMPLATES.film;
   const styleInfo = STYLE_PROMPTS[style] || STYLE_PROMPTS.classic;
@@ -392,31 +392,33 @@ ${styleInfo.prompt}
 
 `;
 
-  // Inject Cast List (Context Awareness)
   if (cast && cast.length > 0) {
-    prompt += `## CAST OF CHARACTERS (STRICT ENFORCEMENT)\n\n`;
-    prompt += `You must ONLY use the following characters. Do NOT invent new named characters.\n\n`;
+    prompt += `## CAST OF CHARACTERS (PRIMARY ANCHORS)\n\n`;
+    prompt += `Use the following characters as your primary anchors for the scene. **EXPANSION MANDATE:** You have full creative freedom to invent new characters (both MAJOR and MINOR roles) to populate the world, heighten conflict, or add dramatic texture. If the story demands a new antagonist, a sidekick, or a major supporting figure, create them immediately.\n\n`;
 
     cast.forEach(c => {
       const role = c.role ? `(${c.role.toUpperCase()})` : '';
       const traits = c.traits && c.traits.length > 0 ? `Traits: ${c.traits.join(', ')}` : '';
       const motivation = c.motivation ? `Motivation: "${c.motivation}"` : '';
-      const voice = c.voice?.description ? `Voice: ${c.voice.description}` : '';
+      
+      let voiceDetails = '';
+      if (c.voice?.description) voiceDetails += `Description: ${c.voice.description}. `;
+      if (c.voice?.accent) voiceDetails += `Accent: ${c.voice.accent}. `;
+      if (c.voice?.sampleLines?.length) voiceDetails += `Sample Dialogue: "${c.voice.sampleLines.join('" / "')}"`;
 
       prompt += `### ${c.name.toUpperCase()} ${role}\n`;
       if (traits) prompt += `- ${traits}\n`;
       if (motivation) prompt += `- ${motivation}\n`;
-      if (voice) prompt += `- ${voice}\n`;
+      if (voiceDetails) prompt += `- Voice: ${voiceDetails.trim()}\n`;
       prompt += `\n`;
     });
 
     prompt += `**CHARACTER BEHAVIOR RULES:**\n`;
-    prompt += `1. ADHERE TO VOICE: Write dialogue that matches each character's specific voice description.\n`;
+    prompt += `1. ADHERE TO VOICE: Write dialogue that matches each character's specific voice description, accent, and sample dialogue style.\n`;
     prompt += `2. MOTIVATION DRIVEN: Ensure character actions align with their stated motivations.\n`;
-    prompt += `3. NO HALLUCINATIONS: If a character is not in this list, do not give them a name or significant lines.\n\n`;
+    prompt += `3. HYBRID CREATIVITY: Proactively introduce new characters that enhance the scene's stakes. If you invent a character, give them a distinct name, a unique voice, and a clear dramatic reason for existing.\n\n`;
   }
 
-  // Inject Professional Tactics Guidance
   prompt += `## PROFESSIONAL DYNAMICS (TACTIC-BASED WRITING)\n`;
   prompt += `A professional script is built on characters using TACTICS to achieve their goals. \n`;
   prompt += `When writing, consider these tactics defined in the system:\n`;
@@ -425,47 +427,22 @@ ${styleInfo.prompt}
   });
   prompt += `\n**WRITING RULE**: Never write a character speaking without them using a clear tactic. Subtext is key.\n\n`;
 
-  // Inject Subtext Mandate
   prompt += SUBTEXT_MANDATE + `\n`;
 
-  // Inject Voice Samples (RAG) with weighted guidance
   if (voiceSamples && voiceSamples.length > 0) {
     prompt += buildVoiceGuidance(voiceSamples);
   }
 
-  if (options?.genre) {
-    prompt += `**Genre:** ${options.genre}\n`;
-  }
-  if (options?.tone) {
-    prompt += `**Tone:** ${options.tone}\n`;
-  }
-  if (options?.duration) {
-    prompt += `**Target Duration:** ${options.duration} minutes\n`;
-  }
+  if (options?.genre) prompt += `**Genre:** ${options.genre}\n`;
+  if (options?.tone) prompt += `**Tone:** ${options.tone}\n`;
+  if (options?.duration) prompt += `**Target Duration:** ${options.duration} minutes\n`;
 
-  // Scene Length Control
   if (options?.sceneLength) {
     const lengthGuide: Record<string, { pages: string; words: string; instruction: string }> = {
-      short: {
-        pages: '1/4 to 1/2 page',
-        words: '50-100 words',
-        instruction: 'Write a BRIEF scene. Quick beat, single exchange or action. Get in late, get out early.'
-      },
-      medium: {
-        pages: '1 to 2 pages',
-        words: '200-400 words',
-        instruction: 'Write a STANDARD scene with dialogue exchanges and action. Develop the moment fully.'
-      },
-      long: {
-        pages: '3 to 5 pages',
-        words: '600-1000 words',
-        instruction: 'Write an EXTENDED scene with multiple beats, conflict escalation, and character depth.'
-      },
-      extended: {
-        pages: '5 to 10 pages',
-        words: '1000-2000 words',
-        instruction: 'Write a MAJOR set piece or climactic scene. Full dramatic arc with setup, confrontation, resolution.'
-      }
+      short: { pages: '1/4 to 1/2 page', words: '50-100 words', instruction: 'Write a BRIEF scene. Quick beat, single exchange or action. Get in late, get out early.' },
+      medium: { pages: '1 to 2 pages', words: '200-400 words', instruction: 'Write a STANDARD scene with dialogue exchanges and action. Develop the moment fully.' },
+      long: { pages: '3 to 5 pages', words: '600-1000 words', instruction: 'Write an EXTENDED scene with multiple beats, conflict escalation, and character depth.' },
+      extended: { pages: '5 to 10 pages', words: '1000-2000 words', instruction: 'Write a MAJOR set piece or climactic scene. Full dramatic arc with setup, confrontation, resolution.' }
     };
     const guide = lengthGuide[options.sceneLength];
     prompt += `\n**SCENE LENGTH REQUIREMENT (CRITICAL):**
@@ -474,7 +451,6 @@ ${guide.instruction}
 DO NOT exceed or fall short of this target significantly.\n`;
   }
 
-  // Polarity Enforcement (Delta tracking)
   if (options?.polarityShift) {
     prompt += `\n## EMOTIONAL POLARITY (THE DELTA)
 The scene MUST move emotionally. 
@@ -483,16 +459,12 @@ Ensure the ending emotional state is strictly different from the opening. If you
 `;
   }
 
-  // Language Handling
   if (options?.language && options.language !== 'English') {
     prompt += `\n**LANGUAGE INSTRUCTION (NATIVE SPEAKER PROTOCOL):**\n`;
     prompt += `You are NOT a translator. You are a **NATIVE ${options.language.toUpperCase()} SCREENWRITER**.\n`;
-
-    // Universal Rules for Non-English
     prompt += `1. **Think in ${options.language}**: Do not write in English and translate. Write directly in ${options.language} thoughts and sentence structures.\n`;
     prompt += `2. **No "Bookish" Language**: Avoid formal, textbook, or news-anchor language. Use **Spoken/Colloquial** diction appropriate for the character's social status.\n`;
 
-    // Specific Language Rules (Optimizations)
     if (options.language.toLowerCase().includes('telugu')) {
       prompt += `3. **Telugu Particles**: You MUST use natural emotional particles like *ra, bey, andi, kadha, abba, chass* where appropriate for the relationship.\n`;
       prompt += `4. **Dialect**: Use standard film-industry Telugu (neutral or Telangana/Andhra blend) unless a specific dialect is requested.\n`;
@@ -502,7 +474,6 @@ Ensure the ending emotional state is strictly different from the opening. If you
     } else if (options.language.toLowerCase().includes('tamil')) {
       prompt += `3. **Tamil Particles**: Use particles like *da, machan, la* for friends, and respectful forms for elders.\n`;
     } else {
-      // Fallback for all other languages to ensure they also get particle instruction
       prompt += `3. **Natural Particles**: You MUST use natural emotional particles, interjections, and fillers SPECIFIC TO ${options.language.toUpperCase()} to sound authentic.\n`;
     }
 
@@ -535,7 +506,7 @@ Now write the complete screenplay. Begin with FADE IN: and use proper Hollywood 
 // STORY ENGINE PROMPTS
 // ============================================
 
-export function buildBeatSheetPrompt(logline: string, style: string = 'Save The Cat'): string {
+export function buildBeatSheetPrompt(logline: string, style: string = 'Save The Cat', sceneCount: number = 60, cast: any[] = []): string {
   let structurePrompt = '';
   let jsonStructure = '';
 
@@ -547,28 +518,28 @@ export function buildBeatSheetPrompt(logline: string, style: string = 'Save The 
         {
           "name": "Departure (Act I)",
           "beats": [
-             { "name": "Ordinary World", "description": "The hero in their normal life." },
-             { "name": "Call to Adventure", "description": "The hero is presented with a problem, challenge, or adventure." },
-             { "name": "Refusal of the Call", "description": "The hero hesitates or refuses due to fear." },
-             { "name": "Meeting the Mentor", "description": "Hero gains supplies, knowledge, or confidence from a mentor." },
-             { "name": "Crossing the Threshold", "description": "Hero commits to the adventure and enters the Special World." }
+             { "name": "Ordinary World", "title": "...", "description": "The hero in their normal life." },
+             { "name": "Call to Adventure", "title": "...", "description": "The hero is presented with a problem, challenge, or adventure." },
+             { "name": "Refusal of the Call", "title": "...", "description": "The hero hesitates or refuses due to fear." },
+             { "name": "Meeting the Mentor", "title": "...", "description": "Hero gains supplies, knowledge, or confidence from a mentor." },
+             { "name": "Crossing the Threshold", "title": "...", "description": "Hero commits to the adventure and enters the Special World." }
           ]
         },
         {
           "name": "Initiation (Act II)",
           "beats": [
-             { "name": "Tests, Allies, Enemies", "description": "Hero explores the Special World, facing tests and making friends/enemies." },
-             { "name": "Approach to the Inmost Cave", "description": "Hero draws closer to the heart of the story's central conflict." },
-             { "name": "The Ordeal", "description": "The central life-or-death crisis. Hero faces their greatest fear." },
-             { "name": "Reward (Seizing the Sword)", "description": "Hero claims the prize for surviving the ordeal." }
+             { "name": "Tests, Allies, Enemies", "title": "...", "description": "Hero explores the Special World, facing tests and making friends/enemies." },
+             { "name": "Approach to the Inmost Cave", "title": "...", "description": "Hero draws closer to the heart of the story's central conflict." },
+             { "name": "The Ordeal", "title": "...", "description": "The central life-or-death crisis. Hero faces their greatest fear." },
+             { "name": "Reward (Seizing the Sword)", "title": "...", "description": "Hero claims the prize for surviving the ordeal." }
           ]
         },
         {
           "name": "Return (Act III)",
           "beats": [
-             { "name": "The Road Back", "description": "Hero must return to the Ordinary World, often chased by vengeful forces." },
-             { "name": "The Resurrection", "description": "Final test where hero is severely tested once more. Rebirth." },
-             { "name": "Return with the Elixir", "description": "Hero returns home with some element of the treasure/lesson." }
+             { "name": "The Road Back", "title": "...", "description": "Hero must return to the Ordinary World, often chased by vengeful forces." },
+             { "name": "The Resurrection", "title": "...", "description": "Final test where hero is severely tested once more. Rebirth." },
+             { "name": "Return with the Elixir", "title": "...", "description": "Hero returns home with some element of the treasure/lesson." }
           ]
         }
       ]
@@ -582,27 +553,27 @@ export function buildBeatSheetPrompt(logline: string, style: string = 'Save The 
         {
           "name": "Act 1: The Setup",
           "beats": [
-             { "name": "The Status Quo", "description": "Introduction to the world and characters." },
-             { "name": "Inciting Incident", "description": "Event that sets the story in motion." },
-             { "name": "The Lock-In (Plot Point 1)", "description": "Point of no return where protagonist sets out on the journey." }
+             { "name": "The Status Quo", "title": "...", "description": "Introduction to the world and characters." },
+             { "name": "Inciting Incident", "title": "...", "description": "Event that sets the story in motion." },
+             { "name": "The Lock-In (Plot Point 1)", "title": "...", "description": "Point of no return where protagonist sets out on the journey." }
           ]
         },
         {
           "name": "Act 2: The Confrontation",
           "beats": [
-             { "name": "Rising Action", "description": "Obstacles and complications increase." },
-             { "name": "First Pinch Point", "description": "Reminder of the antagonist's power." },
-             { "name": "Midpoint", "description": "Major shift in the story; stakes are raised significantly." },
-             { "name": "Second Pinch Point", "description": "Another reminder of the antagonist's threat." },
-             { "name": "All is Lost (Plot Point 2)", "description": "Lowest moment for the protagonist." }
+             { "name": "Rising Action", "title": "...", "description": "Obstacles and complications increase." },
+             { "name": "First Pinch Point", "title": "...", "description": "Reminder of the antagonist's power." },
+             { "name": "Midpoint", "title": "...", "description": "Major shift in the story; stakes are raised significantly." },
+             { "name": "Second Pinch Point", "title": "...", "description": "Another reminder of the antagonist's threat." },
+             { "name": "All is Lost (Plot Point 2)", "title": "...", "description": "Lowest moment for the protagonist." }
           ]
         },
         {
           "name": "Act 3: The Resolution",
           "beats": [
-             { "name": "The Climax", "description": "Final confrontation and peak emotional intensity." },
-             { "name": "Falling Action", "description": "Aftermath of the climax." },
-             { "name": "Resolution", "description": "New status quo established." }
+             { "name": "The Climax", "title": "...", "description": "Final confrontation and peak emotional intensity." },
+             { "name": "Falling Action", "title": "...", "description": "Aftermath of the climax." },
+             { "name": "Resolution", "title": "...", "description": "New status quo established." }
           ]
         }
       ]
@@ -616,43 +587,43 @@ export function buildBeatSheetPrompt(logline: string, style: string = 'Save The 
         {
           "name": "Teaser / Cold Open",
           "beats": [
-             { "name": "The Hook", "description": "Grab the audience immediately." },
-             { "name": "Setup of Episode Conflict", "description": "Establish the main problem of this episode." }
+             { "name": "The Hook", "title": "...", "description": "Grab the audience immediately." },
+             { "name": "Setup of Episode Conflict", "title": "...", "description": "Establish the main problem of this episode." }
           ]
         },
         {
           "name": "Act 1",
           "beats": [
-             { "name": "Problem Escalation", "description": "The initial problem gets worse." },
-             { "name": "Act Out", "description": "Cliffhanger or strong dramatic moment ending the act." }
+             { "name": "Problem Escalation", "title": "...", "description": "The initial problem gets worse." },
+             { "name": "Act Out", "title": "...", "description": "Cliffhanger or strong dramatic moment ending the act." }
           ]
         },
         {
           "name": "Act 2",
           "beats": [
-             { "name": "Complication", "description": "New information or obstacles arise." },
-             { "name": "B-Story Beat", "description": "Development of the secondary plot." },
-             { "name": "Act Out", "description": "Higher stakes cliffhanger." }
+             { "name": "Complication", "title": "...", "description": "New information or obstacles arise." },
+             { "name": "B-Story Beat", "title": "...", "description": "Development of the secondary plot." },
+             { "name": "Act Out", "title": "...", "description": "Higher stakes cliffhanger." }
           ]
         },
         {
           "name": "Act 3",
           "beats": [
-             { "name": "Twist / Turn", "description": "Plot moves in unexpected direction." },
-             { "name": "Low Point", "description": "Characters facing defeat." },
-             { "name": "Act Out", "description": "Highest emotional or physical jeopardy." }
+             { "name": "Twist / Turn", "title": "...", "description": "Plot moves in unexpected direction." },
+             { "name": "Low Point", "title": "...", "description": "Characters facing defeat." },
+             { "name": "Act Out", "title": "...", "description": "Highest emotional or physical jeopardy." }
           ]
         },
         {
-          "name": "Act 4",
+          "name": "Act 10% (Gap Fill)",
           "beats": [
-             { "name": "Resolution of Main Conflict", "description": "The primary problem is addressed (success or failure)." }
+             { "name": "Resolution of Main Conflict", "title": "...", "description": "The primary problem is addressed (success or failure)." }
           ]
         },
         {
           "name": "Tag",
           "beats": [
-             { "name": "New Normal / Setup", "description": "Wrap up B-stories and setup next episode." }
+             { "name": "New Normal / Setup", "title": "...", "description": "Wrap up B-stories and setup next episode." }
           ]
         }
       ]
@@ -666,32 +637,32 @@ export function buildBeatSheetPrompt(logline: string, style: string = 'Save The 
         {
           "name": "Pulse 1: The Awake",
           "beats": [
-             { "name": "Status Quo", "description": "The world as it is." },
-             { "name": "The Spark", "description": "Something disrupts the balance." },
-             { "name": "The Threshold", "description": "The hero decides to engage." }
+             { "name": "Status Quo", "title": "...", "description": "The world as it is." },
+             { "name": "The Spark", "title": "...", "description": "Something disrupts the balance." },
+             { "name": "The Threshold", "title": "...", "description": "The hero decides to engage." }
           ]
         },
         {
           "name": "Pulse 2: The Tension",
           "beats": [
-             { "name": "New Rules", "description": "Hero learns how this new world works." },
-             { "name": "The First Twist", "description": "An unexpected complication arising from the spark." },
-             { "name": "Midpoint Shift", "description": "The stakes are raised significantly." }
+             { "name": "New Rules", "title": "...", "description": "Hero learns how this new world works." },
+             { "name": "The First Twist", "title": "...", "description": "An unexpected complication arising from the spark." },
+             { "name": "Midpoint Shift", "title": "...", "description": "The stakes are raised significantly." }
           ]
         },
         {
           "name": "Pulse 3: The Crash",
           "beats": [
-             { "name": "The Spiral", "description": "Things go wrong; the hero's plan fails." },
-             { "name": "Rock Bottom", "description": "The hero loses hope or resources." },
-             { "name": "The Rally", "description": "A last-ditch idea or realization." }
+             { "name": "The Spiral", "title": "...", "description": "Things go wrong; the hero's plan fails." },
+             { "name": "Rock Bottom", "title": "...", "description": "The hero loses hope or resources." },
+             { "name": "The Rally", "title": "...", "description": "A last-ditch idea or realization." }
           ]
         },
         {
           "name": "Pulse 4: The Beat",
           "beats": [
-             { "name": "Final Confrontation", "description": "The hero faces the antagonist/problem." },
-             { "name": "The Aftermath", "description": "The dust settles; a new normal is found." }
+             { "name": "Final Confrontation", "title": "...", "description": "The hero faces the antagonist/problem." },
+             { "name": "The Aftermath", "title": "...", "description": "The dust settles; a new normal is found." }
           ]
         }
       ]
@@ -705,68 +676,77 @@ export function buildBeatSheetPrompt(logline: string, style: string = 'Save The 
         {
           "name": "Act 1",
           "beats": [
-             { "name": "Opening Image", "description": "Visual introduction to the hero's status quo." },
-             { "name": "Theme Stated", "description": "The lesson the hero must learn, spoken aloud." },
-             { "name": "Set-Up", "description": "Hero's life, flaws, and stakes." },
-             { "name": "Catalyst", "description": "Inciting incident that disrupts the status quo." },
-             { "name": "Debate", "description": "Hero resists the call to adventure." },
-             { "name": "Break into Two", "description": "Hero enters the new world." }
+             { "name": "Opening Image", "title": "...", "description": "Visual introduction to the hero's status quo." },
+             { "name": "Theme Stated", "title": "...", "description": "The lesson the hero must learn, spoken aloud." },
+             { "name": "Set-Up", "title": "...", "description": "Hero's life, flaws, and stakes." },
+             { "name": "Catalyst", "title": "...", "description": "Inciting incident that disrupts the status quo." },
+             { "name": "Debate", "title": "...", "description": "Hero resists the call to adventure." },
+             { "name": "Break into Two", "title": "...", "description": "Hero enters the new world." }
           ]
         },
         {
           "name": "Act 2",
           "beats": [
-             { "name": "B Story", "description": "New character/relationship that carries the theme." },
-             { "name": "Fun and Games", "description": "The promise of the premise. Highlights/Trailer moments." },
-             { "name": "Midpoint", "description": "False victory or defeat. Stakes raised." },
-             { "name": "Bad Guys Close In", "description": "Internal and external forces put pressure on." },
-             { "name": "All is Lost", "description": "Moment of defeat; whiff of death." },
-             { "name": "Dark Night of the Soul", "description": "Hero processes the loss and finds the truth." },
-             { "name": "Break into Three", "description": "Hero decides to fight back with new knowledge." }
+             { "name": "B Story", "title": "...", "description": "New character/relationship that carries the theme." },
+             { "name": "Fun and Games", "title": "...", "description": "The promise of the premise. Highlights/Trailer moments." },
+             { "name": "Midpoint", "title": "...", "description": "False victory or defeat. Stakes raised." },
+             { "name": "Bad Guys Close In", "title": "...", "description": "Internal and external forces put pressure on." },
+             { "name": "All is Lost", "title": "...", "description": "Moment of defeat; whiff of death." },
+             { "name": "Dark Night of the Soul", "title": "...", "description": "Hero processes the loss and finds the truth." },
+             { "name": "Break into Three", "title": "...", "description": "Hero decides to fight back with new knowledge." }
           ]
         },
         {
           "name": "Act 3",
           "beats": [
-             { "name": "Finale", "description": "The final battle. Hero proves they have changed." },
-             { "name": "Final Image", "description": "Mirror of Opening Image, showing change." }
+             { "name": "Finale", "title": "...", "description": "The final battle. Hero proves they have changed." },
+             { "name": "Final Image", "title": "...", "description": "Mirror of Opening Image, showing change." }
           ]
         }
       ]
     }`;
   }
 
-  return `You are a master story architect.
+  let prompt = `You are a master story architect.
     
-    TASK: Convert the following Logline into a full structured Beat Sheet using the ${structurePrompt} framework.
+    TASK: Convert the following Logline into a full structured Beat Sheet of exactly ${sceneCount} scenes using the ${structurePrompt} framework.
     
     LOGLINE: "${logline}"
     
-    OUTPUT FORMAT: Strictly Valid JSON. No whitespace or markdown outside the JSON.
+    `;
+
+  if (cast && cast.length > 0) {
+    prompt += `## PROJECT CAST (STRICT ENFORCEMENT)
+You MUST anchor the story around these existing characters. Do not change their roles or core traits.
+
+`;
+    cast.forEach(c => {
+      prompt += `- **${c.name.toUpperCase()}** (${c.role || 'supporting'}): ${c.motivation || ''}. Traits: ${(c.traits || []).join(', ')}\n`;
+    });
+    prompt += `\n**CHARACTER EXPANSION MANDATE:** Use the characters listed above for all primary actions, but do not stop there. You are encouraged to invent and integrate new characters (both MAJOR and MINOR roles) to expand the world and drive the plot forward. Ensure any new characters have distinct names, clear motivations, and unique voices that complement the existing cast.\n\n`;
+  }
+
+  prompt += `OUTPUT FORMAT: Strictly Valid JSON. No whitespace or markdown outside the JSON.
     
-    Structure:
-    {
-      "acts": [
-        {
-          "name": "Act Name",
-          "beats": [
-             { 
-               "title": "Creative Scene Title (e.g. 'The Setup', 'Ravi's Discovery')", 
-               "slugline": "INT. LOCATION - TIME",
-               "description": "Specific beat description..." 
-             }
-          ]
-        }
-      ]
-    }
+    REQUIRED STRUCTURE:
+    ${jsonStructure}
     
     INSTRUCTIONS:
+    - Generate EXACTLY ${sceneCount} scenes.
+    - Distribution Guideline:
+        * Act 1: ~25% of scenes (${Math.round(sceneCount * 0.25)} scenes)
+        * Act 2: ~50% of scenes (${Math.round(sceneCount * 0.50)} scenes)
+        * Act 3: ~25% of scenes (${Math.round(sceneCount * 0.25)} scenes)
     - Keep descriptions concise but specific to the story.
     - Ensure meaningful narrative arc matching the ${structurePrompt} methodology.
+    - Each beat MUST include "name" (the structural beat name), "title" (a creative scene title), "slugline" (INT./EXT. LOCATION - TIME), and "description".
+    - IMPORTANT: Do not stop early. Every single act must be expanded with multiple scenes until the total count of ${sceneCount} is reached.
     - RETURN ONLY THE JSON OBJECT.
     - DO NOT include any conversational text, markdown blocks, or explanations.
     - ENSURE the JSON is complete and not truncated.
     `;
+
+  return prompt;
 }
 
 // ============================================
@@ -776,7 +756,7 @@ export function buildBeatSheetPrompt(logline: string, style: string = 'Save The 
 export const STORY_ANALYSIS_PROMPT = `Analyze this story and extract the following information for screenplay conversion:
 
 1. **Main Characters** (list names and brief descriptions)
-2. **Key Locations** (settings that will become scene headers)
+2. **Key Locations** (settings that become scene headers)
 3. **Major Plot Points** (important story beats)
 4. **Themes** (central ideas/messages)
 5. **Suggested Tone** (comedy, drama, thriller, etc.)
@@ -835,30 +815,73 @@ IMPORTANT: Generate ONLY the revised screenplay content. No explanations, no mar
 export const SENIOR_SCRIPT_DOCTOR_PROMPT = `You are an elite Senior Hollywood Script Doctor and Script Consultant. 
 Your reputation depends on ensuring every revision is objectively SUPERIOR to the original. 
 You are revising this scene specifically to hit a 95+ quality score.
+You must perform FOUR steps internally:
 
-## ORIGINAL SCENARIO
-"""
-{{originalContent}}
-"""
+1. CONTEXT ANALYSIS
+2. SCENE PLANNING
+3. SCENE GENERATION
+4. MEMORY UPDATE
 
-## CRITICAL DEFICIENCIES TO FIX
-{{feedback}}
+-------------------------------------
+CONTEXT DATA
+-------------------------------------
+USER REQUEST: {{user_prompt}}
 
-## DRAMATIC OBJECTIVE
-{{goal}}
+GLOBAL OUTLINE (20-BEAT ARC):
+{{global_outline}}
 
-## SENIOR WRITER INSTRUCTIONS
-1. **SUPREME COMMAND**: Treat the "CRITICAL DEFICIENCIES TO FIX" as mandatory, non-negotiable direct orders from the Showrunner. If a specific pacing or dialogue issue is mentioned, it MUST be completely resolved.
-2. **Artistic Transmutation**: Don't just patch the issues; use them as a catalyst to evolve the scene into something better.
-3. **Dialogue Subtext**: Every line of dialogue must have layers. Avoid "on-the-nose" writing.
-4. **Professional Pacing**: Cut the "dead wood". Ensure every sentence moves the story forward.
-6. **Superiority Mandate**: If you cannot make this scene strictly better than the original while satisfying ALL directives, you have failed your mission.
+STORY SO FAR (LONG-TERM SUMMARY):
+{{story_so_far}}
 
-7. **LANGUAGE & FORMATTING PROTOCOL (Hybrid)**:
-   - **Target Language**: Write all ACTION and DIALOGUE in **{{language}}**.
-   - **Hollywood Formatting**: Keep SCENE HEADERS, CHARACTER NAMES, and TRANSITIONS in **STRICT ENGLISH** (e.g., INT. HOUSE - DAY).
-   - **No Translation of Format**: Do not translate "INT.", "EXT.", "CUT TO:", or Character Names.
-   - **Content**: The story content itself must be in {{language}}.
+RETRIEVED SCENES:
+{{retrieved_scenes}}
+
+CHARACTER MEMORY (STATES & RELATIONSHIPS):
+{{character_memory}}
+
+PLOT STATE:
+{{plot_state}}
+
+-------------------------------------
+STEP 1: CONTEXT ANALYSIS
+-------------------------------------
+From the data, identify:
+- Where we are in the GLOBAL OUTLINE.
+- What just happened in the STORY SO FAR.
+- Active characters and their RELATIONSHIPS.
+- Ongoing conflicts and location continuity.
+
+Summarize how this scene fits into the 100-scene global arc.
+
+-------------------------------------
+STEP 2: SCENE PLAN
+-------------------------------------
+Determine the next logical scene that moves the story TOWARDS the next beat in the Global Outline.
+Define:
+- scene_goal
+- characters_in_scene
+- location
+- primary_conflict
+- expected_outcome
+
+-------------------------------------
+STEP 3: SCREENPLAY SCENE
+-------------------------------------
+Write the scene using professional screenplay format. Structure it with Scene Title, Location, and Time.
+
+Maintain consistency with the STORY SO FAR.
+
+-------------------------------------
+STEP 4: MEMORY UPDATE
+-------------------------------------
+Update character states and specifically track RELATIONSHIP CHANGES (grudges, alliances, trust).
+
+-------------------------------------
+FINAL OUTPUT STRUCTURE
+- **Revised Scene**: The complete, revised screenplay content.
+- **Analysis**: A brief explanation of the key improvements made, focusing on craft.
+- **Updated Character States**: JSON array of character state changes.
+- **Updated Plot State**: JSON object of plot state changes.
 
 Generate ONLY the revised screenplay content. No conversational filler.
 `;
@@ -1098,12 +1121,13 @@ PLOT_STATE_UPDATE (JSON):
 // MASTER OUTLINE PROMPT (PH 30: Planning)
 // ============================================
 
-export const MASTER_OUTLINE_PROMPT = `You are a Senior Story Architect. Break down the following logline into a professional 20-beat master story arc.
-Each beat should represent a major movement in a 100-scene script.
+export const MASTER_OUTLINE_PROMPT = `You are a Senior Story Architect. Break down the following logline into a professional master story arc.
+The number of beats should represent the requested scale of the script (e.g., 20 beats for a 100-scene script, 40 beats for a 200-scene script).
 
 LOGLINE: {{logline}}
+TARGET SCALE: {{target_scale}} beats
 
-Respond ONLY with a valid JSON array of 20 strings.
+Respond ONLY with a valid JSON array of strings.
 ["Beat 1: ...", "Beat 2: ...", ...]
 `;
 
@@ -1184,6 +1208,7 @@ CHARACTER_MEMORY_UPDATE (JSON):
 PLOT_STATE_UPDATE (JSON):
 { "newEvents": [...], "cluesRevealed": [...] }
 `;
+
 // ============================================
 // AI SCRIPT ASSISTANT PROMPT (PH 34)
 // ============================================
@@ -1226,7 +1251,7 @@ export const SCRIPT_EDITOR_AGENT_PROMPT = `You are an elite Senior Screenwriter 
 ## YOUR COLLABORATIVE PERSONA
 - **Voice**: Expert but supportive. You use filmmaking terminology (beats, stakes, subtext, arc).
 - **Stance**: Proactive. You look for ways to heighten the drama. If my instruction is simple, satisfy it, but look for one surgical "plus-up" to improve the craft.
-- **Integrity**: Maintain project continuity above all. 
+- **Integrity**: Maintain project continuity, but do not fear character growth. You have an **EXPANSION MANDATE**: Proactively introduce new characters (major or minor) if they heighten the stakes or improve the subtext of the scene.
 
 ## QUALITY BAR (NON-NEGOTIABLE)
 - **Subtext over Surface**: Characters rarely say what they mean. Use tactics like deflect, evade, or interrogate.
@@ -1331,7 +1356,7 @@ Your mission is to execute the user's instruction while maintaining absolute nar
 - Every line must earn its place by shifting power, revealing character, or tightening tension.
 - Dialogue must carry subtext; avoid on-the-nose exposition.
 - Action lines should be concrete, visual, and playable; avoid camera directions unless requested.
-- Preserve continuity (names, props, timeline, geography) unless the instruction explicitly changes it.
+- Preserve continuity (names, props, timeline, geography) while embracing **EXPANSION**: Proactively introduce new characters (major or minor) if they enhance the drama or populate the scene authentically.
 - MODE=EDIT: smallest viable change that satisfies the instruction.
 - MODE=AGENT: you may reshape within the scene, but keep continuity stable.
 - Do not add new scenes or sluglines unless explicitly asked.
@@ -1435,4 +1460,74 @@ CHARACTER_MEMORY_UPDATE (JSON):
 
 PLOT_STATE_UPDATE (JSON):
 { "newEvents": [...], "cluesRevealed": [...] }
+`;
+
+// ============================================
+// ELITE INTENT CLASSIFIER (Pass-Through ML)
+// ============================================
+
+export const ELITE_INTENT_CLASSIFIER_PROMPT = `
+You are an expert Intent Classification Engine for a Professional Hollywood Script Editor.
+Your task is to determine the user's intent with 100% semantic accuracy.
+
+### INTENT CATEGORIES:
+1. "scene_edit": The user wants to rewrite, translate, edit, or change the ENTURE scene content.
+2. "selection_edit": The user has selected specific lines and wants them changed, or is referring to a specific "line" or "exchange".
+3. "chat": The user is asking a question (WHY, HOW), seeking analysis, giving feedback, or just talking (SMALL TALK).
+
+### CRITICAL RULES:
+- If the user says "Translate to [Language]" or "Rewrite this", it is ALWAYS "scene_edit" (unless a selection is present).
+- Polite requests like "Can you please make this more emotional?" are "scene_edit", NOT "chat".
+- Questions about the story ("Why did he do that?") are "chat".
+- Requests for suggestions ("What should happen next?") are "chat".
+
+### INPUT CONTEXT:
+- Has Active Scene: {{hasScene}}
+- Has Selection: {{hasSelection}}
+- Current Mode: {{currentMode}}
+
+### USER PROMPT:
+"{{instruction}}"
+
+### OUTPUT FORMAT:
+Return ONLY a valid JSON object:
+{
+  "intent": "scene_edit" | "selection_edit" | "chat",
+  "confidence": 0..1,
+  "reasoning": "Brief explanation of the semantic choice"
+}
+`;
+
+// ============================================
+// CHARACTER DISCOVERY PROMPT
+// ============================================
+
+export const CHARACTER_DISCOVERY_PROMPT = `
+You are a Character Specialist for a film studio. 
+Analyze the following STORY TEXT and identify any characters that are NOT in the EXISTING CAST.
+
+EXISTING CAST (Ignore these):
+{{existing_cast}}
+
+STORY TEXT:
+"""
+{{story_text}}
+"""
+
+TASK: Extract any NEW, repeatable characters mentioned in the text.
+Skip generic, incidental labels like "A CROWD" or "THE WIND" or "PEOPLE". 
+Only extract characters that are "major" or "supporting". 
+SKIP "minor" characters that have no significant impact or name.
+
+OUTPUT FORMAT: Return ONLY a valid JSON array of objects:
+[
+  {
+    "name": "CHARACTER NAME (UPPERCASE)",
+    "role": "major | supporting | minor",
+    "motivation": "A brief sentence on why they are in this scene",
+    "traits": ["trait1", "trait2"],
+    "voiceDescription": "How they sound (e.g., husky, high-pitched, gruff)",
+    "sampleDialogue": "A typical line of dialogue from the text"
+  }
+]
 `;

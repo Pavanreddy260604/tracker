@@ -320,7 +320,8 @@ const ChatInput = memo(({
         isSpeaking, 
         speak, 
         stopSpeaking,
-        volume 
+        volume,
+        error
     } = speech;
 
     const [showModelMenu, setShowModelMenu] = useState(false);
@@ -577,6 +578,11 @@ const ChatInput = memo(({
                                 isListening && "placeholder:text-accent-primary animate-pulse"
                             )}
                         />
+                        {error && (
+                            <div className="mt-1 px-1 text-[10px] text-status-error">
+                                {error}
+                            </div>
+                        )}
                     </div>
 
                     <div className="flex items-center gap-1 sm:gap-2 shrink-0 self-end mb-1">

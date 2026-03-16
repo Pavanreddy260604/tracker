@@ -24,11 +24,11 @@ async function assertTreatmentAccess(treatmentId: string, userId?: string) {
 // POST /api/treatment/generate
 // Generate a Beat Sheet (Preview only)
 router.post('/generate', async (req, res) => {
-    const { logline, style } = req.body;
+    const { logline, style, sceneCount, cast, bibleId } = req.body;
     if (!logline) return res.status(400).json({ error: 'Logline is required' });
 
     try {
-        const data = await treatmentService.generatePreview(logline, style);
+        const data = await treatmentService.generatePreview(logline, style, sceneCount, cast, bibleId);
         res.json({ success: true, data });
     } catch (error: any) {
         console.error('[TreatmentAPI] Generate Error:', error);

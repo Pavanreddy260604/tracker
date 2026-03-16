@@ -64,10 +64,10 @@ export function useScriptWriterSceneEditor({
     }, [activeScene]);
 
     useEffect(() => {
-        if (activeProject?.language && (generationOptions.language === 'English' || !generationOptions.language)) {
+        if (activeProject?.language && (generationOptions.language === 'English' || !generationOptions.language) && activeProject.language !== 'English') {
             setGenerationOptions(prev => ({ ...prev, language: activeProject.language || 'English' }));
         }
-    }, [activeProject, generationOptions.language]);
+    }, [activeProject?.language]); // Only sync when project language changes or loads
 
     useEffect(() => {
         if (!activeScene || !hasUnsavedChanges || isHydrating.current || isGenerating) return;

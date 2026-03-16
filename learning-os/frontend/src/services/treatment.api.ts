@@ -1,4 +1,5 @@
 import { baseApi } from './base.api';
+import type { Character } from './character.api';
 
 export interface Beat {
     name: string;
@@ -19,10 +20,10 @@ export interface Treatment {
 }
 
 class TreatmentApi {
-    async generateTreatment(logline: string, style: string = 'Save The Cat'): Promise<Act[]> {
+    async generateTreatment(logline: string, style: string = 'Save The Cat', sceneCount: number = 60, characters: Character[] = [], bibleId?: string): Promise<Act[]> {
         const data = await baseApi.request<{ acts: Act[] }>('/script/treatment/generate', {
             method: 'POST',
-            body: JSON.stringify({ logline, style })
+            body: JSON.stringify({ logline, style, sceneCount, cast: characters, bibleId })
         });
         return data.acts;
     }

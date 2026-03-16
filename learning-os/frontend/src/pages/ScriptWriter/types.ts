@@ -68,6 +68,8 @@ export type ProjectForm = {
     tone: string;
     language: string;
     transliteration: boolean;
+    intendedRuntime?: number;
+    targetSceneCount?: number;
     assistantPreferences: AssistantPreferences;
 };
 
@@ -104,6 +106,7 @@ export const DEFAULT_PROJECT_FORM: ProjectForm = {
     tone: 'Cinematic',
     language: 'English',
     transliteration: false,
+    targetSceneCount: 60,
     assistantPreferences: {
         defaultMode: 'ask',
         savedDirectives: []
@@ -135,6 +138,8 @@ export const DEFAULT_NEW_PROJECT: ProjectForm = {
     tone: 'Cinematic',
     language: 'English',
     transliteration: false,
+    intendedRuntime: 120,
+    targetSceneCount: 60,
     assistantPreferences: {
         defaultMode: 'ask',
         savedDirectives: []
