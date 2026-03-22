@@ -2,6 +2,7 @@ import {
     AlertTriangle,
     Brain,
     Check,
+    ChevronRight as LucideChevronRight,
     Info,
     Layout,
     Loader2,
@@ -10,6 +11,7 @@ import {
     TrendingUp,
     X
 } from 'lucide-react';
+import { DiffEditor } from '@monaco-editor/react';
 import type { PendingFixState } from '../types';
 
 interface FixAuditorOverlayProps {
@@ -35,9 +37,11 @@ export function FixAuditorOverlay({
         .map((line) => line.replace(/^[•*-]\s*/, '').trim())
         .filter((line) => line.length > 0);
 
+    const isDark = typeof document !== 'undefined' && document.documentElement.classList.contains('dark');
+
     return (
-        <div className="absolute inset-0 z-[100] flex flex-col bg-console-bg/90 backdrop-blur-sm animate-in fade-in zoom-in-95 duration-300">
-            <div className="flex-none h-16 border-b border-border-subtle bg-console-surface/50 flex items-center justify-between px-6">
+        <div className="absolute inset-0 z-[100] flex flex-col bg-console-bg/95 backdrop-blur-xl animate-in fade-in zoom-in-95 duration-500">
+            <div className="flex-none h-16 border-b border-border-subtle bg-console-header/90 flex items-center justify-between px-6">
                 <div className="flex items-center gap-4">
                     <div className="flex items-center gap-2">
                         <div className={`p-2 rounded-lg ${isProposal ? 'bg-accent-soft text-accent-primary' : isSuperior ? 'bg-status-ok-soft text-status-ok' : 'bg-status-warning-soft text-status-warning'}`}>
@@ -45,16 +49,16 @@ export function FixAuditorOverlay({
                         </div>
                         <div>
                             <h2 className="text-sm font-black uppercase tracking-widest text-text-primary flex items-center gap-2">
-                                {isProposal ? 'Assistant Proposal' : 'Executive Scene Audit'}
+                                {isProposal ? 'Assistant Proposal' : 'Quality Guard Revision'}
                                 {!isProposal && !isSuperior && (
-                                    <span className="bg-status-warning-soft text-status-warning text-[10px] px-2 py-0.5 rounded border border-status-warning/20 flex items-center gap-1">
+                                    <span className="bg-status-warning-soft text-status-warning text-[10px] px-2 py-0.5 rounded border border-status-warning/20 flex items-center gap-1 font-bold">
                                         <AlertTriangle size={10} />
-                                        Below Quality Floor
+                                        Below quality gate
                                     </span>
                                 )}
                             </h2>
-                            <p className="text-[10px] text-text-tertiary uppercase font-bold">
-                                {isProposal ? 'Reviewing AI-Proposed Script Improvement' : 'Reviewing Ruthless Executive Analysis'}
+                            <p className="text-[9px] text-text-tertiary uppercase font-black tracking-tighter">
+                                {isProposal ? 'Analyzing AI-Proposed Refinements' : 'Reviewing Executive Correction Layer'}
                             </p>
                         </div>
                     </div>
@@ -62,20 +66,20 @@ export function FixAuditorOverlay({
 
                 <div className="flex items-center gap-6">
                     {!isProposal && currentScore > 0 && !pendingFix.isStreaming && (
-                        <div className="flex items-center gap-3 bg-console-bg px-4 py-2 rounded-xl border border-border-subtle shadow-inner">
+                        <div className="flex items-center gap-3 bg-console-surface-2/40 px-4 py-1.5 rounded-xl border border-border-subtle/50">
                             <div className="text-center">
-                                <div className="text-[8px] font-bold text-text-tertiary uppercase">Benchmark</div>
-                                <div className="text-lg font-black text-text-tertiary">{currentScore}</div>
+                                <div className="text-[7px] font-black text-text-tertiary uppercase tracking-widest">Bench</div>
+                                <div className="text-sm font-black text-text-secondary">{currentScore}</div>
                             </div>
-                            <div className="text-text-tertiary"><ChevronRight size={14} /></div>
+                            <div className="text-text-disabled/40"><LucideChevronRight size={12} /></div>
                             <div className="text-center">
-                                <div className="text-[8px] font-bold text-accent-primary uppercase">Revised</div>
-                                <div className="text-lg font-black text-text-primary flex items-center gap-1">
+                                <div className="text-[7px] font-black text-accent-primary uppercase tracking-widest">Revised</div>
+                                <div className="text-sm font-black text-text-primary flex items-center gap-1">
                                     {newScore}
                                     {newScore > currentScore ? (
-                                        <TrendingUp size={14} className="text-emerald-500" />
+                                        <TrendingUp size={12} className="text-emerald-500" />
                                     ) : (
-                                        <TrendingDown size={14} className="text-amber-500" />
+                                        <TrendingDown size={12} className="text-amber-500" />
                                     )}
                                 </div>
                             </div>
@@ -91,17 +95,17 @@ export function FixAuditorOverlay({
                         <div className="flex items-center gap-2 animate-in fade-in slide-in-from-right-4 duration-500">
                             <button
                                 onClick={onDiscard}
-                                className="px-4 py-2 bg-console-surface/50 hover:bg-console-surface text-text-tertiary hover:text-status-error text-[10px] font-bold rounded-lg transition-all uppercase tracking-widest flex items-center gap-2 border border-border-subtle/50"
+                                className="px-5 py-2 hover:bg-status-error/10 hover:border-status-error/30 text-text-tertiary hover:text-status-error text-[10px] font-bold rounded-lg transition-all uppercase tracking-widest flex items-center gap-2 border border-border-subtle/50 backdrop-blur-md"
                             >
                                 <X size={14} />
                                 Discard
                             </button>
                             <button
                                 onClick={onAccept}
-                                className="px-6 py-2 bg-console-surface/80 hover:bg-accent-primary text-text-secondary hover:text-console-bg text-[10px] font-black rounded-lg transition-all uppercase tracking-widest flex items-center gap-2 border border-border-subtle shadow-lg hover:shadow-accent-primary/10"
+                                className="px-7 py-2 bg-accent-primary hover:bg-accent-primary-dark text-console-bg text-[10px] font-black rounded-lg transition-all uppercase tracking-widest flex items-center gap-2 shadow-lg shadow-accent-primary/20"
                             >
                                 <Check size={14} />
-                                Apply
+                                Apply Changes
                             </button>
                         </div>
                     )}
@@ -110,45 +114,47 @@ export function FixAuditorOverlay({
 
             <div className="flex-1 overflow-hidden flex flex-row">
                 {(!isProposal || auditLines.length > 0) && (
-                    <div className="w-80 border-r border-border-subtle bg-console-surface/30 p-6 space-y-8 overflow-y-auto custom-scrollbar">
-                        <div className="space-y-4">
+                    <div className="w-80 border-r border-border-subtle/40 bg-console-surface-2/20 p-6 space-y-8 overflow-y-auto custom-scrollbar">
+                        <div className="space-y-5">
                             <h3 className="text-[10px] font-black text-text-tertiary uppercase tracking-widest flex items-center gap-2">
-                                <Sparkles size={12} />
-                                {isProposal ? 'Revision Notes' : 'Auditor Notes'}
+                                <Sparkles size={12} className="text-accent-primary" />
+                                {isProposal ? 'Revision Strategy' : 'Auditor Analysis'}
                             </h3>
-                            <div className="space-y-3">
+                            <div className="space-y-4">
                                 {auditLines.map((line, index) => (
-                                    <div key={`${line}-${index}`} className="p-3 bg-console-surface/50 rounded-xl border border-border-subtle/50 text-xs text-text-secondary leading-relaxed font-serif italic border-l-2 border-l-accent-primary animate-in fade-in slide-in-from-bottom-1 duration-300">
+                                    <div key={`${line}-${index}`} className="p-4 bg-console-surface/50 rounded-2xl border border-border-subtle/50 text-[11px] text-text-secondary leading-relaxed font-serif italic border-l-3 border-l-accent-primary shadow-sm">
                                         {line}
                                     </div>
                                 ))}
                                 {isProposal && auditLines.length === 0 && (
-                                    <div className="p-4 text-center text-[10px] text-text-tertiary uppercase font-black italic">
-                                        Streaming proposal...
+                                    <div className="p-4 text-center text-[10px] text-text-tertiary uppercase font-black italic opacity-50">
+                                        Wait for notes...
                                     </div>
                                 )}
                             </div>
                         </div>
 
                         {!isProposal && (
-                            <div className="space-y-4">
-                                <h3 className="text-[10px] font-black text-text-tertiary uppercase tracking-widest">Revision Analysis</h3>
-                                <div className="space-y-2">
-                                    <div className="flex justify-between text-[10px] text-text-tertiary">
-                                        <span>Dialogue Sharpness</span>
-                                        <span className="text-status-ok font-bold">+18%</span>
+                            <div className="space-y-4 pt-4 border-t border-border-subtle/20">
+                                <h3 className="text-[10px] font-black text-text-tertiary uppercase tracking-widest">Growth Metrics</h3>
+                                <div className="space-y-3">
+                                    <div className="space-y-2">
+                                        <div className="flex justify-between text-[10px] font-bold">
+                                            <span className="text-text-secondary uppercase tracking-tighter">Dialogue Sharpness</span>
+                                            <span className="text-status-ok">+18%</span>
+                                        </div>
+                                        <div className="w-full h-1 bg-console-surface-3/50 rounded-full overflow-hidden">
+                                            <div className="h-full bg-status-ok w-[85%] rounded-full shadow-[0_0_8px_rgba(var(--status-ok-rgb),0.3)]" />
+                                        </div>
                                     </div>
-                                    <div className="w-full h-1 bg-console-surface rounded-full overflow-hidden">
-                                        <div className="h-full bg-status-ok w-[85%]" />
-                                    </div>
-                                </div>
-                                <div className="space-y-2">
-                                    <div className="flex justify-between text-[10px] text-text-tertiary">
-                                        <span>Pacing Subtext</span>
-                                        <span className="text-accent-primary font-bold">+12%</span>
-                                    </div>
-                                    <div className="w-full h-1 bg-console-surface rounded-full overflow-hidden">
-                                        <div className="h-full bg-accent-primary w-[78%]" />
+                                    <div className="space-y-2">
+                                        <div className="flex justify-between text-[10px] font-bold">
+                                            <span className="text-text-secondary uppercase tracking-tighter">Dramatic Subtext</span>
+                                            <span className="text-accent-primary">+12%</span>
+                                        </div>
+                                        <div className="w-full h-1 bg-console-surface-3/50 rounded-full overflow-hidden">
+                                            <div className="h-full bg-accent-primary w-[78%] rounded-full shadow-[0_0_8px_rgba(var(--accent-primary-rgb),0.3)]" />
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -156,36 +162,42 @@ export function FixAuditorOverlay({
                     </div>
                 )}
 
-                <div className="flex-1 flex overflow-hidden">
-                    <div className="flex-1 flex flex-col border-r border-border-subtle">
-                        <div className="h-8 bg-console-bg flex items-center px-4 border-b border-border-subtle">
-                            <span className="text-[9px] font-black text-text-tertiary uppercase tracking-widest">Original Version</span>
-                        </div>
-                        <div className="flex-1 p-6 overflow-y-auto custom-scrollbar bg-console-bg/20">
-                            <pre className="text-sm font-mono text-text-tertiary whitespace-pre-wrap leading-relaxed opacity-50">
-                                {originalContent}
-                            </pre>
-                        </div>
-                    </div>
-
-                    <div className="flex-1 flex flex-col bg-console-surface/10">
-                        <div className="h-8 bg-console-bg flex items-center px-4 border-b border-accent-primary/30">
-                            <span className="text-[9px] font-black text-accent-primary uppercase tracking-widest">Proposed Version</span>
-                        </div>
-                        <div className="flex-1 p-6 overflow-y-auto custom-scrollbar bg-console-surface/10">
-                            <pre className="text-sm font-mono text-text-primary whitespace-pre-wrap leading-relaxed">
-                                {pendingFix.content}
-                            </pre>
-                        </div>
+                <div className="flex-1 flex flex-col relative bg-console-bg">
+                    <div className="flex-1 relative">
+                        <DiffEditor
+                            original={originalContent}
+                            modified={pendingFix.content}
+                            language="markdown"
+                            theme={isDark ? 'vs-dark' : 'vs'}
+                            options={{
+                                readOnly: true,
+                                renderSideBySide: true,
+                                minimap: { enabled: false },
+                                scrollBeyondLastLine: false,
+                                fontSize: 13,
+                                lineNumbers: 'on',
+                                wordWrap: 'on',
+                                diffWordWrap: 'on',
+                                automaticLayout: true,
+                                scrollbar: {
+                                    verticalScrollbarSize: 8,
+                                    horizontalScrollbarSize: 8
+                                },
+                                renderOverviewRuler: false,
+                                originalEditable: false,
+                                diffCodeLens: true
+                            }}
+                        />
                     </div>
                 </div>
             </div>
 
-            <div className="flex-none h-8 bg-console-surface border-t border-border-subtle px-6 flex items-center text-[9px] font-bold text-text-tertiary gap-4">
-                <span className="flex items-center gap-1.5"><Info size={10} /> READ-ONLY PREVIEW</span>
-                <span className="flex items-center gap-1.5"><Layout size={10} /> SIDE-BY-SIDE AUDIT MODE</span>
+            <div className="flex-none h-10 bg-console-header border-t border-border-subtle/50 px-6 flex items-center text-[10px] font-bold text-text-tertiary gap-6">
+                <span className="flex items-center gap-1.5 opacity-60"><Info size={12} /> SECURE PREVIEW</span>
+                <div className="h-4 w-px bg-border-subtle/30" />
+                <span className="flex items-center gap-1.5 text-accent-primary"><Layout size={12} /> SYNCED COMPARISON</span>
                 <div className="flex-1" />
-                <span className="text-text-tertiary italic">Audit generated by Hollywood-L4 Model</span>
+                <span className="text-[9px] font-black uppercase tracking-widest opacity-40">Proprietary AI Narrative Guard v2.0</span>
             </div>
         </div>
     );
