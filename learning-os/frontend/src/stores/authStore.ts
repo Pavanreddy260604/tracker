@@ -56,6 +56,7 @@ export const useAuthStore = create<AuthState>()(
                 try {
                     const { user, token } = await api.register(name, email, password);
                     api.setToken(token);
+                    activityTracker.setToken(token); // Connect tracker
                     set({
                         user,
                         token,
@@ -91,7 +92,7 @@ export const useAuthStore = create<AuthState>()(
                 const { token } = get();
                 console.log('[AuthStore] Checking session...', { hasToken: !!token });
 
-                set({ isLoading: true, isCheckingAuth: true });
+                set({ isCheckingAuth: true });
 
                 try {
                     // Try to get user. If token is missing or expired, 
@@ -105,7 +106,6 @@ export const useAuthStore = create<AuthState>()(
                         user,
                         token: currentToken,
                         isAuthenticated: true,
-                        isLoading: false,
                         isCheckingAuth: false,
                     });
 
@@ -118,7 +118,6 @@ export const useAuthStore = create<AuthState>()(
                         user: null,
                         token: null,
                         isAuthenticated: false,
-                        isLoading: false,
                         isCheckingAuth: false,
                     });
                 }
@@ -152,6 +151,8 @@ if (typeof window !== 'undefined') {
             user: null,
             token: null,
             isAuthenticated: false,
+            isLoading: false,
+            isCheckingAuth: false,
             error: null,
         });
     });

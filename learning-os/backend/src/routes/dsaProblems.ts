@@ -2,12 +2,15 @@ import { Router, Request, Response } from 'express';
 import { z } from 'zod';
 import { authenticate } from '../middleware/auth.js';
 import { writeLimiter } from '../middleware/rateLimiter.js';
+import { activityService } from '../services/activity.service.js';
 import { knowledgeSync } from '../services/knowledgeSync.service.js';
 import {
     createDSAProblem,
     deleteDSAProblemById,
     getDSAProblemById,
     listDSAProblems,
+    normalizeDSAProblemPayload,
+    serializeDSAProblem,
     updateDSAProblemById,
 } from '../services/dsa.service.js';
 
@@ -17,7 +20,7 @@ router.use(authenticate);
 // Validation schema
 const dsaProblemSchema = z.object({
     problemName: z.string().min(1).max(200),
-    platform: z.enum(['leetcode', 'gfg', 'codeforces', 'codechef', 'hackerrank', 'other']).default('leetcode'),
+    platform: z.enum(['leetcode', 'gfg', 'codeforces', 'codechef', 'hackerrank', 'neetcode', 'other']).default('leetcode'),
     topic: z.string().min(1).max(100),
     difficulty: z.enum(['easy', 'medium', 'hard']),
     timeSpent: z.number().min(0).max(1440).default(0),
@@ -25,6 +28,7 @@ const dsaProblemSchema = z.object({
     patternLearned: z.string().max(500).default(''),
     mistakes: z.string().max(1000).default(''),
     solutionLink: z.string().max(500).default(''),
+    notes: z.string().max(5000).default(''),
     date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
     // DSA 2.0 Fields
     nextReviewDate: z.string().optional(), // ISODate string
@@ -35,6 +39,8 @@ const dsaProblemSchema = z.object({
     timeComplexity: z.string().max(50).optional(),
     spaceComplexity: z.string().max(50).optional(),
     companyTags: z.array(z.string()).optional(),
+    confidenceLevel: z.number().min(1).max(5).optional(),
+    simpleExplanation: z.string().max(2000).optional(),
 });
 
 const dsaProblemUpdateSchema = dsaProblemSchema
@@ -91,14 +97,17 @@ router.post('/', writeLimiter, async (req: Request, res: Response) => {
             return;
         }
 
-        const problem = await createDSAProblem(req.userId!, result.data);
+        const problem = await createDSAProblem(req.userId!, normalizeDSAProblemPayload(result.data));
+
+        // Record activity for streak
+        activityService.recordActivity(req.userId!, 'dsa').catch(err => console.error(err));
 
         // Sync to RAG
         if (problem) {
             knowledgeSync.syncDSAProblem(problem).catch(err => console.error('[DSA] RAG Sync Error:', err));
         }
 
-        res.status(201).json({ success: true, data: { problem } });
+        res.status(201).json({ success: true, data: { problem: serializeDSAProblem(problem.toObject()) } });
     } catch (error) {
         console.error('Create problem error:', error);
         res.status(500).json({ success: false, error: 'Failed to create problem' });
@@ -137,17 +146,20 @@ router.put('/:id', writeLimiter, async (req: Request, res: Response) => {
         }
 
         const problemId = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
-        const problem = await updateDSAProblemById(req.userId!, problemId, result.data);
+        const problem = await updateDSAProblemById(req.userId!, problemId, normalizeDSAProblemPayload(result.data));
 
         if (!problem) {
             res.status(404).json({ success: false, error: 'Problem not found' });
             return;
         }
 
+        // Record activity for streak
+        activityService.recordActivity(req.userId!, 'dsa').catch(err => console.error(err));
+
         // Sync to RAG
         knowledgeSync.syncDSAProblem(problem).catch(err => console.error('[DSA] RAG Sync Error:', err));
 
-        res.json({ success: true, data: { problem } });
+        res.json({ success: true, data: { problem: problem ? serializeDSAProblem(problem.toObject()) : problem } });
     } catch (error) {
         console.error('Update problem error:', error);
         res.status(500).json({ success: false, error: 'Failed to update problem' });

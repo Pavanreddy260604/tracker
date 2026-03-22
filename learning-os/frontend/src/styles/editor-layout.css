@@ -1,0 +1,63 @@
+/* ============================================================
+   EDITOR ZEN & GRID LAYOUTS
+   Consolidated from chunk 21
+   Refactored for Learning OS 2.0 Design System
+   ============================================================ */
+
+.zen-layout {
+  display: flex;
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+  background: var(--console-bg);
+  color: var(--text-primary);
+}
+
+.zen-explorer {
+  width: 300px;
+  flex-shrink: 0;
+  border-right: 1px solid var(--border-subtle);
+  background: var(--console-sidebar);
+  transition: transform var(--motion-slow) var(--ease-out);
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+}
+
+.zen-explorer.collapsed {
+  transform: translateX(-100%);
+}
+
+.zen-main {
+  flex: 1;
+  min-width: 0;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  background: var(--console-bg);
+}
+
+.zen-inspector {
+  width: 350px;
+  flex-shrink: 0;
+  border-left: 1px solid var(--border-subtle);
+  background: var(--console-sidebar);
+  transition: transform var(--motion-slow) var(--ease-out);
+  display: flex;
+  flex-direction: column;
+  z-index: 10;
+}
+
+.zen-inspector.collapsed {
+  transform: translateX(100%);
+}
+
+.zen-main.centered-editor {
+  display: flex;
+  justify-content: center;
+}
+
+.zen-main.centered-editor .ide-editor-container {
+  max-width: 900px;
+  width: 100%;
+}

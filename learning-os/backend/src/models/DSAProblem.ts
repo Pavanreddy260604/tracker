@@ -10,7 +10,14 @@ import mongoose, { Document, Schema } from 'mongoose';
 
 export type Difficulty = 'easy' | 'medium' | 'hard';
 export type ProblemStatus = 'solved' | 'revisit' | 'attempted';
-export type Platform = 'leetcode' | 'gfg' | 'codeforces' | 'codechef' | 'hackerrank' | 'other';
+export type Platform =
+    | 'leetcode'
+    | 'gfg'
+    | 'codeforces'
+    | 'codechef'
+    | 'hackerrank'
+    | 'neetcode'
+    | 'other';
 
 export const DIFFICULTY_WEIGHTS: Record<Difficulty, number> = {
     easy: 1,
@@ -30,6 +37,7 @@ export interface IDSAProblem extends Document {
     patternLearned: string;
     mistakes: string;
     solutionLink: string;
+    notes: string;
     date: string; // YYYY-MM-DD
 
     // DSA 2.0 - SRS & Metadata
@@ -41,6 +49,8 @@ export interface IDSAProblem extends Document {
     timeComplexity?: string;
     spaceComplexity?: string;
     companyTags?: string[];
+    confidenceLevel?: number; // 1-5 (Phychology: Metacognition)
+    simpleExplanation?: string; // Feynman Technique
 
     createdAt: Date;
     updatedAt: Date;
@@ -62,7 +72,7 @@ const dsaProblemSchema = new Schema<IDSAProblem>(
         },
         platform: {
             type: String,
-            enum: ['leetcode', 'gfg', 'codeforces', 'codechef', 'hackerrank', 'other'],
+            enum: ['leetcode', 'gfg', 'codeforces', 'codechef', 'hackerrank', 'neetcode', 'other'],
             default: 'leetcode',
         },
         topic: {
@@ -102,6 +112,11 @@ const dsaProblemSchema = new Schema<IDSAProblem>(
             default: '',
             maxlength: [500, 'Link cannot exceed 500 characters'],
         },
+        notes: {
+            type: String,
+            default: '',
+            maxlength: [5000, 'Notes cannot exceed 5000 characters'],
+        },
         date: {
             type: String,
             required: [true, 'Date is required'],
@@ -140,6 +155,17 @@ const dsaProblemSchema = new Schema<IDSAProblem>(
         companyTags: {
             type: [String],
             default: [],
+        },
+        confidenceLevel: {
+            type: Number,
+            min: 1,
+            max: 5,
+            default: 3,
+        },
+        simpleExplanation: {
+            type: String,
+            default: '',
+            maxlength: [2000, 'Explanation cannot exceed 2000 characters'],
         },
     },
     {

@@ -1,313 +1,155 @@
-
-import { useEffect, useState } from 'react';
+import { useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import {
-    ArrowLeft,
-    Clock,
-    Calendar,
-    CheckCircle2,
-    RefreshCw,
-    AlertCircle,
-    Server,
-    BookOpen,
-    FileCode,
-    Bug,
-    ExternalLink,
-    BrainCircuit
-} from 'lucide-react';
+import { ArrowLeft, AlertCircle, LayoutGrid, Terminal, Cpu } from 'lucide-react';
 import { Button } from '../components/ui/Button';
-import { Badge, StatusBadge } from '../components/ui/Badge';
+import { Badge } from '../components/ui/Badge';
 import { api, type BackendTopic } from '../services/api';
-import { useAI } from '../contexts/AIContext';
+import { useAIContextTracker } from '../contexts/AIContext';
+import { BackendTopicForm } from '../components/forms/BackendTopicForm';
+import { toast } from '../stores/toastStore';
+import { useRoutedEntity } from '../hooks/useRoutedEntity';
 
 export function BackendTopicDetail() {
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
-    const [topic, setTopic] = useState<BackendTopic | null>(null);
-    const [isLoading, setIsLoading] = useState(true);
-    const [error, setError] = useState('');
-    const { setContext, toggleOpen } = useAI();
 
-    useEffect(() => {
-        if (topic) {
-            setContext({ type: 'Backend Topic', data: topic });
-        }
-        return () => {
-            setContext(null);
-        };
-    }, [topic, setContext]);
+    const fetchTopic = useCallback(async (entityId: string) => {
+        const response = await api.getBackendTopic(entityId);
+        return response.topic;
+    }, []);
 
-    useEffect(() => {
-        const fetchTopic = async () => {
-            if (!id) return;
-            try {
-                const response = await api.getBackendTopic(id);
-                setTopic(response.topic);
-            } catch (err) {
-                console.error('Failed to fetch topic:', err);
-                setError('Topic not found');
-            } finally {
-                setIsLoading(false);
-            }
-        };
-        fetchTopic();
-    }, [id]);
+    const { entity: topic, isLoading, error, isTransitioning } = useRoutedEntity<BackendTopic>(
+        id,
+        fetchTopic,
+        'Backend specification not found in the learning grid'
+    );
 
-    const handleReview = async () => {
-        if (!topic) return;
-        const currentStage = topic.reviewStage || 1;
-        let nextDate = new Date();
-        let nextStage = currentStage + 1;
+    // Sync context with AI Assistant
+    useAIContextTracker('Backend Topic', topic);
 
-        if (currentStage < 3) {
-            nextDate.setDate(nextDate.getDate() + 3);
-        } else {
-            nextStage = 4;
-        }
-
-        try {
-            await api.updateBackendTopic(topic._id, {
-                nextReviewDate: nextStage <= 3 ? nextDate.toISOString().split('T')[0] : undefined,
-                reviewStage: nextStage
-            });
-            const response = await api.getBackendTopic(topic._id);
-            setTopic(response.topic);
-        } catch (error) {
-            console.error('Review failed:', error);
-        }
-    };
-
-    if (isLoading) {
+    if (isLoading || isTransitioning) {
         return (
-            <div className="flex items-center justify-center min-h-[50vh]">
-                <RefreshCw size={24} className="animate-spin text-gray-300" />
-            </div>
-        );
-    }
-
-    if (error || !topic) {
-        return (
-            <div className="flex flex-col items-center justify-center min-h-[50vh] gap-4">
-                <AlertCircle size={48} className="text-red-400" />
-                <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Topic Not Found</h2>
-                <Button onClick={() => navigate('/backend')} leftIcon={<ArrowLeft size={16} />}>
-                    Back to List
-                </Button>
-            </div>
-        );
-    }
-
-    const completionRate = topic.subTopics && topic.subTopics.length > 0
-        ? Math.round((topic.subTopics.filter(t => t.isCompleted).length / topic.subTopics.length) * 100)
-        : 0;
-
-    return (
-        <div className="max-w-4xl mx-auto space-y-6 pb-20">
-            {/* Header / Nav */}
-            <div className="flex flex-col sm:flex-row sm:items-center gap-4">
-                <Button
-                    variant="secondary"
-                    size="sm"
-                    onClick={() => navigate('/backend')}
-                    leftIcon={<ArrowLeft size={16} />}
-                    className="w-fit"
-                >
-                    Back
-                </Button>
-                <div className="flex-1">
-                    <h1 className="text-2xl font-bold text-text-primary">{topic.topicName}</h1>
-                </div>
-                <button
-                    onClick={toggleOpen}
-                    className="p-2 rounded-full hover:bg-accent-primary/10 text-accent-primary transition-colors active:scale-95"
-                    title="Ask AI helper"
-                >
-                    <BrainCircuit size={22} />
-                </button>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                {/* Left Column: Metadata */}
-                <div className="md:col-span-1 space-y-6">
-                    <motion.div
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        className="bg-console-surface border border-border-subtle rounded-xl p-6 space-y-4 shadow-premium"
-                    >
-                        <div className="flex flex-col gap-2">
-                            <label className="text-xs text-text-secondary uppercase tracking-wide">Status</label>
-                            <StatusBadge status={topic.status as any} />
-                        </div>
-
-                        <div className="flex flex-col gap-2">
-                            <label className="text-xs text-text-secondary uppercase tracking-wide">Category</label>
-                            <div className="flex items-center gap-2 text-text-primary">
-                                <Server size={18} className="text-text-secondary" />
-                                <span className="capitalize">{topic.category}</span>
-                            </div>
-                        </div>
-
-                        <div className="flex flex-col gap-2">
-                            <label className="text-xs text-text-secondary uppercase tracking-wide">Added On</label>
-                            <div className="flex items-center gap-2 text-text-primary">
-                                <Clock size={16} className="text-text-secondary" />
-                                <span>{new Date(topic.date).toLocaleDateString()}</span>
-                            </div>
-                        </div>
-
-                        <div className="border-t border-border-subtle pt-4 flex flex-col gap-2">
-                            <label className="text-xs text-text-secondary uppercase tracking-wide">SRS Status</label>
-                            {topic.nextReviewDate ? (
-                                <div className={`flex items-center gap-2 p-3 rounded-lg border ${new Date(topic.nextReviewDate) <= new Date()
-                                    ? 'bg-status-warning/10 border-status-warning/20 text-status-warning'
-                                    : 'bg-status-ok/10 border-status-ok/20 text-status-ok'
-                                    }`}>
-                                    <Calendar size={18} />
-                                    <div>
-                                        <p className="font-semibold">{new Date(topic.nextReviewDate).toLocaleDateString()}</p>
-                                        <p className="text-xs opacity-80 font-medium">
-                                            {new Date(topic.nextReviewDate) <= new Date() ? 'Review Due Now' : 'Next Review'}
-                                        </p>
-                                    </div>
-                                </div>
-                            ) : (
-                                <div className="flex items-center gap-2 text-gray-400">
-                                    <CheckCircle2 size={18} />
-                                    <span>Mastered</span>
-                                </div>
-                            )}
-                            {topic.nextReviewDate && new Date(topic.nextReviewDate) <= new Date() && (
-                                <Button
-                                    onClick={handleReview}
-                                    className="w-full mt-2 bg-status-warning hover:bg-status-warning dark:bg-amber-600 min-h-[44px]"
-                                    leftIcon={<RefreshCw size={16} />}
-                                >
-                                    Complete Review
-                                </Button>
-                            )}
-                        </div>
-                    </motion.div>
-
-                    {/* Completion Stats */}
-                    {topic.subTopics && topic.subTopics.length > 0 && (
-                        <motion.div
-                            initial={{ opacity: 0, y: 20 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ delay: 0.1 }}
-                            className="bg-console-surface border border-border-subtle rounded-xl p-6 shadow-premium"
-                        >
-                            <h3 className="font-bold text-text-primary mb-2">Progress</h3>
-                            <div className="w-full bg-console-surface-2 border border-border-subtle rounded-full h-2.5 mb-2">
-                                <div className="bg-accent-primary h-2.5 rounded-full" style={{ width: `${completionRate}%` }}></div>
-                            </div>
-                            <p className="text-right text-xs font-semibold text-accent-primary">{completionRate}% Completed</p>
-                        </motion.div>
-                    )}
-                </div>
-
-                {/* Right Column: Content */}
-                <div className="md:col-span-2 space-y-6">
-                    {/* Checklist */}
-                    {topic.subTopics && topic.subTopics.length > 0 && (
-                        <motion.div
-                            initial={{ opacity: 0, y: 20 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ delay: 0.1 }}
-                            className="bg-console-surface border border-border-subtle rounded-xl p-6 shadow-premium"
-                        >
-                            <h3 className="text-lg font-bold text-text-primary mb-4 flex items-center gap-2">
-                                <CheckCircle2 className="text-status-ok" /> Learning Checklist
-                            </h3>
-                            <div className="space-y-3">
-                                {topic.subTopics.map((sub, idx) => (
-                                    <div key={idx} className="flex items-start gap-3 p-3 rounded-lg bg-console-surface-2 border border-border-subtle">
-                                        <div className={`mt-0.5 w-5 h-5 rounded border flex items-center justify-center transition-colors ${sub.isCompleted ? 'bg-status-ok border-status-ok' : 'border-border-strong bg-console-surface'
-                                            }`}>
-                                            {sub.isCompleted && <CheckCircle2 size={14} className="text-white" />}
-                                        </div>
-                                        <span className={`text-sm font-medium ${sub.isCompleted ? 'text-text-disabled line-through italic' : 'text-text-primary'}`}>
-                                            {sub.text}
-                                        </span>
-                                    </div>
-                                ))}
-                            </div>
-                        </motion.div>
-                    )}
-
-                    {/* Resources */}
-                    {topic.resources && topic.resources.length > 0 && (
-                        <motion.div
-                            initial={{ opacity: 0, y: 20 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ delay: 0.2 }}
-                            className="bg-console-surface border border-border-subtle rounded-xl p-6 shadow-premium"
-                        >
-                            <h3 className="text-lg font-bold text-text-primary mb-4 flex items-center gap-2">
-                                <BookOpen className="text-accent-primary" /> Resources
-                            </h3>
-                            <div className="grid grid-cols-1 gap-3">
-                                {topic.resources.map((res, idx) => (
-                                    <a
-                                        key={idx}
-                                        href={res.url}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        className="flex items-center justify-between p-4 rounded-lg bg-console-surface-2 border border-border-subtle hover:border-accent-primary/50 hover:bg-console-elevated transition-all group"
-                                    >
-                                        <div className="flex items-center gap-3">
-                                            <Badge variant="purple" className="uppercase text-[10px]">{res.type}</Badge>
-                                            <span className="font-semibold text-text-primary group-hover:text-accent-primary transition-colors">{res.title}</span>
-                                        </div>
-                                        <ExternalLink size={16} className="text-text-secondary group-hover:text-accent-primary" />
-                                    </a>
-                                ))}
-                            </div>
-                        </motion.div>
-                    )}
-
-                    {/* Notes & Bugs */}
-                    <div className="grid grid-cols-1 gap-6">
-                        {topic.notes && (
-                            <motion.div
-                                initial={{ opacity: 0, y: 20 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                transition={{ delay: 0.3 }}
-                                className="bg-console-surface border border-border-subtle rounded-xl p-6 shadow-premium"
-                            >
-                                <h3 className="font-bold text-text-primary mb-2">Notes</h3>
-                                <p className="text-text-primary opacity-80 whitespace-pre-wrap italic">{topic.notes}</p>
-                            </motion.div>
-                        )}
-                        {topic.bugsFaced && (
-                            <motion.div
-                                initial={{ opacity: 0, y: 20 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                transition={{ delay: 0.3 }}
-                                className="bg-status-error/5 border border-status-error/20 rounded-xl p-6 shadow-premium"
-                            >
-                                <h3 className="font-bold text-status-error mb-2 flex items-center gap-2">
-                                    <Bug size={16} /> Bugs / Issues
-                                </h3>
-                                <p className="text-status-error opacity-90 font-medium">{topic.bugsFaced}</p>
-                            </motion.div>
-                        )}
-                        {topic.filesModified && (
-                            <motion.div
-                                initial={{ opacity: 0, y: 20 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                transition={{ delay: 0.3 }}
-                                className="bg-console-surface border border-border-subtle rounded-xl p-6 shadow-premium"
-                            >
-                                <h3 className="font-bold text-text-secondary mb-2 flex items-center gap-2">
-                                    <FileCode size={16} /> Files Modified
-                                </h3>
-                                <p className="text-text-primary font-mono text-sm bg-console-surface-2 p-3 rounded-lg border border-border-subtle">{topic.filesModified}</p>
-                            </motion.div>
-                        )}
+            <div className="max-w-5xl mx-auto space-y-12 animate-pulse py-4">
+                <div className="flex items-center gap-8 border-b border-border-subtle pb-10">
+                    <div className="h-20 w-20 rounded-3xl bg-console-surface-2 border border-border-subtle shadow-inner" />
+                    <div className="space-y-4 flex-1">
+                        <div className="h-4 w-32 bg-console-surface-3 rounded-full opacity-40" />
+                        <div className="h-10 w-2/3 bg-console-surface-2 rounded-2xl" />
                     </div>
                 </div>
+                <div className="h-[700px] w-full bg-console-surface/50 rounded-[2.5rem] border border-border-subtle" />
             </div>
-        </div>
+        );
+    }
+
+    if (error) {
+        return (
+            <div className="flex flex-col items-center justify-center min-h-[70vh] gap-8 p-12 text-center animate-in zoom-in duration-500">
+                <div className="p-8 bg-status-error/10 rounded-[2rem] border border-status-error/20 shadow-2xl shadow-status-error/5">
+                    <AlertCircle size={64} className="text-status-error" />
+                </div>
+                <div className="space-y-3">
+                    <h2 className="text-4xl font-black text-text-primary tracking-tight italic">Link Severed</h2>
+                    <p className="text-text-secondary max-w-md mx-auto font-medium text-lg leading-relaxed">
+                        This backend architectural record could not be established. Ensure your connection to the learning grid is stable.
+                    </p>
+                </div>
+                <Button 
+                    variant="primary" 
+                    size="lg"
+                    onClick={() => navigate('/backend')} 
+                    leftIcon={<ArrowLeft size={20} />}
+                    className="mt-4 px-10 py-7 rounded-2xl shadow-xl shadow-accent-primary/20"
+                >
+                    Return to Infrastructure
+                </Button>
+            </div>
+        );
+    }
+
+    return (
+        <motion.div
+            initial={{ opacity: 0, scale: 0.98, y: 10 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+            className="max-w-6xl mx-auto space-y-8 pb-32"
+        >
+            {/* Immersive Header */}
+            <header className="flex flex-col md:flex-row md:items-end justify-between gap-8 border-b border-border-subtle pb-12 pt-4 relative">
+                <div className="flex items-start gap-6">
+                    <div className="relative group">
+                        <div className="absolute -inset-1 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-3xl blur opacity-20 group-hover:opacity-40 transition duration-500" />
+                        <div className="relative p-5 bg-console-surface rounded-3xl border border-border-strong shadow-strong transition-transform duration-500 group-hover:scale-105">
+                            <Terminal size={32} className="text-blue-400" />
+                        </div>
+                    </div>
+                    
+                    <div className="space-y-2">
+                        <div className="flex items-center gap-3">
+                            <span className="text-[11px] font-black uppercase tracking-[0.2em] text-text-muted">
+                                {id === 'new' ? 'New Deployment' : `Node ID: ${id?.slice(-6).toUpperCase()}`}
+                            </span>
+                            <Badge variant="info" className="bg-blue-500/10 text-blue-400 border-blue-500/20 px-3 py-1 text-[10px] font-bold">
+                                {topic?.category || 'General'}
+                            </Badge>
+                            {topic?.type && (
+                                <Badge className="uppercase text-[9px] font-black tracking-widest bg-console-surface-3 text-text-secondary border-border-subtle">
+                                    {topic.type}
+                                </Badge>
+                            )}
+                        </div>
+                        <h1 className="text-4xl md:text-5xl font-black text-text-primary tracking-tight leading-tight">
+                            {topic?.topicName || 'New Backend Topic'}
+                        </h1>
+                        <div className="flex items-center gap-2 text-text-secondary text-sm font-medium">
+                            <Cpu size={14} className="text-blue-400 animate-pulse" />
+                            <span>System specification synchronized with AI.</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div className="flex items-center gap-4">
+                    <Button
+                        variant="ghost"
+                        onClick={() => navigate('/backend')}
+                        leftIcon={<ArrowLeft size={18} />}
+                        className="text-text-muted hover:text-text-primary font-bold tracking-tight hover:bg-console-surface/20 px-6 py-6 rounded-2xl border border-transparent hover:border-border-subtle"
+                    >
+                        Back to Grid
+                    </Button>
+                </div>
+            </header>
+
+            {/* Main Content Area */}
+            <div className="relative">
+                <div className="absolute -inset-4 bg-gradient-to-b from-blue-500/5 to-transparent rounded-[3rem] blur-3xl opacity-30 pointer-events-none" />
+                
+                <div className="relative bg-console-surface/60 backdrop-blur-2xl border border-border-subtle rounded-[2.5rem] p-8 md:p-12 shadow-elevation-2">
+                    <div className="absolute top-0 right-0 p-8 opacity-5">
+                        <LayoutGrid size={120} />
+                    </div>
+                    
+                    <BackendTopicForm
+                        initialValues={topic || undefined}
+                        onSuccess={(newTopic) => {
+                            if (id === 'new' && newTopic?._id) {
+                                toast.success('Infrastructure record sealed.');
+                                navigate(`/backend/${newTopic._id}`);
+                            } else {
+                                toast.success('System parameters updated.');
+                            }
+                        }}
+                        onCancel={() => navigate('/backend')}
+                    />
+                </div>
+            </div>
+            
+            <footer className="pt-12 text-center opacity-30 select-none">
+                <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-text-muted">
+                    Learning OS // Infrastructure Control // 2026
+                </p>
+            </footer>
+        </motion.div>
     );
 }

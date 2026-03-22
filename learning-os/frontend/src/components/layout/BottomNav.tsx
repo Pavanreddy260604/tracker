@@ -67,8 +67,8 @@ export function BottomNav({ className }: BottomNavProps) {
                     'flex flex-col items-center justify-center gap-1.5 py-3 px-2 rounded-xl',
                     'transition-all duration-200 min-h-[60px]',
                     isActive
-                        ? 'bg-blue-500/10 dark:bg-white/5 text-blue-600 dark:text-white'
-                        : 'text-gray-500 dark:text-gray-400 active:bg-gray-100 dark:active:bg-white/5'
+                        ? 'bg-accent-soft text-accent-primary'
+                        : 'text-text-tertiary active:bg-console-surface-2'
                 )}
             >
                 <item.icon size={20} />
@@ -91,32 +91,32 @@ export function BottomNav({ className }: BottomNavProps) {
                             onClick={() => setShowMore(false)}
                         />
                         <motion.div
-                            className="fixed bottom-[var(--bottom-nav-height)] left-3 right-3 z-50 md:hidden rounded-2xl border border-border-subtle bg-console-elevated/40 backdrop-blur-2xl shadow-premium overflow-hidden gpu-accelerated contain-strict liquid-glass glow-border"
+                            className="fixed bottom-[var(--bottom-nav-height)] left-3 right-3 z-[60] md:hidden rounded-2xl border border-border-subtle bg-console-elevated/40 backdrop-blur-2xl shadow-premium overflow-hidden gpu-accelerated contain-strict liquid-glass glow-border"
                             style={{ marginBottom: 'env(safe-area-inset-bottom, 0px)' }}
                             initial={{ opacity: 0, y: 16, scale: 0.98 }}
                             animate={{ opacity: 1, y: 0, scale: 1 }}
                             exit={{ opacity: 0, y: 16, scale: 0.98 }}
                             transition={{ duration: 0.15, ease: [0.2, 0, 0, 1] }}
                         >
-                            <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-white/[0.06]">
-                                <span className="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">More</span>
+                            <div className="flex items-center justify-between px-4 py-3 border-b border-border-subtle">
+                                <span className="text-xs font-semibold uppercase tracking-wider text-text-tertiary">More</span>
                                 <button
                                     onClick={() => setShowMore(false)}
-                                    className="w-8 h-8 rounded-lg flex items-center justify-center text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-white/5"
+                                    className="w-8 h-8 rounded-lg flex items-center justify-center text-text-tertiary hover:text-text-primary hover:bg-console-surface-2"
                                 >
                                     <X size={16} />
                                 </button>
                             </div>
                             <div className="p-3">
-                                <div className="px-2 mb-2 text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider">Learning</div>
+                                <div className="px-2 mb-2 text-[10px] font-bold text-text-tertiary uppercase tracking-wider">Learning</div>
                                 <div className="grid grid-cols-4 gap-1 mb-4">
                                     {learningMoreItems.map(renderMenuItem)}
                                 </div>
-                                <div className="px-2 mb-2 text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider">Tools</div>
+                                <div className="px-2 mb-2 text-[10px] font-bold text-text-tertiary uppercase tracking-wider">Tools</div>
                                 <div className="grid grid-cols-4 gap-1 mb-4">
                                     {toolItems.map(renderMenuItem)}
                                 </div>
-                                <div className="px-2 mb-2 text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider">System</div>
+                                <div className="px-2 mb-2 text-[10px] font-bold text-text-tertiary uppercase tracking-wider">System</div>
                                 <div className="grid grid-cols-4 gap-1">
                                     {systemItems.map(renderMenuItem)}
                                 </div>
@@ -126,16 +126,15 @@ export function BottomNav({ className }: BottomNavProps) {
                 )}
             </AnimatePresence>
 
-            {/* Bottom Tab Bar */}
             <motion.nav
                 className={cn(
-                    'fixed bottom-0 left-0 right-0 z-50 md:hidden',
-                    'bg-console-bg/60 backdrop-blur-2xl',
+                    'app-bottom-nav fixed bottom-0 left-0 right-0 z-50 md:hidden',
+                    'bg-console-bg/80 backdrop-blur-2xl',
                     'border-t border-border-subtle shadow-premium',
                     'px-2 gpu-accelerated contain-strict',
                     className
                 )}
-                style={{ paddingBottom: 'calc(env(safe-area-inset-bottom) + 8px)' }}
+                style={{ paddingBottom: 'calc(env(safe-area-inset-bottom) + 12px)' }}
                 initial={{ y: 100 }}
                 animate={{ y: 0 }}
                 transition={{ type: 'spring', stiffness: 300, damping: 30 }}
@@ -157,14 +156,14 @@ export function BottomNav({ className }: BottomNavProps) {
                                     'active:scale-[0.92]', /* Offloaded tap animation to CSS */
                                     'relative',
                                     isActive
-                                        ? 'text-blue-600 dark:text-white'
-                                        : 'text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-400'
+                                        ? 'text-accent-primary'
+                                        : 'text-text-tertiary hover:text-text-secondary'
                                 )}
                             >
                                 {/* Active background glow */}
                                 {isActive && (
                                     <motion.div
-                                        className="absolute inset-0 bg-blue-500/8 dark:bg-gray-500/10 rounded-xl"
+                                        className="absolute inset-0 bg-accent-soft rounded-xl"
                                         initial={{ opacity: 0, scale: 0.9 }}
                                         animate={{ opacity: 1, scale: 1 }}
                                         transition={{ duration: 0.15 }}
@@ -176,14 +175,14 @@ export function BottomNav({ className }: BottomNavProps) {
                                         size={16}
                                         className={cn(
                                             'transition-colors duration-150',
-                                            isActive && 'text-blue-600 dark:text-gray-200'
+                                            isActive && 'text-accent-primary'
                                         )}
                                     />
                                 </div>
 
                                 <span className={cn(
                                     'text-[9px] font-normal relative z-10',
-                                    isActive ? 'text-blue-600 dark:text-gray-200' : 'text-gray-400 dark:text-gray-500'
+                                    isActive ? 'text-accent-primary' : 'text-text-tertiary'
                                 )}>
                                     {item.label}
                                 </span>
@@ -191,7 +190,7 @@ export function BottomNav({ className }: BottomNavProps) {
                                 {/* Active dot indicator */}
                                 {isActive && (
                                     <motion.div
-                                        className="absolute -top-1 left-1/2 -translate-x-1/2 w-1.5 h-1.5 rounded-full bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.5)]"
+                                        className="absolute -top-1 left-1/2 -translate-x-1/2 w-1.5 h-1.5 rounded-full bg-accent-primary shadow-[0_0_8px_rgba(var(--accent-primary-rgb),0.5)]"
                                         initial={{ opacity: 0, scale: 0 }}
                                         animate={{ opacity: 1, scale: 1 }}
                                         transition={{ type: "spring", stiffness: 400, damping: 30 }}
@@ -209,13 +208,13 @@ export function BottomNav({ className }: BottomNavProps) {
                             'transition-colors duration-150 active:scale-[0.92]',
                             'relative',
                             showMore || isMoreActive
-                                ? 'text-blue-600 dark:text-white'
-                                : 'text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-400'
+                                ? 'text-accent-primary'
+                                : 'text-text-tertiary hover:text-text-secondary'
                         )}
                     >
                         {(showMore || isMoreActive) && (
                             <motion.div
-                                className="absolute inset-0 bg-blue-500/8 dark:bg-gray-500/10 rounded-xl"
+                                className="absolute inset-0 bg-accent-soft rounded-xl"
                                 initial={{ opacity: 0 }}
                                 animate={{ opacity: 1 }}
                                 transition={{ duration: 0.15 }}
@@ -226,7 +225,7 @@ export function BottomNav({ className }: BottomNavProps) {
                         </div>
                         <span className={cn(
                             'text-[9px] font-normal relative z-10',
-                            showMore || isMoreActive ? 'text-blue-600 dark:text-gray-200' : 'text-gray-400 dark:text-gray-500'
+                            showMore || isMoreActive ? 'text-accent-primary' : 'text-text-tertiary'
                         )}>
                             More
                         </span>
@@ -236,4 +235,3 @@ export function BottomNav({ className }: BottomNavProps) {
         </>
     );
 }
-

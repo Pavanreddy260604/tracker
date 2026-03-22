@@ -58,7 +58,7 @@ export function InspectorTreatmentTab({
                 <div className="ide-field">
                     <label className="ide-label flex flex-col">
                         Logline & Synopsis
-                        <span className="text-[9px] text-zinc-500 font-normal mt-0.5">Define your core story. We will use this to generate a full act-by-act beat sheet.</span>
+                        <span className="text-[9px] text-text-tertiary font-normal mt-0.5">Define your core story. We will use this to generate a full act-by-act beat sheet.</span>
                     </label>
                     <textarea
                         className="ide-textarea ide-textarea-sm"
@@ -84,19 +84,27 @@ export function InspectorTreatmentTab({
                     <div className="ide-field">
                         <label className="ide-label">Intended Runtime (min)</label>
                         <input
-                            type="number"
+                            type="text"
+                            inputMode="numeric"
                             className="ide-input"
                             value={intendedRuntime}
-                            onChange={(e) => handleRuntimeChange(parseInt(e.target.value) || 0)}
+                            onChange={(e) => {
+                                const val = e.target.value.replace(/\D/g, '');
+                                handleRuntimeChange(parseInt(val) || 0);
+                            }}
                         />
                     </div>
                     <div className="ide-field">
                         <label className="ide-label">Target Scenes</label>
                         <input
-                            type="number"
+                            type="text"
+                            inputMode="numeric"
                             className="ide-input"
                             value={treatmentSceneCount}
-                            onChange={(e) => onTreatmentSceneCountChange(parseInt(e.target.value) || 0)}
+                            onChange={(e) => {
+                                const val = e.target.value.replace(/\D/g, '');
+                                onTreatmentSceneCountChange(parseInt(val) || 0);
+                            }}
                         />
                     </div>
                 </div>

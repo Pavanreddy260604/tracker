@@ -149,7 +149,7 @@ export class StructuredQuestionService {
     language: string,
     maxRetries: number = 3
   ): Promise<GeneratedQuestion> {
-    let lastError: Error | null = null;
+    let lastError: Error | undefined;
     
     for (let attempt = 0; attempt < maxRetries; attempt++) {
       try {

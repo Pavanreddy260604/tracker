@@ -12,7 +12,7 @@
         "backend": "cd backend && npm run dev",
         "frontend": "cd frontend && npm run dev",
         "script-writer": "cd script-writer-service && npm run dev",
-        "chroma": "chroma run --host localhost --port 8000",
+        "chroma": "chroma run --host localhost --port 8000 --path ./chroma_data",
         "redis": "docker compose up -d redis"
     },
     "devDependencies": {

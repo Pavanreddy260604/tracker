@@ -1,31 +1,21 @@
 import {
-    useRef,
     useState,
-    useCallback,
-    useEffect,
+
     type ReactNode,
     type CSSProperties,
-    type MouseEvent as ReactMouseEvent,
 } from 'react';
+import { motion, useMotionValue, useSpring, useTransform } from 'framer-motion';
 import '../../styles/liquid-glass.css';
 
 interface LiquidGlassProps {
-    /** Content to display inside the glass panel */
     children: ReactNode;
-    /** Additional CSS classes */
     className?: string;
-    /** Enable drag-to-move with elastic bounce-back */
     draggable?: boolean;
-    /** Enable click to expand/collapse */
     expandable?: boolean;
-    /** Initial/collapsed width */
     width?: number | string;
-    /** Initial/collapsed height */
     height?: number | string;
-    /** Inline style overrides */
     style?: CSSProperties;
-    /** Click handler */
-    onClick?: (e: ReactMouseEvent<HTMLDivElement>) => void;
+    onClick?: () => void;
 }
 
 export function LiquidGlass({
@@ -38,142 +28,66 @@ export function LiquidGlass({
     style,
     onClick,
 }: LiquidGlassProps) {
-    const ref = useRef<HTMLDivElement>(null);
-    const [isDragging, setIsDragging] = useState(false);
-    const [isBouncing, setIsBouncing] = useState(false);
     const [isExpanded, setIsExpanded] = useState(false);
-    const [offset, setOffset] = useState({ x: 0, y: 0 });
-    const dragStart = useRef({ x: 0, y: 0 });
+    const mouseX = useMotionValue(0);
+    const mouseY = useMotionValue(0);
 
-    // Drag handlers
-    const handleMouseDown = useCallback(
-        (e: ReactMouseEvent<HTMLDivElement>) => {
-            if (!draggable) return;
-            e.preventDefault();
-            setIsDragging(true);
-            setIsBouncing(false);
-            dragStart.current = {
-                x: e.clientX - offset.x,
-                y: e.clientY - offset.y,
-            };
-        },
-        [draggable, offset]
+    // Smooth spring physics for the highlight
+    const springConfig = { stiffness: 150, damping: 20 };
+    const highlightX = useSpring(mouseX, springConfig);
+    const highlightY = useSpring(mouseY, springConfig);
+
+    // Map mouse position to highlight gradient
+    const background = useTransform(
+        [highlightX, highlightY],
+        ([x, y]) => {
+            const isLight = document.documentElement.classList.contains('light');
+            const color = isLight ? 'var(--accent-primary-rgb)' : '255, 255, 255';
+            const opacity = isLight ? '0.12' : '0.06';
+            return `radial-gradient(600px circle at ${x}px ${y}px, rgba(${color}, ${opacity}), transparent 40%)`;
+        }
     );
 
-    useEffect(() => {
-        if (!isDragging) return;
-
-        const handleMouseMove = (e: globalThis.MouseEvent) => {
-            const dx = e.clientX - dragStart.current.x;
-            const dy = e.clientY - dragStart.current.y;
-            setOffset({ x: dx, y: dy });
-        };
-
-        const handleMouseUp = () => {
-            setIsDragging(false);
-            // Trigger elastic bounce-back
-            if (ref.current) {
-                ref.current.style.setProperty('--dx', `${offset.x}px`);
-                ref.current.style.setProperty('--dy', `${offset.y}px`);
-            }
-            setIsBouncing(true);
-            setOffset({ x: 0, y: 0 });
-            setTimeout(() => setIsBouncing(false), 500);
-        };
-
-        window.addEventListener('mousemove', handleMouseMove);
-        window.addEventListener('mouseup', handleMouseUp);
-        return () => {
-            window.removeEventListener('mousemove', handleMouseMove);
-            window.removeEventListener('mouseup', handleMouseUp);
-        };
-    }, [isDragging, offset]);
-
-    // Touch drag handlers
-    useEffect(() => {
-        const el = ref.current;
-        if (!el || !draggable) return;
-
-        let touchOffset = { x: 0, y: 0 };
-
-        const handleTouchStart = (e: TouchEvent) => {
-            dragStart.current = {
-                x: e.touches[0].clientX - offset.x,
-                y: e.touches[0].clientY - offset.y,
-            };
-            setIsDragging(true);
-            setIsBouncing(false);
-        };
-
-        const handleTouchMove = (e: TouchEvent) => {
-            e.preventDefault();
-            const dx = e.touches[0].clientX - dragStart.current.x;
-            const dy = e.touches[0].clientY - dragStart.current.y;
-            touchOffset = { x: dx, y: dy };
-            setOffset({ x: dx, y: dy });
-        };
-
-        const handleTouchEnd = () => {
-            setIsDragging(false);
-            if (ref.current) {
-                ref.current.style.setProperty('--dx', `${touchOffset.x}px`);
-                ref.current.style.setProperty('--dy', `${touchOffset.y}px`);
-            }
-            setIsBouncing(true);
-            setOffset({ x: 0, y: 0 });
-            setTimeout(() => setIsBouncing(false), 500);
-        };
-
-        el.addEventListener('touchstart', handleTouchStart, { passive: true });
-        el.addEventListener('touchmove', handleTouchMove, { passive: false });
-        el.addEventListener('touchend', handleTouchEnd);
-
-        return () => {
-            el.removeEventListener('touchstart', handleTouchStart);
-            el.removeEventListener('touchmove', handleTouchMove);
-            el.removeEventListener('touchend', handleTouchEnd);
-        };
-    }, [draggable, offset]);
-
-    const handleClick = (e: ReactMouseEvent<HTMLDivElement>) => {
-        if (expandable) {
-            setIsExpanded((prev) => !prev);
-        }
-        onClick?.(e);
-    };
-
-    const classes = [
-        'liquid-glass',
-        isDragging && 'is-dragging',
-        isBouncing && 'is-bouncing',
-        isExpanded && 'is-expanded',
-        expandable && 'is-expandable',
-        className,
-    ]
-        .filter(Boolean)
-        .join(' ');
-
-    const computedStyle: CSSProperties = {
-        ...style,
-        width: isExpanded ? '100%' : width,
-        height: isExpanded ? 'auto' : height,
-        transform: isDragging
-            ? `translate(${offset.x}px, ${offset.y}px) scale(1.02)`
-            : undefined,
-        cursor: draggable ? (isDragging ? 'grabbing' : 'grab') : expandable ? 'pointer' : undefined,
+    const handleMouseMove = (e: React.MouseEvent) => {
+        const rect = e.currentTarget.getBoundingClientRect();
+        mouseX.set(e.clientX - rect.left);
+        mouseY.set(e.clientY - rect.top);
     };
 
     return (
-        <div
-            ref={ref}
-            className={classes}
-            style={computedStyle}
-            onMouseDown={handleMouseDown}
-            onClick={handleClick}
+        <motion.div
+            layout
+            drag={draggable}
+            dragConstraints={{ left: 0, right: 0, top: 0, bottom: 0 }}
+            dragElastic={0.1}
+            dragTransition={{ bounceStiffness: 600, bounceDamping: 20 }}
+            onClick={() => {
+                if (expandable) setIsExpanded(!isExpanded);
+                onClick?.();
+            }}
+            onMouseMove={handleMouseMove}
+            style={{
+                ...style,
+                width: isExpanded ? '100%' : width,
+                height: isExpanded ? 'auto' : height,
+                cursor: draggable ? 'grab' : expandable ? 'pointer' : 'default',
+            }}
+            className={`liquid-glass overflow-hidden relative ${className} ${isExpanded ? 'is-expanded' : ''}`}
+            whileHover={{ scale: 1.01 }}
+            whileTap={draggable ? { scale: 0.98, cursor: 'grabbing' } : {}}
         >
-            <div className="liquid-glass__content">{children}</div>
-        </div>
+            {/* Dynamic Specular Highlight */}
+            <motion.div 
+                className="absolute inset-0 pointer-events-none z-10"
+                style={{ background }}
+            />
+            
+            <div className="liquid-glass__content relative z-20">
+                {children}
+            </div>
+        </motion.div>
     );
 }
 
 export default LiquidGlass;
+

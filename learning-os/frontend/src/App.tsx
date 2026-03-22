@@ -17,6 +17,8 @@ function NavigationTracker() {
 // Auth pages loaded eagerly (small, needed immediately)
 import { Login } from './pages/Login';
 import { Register } from './pages/Register';
+import { ForgotPassword } from './pages/ForgotPassword';
+import { ResetPassword } from './pages/ResetPassword';
 
 // Heavy pages loaded lazily — each becomes its own chunk
 const Dashboard = lazy(() => import('./pages/Dashboard').then(m => ({ default: m.Dashboard })));
@@ -69,11 +71,16 @@ function LoadingScreen() {
 
 // Protected Route wrapper
 function ProtectedRoute({ children, useLayout = true }: { children: React.ReactNode; useLayout?: boolean }) {
-  const { isAuthenticated, isLoading, checkAuth } = useAuthStore();
-  const [isChecking, setIsChecking] = useState(true);
+  const { isAuthenticated, checkAuth } = useAuthStore();
+  const [isChecking, setIsChecking] = useState(!isAuthenticated);
   const location = useLocation();
 
   useEffect(() => {
+    if (isAuthenticated) {
+      setIsChecking(false);
+      return;
+    }
+
     let mounted = true;
 
     const verify = async () => {
@@ -88,9 +95,9 @@ function ProtectedRoute({ children, useLayout = true }: { children: React.ReactN
     return () => {
       mounted = false;
     };
-  }, []);
+  }, [checkAuth]);
 
-  if (isChecking || isLoading) {
+  if (isChecking) {
     return <LoadingScreen />;
   }
 
@@ -108,8 +115,7 @@ function ProtectedRoute({ children, useLayout = true }: { children: React.ReactN
   }
 
   return (
-    <Layout>
-      <VerificationBanner />
+    <Layout banner={<VerificationBanner />}>
       {children}
     </Layout>
   );
@@ -157,6 +163,22 @@ function App() {
               element={
                 <PublicRoute>
                   <Register />
+                </PublicRoute>
+              }
+            />
+            <Route
+              path="/forgot-password"
+              element={
+                <PublicRoute>
+                  <ForgotPassword />
+                </PublicRoute>
+              }
+            />
+            <Route
+              path="/reset-password"
+              element={
+                <PublicRoute>
+                  <ResetPassword />
                 </PublicRoute>
               }
             />

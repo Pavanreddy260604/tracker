@@ -138,6 +138,11 @@ class BaseApiService {
             if (response.status === 401 && !endpoint.includes('/auth/login') && !endpoint.includes('/auth/refresh')) {
                 window.dispatchEvent(new Event('auth:unauthorized'));
             }
+
+            if (response.status === 429) {
+                throw new Error(data.error || 'Too many requests. Please slow down.');
+            }
+            
             throw new Error(data.error || 'An error occurred');
         }
 

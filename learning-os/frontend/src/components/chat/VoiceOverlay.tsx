@@ -44,14 +44,14 @@ export function VoiceOverlay({
                     animate={{ opacity: 1 }}
                     exit={{ opacity: 0 }}
                     onClick={onClose}
-                    className="fixed inset-0 z-[11000] flex items-center justify-center bg-black/40 backdrop-blur-2xl p-6 cursor-pointer"
+                    className="fixed inset-0 z-[11000] flex items-center justify-center bg-console-bg/60 backdrop-blur-2xl p-6 cursor-pointer"
                 >
                     <button
                         onClick={(e) => {
                             e.stopPropagation();
                             onClose();
                         }}
-                        className="absolute top-8 right-8 p-3 rounded-full bg-white/10 hover:bg-white/20 transition-colors text-white z-[11001]"
+                        className="absolute top-8 right-8 p-3 rounded-full bg-console-surface hover:bg-console-surface-2 transition-colors text-text-primary z-[11001]"
                     >
                         <X size={24} />
                     </button>
@@ -64,14 +64,14 @@ export function VoiceOverlay({
                             <motion.div
                                 animate={{ 
                                     scale: isListening ? [1, 1.05, 1] : 1,
-                                    borderColor: error ? 'rgba(239, 68, 68, 0.5)' : (isListening ? 'rgba(16, 185, 129, 0.5)' : 'rgba(255, 255, 255, 0.1)')
+                                    borderColor: error ? 'var(--status-error)' : (isListening ? 'var(--accent-primary)' : 'var(--border-subtle)')
                                 }}
                                 transition={{ repeat: Infinity, duration: 2 }}
-                                className="w-20 h-20 rounded-full border-2 flex items-center justify-center bg-white/5 shadow-2xl"
+                                className="w-20 h-20 rounded-full border-2 flex items-center justify-center bg-console-surface shadow-2xl"
                             >
-                                {isSpeaking ? <Volume2 size={32} className="text-indigo-400" /> : <Mic size={32} className={cn(error ? "text-red-400" : "text-emerald-400")} />}
+                                {isSpeaking ? <Volume2 size={32} className="text-accent-primary" /> : <Mic size={32} className={cn(error ? "text-status-error" : "text-accent-primary")} />}
                             </motion.div>
-                            <h2 className={cn("text-2xl font-bold tracking-tight", error ? "text-red-400" : "text-white")}>
+                            <h2 className={cn("text-2xl font-bold tracking-tight", error ? "text-status-error" : "text-text-primary")}>
                                 {error || (isSpeaking ? "AI is speaking..." : isListening ? "Listening..." : "Paused")}
                             </h2>
                         </div>
@@ -82,8 +82,8 @@ export function VoiceOverlay({
                             isListening={isListening} 
                         />
 
-                        <div className="w-full min-h-[120px] bg-white/5 rounded-3xl p-8 border border-white/10 shadow-inner">
-                            <p className="text-xl text-white/90 leading-relaxed font-medium">
+                        <div className="w-full min-h-[120px] bg-console-surface rounded-3xl p-8 border border-border-subtle shadow-inner">
+                            <p className="text-xl text-text-primary/90 leading-relaxed font-medium">
                                 {transcript || (isListening ? "Say something..." : "")}
                             </p>
                         </div>
@@ -94,7 +94,7 @@ export function VoiceOverlay({
                                     e.stopPropagation();
                                     if (onSend) onSend(); else onClose();
                                 }}
-                                className="px-8 py-4 rounded-2xl bg-emerald-500 text-white font-bold hover:bg-emerald-600 transition-all shadow-xl shadow-emerald-500/20 active:scale-95"
+                                className="px-8 py-4 rounded-2xl bg-accent-primary text-console-bg font-bold hover:bg-accent-primary-dark transition-all shadow-xl shadow-accent-primary/20 active:scale-95"
                             >
                                 Send Prompt
                             </button>

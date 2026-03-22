@@ -317,7 +317,7 @@ export class ExecutionQueueService {
    * Drain all jobs (use with caution)
    */
   async drain(): Promise<void> {
-    await this.queue.drain();
+    await this.queue.empty();
     console.log('[ExecutionQueue] Drained');
   }
 

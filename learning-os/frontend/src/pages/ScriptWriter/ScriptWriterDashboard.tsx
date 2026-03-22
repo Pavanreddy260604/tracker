@@ -33,7 +33,7 @@ export function ScriptWriterDashboard() {
 
     if (error) {
         return (
-            <div className="flex items-center justify-center h-screen bg-zinc-950 text-red-500">
+            <div className="flex items-center justify-center h-screen bg-console-bg text-status-error">
                 Error: {error}
             </div>
         );

@@ -13,6 +13,7 @@ import { InfiniteTopbar } from './components/InfiniteTopbar';
 import { BiblePortal } from './components/BiblePortal';
 import { FixAuditorOverlay } from './components/FixAuditorOverlay';
 import { projectApi } from '../../services/project.api';
+import { LayoutGrid } from 'lucide-react';
 
 // Inner component that has access to the Context
 function ScriptWriterInfiniteContent() {
@@ -158,11 +159,34 @@ function ScriptWriterInfiniteContent() {
 
     // Loading state or redirecting...
     if (loadingProjects) {
-        return <div className="flex items-center justify-center h-full bg-zinc-950 text-zinc-500">Loading Studio...</div>;
+        return (
+            <div className="flex flex-col items-center justify-center h-full bg-console-bg gap-6">
+                <div className="relative">
+                    <div className="w-16 h-16 rounded-3xl border-2 border-border-subtle animate-spin border-t-accent-primary shadow-2xl shadow-accent-primary/20" />
+                    <div className="absolute inset-0 flex items-center justify-center">
+                        <div className="w-2 h-2 rounded-full bg-accent-primary animate-ping" />
+                    </div>
+                </div>
+                <div className="space-y-1 text-center">
+                    <p className="text-text-primary font-black tracking-widest text-[10px] uppercase">Mastery Studio</p>
+                    <p className="text-text-secondary text-xs font-medium italic">Synchronizing scripts...</p>
+                </div>
+            </div>
+        );
     }
 
     if (!activeProjectId || !activeProject) {
-        return <div className="flex items-center justify-center h-full bg-zinc-950 text-zinc-500">Initializing Project...</div>;
+        return (
+            <div className="flex flex-col items-center justify-center h-full bg-console-bg gap-6">
+                <div className="p-4 bg-console-surface/50 rounded-3xl border border-border-subtle shadow-strong animate-pulse">
+                    <LayoutGrid size={32} className="text-text-tertiary" />
+                </div>
+                <div className="space-y-1 text-center">
+                    <p className="text-text-primary font-black tracking-widest text-[10px] uppercase">Script Engine</p>
+                    <p className="text-text-secondary text-xs font-medium italic">Resolving project manifest...</p>
+                </div>
+            </div>
+        );
     }
     return (
         <InfiniteLayout

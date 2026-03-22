@@ -3,11 +3,31 @@ import { z } from 'zod';
 import { BackendTopic } from '../models/BackendTopic.js';
 import { authenticate } from '../middleware/auth.js';
 import { writeLimiter } from '../middleware/rateLimiter.js';
+import { activityService } from '../services/activity.service.js';
 import { knowledgeSync } from '../services/knowledgeSync.service.js';
 import { aiMentorService } from '../services/aiMentor.service.js';
 
 const router = Router();
 router.use(authenticate);
+
+const MAX_BACKEND_REVIEW_STAGE = 5;
+
+const getNextBackendReviewDate = (reviewStage = 1) => {
+    if (reviewStage >= MAX_BACKEND_REVIEW_STAGE) {
+        return undefined;
+    }
+
+    const nextDate = new Date();
+    const offsetsByStage: Record<number, number> = {
+        1: 1,
+        2: 2,
+        3: 4,
+        4: 23,
+    };
+
+    nextDate.setDate(nextDate.getDate() + (offsetsByStage[reviewStage] ?? 1));
+    return nextDate.toISOString().split('T')[0];
+};
 
 const backendTopicSchema = z.object({
     topicName: z.string().min(1).max(200),
@@ -30,7 +50,11 @@ const backendTopicSchema = z.object({
         type: z.enum(['video', 'article', 'docs', 'course']),
     })).optional(),
     nextReviewDate: z.string().optional(),
-    reviewStage: z.number().optional(),
+    reviewStage: z.number().int().min(1).max(MAX_BACKEND_REVIEW_STAGE).optional(),
+    difficulty: z.enum(['beginner', 'intermediate', 'advanced']).optional(),
+    timeSpent: z.string().max(100).optional(),
+    confidenceLevel: z.number().min(1).max(5).optional(),
+    simpleExplanation: z.string().max(2000).optional(),
 });
 
 router.get('/', async (req: Request, res: Response) => {
@@ -84,7 +108,19 @@ router.post('/', writeLimiter, async (req: Request, res: Response) => {
             return;
         }
 
-        const topic = await BackendTopic.create({ ...result.data, userId: req.userId });
+        const topicData = {
+            ...result.data,
+            reviewStage: result.data.reviewStage ?? 1,
+            nextReviewDate:
+                result.data.reviewStage === MAX_BACKEND_REVIEW_STAGE
+                    ? undefined
+                    : result.data.nextReviewDate ?? getNextBackendReviewDate(result.data.reviewStage ?? 1),
+        };
+
+        const topic = await BackendTopic.create({ ...topicData, userId: req.userId });
+
+        // Record activity for streak
+        activityService.recordActivity(req.userId!, 'backend').catch(err => console.error(err));
 
         // Asynchronously sync the new topic to ChromaDB for Universal RAG Search
         knowledgeSync.syncBackendTopic(topic).catch(err => console.error('[BackendTopic] RAG Sync Error:', err));
@@ -104,9 +140,19 @@ router.put('/:id', writeLimiter, async (req: Request, res: Response) => {
             return;
         }
 
+        const updateData = {
+            ...result.data,
+            nextReviewDate:
+                result.data.reviewStage === undefined
+                    ? result.data.nextReviewDate
+                    : result.data.reviewStage >= MAX_BACKEND_REVIEW_STAGE
+                        ? undefined
+                        : result.data.nextReviewDate ?? getNextBackendReviewDate(result.data.reviewStage),
+        };
+
         const topic = await BackendTopic.findOneAndUpdate(
             { _id: req.params.id, userId: req.userId },
-            { $set: result.data },
+            { $set: updateData },
             { new: true, runValidators: true }
         );
 
@@ -114,6 +160,9 @@ router.put('/:id', writeLimiter, async (req: Request, res: Response) => {
             res.status(404).json({ success: false, error: 'Topic not found' });
             return;
         }
+
+        // Record activity for streak
+        activityService.recordActivity(req.userId!, 'backend').catch(err => console.error(err));
 
         // Asynchronously sync the updated topic to ChromaDB
         knowledgeSync.syncBackendTopic(topic).catch(err => console.error('[BackendTopic] RAG Sync Error:', err));
@@ -143,15 +192,23 @@ router.delete('/:id', writeLimiter, async (req: Request, res: Response) => {
     }
 });
 
-router.post('/:id/audit', async (req: Request, res: Response) => {
+router.post('/:id/audit', writeLimiter, async (req: Request, res: Response) => {
     try {
-        const id = req.params.id as string;
-        const audit = await aiMentorService.auditTopic(id);
+        const topicId = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
+        const topic = await BackendTopic.findOne({ _id: topicId, userId: req.userId }).lean();
+        if (!topic) {
+            res.status(404).json({ success: false, error: 'Topic not found' });
+            return;
+        }
+
+        const audit = await aiMentorService.auditTopic(topicId);
         res.json({ success: true, data: audit });
-    } catch (error: any) {
-        console.error('Audit error:', error);
-        res.status(500).json({ success: false, error: error.message || 'Failed to perform audit' });
+    } catch (error) {
+        console.error('Audit topic error:', error);
+        res.status(500).json({ success: false, error: 'Failed to run audit' });
     }
 });
+
+
 
 export default router;

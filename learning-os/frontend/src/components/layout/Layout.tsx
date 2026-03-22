@@ -20,7 +20,8 @@ import {
     Film,
     ChevronDown,
     GraduationCap,
-    Wrench
+    Wrench,
+    X
 } from 'lucide-react';
 import { useAuthStore } from '../../stores/authStore';
 import { useAI } from '../../contexts/AIContext';
@@ -32,7 +33,8 @@ import { BottomNav } from './BottomNav';
 import { Breadcrumb } from '../ui/Breadcrumb';
 
 interface LayoutProps {
-    children: ReactNode;
+    children: React.ReactNode;
+    banner?: React.ReactNode;
 }
 
 const learningItems = [
@@ -50,12 +52,13 @@ const toolItems = [
     { icon: Film, label: 'Script Writer', href: '/script-writer', openNewWindow: true },
 ];
 
-export function Layout({ children }: LayoutProps) {
+export function Layout({ children, banner }: LayoutProps) {
     const { isMobile } = useMobile();
     const [isDrawerOpen, setDrawerOpen] = useState(!isMobile);
     const [isProfileDropdownOpen, setProfileDropdownOpen] = useState(false);
     const [isNotificationsOpen, setNotificationsOpen] = useState(false);
     const [showShortcuts, setShowShortcuts] = useState(false);
+    const [isMobileSearchOpen, setIsMobileSearchOpen] = useState(false);
 
     // Collapsible Sidebar Sections mapped to folder state
     const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
@@ -78,11 +81,18 @@ export function Layout({ children }: LayoutProps) {
     const profileDropdownRef = useRef<HTMLDivElement>(null);
     const notificationsRef = useRef<HTMLDivElement>(null);
     const searchInputRef = useRef<HTMLInputElement>(null);
+    const mainRef = useRef<HTMLElement>(null);
 
     // Sync drawer with mobile state on initial load
     useEffect(() => {
         setDrawerOpen(!isMobile);
     }, [isMobile]);
+
+    useEffect(() => {
+        if (mainRef.current) {
+            mainRef.current.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+        }
+    }, [location.pathname]);
 
     // Lock body scroll when mobile drawer is open
     useEffect(() => {
@@ -136,6 +146,7 @@ export function Layout({ children }: LayoutProps) {
 
     return (
         <div className="app-shell" data-drawer={isDrawerOpen ? 'open' : 'closed'}>
+            {banner}
             <header className="app-header">
                 <div className="app-header__left">
                     {!isMobile && (
@@ -153,22 +164,43 @@ export function Layout({ children }: LayoutProps) {
                     </div>
                 </div>
 
-                <div className="app-header__center">
-                    {!isMobile && (
-                        <div className="app-search">
+                <div className={cn("app-header__center", isMobileSearchOpen && "is-mobile-visible")}>
+                    {(isMobileSearchOpen || !isMobile) && (
+                        <div className="app-search w-full">
                             <Search size={18} />
                             <input
                                 ref={searchInputRef}
                                 type="text"
-                                placeholder={`Search resources... (Ctrl + ${SHORTCUTS.SEARCH.key.toUpperCase()})`}
+                                placeholder={isMobile ? "Search..." : `Search resources... (Ctrl + ${SHORTCUTS.SEARCH.key.toUpperCase()})`}
                                 className="app-search__input"
                             />
-                            <div className="app-search__key">/</div>
+                            {!isMobile && <div className="app-search__key">/</div>}
+                            {isMobile && (
+                                <button 
+                                    onClick={() => setIsMobileSearchOpen(false)}
+                                    className="p-1 text-text-secondary"
+                                >
+                                    <X size={16} />
+                                </button>
+                            )}
                         </div>
                     )}
                 </div>
 
                 <div className="app-header__right">
+                    {isMobile && (
+                        <button
+                            onClick={() => {
+                                setIsMobileSearchOpen(true);
+                                setTimeout(() => searchInputRef.current?.focus(), 100);
+                            }}
+                            className="app-icon-btn"
+                            aria-label="Search"
+                        >
+                            <Search size={20} />
+                        </button>
+                    )}
+
                     {!isMobile && (
                         <button
                             onClick={() => setShowShortcuts(true)}
@@ -193,7 +225,7 @@ export function Layout({ children }: LayoutProps) {
 
                             {isNotificationsOpen && (
                                 <>
-                                    <div className={`absolute bottom-auto top-[calc(100%+10px)] left-auto right-0 w-[280px] bg-console-elevated border-t border border-border-subtle rounded-2xl shadow-strong z-50 p-3 flex flex-col gap-2.5 bottom-0`}>
+                                    <div className="app-dropdown absolute bottom-auto top-[calc(100%+10px)] left-auto right-0 w-[280px] rounded-2xl z-50 p-3 flex flex-col gap-2.5">
                                         <div className="flex items-center justify-between text-xs text-text-secondary pb-2 border-none">
                                             <span>Notifications</span>
                                             <button className="text-accent-primary font-semibold hover:text-accent-dark">Mark all read</button>
@@ -240,7 +272,7 @@ export function Layout({ children }: LayoutProps) {
                             {/* Dropdown Menu */}
                             {isProfileDropdownOpen && (
                                 <>
-                                    <div className={`absolute bottom-auto top-[calc(100%+10px)] left-auto right-0 w-[280px] bg-console-elevated border-t border border-border-subtle rounded-2xl shadow-strong z-50 p-3 flex flex-col gap-2.5 bottom-0`} role="menu">
+                                    <div className="app-dropdown absolute bottom-auto top-[calc(100%+10px)] left-auto right-0 w-[280px] rounded-2xl z-50 p-3 flex flex-col gap-2.5" role="menu">
                                         <div className="grid grid-cols-[auto_1fr] gap-3 items-center p-2 mb-2 border-none">
                                             <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-accent-primary/20 to-accent-primary/5 border border-border-subtle text-text-primary font-bold text-lg flex items-center justify-center">
                                                 {user?.name?.charAt(0).toUpperCase() || 'U'}
@@ -354,19 +386,19 @@ export function Layout({ children }: LayoutProps) {
                                 <div className={cn("flex flex-col mt-0.5", isDrawerOpen && "pl-5 relative")}>
                                     {toolItems.map((item) => {
                                         const isActive = location.pathname === item.href;
-                                        if (item.openNewWindow) {
+                                         if (item.openNewWindow) {
                                             return (
-                                                <button
+                                                <Link
                                                     key={item.href}
+                                                    to={item.href}
                                                     onClick={() => {
-                                                        window.open(item.href, '_blank', 'noopener,noreferrer');
                                                         if (window.innerWidth < 768) setDrawerOpen(false);
                                                     }}
-                                                    className={`app-nav-item ${isActive ? 'is-active' : ''} !py-2 !min-h-[36px]`}
+                                                    className={cn("app-nav-item !py-2 !min-h-[36px]", isActive && "is-active")}
                                                 >
                                                     <item.icon size={16} className="app-nav-item__icon" />
                                                     {isDrawerOpen && item.label}
-                                                </button>
+                                                </Link>
                                             );
                                         }
 
@@ -407,12 +439,17 @@ export function Layout({ children }: LayoutProps) {
                 {/* Drawer Overlay for Mobile - Removed since sidebar is hidden on mobile */}
 
                 {/* Main Content Area */}
-                <main className="app-main overflow-x-hidden">
+                <main ref={mainRef} className="app-main overflow-x-hidden">
                     <div className="app-content px-4 sm:px-6 lg:px-8 py-6">
                         <Breadcrumb
                             items={[
                                 { label: location.pathname === '/' ? 'Home' : location.pathname.split('/')[1].charAt(0).toUpperCase() + location.pathname.split('/')[1].slice(1), active: location.pathname.split('/').length === 2 },
-                                ...(location.pathname.split('/').length > 2 ? [{ label: 'Detail', active: true }] : [])
+                                ...(location.pathname.split('/').length > 2 ? [
+                                    { 
+                                        label: location.pathname.split('/')[2] === 'new' ? 'New' : 'Detail', 
+                                        active: true 
+                                    }
+                                ] : [])
                             ].filter(i => i.label !== '')}
                             className="mb-6"
                         />

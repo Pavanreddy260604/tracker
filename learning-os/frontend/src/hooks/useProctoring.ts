@@ -24,21 +24,14 @@ export function useProctoring(config: ProctoringConfig) {
     const violationCountRef = useRef(0);
     const lastViolationRef = useRef<Map<string, number>>(new Map());
 
-    // Check if fullscreen is active
-    const checkFullscreen = useCallback(() => {
-        const fullscreenActive = !!(document.fullscreenElement || 
-            (document as any).webkitFullscreenElement || 
-            (document as any).mozFullScreenElement ||
-            (document as any).msFullscreenElement);
+    // Handle max violations reached
+    const handleMaxViolationsReached = useCallback(() => {
+        setIsProctoringActive(false);
+        showAlert('Test Terminated', `Maximum violations (${config.maxViolations}) reached. Your test has been terminated due to multiple proctoring violations.`);
         
-        setIsFullscreen(fullscreenActive);
-        
-        if (config.enforceFullscreen && isProctoringActive && !fullscreenActive) {
-            handleViolation('fullscreen_exit', 'Full screen mode is required. Please enter full screen mode immediately.');
-        }
-        
-        return fullscreenActive;
-    }, [config.enforceFullscreen, isProctoringActive]);
+        // Optionally redirect or end the test
+        window.location.href = '/interview';
+    }, [config.maxViolations, showAlert]);
 
     // Handle violations with cooldown period
     const handleViolation = useCallback((type: Violation['type'], message: string) => {
@@ -68,16 +61,23 @@ export function useProctoring(config: ProctoringConfig) {
         if (violationCountRef.current >= config.maxViolations) {
             handleMaxViolationsReached();
         }
-    }, [config.maxViolations, showAlert]);
+    }, [config.maxViolations, showAlert, handleMaxViolationsReached]);
 
-    // Handle max violations reached
-    const handleMaxViolationsReached = useCallback(() => {
-        setIsProctoringActive(false);
-        showAlert('Test Terminated', `Maximum violations (${config.maxViolations}) reached. Your test has been terminated due to multiple proctoring violations.`);
+    // Check if fullscreen is active
+    const checkFullscreen = useCallback(() => {
+        const fullscreenActive = !!(document.fullscreenElement || 
+            (document as any).webkitFullscreenElement || 
+            (document as any).mozFullScreenElement ||
+            (document as any).msFullscreenElement);
         
-        // Optionally redirect or end the test
-        window.location.href = '/interview';
-    }, [config.maxViolations, showAlert]);
+        setIsFullscreen(fullscreenActive);
+        
+        if (config.enforceFullscreen && isProctoringActive && !fullscreenActive) {
+            handleViolation('fullscreen_exit', 'Full screen mode is required. Please enter full screen mode immediately.');
+        }
+        
+        return fullscreenActive;
+    }, [config.enforceFullscreen, isProctoringActive, handleViolation]);
 
     // Tab switching detection
     useEffect(() => {

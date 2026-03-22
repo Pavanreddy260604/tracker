@@ -95,27 +95,42 @@ export function StudioEditor({
         <div className="ide-editor">
             <div className="ide-editor-header">
                 <div>
-                    <div className="ide-editor-title">Scene Editor</div>
+                    <div className="flex items-center gap-3">
+                        <div className="h-2 w-2 rounded-full bg-accent-primary animate-pulse" />
+                        <div className="ide-editor-title font-bold tracking-tight text-[color:var(--text-primary)]">
+                            {activeScene ? activeScene.title || activeScene.slugline || 'Untitled Scene' : 'Scene Editor'}
+                        </div>
+                    </div>
                 </div>
-                <div className="ide-editor-stats">
+                <div className="ide-editor-stats flex items-center gap-4 text-[11px] font-medium text-text-secondary">
                     {editorSelection && (
                         <>
-                            <span className="rounded-full border border-blue-500/30 bg-blue-500/10 px-2 py-0.5 text-[10px] font-semibold text-blue-300">
-                                Lines {editorSelection.lineStart}-{editorSelection.lineEnd}
+                            <span className="rounded-md border border-accent-primary/40 bg-accent-primary/10 px-2 py-0.5 text-[10px] font-bold text-accent-primary uppercase tracking-wider">
+                                Selection: {editorSelection.lineCount} lines
                             </span>
-                            <div className="ide-divider" />
+                            <div className="h-4 w-[1px] bg-border-subtle" />
                         </>
                     )}
-                    <span>{wordCount} words</span>
-                    <div className="ide-divider" />
-                    <span className={`ide-save-status ${saveState}`}>{saveLabel}</span>
+                    <span className="flex items-center gap-1.5">
+                        <span className="h-1 w-1 rounded-full bg-text-secondary/40" />
+                        {wordCount} words
+                    </span>
+                    <div className="h-4 w-[1px] bg-border-subtle" />
+                    <span className={`ide-save-status flex items-center gap-1.5 ${saveState}`}>
+                        <span className={`h-1.5 w-1.5 rounded-full ${
+                            saveState === 'saved' ? 'bg-status-ok' : 
+                            saveState === 'saving' ? 'bg-accent-primary animate-ping' : 
+                            'bg-status-error'
+                        }`} />
+                        {saveLabel}
+                    </span>
                 </div>
             </div>
             <div className="ide-editor-body">
                 {activeScene ? (
                     <div className="ide-paper relative">
                         {isGenerating && (
-                            <div className="absolute top-0 left-0 right-0 z-20 px-8 pt-4 pb-6 bg-gradient-to-b from-zinc-950 via-zinc-950/80 to-transparent">
+                            <div className="absolute top-0 left-0 right-0 z-20 px-8 pt-4 pb-6 bg-gradient-to-b from-console-bg via-console-bg/80 to-transparent">
                                 <ProgressBar 
                                     progress={generationProgress} 
                                     label="Drafting Scene..." 
@@ -124,14 +139,19 @@ export function StudioEditor({
                             </div>
                         )}
                         {editorSelection && (
-                            <div className="mb-3 flex flex-wrap items-center gap-2 rounded-2xl border border-blue-500/20 bg-blue-500/5 px-4 py-3 text-xs text-blue-100">
-                                <span className="rounded-full border border-blue-400/20 bg-blue-400/10 px-2 py-0.5 font-semibold uppercase tracking-wide text-[10px] text-blue-300">
-                                    Assistant Target
-                                </span>
-                                <span>
-                                    Selected {editorSelection.lineCount} line{editorSelection.lineCount !== 1 ? 's' : ''} and {editorSelection.charCount} characters.
-                                </span>
-                                <span className="text-blue-200/70">The right panel can now edit just this selection.</span>
+                            <div className="mx-auto mb-6 max-w-2xl animate-in fade-in slide-in-from-top-4 duration-500">
+                                <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-border-subtle/40 bg-console-bg/50 p-4 text-xs text-text-primary backdrop-blur-md shadow-lg">
+                                    <span className="rounded-lg border border-accent-primary/30 bg-accent-primary/15 px-2.5 py-1 font-bold uppercase tracking-widest text-[9px] text-accent-primary">
+                                        Assistant Focused
+                                    </span>
+                                    <span className="font-medium text-text-secondary italic">
+                                        "Targeting {editorSelection.lineCount} lines..."
+                                    </span>
+                                    <div className="ml-auto flex items-center gap-2 text-accent-primary/80 font-semibold">
+                                        <div className="h-1.5 w-1.5 rounded-full bg-accent-primary animate-pulse" />
+                                        Ready for Assist
+                                    </div>
+                                </div>
                             </div>
                         )}
                         <textarea

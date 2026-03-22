@@ -1,0 +1,234 @@
+@variant dark (&:where(.dark, .dark *));
+
+/* ============================================================
+   DESIGN TOKENS - Learning OS 2.0
+   Unified Theme Variables for Dark (Cinema Pro) & Light Mode
+   ============================================================ */
+
+:root {
+  /* Dark Mode (Default) */
+  --console-bg: #09090b;
+  --console-surface: #121214;
+  --console-surface-2: #1c1c1f;
+  --console-surface-3: #252529;
+  --console-surface-4: #303036;
+  --console-elevated: #27272a;
+  --console-header: #09090b;
+  --console-sidebar: #0f0f11;
+
+  /* Text */
+  --text-primary: #f4f4f5;
+  --text-secondary: #a1a1aa;
+  --text-tertiary: #71717a;
+  --text-muted: #71717a;
+  --text-disabled: #52525b;
+
+  /* Accents */
+  --accent-primary: #3b82f6;
+  --accent-primary-dark: #2563eb;
+  --accent-primary-rgb: 59, 130, 246;
+  --accent-soft: rgba(59, 130, 246, 0.12);
+  --accent-focus: rgba(59, 130, 246, 0.25);
+
+  /* Status */
+  --status-ok: #22c55e;
+  --status-warning: #f59e0b;
+  --status-error: #ef4444;
+  --status-ok-soft: rgba(34, 197, 94, 0.12);
+  --status-warning-soft: rgba(245, 158, 11, 0.12);
+  --status-error-soft: rgba(239, 68, 68, 0.12);
+
+  /* Borders */
+  --border-subtle: #27272a;
+  --border-strong: #3f3f46;
+  --border-muted: #3f3f46;
+  --border-focus: rgba(59, 130, 246, 0.5);
+
+  /* Radius & Shadows */
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --radius-xl: 20px;
+  
+  --elevation-1: 0 1px 2px rgba(0, 0, 0, 0.5), 0 4px 12px rgba(0, 0, 0, 0.3);
+  --elevation-2: 0 8px 24px rgba(0, 0, 0, 0.6), 0 4px 8px rgba(0, 0, 0, 0.4);
+  --elevation-3: 0 16px 40px rgba(0, 0, 0, 0.7);
+  --elevation-premium: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  --elevation-strong: 0 20px 25px -5px rgba(0, 0, 0, 0.2), 0 8px 10px -6px rgba(0, 0, 0, 0.2);
+}
+
+
+/* Light Mode Overrides */
+.light {
+  --console-bg: #f8fafc;
+  --console-surface: rgba(255, 255, 255, 0.85);
+  --console-surface-2: #f1f5f9;
+  --console-surface-3: #e2e8f0;
+  --console-surface-4: #cbd5e1;
+  --console-elevated: #ffffff;
+  --console-header: rgba(255, 255, 255, 0.9);
+  --console-sidebar: #f8fafc;
+
+  --text-primary: #0f172a;
+  --text-secondary: #334155;
+  --text-tertiary: #475569;
+  --text-muted: #475569;
+  --text-disabled: #94a3b8;
+
+  --accent-primary: #1d4ed8;
+  --accent-primary-dark: #1e40af;
+  --accent-primary-rgb: 29, 78, 216;
+  --accent-soft: rgba(29, 78, 216, 0.1);
+  --accent-focus: rgba(29, 78, 216, 0.25);
+
+  --border-subtle: #cbd5e1;
+  --border-strong: #94a3b8;
+  --border-muted: #94a3b8;
+  --border-focus: #2563eb;
+
+  --status-ok: #047857;
+  --status-warning: #b45309;
+  --status-error: #b91c1c;
+  --status-ok-soft: rgba(5, 150, 105, 0.12);
+  --status-warning-soft: rgba(217, 119, 6, 0.12);
+  --status-error-soft: rgba(220, 38, 38, 0.12);
+
+  /* Motion */
+  --motion-fast: 120ms;
+  --motion-medium: 180ms;
+  --motion-slow: 260ms;
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Tailwind v4 Theme Mapping */
+@theme {
+  --color-console-bg: var(--console-bg);
+
+  --color-console-surface: var(--console-surface);
+  --color-console-surface-2: var(--console-surface-2);
+  --color-console-surface-3: var(--console-surface-3);
+  --color-console-surface-4: var(--console-surface-4);
+  --color-console-elevated: var(--console-elevated);
+  --color-console-header: var(--console-header);
+  --color-console-sidebar: var(--console-sidebar);
+
+  --color-text-primary: var(--text-primary);
+  --color-text-secondary: var(--text-secondary);
+  --color-text-tertiary: var(--text-tertiary);
+  --color-text-muted: var(--text-muted);
+  --color-text-disabled: var(--text-disabled);
+
+  --color-accent-primary: var(--accent-primary);
+  --color-accent-dark: var(--accent-primary-dark);
+  --color-accent-soft: var(--accent-soft);
+  --color-accent-focus: var(--accent-focus);
+
+  --color-status-ok: var(--status-ok);
+  --color-status-ok-soft: var(--status-ok-soft);
+  --color-status-warning: var(--status-warning);
+  --color-status-warning-soft: var(--status-warning-soft);
+  --color-status-error: var(--status-error);
+  --color-status-error-soft: var(--status-error-soft);
+
+  --color-border-subtle: var(--border-subtle);
+  --color-border-strong: var(--border-strong);
+  --color-border-muted: var(--border-muted);
+  --color-border-focus: var(--border-focus);
+
+  --radius-sm: var(--radius-sm);
+  --radius-md: var(--radius-md);
+  --radius-lg: var(--radius-lg);
+  --radius-xl: var(--radius-xl);
+
+  --shadow-elevation-1: var(--elevation-1);
+  --shadow-elevation-2: var(--elevation-2);
+  --shadow-elevation-3: var(--elevation-3);
+  --shadow-premium: var(--elevation-premium);
+  --shadow-strong: var(--elevation-strong);
+
+  /* IDE / Studio Semantic Mapping */
+  --color-ide-bg: var(--console-bg);
+  --color-ide-surface: var(--console-sidebar);
+  --color-ide-surface-2: var(--console-surface);
+  --color-ide-border: var(--border-subtle);
+  --color-ide-accent: var(--accent-primary);
+  --color-ide-accent-glow: var(--accent-focus);
+  --color-ide-text: var(--text-primary);
+  --color-ide-text-muted: var(--text-secondary);
+  --color-ide-success: var(--status-ok);
+  --color-ide-warning: var(--status-warning);
+  --color-ide-danger: var(--status-error);
+}
+
+
+/* Base Component Classes */
+@layer components {
+  .gcp-card {
+    background-color: var(--console-surface);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--elevation-1);
+    transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+  }
+
+  .gcp-card-hover:hover {
+    border-color: var(--border-strong);
+    box-shadow: var(--elevation-2);
+    transform: translateY(-2px);
+  }
+
+  .gcp-modal {
+    background-color: var(--console-surface);
+    border: 1px solid var(--border-subtle);
+    box-shadow: var(--elevation-3);
+  }
+
+  .glass-panel {
+    background: color-mix(in srgb, var(--console-surface) 90%, transparent);
+    backdrop-filter: blur(14px);
+    border: 1px solid var(--border-strong);
+    box-shadow: var(--elevation-2);
+  }
+
+  .glass-card {
+    background: color-mix(in srgb, var(--console-surface) 60%, transparent);
+    backdrop-filter: blur(8px);
+    border: 1px solid var(--border-subtle);
+    transition: all 0.3s ease;
+  }
+
+  .text-glow {
+    text-shadow: 0 0 15px var(--accent-focus);
+  }
+}
+
+/* Premium Scrollbar Global */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border-strong);
+  border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text-disabled);
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+

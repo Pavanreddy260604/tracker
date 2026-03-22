@@ -1,31 +1,24 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Courier+Prime:wght@400;700&display=swap');
 @import "tailwindcss";
 
+/* Modular Design System (Project CRYSTAL) */
+@import "./styles/design-tokens.css";
+@import "./styles/auth.css";
 @import "./styles/performance.css";
-@import "./styles/chunk1.css";
-@import "./styles/chunk2.css";
-@import "./styles/chunk3.css";
-@import "./styles/chunk4.css";
-@import "./styles/chunk5.css";
-@import "./styles/chunk6.css";
-@import "./styles/chunk7.css";
-@import "./styles/chunk8.css";
-@import "./styles/chunk9.css";
-@import "./styles/chunk10.css";
-@import "./styles/chunk11.css";
-@import "./styles/chunk12.css";
-@import "./styles/chunk13.css";
-@import "./styles/chunk14.css";
-@import "./styles/chunk15.css";
-@import "./styles/chunk16.css";
-@import "./styles/chunk17.css";
-@import "./styles/chunk18.css";
-@import "./styles/chunk19.css";
-@import "./styles/chunk20.css";
-@import "./styles/chunk21.css";
-@import "./styles/chunk22.css";
-@import "./styles/chunk23-responsive.css";
+@import "./styles/ai-chat.css";
+@import "./styles/dashboard.css";
+@import "./styles/editor-layout.css";
+@import "./styles/responsive.css";
 @import "./styles/glassmorphism.css";
+@import "./styles/studio.css";
+@import "./styles/layout.css";
+@import "./styles/ide.css";
+@import "./styles/interview.css";
+@import "./styles/animated-list.css";
+@import "./styles/liquid-glass.css";
+
+
+
 
 @layer base {
     html {
@@ -39,9 +32,11 @@
     }
 
     body {
-        @apply antialiased;
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
         text-rendering: optimizeLegibility;
     }
+
 
     /* Premium Scrollbar */
     ::-webkit-scrollbar {

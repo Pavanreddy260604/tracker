@@ -50,11 +50,11 @@ export function VerificationBanner() {
     };
 
     return (
-        <div className="bg-amber-500/10 border-b border-amber-500/20 px-4 py-3 sm:px-6 lg:px-8 relative z-50">
+        <div className="bg-amber-500/15 border-b border-amber-500/30 px-4 py-3 sm:px-6 lg:px-8 relative z-50">
             <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
                 <div className="flex items-center gap-3 w-full sm:w-auto">
                     <AlertCircle className="text-amber-500 flex-shrink-0" size={20} />
-                    <p className="text-sm text-amber-200/90 font-medium">
+                    <p className="text-sm text-amber-50 dark:text-amber-200 font-semibold tracking-tight">
                         Please verify your email address ({user.email}) to secure your account.
                     </p>
                 </div>

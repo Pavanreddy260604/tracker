@@ -206,18 +206,12 @@ export function useScriptWriterSceneEditor({
         const changes = countLineChanges(lastContent, editorContent);
         return {
             pointsToRefresh: changes,
-            canRefresh: changes >= 3
+            canRefresh: true
         };
     }, [critique, activeScene?.lastCritiqueContent, editorContent]);
 
     const handleCritiqueScene = async () => {
         if (!activeScene) return;
-
-        // Block if not enough changes (unless force override is allowed, but we follow rules)
-        if (critique && !canRefresh) {
-            setError(`Please make significant changes (at least 3 new/modified lines) before refreshing the critique.`);
-            return;
-        }
 
         setIsCritiquing(true);
         setError(null);

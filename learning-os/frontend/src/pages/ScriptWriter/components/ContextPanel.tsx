@@ -130,18 +130,20 @@ export function ContextPanel({
     // Collapsed State (Rail)
     if (!rightPanelOpen) {
         return (
-            <div className="flex flex-col h-full bg-zinc-950 items-center py-2 border-l border-zinc-800 w-12">
+            <div className="flex flex-col h-full bg-console-bg/30 backdrop-blur-md items-center py-4 border-l border-border-subtle/30 w-12 z-20">
                 {tabs.map(tab => (
                     <button
                         key={tab.id}
                         onClick={() => setRightPanelTool(tab.id)}
                         className={`
-                            mb-2 rounded-lg p-1.5 transition-colors hover:bg-zinc-900
-                            ${activeTool === tab.id ? 'text-zinc-200' : 'text-zinc-500'}
+                            mb-3 rounded-xl p-2.5 transition-all duration-200
+                            ${activeTool === tab.id 
+                                ? 'text-accent-primary bg-accent-primary/10 shadow-[0_0_15px_rgba(var(--accent-primary-rgb),0.2)]' 
+                                : 'text-text-tertiary hover:text-text-secondary hover:bg-console-surface-2/60'}
                         `}
                         title={tab.label}
                     >
-                        <tab.icon size={18} />
+                        <tab.icon size={20} strokeWidth={activeTool === tab.id ? 2.5 : 2} />
                     </button>
                 ))}
             </div>
@@ -149,32 +151,32 @@ export function ContextPanel({
     }
 
     return (
-        <div className="flex flex-col h-full bg-zinc-950 text-zinc-300">
+        <div className="flex flex-col h-full bg-console-bg text-text-secondary">
             {/* Tab Header - Context Switcher */}
-            <div className="h-9 border-b border-zinc-800 flex items-center bg-zinc-950 sticky top-0 z-10 overflow-hidden">
-                <div className="flex-1 flex items-center overflow-x-auto no-scrollbar h-full">
+            <div className="h-12 border-b border-border-subtle/30 flex items-center bg-console-header/90 backdrop-blur-xl sticky top-0 z-30 overflow-hidden shadow-sm">
+                <div className="flex-1 flex items-center overflow-x-auto no-scrollbar h-full px-1">
                     {tabs.map(tab => (
                         <button
                             key={tab.id}
                             onClick={() => setRightPanelTool(tab.id)}
                             className={`
-                                flex-none flex items-center justify-center h-full px-2.5 text-[9px] font-semibold uppercase tracking-[0.16em] border-b transition-all
+                                flex-none flex items-center justify-center h-full px-4 text-[10px] font-bold uppercase tracking-[0.12em] border-b-2 transition-all
                                 ${activeTool === tab.id
-                                    ? 'border-zinc-600 text-zinc-100 bg-zinc-900/70'
-                                    : 'border-transparent text-zinc-500 hover:text-zinc-300 hover:bg-zinc-900/50'}
+                                    ? 'border-accent-primary text-text-primary bg-accent-primary/[0.04]'
+                                    : 'border-transparent text-text-tertiary hover:text-text-secondary hover:bg-console-surface-2/40'}
                             `}
                             title={tab.label}
                         >
-                            <tab.icon size={11} className="mr-1.5" />
+                            <tab.icon size={12} className={`mr-2 ${activeTool === tab.id ? 'text-accent-primary' : ''}`} />
                             <span>{tab.label}</span>
                         </button>
                     ))}
                 </div>
 
-                <div className="flex-none px-2 flex items-center border-l border-zinc-900 bg-zinc-950 h-full">
+                <div className="flex-none px-2 flex items-center border-l border-border-subtle bg-console-bg h-full">
                     <button
                         onClick={toggleRightPanel}
-                        className="rounded-md p-1 text-zinc-600 transition-colors hover:bg-zinc-900 hover:text-zinc-300"
+                        className="rounded-md p-1 text-text-tertiary transition-colors hover:bg-console-surface hover:text-text-secondary"
                         title="Collapse"
                     >
                         <ChevronRight size={13} />
@@ -263,34 +265,34 @@ export function ContextPanel({
                         {/* Section 1: Qualitiative Analysis (The Critique) */}
                         <div className="space-y-6">
                             <div className="flex items-center justify-between">
-                                <h3 className="text-xs font-bold uppercase tracking-wider text-zinc-500">Narrative Intelligence</h3>
-                                {isCritiquing && <Loader2 size={12} className="animate-spin text-blue-400" />}
+                                <h3 className="text-xs font-bold uppercase tracking-wider text-text-tertiary">Narrative Intelligence</h3>
+                                {isCritiquing && <Loader2 size={12} className="animate-spin text-accent-primary" />}
                             </div>
 
                             {/* Scene Foundation Section */}
-                            <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-4 space-y-4">
+                            <div className="bg-console-surface border border-border-subtle rounded-2xl p-4 space-y-4">
                                 <div className="space-y-1">
-                                    <label className="text-[10px] font-bold text-zinc-500 uppercase px-1">Scene Title</label>
+                                    <label className="text-[10px] font-bold text-text-tertiary uppercase px-1">Scene Title</label>
                                     <input
-                                        className="w-full bg-zinc-950 border border-zinc-800 rounded px-2 py-1.5 text-xs text-zinc-100 font-bold focus:border-blue-500 outline-none"
+                                        className="w-full bg-console-bg border border-border-subtle rounded px-2 py-1.5 text-xs text-text-primary font-bold focus:border-accent-primary outline-none"
                                         value={sceneForm?.title}
                                         onChange={(e) => onSceneFormChange?.('title', e.target.value)}
                                         placeholder="The Betrayal"
                                     />
                                 </div>
                                 <div className="space-y-1">
-                                    <label className="text-[10px] font-bold text-zinc-500 uppercase px-1">Scene Slugline</label>
+                                    <label className="text-[10px] font-bold text-text-tertiary uppercase px-1">Scene Slugline</label>
                                     <input
-                                        className="w-full bg-zinc-950 border border-zinc-800 rounded px-2 py-1.5 text-xs text-zinc-100 focus:border-blue-500 outline-none"
+                                        className="w-full bg-console-bg border border-border-subtle rounded px-2 py-1.5 text-xs text-text-primary focus:border-accent-primary outline-none"
                                         value={sceneForm?.slugline}
                                         onChange={(e) => onSceneFormChange?.('slugline', e.target.value)}
                                         placeholder="EXT. HOUSE - DAY"
                                     />
                                 </div>
                                 <div className="space-y-1">
-                                    <label className="text-[10px] font-bold text-zinc-500 uppercase px-1">Dramatic Goal</label>
+                                    <label className="text-[10px] font-bold text-text-tertiary uppercase px-1">Dramatic Goal</label>
                                     <textarea
-                                        className="w-full bg-zinc-950 border border-zinc-800 rounded px-2 py-1.5 text-xs text-zinc-100 placeholder:text-zinc-600 focus:border-blue-500 outline-none resize-none"
+                                        className="w-full bg-console-bg border border-border-subtle rounded px-2 py-1.5 text-xs text-text-primary placeholder:text-text-tertiary focus:border-accent-primary outline-none resize-none"
                                         rows={2}
                                         value={sceneForm?.goal}
                                         onChange={(e) => onSceneFormChange?.('goal', e.target.value)}
@@ -299,22 +301,22 @@ export function ContextPanel({
                                 </div>
                             </div>
 
-                            <div className="h-px bg-zinc-800/20" />
+                            <div className="h-px bg-border-subtle/40" />
 
                             {!critique ? (
-                                <div className="flex flex-col items-center justify-center py-10 text-center space-y-4 bg-zinc-900/30 border border-zinc-800/50 rounded-2xl">
-                                    <div className="p-4 bg-zinc-900 rounded-full border border-zinc-800">
-                                        <Brain size={32} className="text-zinc-700" />
+                                <div className="flex flex-col items-center justify-center py-10 text-center space-y-4 bg-console-surface-2/30 border border-border-subtle/60 rounded-2xl">
+                                    <div className="p-4 bg-console-surface rounded-full border border-border-subtle/60">
+                                        <Brain size={32} className="text-text-tertiary" />
                                     </div>
                                     <div className="space-y-1">
-                                        <p className="text-sm font-bold text-zinc-400">No Analysis Found</p>
-                                        <p className="text-xs text-zinc-600 max-w-[180px] mx-auto">Analyze your scene to detect dialogue issues, pacing flaws, and formatting errors.</p>
+                                        <p className="text-sm font-bold text-text-secondary">No Analysis Found</p>
+                                        <p className="text-xs text-text-tertiary max-w-[180px] mx-auto">Analyze your scene to detect dialogue issues, pacing flaws, and formatting errors.</p>
                                     </div>
                                     <button
                                         onClick={onCritique ?? (() => { })}
                                         disabled={isCritiquing}
                                         title="Performs a deep structural Executive Audit of your scene."
-                                        className="px-6 py-2 bg-blue-600 hover:bg-blue-500 disabled:bg-zinc-800 text-white text-xs font-black rounded-lg transition-all uppercase tracking-tighter"
+                                        className="px-6 py-2 bg-accent-primary hover:bg-accent-primary-dark disabled:bg-console-surface-3 text-console-bg disabled:text-text-tertiary text-xs font-black rounded-lg transition-all uppercase tracking-tighter"
                                     >
                                         {isCritiquing ? 'Analyzing...' : 'Run Analysis'}
                                     </button>
@@ -322,42 +324,42 @@ export function ContextPanel({
                             ) : (
                                 <div className="space-y-6 animate-in fade-in duration-500">
                                     {/* Scoreboard */}
-                                    <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-4 flex items-center justify-between shadow-2xl shadow-black/50 overflow-hidden relative">
+                                    <div className="bg-console-surface border border-border-subtle rounded-2xl p-4 flex items-center justify-between shadow-elevation-2 overflow-hidden relative">
                                         {(eliteHighScore || 0) > 0 && (
-                                            <div className="absolute top-0 right-0 bg-blue-600/10 border-l border-b border-blue-500/20 px-2 py-0.5 rounded-bl-lg">
-                                                <span className="text-[8px] font-black uppercase text-blue-400 tracking-tighter">Personal Best: {eliteHighScore}</span>
+                                            <div className="absolute top-0 right-0 bg-accent-primary/15 border-l border-b border-accent-primary/30 px-2 py-0.5 rounded-bl-lg">
+                                                <span className="text-[8px] font-black uppercase text-accent-primary tracking-tighter">Personal Best: {eliteHighScore}</span>
                                             </div>
                                         )}
                                         <div className="space-y-1">
-                                            <div className="text-[10px] font-black text-zinc-500 uppercase">Overall Quality</div>
-                                            <div className="text-3xl font-black text-white">{critique.score}<span className="text-zinc-500 text-sm">/100</span></div>
+                                            <div className="text-[10px] font-black text-text-tertiary uppercase">Overall Quality</div>
+                                            <div className="text-3xl font-black text-text-primary">{critique.score}<span className="text-text-tertiary text-sm">/100</span></div>
                                         </div>
-                                        <div className="bg-blue-600 text-white w-12 h-12 rounded-xl flex items-center justify-center text-xl font-black shadow-lg shadow-blue-900/20">
+                                        <div className="bg-accent-primary text-console-bg w-12 h-12 rounded-xl flex items-center justify-center text-xl font-black shadow-lg shadow-accent-primary/20">
                                             {critique.grade}
                                         </div>
                                     </div>
 
                                     {/* Summary */}
                                     <div className="space-y-2">
-                                        <h4 className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest px-1">Summary Critique</h4>
-                                        <p className="text-xs text-zinc-300 leading-relaxed font-serif italic p-3 bg-zinc-900/50 rounded-xl border border-zinc-800/50">
+                                        <h4 className="text-[10px] font-bold text-text-tertiary uppercase tracking-widest px-1">Summary Critique</h4>
+                                        <p className="text-xs text-text-secondary leading-relaxed font-serif italic p-3 bg-console-surface-2/50 rounded-xl border border-border-subtle/40">
                                             "{critique.summary}"
                                         </p>
                                     </div>
 
                                     {/* Categorical Issues */}
                                     {[
-                                        { label: 'Dialogue', items: critique.dialogueIssues, color: 'text-amber-400' },
-                                        { label: 'Pacing', items: critique.pacingIssues, color: 'text-blue-400' },
-                                        { label: 'Formatting', items: critique.formattingIssues, color: 'text-zinc-400' },
-                                        { label: 'Suggestions', items: critique.suggestions, color: 'text-emerald-400' }
+                                        { label: 'Dialogue', items: critique.dialogueIssues, color: 'text-status-warning' },
+                                        { label: 'Pacing', items: critique.pacingIssues, color: 'text-accent-primary' },
+                                        { label: 'Formatting', items: critique.formattingIssues, color: 'text-text-secondary' },
+                                        { label: 'Suggestions', items: critique.suggestions, color: 'text-status-ok' }
                                     ].map(cat => cat.items.length > 0 && (
                                         <div key={cat.label} className="space-y-2">
                                             <h4 className={`text-[10px] font-bold uppercase tracking-widest px-1 ${cat.color}`}>{cat.label}</h4>
                                             <div className="space-y-1.5">
                                                 {cat.items.map((issue, i) => (
-                                                    <div key={i} className="flex gap-2 text-[11px] text-zinc-400 pl-2 border-l border-zinc-800">
-                                                        <span className="shrink-0 text-zinc-600">•</span>
+                                                    <div key={i} className="flex gap-2 text-[11px] text-text-tertiary pl-2 border-l border-border-subtle">
+                                                        <span className="shrink-0 text-text-tertiary/50">•</span>
                                                         <span>{issue}</span>
                                                     </div>
                                                 ))}
@@ -372,8 +374,8 @@ export function ContextPanel({
                                             title="Runs the Executive Audit again with your new changes."
                                             className={`flex-1 py-2 border rounded-lg text-[10px] font-bold transition-all uppercase tracking-widest
                                                 ${(critique && canRefreshCritique === false)
-                                                    ? 'border-amber-900/30 hover:bg-amber-900/10 text-zinc-400'
-                                                    : 'border-zinc-800 hover:bg-zinc-900 text-zinc-400 hover:text-zinc-300'
+                                                    ? 'border-status-warning/30 hover:bg-status-warning/10 text-text-tertiary'
+                                                    : 'border-border-subtle hover:bg-console-surface text-text-tertiary hover:text-text-secondary'
                                                 }
                                             `}
                                         >
@@ -383,36 +385,36 @@ export function ContextPanel({
                                             onClick={onFix}
                                             disabled={isGenerating || isCritiquing || !!pendingFix}
                                             title="Auto-applies Hollywood-level corrections to your scene."
-                                            className="flex-1 py-2 bg-blue-600 hover:bg-blue-500 disabled:bg-zinc-800 text-white text-[10px] font-black rounded-lg transition-all uppercase tracking-widest flex items-center justify-center gap-2"
+                                            className="flex-1 py-2 bg-accent-primary hover:bg-accent-primary-dark disabled:bg-console-surface-3 text-console-bg disabled:text-text-tertiary text-[10px] font-black rounded-lg transition-all uppercase tracking-widest flex items-center justify-center gap-2"
                                         >
                                             {isGenerating ? <Loader2 size={12} className="animate-spin" /> : <Sparkles size={12} />}
                                             {pendingFix ? 'In Review' : 'Apply Fixes'}
                                         </button>
                                     </div>
                                     {critique && canRefreshCritique === false && (
-                                        <div className="text-[10px] text-amber-500/70 text-center mt-2 px-2 py-1 bg-amber-950/10 rounded border border-amber-900/20">
-                                            Edit {Math.max(0, 3 - (pointsToRefresh || 0))} more lines to refresh critique.
+                                        <div className="text-[10px] text-status-warning/70 text-center mt-2 px-2 py-1 bg-status-warning/10 rounded border border-status-warning/20">
+                                            Your next critique refresh will use the latest draft changes.
                                         </div>
                                     )}
                                 </div>
                             )}
                         </div>
 
-                        <div className="h-px bg-zinc-800/50" />
+                            <div className="h-px bg-border-subtle/40" />
 
-                        {/* Section: Scene Tools */}
-                        <div className="space-y-6">
-                            <div className="flex items-center justify-between">
-                                <h3 className="text-xs font-bold uppercase tracking-wider text-zinc-500">Scene Intelligence</h3>
-                                {isGenerating && <Loader2 size={12} className="animate-spin text-blue-400" />}
-                            </div>
+                            {/* Section: Scene Tools */}
+                            <div className="space-y-6">
+                                <div className="flex items-center justify-between">
+                                    <h3 className="text-xs font-bold uppercase tracking-wider text-text-tertiary">Scene Intelligence</h3>
+                                    {isGenerating && <Loader2 size={12} className="animate-spin text-accent-primary" />}
+                                </div>
 
-                            <div className="bg-zinc-900/50 border border-zinc-800/80 rounded-2xl p-4 space-y-4">
+                                <div className="bg-console-surface/50 border border-border-subtle/80 rounded-2xl p-4 space-y-4">
                                 <div className="space-y-3">
                                     <div className="space-y-1">
-                                        <label className="text-[10px] font-bold text-zinc-500 uppercase px-1">Style Reference</label>
+                                        <label className="text-[10px] font-bold text-text-tertiary uppercase px-1">Style Reference</label>
                                         <select
-                                            className="w-full bg-zinc-950 border border-zinc-800 rounded-lg px-2 py-1.5 text-xs text-zinc-300 outline-none"
+                                            className="w-full bg-console-bg border border-border-subtle rounded-lg px-2 py-1.5 text-xs text-text-secondary outline-none"
                                             value={generationOptions?.style}
                                             onChange={(e) => onGenerationOptionChange?.('style', e.target.value)}
                                         >
@@ -423,9 +425,9 @@ export function ContextPanel({
                                     </div>
 
                                     <div className="space-y-1">
-                                        <label className="text-[10px] font-bold text-zinc-500 uppercase px-1">Scene Length</label>
+                                        <label className="text-[10px] font-bold text-text-tertiary uppercase px-1">Scene Length</label>
                                         <select
-                                            className="w-full bg-zinc-950 border border-zinc-800 rounded-lg px-2 py-1.5 text-xs text-zinc-300 outline-none"
+                                            className="w-full bg-console-bg border border-border-subtle rounded-lg px-2 py-1.5 text-xs text-text-secondary outline-none"
                                             value={generationOptions?.sceneLength}
                                             onChange={(e) => onGenerationOptionChange?.('sceneLength', e.target.value as GenerationOptions['sceneLength'])}
                                         >
@@ -435,28 +437,28 @@ export function ContextPanel({
                                         </select>
                                     </div>
                                     
-                                    <div className="flex items-center justify-between p-2 bg-blue-500/10 rounded-md border border-blue-500/20">
+                                    <div className="flex items-center justify-between p-2 bg-accent-primary/15 rounded-md border border-accent-primary/30">
                                         <div className="flex items-center gap-2">
-                                            <div className={`p-1 rounded ${generationOptions?.speedMode ? 'bg-blue-500 text-white' : 'bg-zinc-800 text-zinc-500'}`}>
+                                            <div className={`p-1 rounded ${generationOptions?.speedMode ? 'bg-accent-primary text-console-bg' : 'bg-console-surface-2 text-text-tertiary'}`}>
                                                 <Sparkles size={10} className={generationOptions?.speedMode ? 'animate-pulse' : ''} />
                                             </div>
                                             <div>
-                                                <div className="text-[10px] font-bold text-blue-400 uppercase tracking-tight">Lightning Speed</div>
-                                                <div className="text-[8px] text-zinc-500">Bypass RAG & Optimize AI</div>
+                                                <div className="text-[10px] font-bold text-accent-primary uppercase tracking-tight">Lightning Speed</div>
+                                                <div className="text-[8px] text-text-tertiary">Bypass RAG & Optimize AI</div>
                                             </div>
                                         </div>
                                         <button 
                                             onClick={() => onGenerationOptionChange?.('speedMode', !generationOptions?.speedMode)}
-                                            className={`relative inline-flex h-4 w-8 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${generationOptions?.speedMode ? 'bg-blue-600' : 'bg-zinc-800'}`}
+                                            className={`relative inline-flex h-4 w-8 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${generationOptions?.speedMode ? 'bg-accent-primary' : 'bg-console-surface-3'}`}
                                         >
-                                            <span className={`pointer-events-none inline-block h-3 w-3 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${generationOptions?.speedMode ? 'translate-x-4' : 'translate-x-0'}`} />
+                                            <span className={`pointer-events-none inline-block h-3 w-3 transform rounded-full bg-[color:var(--text-on-accent)] shadow ring-0 transition duration-200 ease-in-out ${generationOptions?.speedMode ? 'translate-x-4' : 'translate-x-0'}`} />
                                         </button>
                                     </div>
 
                                     <div className="space-y-1">
-                                        <label className="text-[10px] font-bold text-zinc-500 uppercase px-1">Language</label>
+                                        <label className="text-[10px] font-bold text-text-tertiary uppercase px-1">Language</label>
                                         <select
-                                            className="w-full bg-zinc-950 border border-zinc-800 rounded-lg px-2 py-1.5 text-xs text-blue-300 font-bold outline-none"
+                                            className="w-full bg-console-bg border border-border-subtle rounded-lg px-2 py-1.5 text-xs text-accent-primary font-bold outline-none"
                                             value={generationOptions?.language || 'English'}
                                             onChange={(e) => onGenerationOptionChange?.('language', e.target.value)}
                                         >
@@ -473,10 +475,10 @@ export function ContextPanel({
                                     </div>
 
                                     {shouldOfferTransliteration(generationOptions?.language || 'English') && (
-                                        <div className="flex items-center justify-between p-2 bg-blue-900/10 border border-blue-900/20 rounded-lg animate-in fade-in slide-in-from-top-2 duration-300">
+                                        <div className="flex items-center justify-between p-2 bg-accent-primary/[0.08] border border-accent-primary/30 rounded-lg animate-in fade-in slide-in-from-top-2 duration-300">
                                             <div className="space-y-0.5">
-                                                <div className="text-[9px] font-black text-blue-400 uppercase tracking-widest">Phonetic Soul</div>
-                                                <div className="text-[10px] text-zinc-500 font-medium">Use English script</div>
+                                                <div className="text-[9px] font-black text-accent-primary uppercase tracking-widest">Phonetic Soul</div>
+                                                <div className="text-[10px] text-text-tertiary font-medium">Use English script</div>
                                             </div>
                                             <label className="relative inline-flex items-center cursor-pointer scale-75">
                                                 <input
@@ -485,7 +487,7 @@ export function ContextPanel({
                                                     checked={generationOptions?.transliteration}
                                                     onChange={(e) => onGenerationOptionChange?.('transliteration', e.target.checked)}
                                                 />
-                                                <div className="w-11 h-6 bg-zinc-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-zinc-400 after:border-zinc-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600 peer-checked:after:bg-white"></div>
+                                                <div className="w-11 h-6 bg-console-surface-3 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-text-tertiary after:border-border-subtle after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-accent-primary peer-checked:after:bg-[color:var(--text-on-accent)]"></div>
                                             </label>
                                         </div>
                                     )}
@@ -494,7 +496,7 @@ export function ContextPanel({
                                 <button
                                     onClick={onGenerate}
                                     disabled={isGenerating}
-                                    className="w-full py-2.5 bg-zinc-100 hover:bg-white text-zinc-900 text-xs font-black rounded-xl transition-all uppercase tracking-tighter flex items-center justify-center gap-2"
+                                    className="w-full py-2.5 bg-accent-primary hover:bg-accent-primary-dark disabled:bg-console-surface text-console-bg text-xs font-black rounded-xl transition-all uppercase tracking-tighter flex items-center justify-center gap-2 disabled:text-text-tertiary"
                                 >
                                     {isGenerating ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />}
                                     {isGenerating ? 'Generating Scene...' : 'Draft Full Scene'}
@@ -502,20 +504,20 @@ export function ContextPanel({
                             </div>
                         </div>
 
-                        <div className="h-px bg-zinc-800/50" />
+                        <div className="h-px bg-border-subtle/50" />
 
                         {/* Section 2: Structural Planning (The Treatment) */}
                         <div className="space-y-6">
                             <div className="flex items-center justify-between">
-                                <h3 className="text-xs font-bold uppercase tracking-wider text-zinc-500">Story Architect</h3>
-                                {treatmentLoading && <Loader2 size={12} className="animate-spin text-blue-400" />}
+                                <h3 className="text-xs font-bold uppercase tracking-wider text-text-tertiary">Story Architect</h3>
+                                {treatmentLoading && <Loader2 size={12} className="animate-spin text-accent-primary" />}
                             </div>
 
                             <div className="space-y-4">
                                 <div className="space-y-2">
-                                    <label className="text-[10px] font-bold text-zinc-500 uppercase px-1">Logline / Foundation</label>
+                                    <label className="text-[10px] font-bold text-text-tertiary uppercase px-1">Logline / Foundation</label>
                                     <textarea
-                                        className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-3 py-2 text-xs text-zinc-100 placeholder:text-zinc-700 focus:border-blue-500 outline-none resize-none font-serif italic"
+                                        className="w-full bg-console-bg border border-border-subtle/80 rounded-xl px-3 py-2 text-xs text-text-primary placeholder:text-text-disabled focus:border-accent-primary outline-none resize-none font-serif italic"
                                         rows={4}
                                         placeholder="In a world where..."
                                         value={treatmentLogline}
@@ -523,17 +525,21 @@ export function ContextPanel({
                                     />
                                 </div>
                                 <div className="space-y-1">
-                                    <label className="text-[10px] font-bold text-zinc-500 uppercase px-1">Target Scenes</label>
+                                    <label className="text-[10px] font-bold text-text-tertiary uppercase px-1">Target Scenes</label>
                                     <input
-                                        type="number"
-                                        className="w-full bg-zinc-950 border border-zinc-800 rounded-lg px-2 py-1.5 text-xs text-zinc-300 outline-none"
+                                        type="text"
+                                        inputMode="numeric"
+                                        className="w-full bg-console-bg border border-border-subtle/80 rounded-lg px-2 py-1.5 text-xs text-text-secondary outline-none"
                                         value={treatmentSceneCount}
-                                        onChange={(e) => setTreatmentSceneCount(parseInt(e.target.value) || 0)}
+                                        onChange={(e) => {
+                                            const val = e.target.value.replace(/\D/g, '');
+                                            setTreatmentSceneCount(parseInt(val) || 0);
+                                        }}
                                     />
                                 </div>
                                 <div className="flex gap-2">
                                     <select
-                                        className="flex-1 bg-zinc-900 border border-zinc-800 rounded-lg px-2 py-1.5 text-[11px] text-zinc-400 outline-none"
+                                        className="flex-1 bg-console-surface border border-border-subtle rounded-lg px-2 py-1.5 text-[11px] text-text-secondary outline-none"
                                         value={treatmentStyle}
                                         onChange={(e) => setTreatmentStyle(e.target.value)}
                                     >
@@ -545,7 +551,7 @@ export function ContextPanel({
                                     <button
                                         onClick={handleTreatmentGenerate}
                                         disabled={treatmentLoading || !treatmentLogline}
-                                        className="px-4 py-1.5 bg-blue-600 hover:bg-blue-500 disabled:bg-zinc-800 text-white text-[11px] font-bold rounded-lg transition-all"
+                                        className="px-4 py-1.5 bg-accent-primary hover:bg-accent-primary-dark disabled:bg-console-surface text-console-bg disabled:text-text-tertiary text-[11px] font-bold rounded-lg transition-all"
                                     >
                                         Gen Outline
                                     </button>
@@ -554,23 +560,23 @@ export function ContextPanel({
 
                             {treatmentPreview && (
                                 <div className="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
-                                    <div className="p-3 bg-blue-950/10 border border-blue-900/30 rounded-xl space-y-4">
+                                    <div className="p-3 bg-accent-primary/[0.08] border border-accent-primary/30 rounded-xl space-y-4">
                                         {treatmentPreview.map((act, i) => (
                                             <div key={i} className="space-y-1">
-                                                <h4 className="text-[10px] font-black text-blue-400 uppercase tracking-widest">{act.name}</h4>
+                                                <h4 className="text-[10px] font-black text-accent-primary uppercase tracking-widest">{act.name}</h4>
                                                 <div className="space-y-1">
                                                     {act.beats.map((beat, bi) => (
-                                                        <p key={bi} className="text-[11px] text-zinc-300 leading-relaxed font-serif">
-                                                            <span className="text-blue-500/50 font-sans font-bold mr-1">•</span>
-                                                            {beat.description}
-                                                        </p>
+                                                        <p key={bi} className="text-[11px] text-text-secondary leading-relaxed font-serif">
+                                                        <span className="text-accent-primary/50 font-sans font-bold mr-1">•</span>
+                                                        {beat.description}
+                                                    </p>
                                                     ))}
                                                 </div>
                                             </div>
                                         ))}
                                         <button
                                             onClick={handleTreatmentSave}
-                                            className="w-full py-2 bg-zinc-100 hover:bg-white text-zinc-900 text-xs font-black rounded-lg transition-all uppercase tracking-tighter"
+                                            className="w-full py-2 bg-accent-primary hover:bg-accent-primary-dark text-console-bg text-xs font-black rounded-lg transition-all uppercase tracking-tighter"
                                         >
                                             Save Treatment
                                         </button>
@@ -579,22 +585,22 @@ export function ContextPanel({
                             )}
 
                             <div className="space-y-2">
-                                <h4 className="text-[10px] font-bold text-zinc-600 uppercase tracking-widest px-1">Saved Outlines</h4>
+                                <h4 className="text-[10px] font-bold text-text-tertiary uppercase tracking-widest px-1">Saved Outlines</h4>
                                 {treatments.length === 0 ? (
-                                    <p className="text-[10px] text-zinc-700 italic px-1">No structural outlines saved.</p>
+                                    <p className="text-[10px] text-text-disabled italic px-1">No structural outlines saved.</p>
                                 ) : (
                                     <div className="space-y-2">
                                         {treatments.map(t => (
-                                            <div key={t._id} className="p-3 bg-zinc-900/50 border border-zinc-800/80 rounded-xl hover:border-zinc-700 transition-all group">
+                                            <div key={t._id} className="p-3 bg-console-surface-2/40 border border-border-subtle/60 rounded-xl hover:border-border-strong/50 transition-all group">
                                                 <div className="flex justify-between items-start mb-2">
-                                                    <span className="text-[10px] text-blue-500 font-bold">{t.style}</span>
+                                                    <span className="text-[10px] text-accent-primary font-bold">{t.style}</span>
                                                 </div>
-                                                <p className="text-[11px] text-zinc-400 line-clamp-2 italic font-serif mb-3 opacity-80 group-hover:opacity-100 transition-opacity">
+                                                <p className="text-[11px] text-text-tertiary line-clamp-2 italic font-serif mb-3 opacity-80 group-hover:opacity-100 transition-opacity">
                                                     "{t.logline}"
                                                 </p>
                                                 <button
                                                     onClick={() => handleTreatmentConvert(t._id)}
-                                                    className="w-full py-1.5 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-[10px] font-bold rounded-lg transition-all uppercase tracking-widest"
+                                                    className="w-full py-1.5 bg-console-surface hover:bg-console-surface-2 text-text-secondary text-[10px] font-bold rounded-lg transition-all uppercase tracking-widest"
                                                 >
                                                     Convert to Scenes
                                                 </button>
@@ -610,15 +616,15 @@ export function ContextPanel({
                 {activeTool === 'settings' && (
                     <div className="space-y-6">
                         <div className="space-y-1">
-                            <h3 className="text-xs font-bold uppercase tracking-wider text-zinc-500">Project Settings</h3>
-                            <p className="text-[10px] text-zinc-600 uppercase">Configuration & Export</p>
+                            <h3 className="text-xs font-bold uppercase tracking-wider text-text-tertiary">Project Settings</h3>
+                            <p className="text-[10px] text-text-tertiary uppercase">Configuration & Export</p>
                         </div>
 
                         <div className="space-y-4">
                             {/* AI Provider Settings */}
-                            <div className="space-y-2 pt-2 border-b border-zinc-800/50 pb-4">
-                                <label className="text-[10px] font-bold text-zinc-500 uppercase px-1">AI Intelligence Provider</label>
-                                <div className="grid grid-cols-2 gap-2 bg-zinc-900/50 p-1 rounded-lg border border-zinc-800/50">
+                            <div className="space-y-2 pt-2 border-b border-border-subtle/30 pb-4">
+                                <label className="text-[10px] font-bold text-text-tertiary uppercase px-1">AI Intelligence Provider</label>
+                                <div className="grid grid-cols-2 gap-2 bg-console-surface-2/40 p-1 rounded-lg border border-border-subtle/30">
                                     <button
                                         onClick={() => {
                                             if (aiProvider !== 'ollama') {
@@ -632,8 +638,8 @@ export function ContextPanel({
                                         className={`
                                             py-2 px-3 rounded text-xs font-bold uppercase tracking-wider transition-all flex items-center justify-center gap-2
                                             ${aiProvider === 'ollama'
-                                                ? 'bg-zinc-800 text-white shadow-sm'
-                                                : 'text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800/50'}
+                                                ? 'bg-console-surface text-text-primary shadow-sm'
+                                                : 'text-text-tertiary hover:text-text-secondary hover:bg-console-surface-2/40'}
                                         `}
                                     >
                                         {aiProvider === 'ollama' && isSwitchingProvider ? <Loader2 size={12} className="animate-spin" /> : null}
@@ -654,8 +660,8 @@ export function ContextPanel({
                                             py-2 px-3 rounded text-xs font-bold uppercase tracking-wider transition-all flex items-center justify-center gap-2
                                             col-span-2
                                             ${aiProvider === 'groq'
-                                                ? 'bg-orange-600 text-white shadow-sm shadow-orange-900/20'
-                                                : 'text-zinc-500 hover:text-orange-400 hover:bg-orange-900/10'}
+                                                ? 'bg-status-warning text-console-bg shadow-sm shadow-status-warning/20'
+                                                : 'text-text-tertiary hover:text-status-warning hover:bg-status-warning/15'}
                                         `}
                                     >
                                         {aiProvider === 'groq' && isSwitchingProvider ? <Loader2 size={12} className="animate-spin" /> : null}
@@ -665,11 +671,11 @@ export function ContextPanel({
                             </div>
 
                             {/* AI Model Selection */}
-                            <div className="space-y-1.5 pt-2 border-b border-zinc-800/50 pb-4">
-                                <label className="text-[10px] font-bold text-zinc-500 uppercase px-1">Specific AI Model</label>
+                            <div className="space-y-1.5 pt-2 border-b border-border-subtle/30 pb-4">
+                                <label className="text-[10px] font-bold text-text-tertiary uppercase px-1">Specific AI Model</label>
                                 {aiProvider === 'groq' ? (
                                     <select
-                                        className="w-full bg-zinc-950 border border-zinc-800 rounded px-2 py-1.5 text-xs text-orange-200 focus:border-orange-500 outline-none"
+                                        className="w-full bg-console-bg border border-border-subtle rounded px-2 py-1.5 text-xs text-status-warning focus:border-status-warning outline-none"
                                         value={aiModel}
                                         onChange={(e) => setAiModel(e.target.value)}
                                     >
@@ -682,13 +688,13 @@ export function ContextPanel({
                                 ) : (
                                     <div className="flex gap-2">
                                         <input
-                                            className="flex-1 bg-zinc-950 border border-zinc-800 rounded px-2 py-1.5 text-xs text-zinc-300 focus:border-blue-500 outline-none"
+                                            className="flex-1 bg-console-bg border border-border-subtle rounded px-2 py-1.5 text-xs text-text-secondary focus:border-accent-primary outline-none"
                                             value={aiModel}
                                             onChange={(e) => setAiModel(e.target.value)}
                                             placeholder="e.g. llama3, mistral, deepseek-r1:7b"
                                         />
                                         <select
-                                            className="bg-zinc-900 border border-zinc-800 rounded px-1 text-[10px] text-zinc-500 outline-none"
+                                            className="bg-console-surface border border-border-subtle rounded px-1 text-[10px] text-text-tertiary outline-none"
                                             onChange={(e) => setAiModel(e.target.value)}
                                             value=""
                                         >
@@ -700,7 +706,7 @@ export function ContextPanel({
                                         </select>
                                     </div>
                                 )}
-                                <p className="text-[9px] text-zinc-600 px-1 italic">
+                                <p className="text-[9px] text-text-tertiary px-1 italic">
                                     {aiProvider === 'groq' 
                                         ? 'Cloud models provide high-speed creative output.' 
                                         : 'Local models require Ollama to be running on your machine.'}
@@ -708,17 +714,17 @@ export function ContextPanel({
                             </div>
 
                             <div className="space-y-1.5 pt-2">
-                                <label className="text-[10px] font-bold text-zinc-500 uppercase px-1">Export Project</label>
+                                <label className="text-[10px] font-bold text-text-tertiary uppercase px-1">Export Project</label>
                                 <div className="grid grid-cols-2 gap-2">
                                     <button
                                         onClick={() => onExport?.('fountain')}
-                                        className="py-2 bg-zinc-900 border border-zinc-800 rounded-lg text-xs hover:bg-zinc-800 transition-colors"
+                                        className="py-2 bg-console-surface border border-border-subtle rounded-lg text-xs hover:bg-console-surface-2 transition-colors"
                                     >
                                         Fountain (.fountain)
                                     </button>
                                     <button
                                         onClick={() => onExport?.('txt')}
-                                        className="py-2 bg-zinc-900 border border-zinc-800 rounded-lg text-xs hover:bg-zinc-800 transition-colors"
+                                        className="py-2 bg-console-surface border border-border-subtle rounded-lg text-xs hover:bg-console-surface-2 transition-colors"
                                     >
                                         Text (.txt)
                                     </button>
@@ -726,10 +732,10 @@ export function ContextPanel({
                             </div>
 
                             <div className="space-y-1.5">
-                                <label className="text-[10px] font-bold text-zinc-500 uppercase px-1">Project Name</label>
+                                <label className="text-[10px] font-bold text-text-tertiary uppercase px-1">Project Name</label>
                                 <div className="flex gap-2">
                                     <input
-                                        className="flex-1 bg-zinc-950 border border-zinc-800 rounded px-3 py-2 text-sm text-zinc-100 focus:border-blue-500 outline-none"
+                                        className="flex-1 bg-console-bg border border-border-subtle rounded px-3 py-2 text-sm text-text-primary focus:border-accent-primary outline-none"
                                         value={projectTitle}
                                         onChange={(e) => {
                                             if (!activeProject) {
@@ -744,7 +750,7 @@ export function ContextPanel({
                                     />
                                     <button
                                         onClick={() => activeProject?._id && handleUpdateProject?.(activeProject._id, { title: projectTitle })}
-                                        className="px-3 bg-zinc-800 hover:bg-zinc-700 rounded text-xs font-medium text-zinc-300 transition-colors"
+                                        className="px-3 bg-console-surface hover:bg-console-surface-2 rounded text-xs font-medium text-text-secondary transition-colors"
                                     >
                                         Save
                                     </button>
@@ -752,11 +758,11 @@ export function ContextPanel({
                             </div>
 
                             <div className="space-y-1.5 pt-4">
-                                <label className="text-[10px] font-bold text-red-500/70 uppercase px-1">Danger Zone</label>
-                                <div className="border border-red-900/20 bg-red-900/5 rounded p-3">
-                                    <p className="text-[11px] text-zinc-500 mb-3">Deleting a project is permanent and cannot be undone.</p>
+                                <label className="text-[10px] font-bold text-status-error/80 uppercase px-1">Danger Zone</label>
+                                <div className="border border-status-error/20 bg-status-error-soft rounded p-3">
+                                <p className="text-[11px] text-text-tertiary mb-3">Deleting a project is permanent and cannot be undone.</p>
                                     <button
-                                        className="w-full bg-red-950/30 hover:bg-red-900/40 border border-red-900/30 text-red-400 py-1.5 rounded text-xs font-medium transition-colors"
+                                        className="w-full bg-console-surface hover:bg-status-error/12 border border-status-error/30 text-status-error py-1.5 rounded text-xs font-medium transition-colors"
                                         onClick={() => activeProject?._id && handleDeleteProject?.(activeProject._id)}
                                     >
                                         Delete Project

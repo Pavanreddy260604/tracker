@@ -103,12 +103,11 @@ class ApiService {
 
     // Project Studies
     getProjectStudies = projectsApi.getProjectStudies;
+    getProjectStudy = projectsApi.getProjectStudy;
     createProjectStudy = projectsApi.createProjectStudy;
     updateProjectStudy = projectsApi.updateProjectStudy;
+    updateProjectStudyStatus = projectsApi.updateProjectStudyStatus;
     deleteProjectStudy = projectsApi.deleteProjectStudy;
-    analyzeProject = projectsApi.analyzeProject;
-    validateProjectFlow = projectsApi.validateProjectFlow;
-    pulseProjectAudit = projectsApi.pulseProjectAudit;
 
     // Interview
     startInterview = interviewApi.startInterview;

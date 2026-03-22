@@ -3,10 +3,36 @@ import { vectorService } from './vector.service';
 import { embeddingService } from './embedding.service';
 import * as mammoth from 'mammoth';
 import mongoose from 'mongoose';
-import pLimit from 'p-limit';
+
+function createConcurrencyLimiter(concurrency: number) {
+    let activeCount = 0;
+    const queue: Array<() => void> = [];
+
+    const next = () => {
+        activeCount -= 1;
+        const runNext = queue.shift();
+        if (runNext) runNext();
+    };
+
+    return async <T>(task: () => Promise<T>): Promise<T> => {
+        if (activeCount >= concurrency) {
+            await new Promise<void>((resolve) => {
+                queue.push(resolve);
+            });
+        }
+
+        activeCount += 1;
+
+        try {
+            return await task();
+        } finally {
+            next();
+        }
+    };
+}
 
 export class ChatRagService {
-    private limit = pLimit(3); // Limit concurrent embeddings to avoid overloading Ollama
+    private limit = createConcurrencyLimiter(3); // Limit concurrent embeddings to avoid overloading Ollama
     private static readonly TEXT_EXTENSIONS = new Set([
         '.txt', '.md', '.markdown', '.json', '.js', '.jsx', '.ts', '.tsx', '.py', '.css', '.scss', '.sass',
         '.html', '.htm', '.xml', '.csv', '.yml', '.yaml', '.toml', '.ini', '.conf', '.log', '.env',

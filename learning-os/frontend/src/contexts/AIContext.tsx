@@ -1,5 +1,5 @@
 
-import { createContext, useContext, useState, useCallback, useEffect, useRef, type ReactNode } from 'react';
+import { createContext, useContext, useState, useCallback, useEffect, useRef, useMemo, type ReactNode } from 'react';
 import { api } from '../services/api';
 import { useAuthStore } from '../stores/authStore';
 
@@ -434,7 +434,14 @@ export function AIProvider({ children }: { children: ReactNode }) {
         await _sendMessage(content, attachments, injectedContext, onChunk);
     }, [_sendMessage, systemContext, context]);
 
-    const value: AIContextType = {
+    const updateContext = useCallback((newData: any) => {
+        setContext((prev: any) => {
+            if (JSON.stringify(prev) === JSON.stringify(newData)) return prev;
+            return newData;
+        });
+    }, []);
+
+    const value: AIContextType = useMemo(() => ({
         isOpen,
         toggleOpen,
         sessionId,
@@ -449,10 +456,14 @@ export function AIProvider({ children }: { children: ReactNode }) {
         setSelectedModel,
         AI_MODELS,
         context,
-        setContext,
+        setContext: updateContext,
         ensureChatSession,
         uploadAttachment,
-    };
+    }), [
+        isOpen, toggleOpen, sessionId, messages, isLoading, 
+        sendMessage, clearMessages, selectedModel, context, 
+        ensureChatSession, uploadAttachment, updateContext
+    ]);
 
     return (
         <AIContext.Provider value={value}>
@@ -467,4 +478,41 @@ export function useAI() {
         throw new Error('useAI must be used within an AIProvider');
     }
     return context;
+}
+
+/**
+ * Hook to automatically track entity context for the AI assistant.
+ * Usage: useAIContextTracker('DSA Problem', problem);
+ */
+export function useAIContextTracker(type: string | null, data: any) {
+    const { setContext } = useAI();
+    const lastDataRef = useRef<string>('');
+
+    useEffect(() => {
+        if (!type || !data) {
+            if (lastDataRef.current !== 'null') {
+                setContext(null);
+                lastDataRef.current = 'null';
+            }
+            return;
+        }
+
+        // Use ID and type for a stable key, or stringify for deep check
+        const dataId = data?._id || data?.id || 'no-id';
+        const currentDataStr = `${type}-${dataId}-${JSON.stringify(data).length}`;
+
+        if (currentDataStr !== lastDataRef.current) {
+            setContext({ 
+                type, 
+                data, 
+                trackedAt: new Date().toISOString() 
+            });
+            lastDataRef.current = currentDataStr;
+        }
+
+        return () => {
+            // Optional: clear on unmount if we're leaving the "Detail" scope
+            // For now, we rely on the next component's mount to overwrite or clear
+        };
+    }, [type, data, setContext]);
 }

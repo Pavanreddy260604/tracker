@@ -47,6 +47,12 @@ interface ArchitectureMapProps {
 }
 
 export const ArchitectureMap: React.FC<ArchitectureMapProps> = ({ data, className }) => {
+    const getNodeOffset = (seed: string, axis: 'x' | 'y') => {
+        const source = `${seed}:${axis}`;
+        const hash = source.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+        return hash % 20;
+    };
+
     const initialNodes = useMemo(() => {
         return data.nodes.map((node, index) => {
             const Icon = getCategoryIcon(node.category, node.type);
@@ -80,8 +86,8 @@ export const ArchitectureMap: React.FC<ArchitectureMapProps> = ({ data, classNam
                 },
                 // Intelligent Grid Layout
                 position: { 
-                    x: (index % 4) * 220 + (Math.random() * 20), 
-                    y: Math.floor(index / 4) * 180 + (Math.random() * 20) 
+                    x: (index % 4) * 220 + getNodeOffset(node.id || `${index}`, 'x'),
+                    y: Math.floor(index / 4) * 180 + getNodeOffset(node.id || `${index}`, 'y')
                 },
                 style: {
                     background: 'rgba(10, 10, 15, 0.9)',

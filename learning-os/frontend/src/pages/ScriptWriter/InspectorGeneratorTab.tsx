@@ -85,7 +85,7 @@ export function InspectorGeneratorTab({
                 <div className="ide-field">
                     <label className="ide-label flex items-center justify-between">
                         Style
-                        <span className="text-[9px] text-zinc-500 font-normal">Hollywood Directors</span>
+                        <span className="text-[9px] text-text-tertiary font-normal">Hollywood Directors</span>
                     </label>
                     <select
                         className="ide-select"
@@ -105,9 +105,9 @@ export function InspectorGeneratorTab({
                     </select>
                 </div>
                 <div className="ide-field">
-                    <label className="ide-label text-blue-400">Target Language</label>
+                    <label className="ide-label text-accent-primary">Target Language</label>
                     <select
-                        className="ide-select font-bold text-blue-300"
+                        className="ide-select font-bold text-accent-primary"
                         value={scriptLanguage}
                         onChange={(event) => onScriptLanguageChange(event.target.value)}
                     >

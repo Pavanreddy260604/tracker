@@ -1,13 +1,14 @@
 import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import {
-    TrendingUp,
-    TrendingDown,
-    Clock,
     Award,
     AlertTriangle,
     Plus,
     AlertCircle,
+    Zap,
+    Brain,
+    Flame,
+    Lightbulb,
 } from 'lucide-react';
 import { Skeleton } from '../components/ui/Skeleton';
 import { useDataStore } from '../stores/dataStore';
@@ -17,7 +18,6 @@ import { CircularProgress } from '../components/ui/CircularProgress';
 import { Card } from '../components/ui/Card';
 import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts';
 import { toast } from '../stores/toastStore';
-import { AnimatedList } from '../components/ui/AnimatedList';
 import { LiquidGlass } from '../components/ui/LiquidGlass';
 
 const MotionCard = motion.create(Card);
@@ -141,17 +141,30 @@ export function Dashboard() {
                             {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
                         </p>
                     </motion.div>
-                    <motion.button
-                        initial={{ opacity: 0, scale: 0.9 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        whileHover={{ scale: 1.05 }}
-                        whileTap={{ scale: 0.95 }}
-                        onClick={() => setShowQuickLog(true)}
-                        className="inline-flex items-center gap-1 sm:gap-1.5 px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl text-[11px] sm:text-sm font-bold bg-gradient-to-br from-blue-500 via-indigo-500 to-purple-600 text-white shadow-xl shadow-blue-500/25 hover:shadow-blue-500/40 transition-all border border-white/10"
-                    >
-                        <Plus size={16} />
-                        Quick Log
-                    </motion.button>
+                    
+                    <div className="flex items-center gap-2">
+                        {streak?.currentStreak && streak.currentStreak >= 3 && (
+                            <motion.div 
+                                initial={{ opacity: 0, scale: 0.5 }}
+                                animate={{ opacity: 1, scale: 1 }}
+                                className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-orange-500/10 border border-orange-500/20 text-orange-500 text-[10px] font-bold uppercase tracking-wider"
+                            >
+                                <Flame size={14} className="animate-pulse" />
+                                {streak.currentStreak} Day Heat!
+                            </motion.div>
+                        )}
+                        <motion.button
+                            initial={{ opacity: 0, scale: 0.9 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            whileHover={{ scale: 1.05 }}
+                            whileTap={{ scale: 0.95 }}
+                            onClick={() => setShowQuickLog(true)}
+                            className="inline-flex items-center gap-1 sm:gap-1.5 px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl text-[11px] sm:text-sm font-bold bg-gradient-to-br from-blue-500 via-indigo-500 to-purple-600 text-white shadow-xl shadow-blue-500/25 hover:shadow-blue-500/40 transition-all border border-white/10"
+                        >
+                            <Plus size={16} />
+                            Quick Log
+                        </motion.button>
+                    </div>
                 </div>
 
                 {/* Alert Banner — compact */}
@@ -176,28 +189,30 @@ export function Dashboard() {
                 <section>
                     <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-5 overflow-x-auto pb-2 scrollbar-hide">
                         {[
-                            { label: 'Streak', value: `${streak?.currentStreak || 0}`, sub: 'days', icon: Award, color: 'text-text-primary' },
-                            { label: 'Today', value: `${todayHours}h`, sub: todayHours >= 11 ? 'Great!' : todayHours >= 6 ? 'On track' : 'Below target', icon: todayHours >= 6 ? TrendingUp : TrendingDown, color: todayHours >= 6 ? 'text-status-ok' : 'text-accent-primary' },
-                            { label: 'Total', value: `${insights?.totalHours || 0}h`, sub: 'all time', icon: Clock, color: 'text-text-primary' },
-                            { label: 'Consist', value: `${insights?.consistencyPercent || 0}%`, sub: 'active', icon: (insights?.consistencyPercent || 0) >= 70 ? TrendingUp : TrendingDown, color: (insights?.consistencyPercent || 0) >= 70 ? 'text-status-ok' : 'text-text-primary' },
+                            { label: 'Streak', value: `${streak?.currentStreak || 0}`, sub: streak?.streakAtRisk ? 'At Risk!' : 'Active', icon: Flame, color: streak?.currentStreak && streak.currentStreak > 0 ? 'text-orange-500' : 'text-text-disabled' },
+                            { label: 'Today', value: `${todayHours}h`, sub: todayHours >= 2 ? 'Great!' : todayHours >= 0.5 ? 'Active' : 'Missing', icon: Zap, color: todayHours >= 0.5 ? 'text-status-ok' : 'text-accent-primary' },
+                            { label: 'Total', value: `${insights?.totalHours || 0}h`, sub: 'all time', icon: Award, color: 'text-text-primary' },
+                            { label: 'Focus', value: `${insights?.consistencyPercent || 0}%`, sub: 'consistency', icon: Brain, color: 'text-text-primary' },
                         ].map((metric, i) => (
                             <motion.div
                                 key={metric.label}
                                 initial={{ opacity: 0, y: 20 }}
                                 animate={{ opacity: 1, y: 0 }}
                                 transition={{ delay: i * 0.1, duration: 0.5 }}
-                                className="relative group"
+                                className="relative group min-w-[140px]"
                             >
-                                <LiquidGlass className="premium-card glow-border relative overflow-hidden h-full">
-                                    <div className="p-4 sm:p-5">
+                                <LiquidGlass className={`premium-card glow-border relative overflow-hidden h-full ${metric.label === 'Streak' && streak?.currentStreak && streak.currentStreak > 0 ? 'before:absolute before:inset-0 before:bg-orange-500/5 before:opacity-50' : ''}`}>
+                                    <div className="p-4 sm:p-5 relative z-10">
                                         <p className="text-[10px] sm:text-[11px] font-bold uppercase tracking-[0.2em] mb-1.5 text-text-secondary opacity-60">{metric.label}</p>
-                                        <p className="text-2xl sm:text-4xl font-black text-text-primary text-glow tracking-tighter">{metric.value}</p>
+                                        <div className="flex items-baseline gap-1">
+                                            <p className="text-2xl sm:text-4xl font-black text-text-primary text-glow tracking-tighter">{metric.value}</p>
+                                            {metric.label === 'Streak' && <span className="text-xs font-bold text-text-secondary opacity-40">days</span>}
+                                        </div>
                                         <div className={`flex items-center gap-1.5 mt-2 text-[10px] sm:text-xs font-semibold ${metric.color}`}>
-                                            <metric.icon size={12} />
+                                            <metric.icon size={12} className={metric.label === 'Streak' && streak?.currentStreak ? 'animate-pulse' : ''} />
                                             <span className="truncate opacity-80">{metric.sub}</span>
                                         </div>
                                     </div>
-                                    <div className="absolute top-0 right-0 w-16 h-16 bg-gradient-to-br from-white/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
                                 </LiquidGlass>
                             </motion.div>
                         ))}
@@ -307,42 +322,53 @@ export function Dashboard() {
                     </div>
                 </section>
 
-                {/* Insights */}
-                {insights && (insights.strongestTopic || insights.weakestTopic) && (
-                    <section>
-                        <h2 className="text-xs font-semibold uppercase tracking-wider text-text-secondary mb-3">Insights</h2>
-
-                        <AnimatedList
-                            showGradients={false}
-                            enableArrowNavigation={false}
-                            staggerDelay={80}
-                            items={[
-                                insights.strongestTopic && (
-                                    <Card key="strong" className="p-4 bg-status-ok/10 border border-status-ok/20 shadow-premium">
-                                        <p className="text-[11px] font-semibold uppercase tracking-[0.2em] mb-2 text-status-ok">
-                                            Strongest Topic
-                                        </p>
-                                        <p className="text-lg font-semibold text-text-primary">
-                                            {insights.strongestTopic}
-                                        </p>
-                                    </Card>
-                                ),
-                                insights.weakestTopic && (
-                                    <Card key="weak" className="p-4 bg-status-error/10 border border-status-error/20 shadow-premium">
-                                        <p className="text-[11px] font-semibold uppercase tracking-[0.2em] mb-2 text-status-error">
-                                            Needs Work
-                                        </p>
-                                        <p className="text-lg font-semibold text-text-primary">
-                                            {insights.weakestTopic}
-                                        </p>
-                                    </Card>
-                                ),
-                            ].filter(Boolean) as React.ReactNode[]}
-                        />
+                {/* Insights & Tips */}
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+                    <section className="lg:col-span-2">
+                        <h2 className="text-xs font-bold uppercase tracking-widest text-text-secondary mb-4 opacity-60 italic">Psychology Insights</h2>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            {insights?.strongestTopic && (
+                                <LiquidGlass key="strong" className="p-4 bg-status-ok/5 border border-status-ok/20 shadow-premium group hover:bg-status-ok/10 transition-colors">
+                                    <div className="flex items-center gap-2 mb-2">
+                                        <Award size={14} className="text-status-ok" />
+                                        <p className="text-[11px] font-bold uppercase tracking-widest text-status-ok">Mastery Field</p>
+                                    </div>
+                                    <p className="text-lg font-bold text-text-primary truncate">
+                                        {insights.strongestTopic}
+                                    </p>
+                                    <p className="text-[10px] text-text-secondary mt-1 italic">Highest confidence & accuracy</p>
+                                </LiquidGlass>
+                            )}
+                            {insights?.weakestTopic && (
+                                <LiquidGlass key="weak" className="p-4 bg-status-error/5 border border-status-error/20 shadow-premium group hover:bg-status-error/10 transition-colors">
+                                    <div className="flex items-center gap-2 mb-2">
+                                        <Brain size={14} className="text-status-error" />
+                                        <p className="text-[11px] font-bold uppercase tracking-widest text-status-error">Growth Area</p>
+                                    </div>
+                                    <p className="text-lg font-bold text-text-primary truncate">
+                                        {insights.weakestTopic}
+                                    </p>
+                                    <p className="text-[10px] text-text-secondary mt-1 italic">Prioritize for next review session</p>
+                                </LiquidGlass>
+                            )}
+                        </div>
                     </section>
-                )}
 
-            </div>
+                    <section>
+                        <h2 className="text-xs font-bold uppercase tracking-widest text-text-secondary mb-4 opacity-60 italic">Weekly Wisdom</h2>
+                        <LiquidGlass className="p-5 border-border-subtle bg-console-surface shadow-premium h-full relative overflow-hidden group">
+                            <Lightbulb size={24} className="text-amber-500 mb-3 group-hover:scale-110 transition-transform" />
+                            <h3 className="text-sm font-bold text-text-primary mb-2">The Feynman Technique</h3>
+                            <p className="text-xs text-text-secondary leading-relaxed italic">
+                                "If you can't explain it simply, you don't understand it well enough." Try the 'Simple Explanation' field in your topics!
+                            </p>
+                            <div className="absolute -bottom-2 -right-2 opacity-5 scale-150 pointer-events-none">
+                                <Zap size={80} />
+                            </div>
+                        </LiquidGlass>
+                    </section>
+                </div>
+            </div >
 
             {/* Quick Log Modal */}
             <Modal

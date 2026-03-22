@@ -1,0 +1,150 @@
+/* ============================================================
+   INTERVIEW SIMULATOR & HISTORY Styles
+   Refactored for Learning OS 2.0 Design System
+   ============================================================ */
+
+.interview-shell {
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--console-bg);
+  color: var(--text-primary);
+  position: relative;
+  isolation: isolate;
+}
+
+.interview-shell::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(300px 220px at 16% 16%, rgba(255, 255, 255, 0.08), transparent 70%),
+    radial-gradient(360px 260px at 82% 10%, rgba(255, 255, 255, 0.06), transparent 75%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+.interview-hero {
+  position: relative;
+  padding: 28px;
+  border-radius: 24px;
+  background:
+    radial-gradient(220px 200px at 12% 18%, rgba(255, 255, 255, 0.06), transparent 72%),
+    linear-gradient(135deg, var(--console-surface), var(--console-bg));
+  border: 1px solid var(--border-subtle);
+  box-shadow: var(--elevation-3);
+  overflow: hidden;
+}
+
+.interview-topbar {
+  height: 56px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 20px;
+  background: color-mix(in srgb, var(--console-surface) 90%, transparent);
+  border-bottom: 1px solid var(--border-subtle);
+  backdrop-filter: blur(16px);
+}
+
+.interview-stat-card {
+  background: var(--console-surface-2);
+  border: 1px solid var(--border-subtle);
+  border-radius: 16px;
+  padding: 14px 16px;
+  box-shadow: var(--elevation-2);
+}
+
+.interview-card {
+  background: color-mix(in srgb, var(--console-surface) 90%, transparent);
+  border: 1px solid var(--border-subtle);
+  border-radius: 18px;
+  padding: 18px;
+  box-shadow: var(--elevation-2);
+  backdrop-filter: blur(12px);
+  transition: all 0.2s;
+}
+
+.interview-card:hover {
+  transform: translateY(-2px);
+  border-color: var(--accent-primary);
+  box-shadow: var(--elevation-3);
+}
+
+.interview-progress {
+  height: 8px;
+  background: var(--console-surface-2);
+  border-radius: 999px;
+  border: 1px solid var(--border-subtle);
+  overflow: hidden;
+}
+
+.interview-progress-bar {
+  height: 100%;
+  background: linear-gradient(90deg, var(--accent-primary), var(--accent-dark));
+  box-shadow: 0 0 14px var(--accent-soft);
+}
+
+.interview-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  font-weight: 600;
+  font-size: 12px;
+  background: var(--console-surface-2);
+  border: 1px solid var(--border-subtle);
+}
+
+.interview-chip.is-success {
+  background: var(--status-ok-soft);
+  color: var(--status-ok);
+  border-color: var(--status-ok);
+}
+
+/* Resize Handles */
+.interview-resize-handle {
+  background: transparent;
+  transition: background 0.2s;
+}
+
+.interview-resize-handle:hover {
+  background: var(--console-surface-2);
+}
+
+.interview-resize-grip {
+  width: 36px;
+  height: 2px;
+  border-radius: 999px;
+  background: var(--border-strong);
+}
+
+.interview-resize-grip.is-vertical {
+  width: 2px;
+  height: 36px;
+}
+
+.interview-footer {
+  background: color-mix(in srgb, var(--console-bg) 92%, transparent);
+  backdrop-filter: blur(12px);
+  border-top: 1px solid var(--border-subtle);
+}
+
+/* Interview Responsive Logic (Migrated from chunk23) */
+@media (max-width: 767px) {
+  .interview-shell {
+    height: 100dvh !important;
+  }
+
+  .interview-topbar {
+    padding: 8px 12px !important;
+    flex-wrap: wrap !important;
+    gap: 8px !important;
+  }
+
+  .interview-pane,
+  .interview-editor-pane {
+    width: 100% !important;
+  }
+}

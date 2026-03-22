@@ -13,12 +13,13 @@ const variantStyles: Record<BadgeVariant, string> = {
     default: 'bg-console-surface-2 text-text-secondary border-border-subtle',
     secondary: 'bg-console-surface-2 text-text-secondary border-border-subtle',
     outline: 'bg-transparent text-text-secondary border-border-subtle',
-    success: 'bg-status-ok/10 text-status-ok border-status-ok/20',
-    warning: 'bg-status-warning/10 text-status-warning border-status-warning/20',
-    error: 'bg-status-error/10 text-status-error border-status-error/20',
+    success: 'bg-status-ok-soft text-status-ok border-status-ok/30',
+    warning: 'bg-status-warning-soft text-status-warning border-status-warning/30',
+    error: 'bg-status-error-soft text-status-error border-status-error/30',
     info: 'bg-accent-soft text-accent-primary border-accent-soft',
-    purple: 'bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/20',
+    purple: 'bg-accent-soft text-accent-primary border-accent-soft', // Standardized to accent-soft
 };
+
 
 export function Badge({ children, variant = 'default', size = 'sm', className }: BadgeProps) {
     return (

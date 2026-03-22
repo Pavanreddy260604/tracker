@@ -2,7 +2,17 @@ import { createHmac, randomBytes, timingSafeEqual } from 'crypto';
 import { redis } from '../../infrastructure/redis.js';
 
 export interface ProctoringEvent {
-  type: 'tab_switch' | 'focus_loss' | 'fullscreen_exit' | 'mouse_idle' | 'key_pattern' | 'devtools_detected' | 'integrity_violation';
+  type:
+    | 'tab_switch'
+    | 'focus_loss'
+    | 'fullscreen_exit'
+    | 'mouse_idle'
+    | 'key_pattern'
+    | 'devtools_detected'
+    | 'integrity_violation'
+    | 'paste_detected'
+    | 'automation_detected'
+    | 'unknown';
   timestamp: number;
   sessionId: string;
   clientProof: string;
@@ -110,14 +120,6 @@ export class ProctoringAttestationService {
     await this.storeEvent(event);
 
     return true;
-  }
-
-  /**
-   * Generate HMAC proof for an event
-   */
-  generateProof(secret: string, event: Omit<ProctoringEvent, 'clientProof'>): string {
-    const data = `${event.sessionId}:${event.type}:${event.timestamp}:${event.sequenceNumber}`;
-    return createHmac(this.HMAC_ALGORITHM, secret).update(data).digest('hex');
   }
 
   /**
@@ -242,7 +244,7 @@ export class ProctoringAttestationService {
     };
   }
 
-  private generateProof(secret: string, event: ProctoringEvent): string {
+  private generateProof(secret: string, event: Omit<ProctoringEvent, 'clientProof'>): string {
     const data = `${event.sessionId}:${event.type}:${event.timestamp}:${event.sequenceNumber}`;
     return createHmac(this.HMAC_ALGORITHM, secret).update(data).digest('hex');
   }

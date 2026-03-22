@@ -16,7 +16,7 @@ export function MasterScriptReaderPage() {
 
     if (!scriptId) {
         return (
-            <div className="min-h-screen bg-zinc-950 text-zinc-100 flex items-center justify-center">
+            <div className="min-h-screen bg-console-bg text-text-primary flex items-center justify-center">
                 Missing master script id.
             </div>
         );

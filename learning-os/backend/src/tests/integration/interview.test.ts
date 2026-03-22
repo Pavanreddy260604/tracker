@@ -4,6 +4,8 @@ import type { NextFunction, Request, Response } from 'express';
 import { jest } from '@jest/globals';
 import interviewRoutes from '../../routes/interview.js';
 import * as interviewService from '../../services/interview.service.js';
+import { executionQueueService } from '../../services/execution/executionQueue.service.js';
+import { proctoringAttestationService } from '../../services/proctoring/attestation.service.js';
 
 jest.mock('../../middleware/auth.js', () => ({
     authenticate: (req: Request & { userId?: string }, _res: Response, next: NextFunction) => {
@@ -12,16 +14,22 @@ jest.mock('../../middleware/auth.js', () => ({
     },
 }));
 
-jest.mock('../../middleware/rateLimiter.js', () => ({
-    apiLimiter: (_req: Request, _res: Response, next: NextFunction) => next(),
-    interviewWriteLimiter: (_req: Request, _res: Response, next: NextFunction) => next(),
-    writeLimiter: (_req: Request, _res: Response, next: NextFunction) => next(),
+jest.mock('../../middleware/advancedRateLimiter.js', () => ({
+    rateLimits: {
+        interviewStart: (_req: Request, _res: Response, next: NextFunction) => next(),
+        write: (_req: Request, _res: Response, next: NextFunction) => next(),
+        codeExecution: (_req: Request, _res: Response, next: NextFunction) => next(),
+        proctoring: (_req: Request, _res: Response, next: NextFunction) => next(),
+        aiChat: (_req: Request, _res: Response, next: NextFunction) => next(),
+        api: (_req: Request, _res: Response, next: NextFunction) => next(),
+    },
 }));
 
 jest.mock('../../services/interview.service.js', () => ({
     startInterview: jest.fn(),
     nextSection: jest.fn(),
     submitSection: jest.fn(),
+    getSession: jest.fn(),
     updateProctoring: jest.fn(),
     getAnalytics: jest.fn(),
     submitCode: jest.fn(),
@@ -29,9 +37,49 @@ jest.mock('../../services/interview.service.js', () => ({
     chatWithAI: jest.fn(),
     endInterview: jest.fn(),
     getHistory: jest.fn(),
-    getSession: jest.fn(),
     deleteSession: jest.fn(),
     clearHistory: jest.fn(),
+}));
+
+jest.mock('../../services/execution/executionQueue.service.js', () => ({
+    executionQueueService: {
+        enqueue: jest.fn(),
+        waitForResult: jest.fn(),
+    },
+}));
+
+jest.mock('../../services/proctoring/attestation.service.js', () => ({
+    proctoringAttestationService: {
+        generateSessionSecret: jest.fn(),
+        verifyEvent: jest.fn(),
+        assessViolation: jest.fn(),
+    },
+}));
+
+jest.mock('../../infrastructure/redis.js', () => ({
+    redis: {
+        lrange: jest.fn().mockResolvedValue([]),
+    },
+}));
+
+jest.mock('../../infrastructure/monitoring.js', () => ({
+    logger: {
+        audit: jest.fn(),
+        info: jest.fn(),
+        error: jest.fn(),
+        security: jest.fn(),
+    },
+    interviewMetrics: {
+        interviewStarted: { add: jest.fn() },
+        interviewCompleted: { add: jest.fn() },
+        interviewTerminated: { add: jest.fn() },
+        proctoringViolation: { add: jest.fn() },
+        aiRequest: { add: jest.fn() },
+        aiRequestFailed: { add: jest.fn() },
+        codeExecuted: { add: jest.fn() },
+        codeExecutionFailed: { add: jest.fn() },
+        scoreDistribution: { record: jest.fn() },
+    },
 }));
 
 const app = express();
@@ -47,8 +95,14 @@ describe('Interview Routes Integration', () => {
         (interviewService.startInterview as jest.Mock).mockResolvedValue({
             _id: 'session123',
             status: 'start',
-            sections: [{ id: 'section-1' }]
+            sections: [{ id: 'section-1' }],
+            toObject: () => ({
+                _id: 'session123',
+                status: 'start',
+                sections: [{ id: 'section-1' }],
+            }),
         });
+        (proctoringAttestationService.generateSessionSecret as jest.Mock).mockResolvedValue('proof-secret');
 
         const response = await request(app)
             .post('/api/interview/start')
@@ -70,6 +124,7 @@ describe('Interview Routes Integration', () => {
 
         expect(response.status).toBe(200);
         expect(response.body.success).toBe(true);
+        expect(response.body.data.proctoringSecret).toBe('proof-secret');
         expect(interviewService.startInterview).toHaveBeenCalledWith(expect.objectContaining({
             userId: 'user123',
             language: 'javascript'
@@ -77,10 +132,34 @@ describe('Interview Routes Integration', () => {
     });
 
     it('submits code and returns the normalized controller response', async () => {
-        (interviewService.submitCode as jest.Mock).mockResolvedValue({
-            status: 'pass',
-            score: 100,
-            summary: { passed: 1, total: 1 }
+        (interviewService.getSession as jest.Mock).mockResolvedValue({
+            currentSectionIndex: 0,
+            config: { language: 'javascript' },
+            sections: [
+                {
+                    questions: [
+                        {
+                            type: 'coding',
+                            questionId: 'question-1',
+                            testCases: [{ input: '[2,7,11,15],9', expectedOutput: '[0,1]' }],
+                        },
+                    ],
+                },
+            ],
+        });
+        (executionQueueService.enqueue as jest.Mock).mockResolvedValue('job-1');
+        (executionQueueService.waitForResult as jest.Mock).mockResolvedValue({
+            status: 'completed',
+            executionTimeMs: 15,
+            results: [
+                {
+                    testCaseIndex: 0,
+                    actualOutput: '[0,1]',
+                    stdout: '',
+                    stderr: '',
+                    passed: true,
+                },
+            ],
         });
 
         const response = await request(app)
@@ -95,12 +174,14 @@ describe('Interview Routes Integration', () => {
         expect(response.body.success).toBe(true);
         expect(response.body.data.status).toBe('pass');
         expect(response.body.data.score).toBe(100);
-        expect(interviewService.submitCode).toHaveBeenCalledWith({
-            userId: 'user123',
-            sessionId: 'session123',
-            questionIndex: 0,
-            code: 'function twoSum() { return [0, 1]; }'
-        });
+        expect(executionQueueService.enqueue).toHaveBeenCalledWith(
+            'javascript',
+            'function twoSum() { return [0, 1]; }',
+            [{ input: '[2,7,11,15],9', expectedOutput: '[0,1]' }],
+            'session123',
+            'user123',
+            'question-1'
+        );
     });
 
     it('surfaces service validation errors for unsupported languages', async () => {

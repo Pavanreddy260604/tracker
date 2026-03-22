@@ -118,7 +118,7 @@ ${study.keyTakeaways || 'None'}
 
         this.syncToVectorSafe({
             _id: study._id.toString(),
-            userId: study.user.toString(),
+            userId: study.userId.toString(),
             type: 'ProjectStudy',
             title: study.projectName,
             content: content.trim(),

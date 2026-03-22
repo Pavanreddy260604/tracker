@@ -28,6 +28,17 @@ export function useSpeech(): SpeechHook {
     const silenceStartRef = useRef<number | null>(null);
     const hasDetectedAudioRef = useRef(false);
 
+    const stopVolumeMonitoring = useCallback(() => {
+        if (animationFrameRef.current) cancelAnimationFrame(animationFrameRef.current);
+        streamRef.current?.getTracks().forEach(track => track.stop());
+        streamRef.current = null;
+        // Don't close context, just suspend it to reuse
+        void audioContextRef.current?.suspend();
+        silenceStartRef.current = null;
+        hasDetectedAudioRef.current = false;
+        setVolume(0);
+    }, []);
+
     // Initial STT setup
     useEffect(() => {
         const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
@@ -99,7 +110,7 @@ export function useSpeech(): SpeechHook {
             stopVolumeMonitoring();
             window.speechSynthesis.cancel();
         };
-    }, []);
+    }, [stopVolumeMonitoring]);
 
     const getMicErrorMessage = (err: any): string => {
         const name = err?.name || err?.error || '';
@@ -189,16 +200,6 @@ export function useSpeech(): SpeechHook {
             console.warn('Volume monitoring failed:', err);
             return { ok: false, message: getMicErrorMessage(err) };
         }
-    };
-
-    const stopVolumeMonitoring = () => {
-        if (animationFrameRef.current) cancelAnimationFrame(animationFrameRef.current);
-        streamRef.current?.getTracks().forEach(track => track.stop());
-        // Don't close context, just suspend it to reuse
-        audioContextRef.current?.suspend();
-        silenceStartRef.current = null;
-        hasDetectedAudioRef.current = false;
-        setVolume(0);
     };
 
     const startListening = useCallback(async () => {

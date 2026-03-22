@@ -6,9 +6,9 @@ import mongoose, { Document, Schema } from 'mongoose';
  */
 
 export type BackendCategory = 'node' | 'database' | 'auth' | 'api' | 'system-design' | 'devops' | 'other';
-export type TopicType = 'theory' | 'feature' | 'bug-fix' | 'refactor';
-export type TopicStatus = 'completed' | 'in-progress' | 'revisit';
-export type ReviewStage = 1 | 2 | 3 | 4; // 1=Day 1, 2=Day 4, 3=Day 7, 4=Done
+export type TopicType = 'theory' | 'feature' | 'bug-fix' | 'refactor' | 'optimization';
+export type TopicStatus = 'completed' | 'in_progress' | 'planned';
+export type ReviewStage = 1 | 2 | 3 | 4 | 5;
 
 export interface IBackendTopic extends Document {
     userId: mongoose.Types.ObjectId;
@@ -20,9 +20,9 @@ export interface IBackendTopic extends Document {
     bugsFaced: string;
     notes: string;
     date: string; // YYYY-MM-DD
-    // SRS (1-4-7 Method)
+    // SRS (1-3-7-30 method)
     nextReviewDate?: string;
-    reviewStage?: number; // 1, 2, 3, 4 (Done)
+    reviewStage?: number;
     // Backend Topics 2.0
     subTopics?: {
         id: string;
@@ -30,6 +30,10 @@ export interface IBackendTopic extends Document {
         isCompleted: boolean;
     }[];
     auditScore?: number;
+    difficulty?: 'beginner' | 'intermediate' | 'advanced';
+    timeSpent?: string;
+    confidenceLevel?: number; // 1-5 (Phychology: Metacognition)
+    simpleExplanation?: string; // Feynman Technique
     resources?: {
         title: string;
         url: string;
@@ -110,10 +114,31 @@ const backendTopicSchema = new Schema<IBackendTopic>(
         reviewStage: {
             type: Number,
             default: 1, // Start at Stage 1 (Review in 1 day)
+            min: 1,
+            max: 5,
         },
         auditScore: {
             type: Number,
             default: 0,
+        },
+        difficulty: {
+            type: String,
+            enum: ['beginner', 'intermediate', 'advanced'],
+        },
+        timeSpent: {
+            type: String,
+            maxlength: [100, 'Time spent cannot exceed 100 characters'],
+        },
+        confidenceLevel: {
+            type: Number,
+            min: 1,
+            max: 5,
+            default: 3,
+        },
+        simpleExplanation: {
+            type: String,
+            default: '',
+            maxlength: [2000, 'Explanation cannot exceed 2000 characters'],
         },
     },
     {

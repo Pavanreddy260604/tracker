@@ -231,7 +231,7 @@ export class SandboxedExecutionService {
       });
 
       let exitCode = 0;
-      let status = 'success';
+      let status: ExecutionResult['status'] = 'success';
       
       try {
         const result = await Promise.race([waitPromise, timeoutPromise]);

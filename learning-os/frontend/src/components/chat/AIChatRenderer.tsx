@@ -41,8 +41,8 @@ export const getCodeId = (code: string, lang?: string) => {
 
 export const getProviderIcon = (provider?: string, size = 14) => {
     switch (provider) {
-        case 'Groq': return <Zap size={size} className="text-orange-400" />;
-        case 'Local': return <Bot size={size} className="text-blue-400" />;
+        case 'Groq': return <Zap size={size} className="text-status-warning" />;
+        case 'Local': return <Bot size={size} className="text-accent-primary" />;
         default: return <Cloud size={size} className="text-accent-primary" />;
     }
 };
@@ -99,7 +99,7 @@ export const AIChatMarkdown = memo(({
                             const codeId = getCodeId(codeString, match[1]);
                             return (
                                 <div className="chat-code-block my-4">
-                                    <div className="chat-code-toolbar flex items-center justify-between px-4 py-2 bg-console-surface-3/50 border-b border-white/5 rounded-t-xl">
+                                    <div className="chat-code-toolbar flex items-center justify-between px-4 py-2 bg-console-surface-3/50 border-b border-border-subtle rounded-t-xl">
                                         <span className="text-[10px] font-bold uppercase tracking-widest text-text-tertiary opacity-60">{match[1]}</span>
                                         {handleCopyCode && (
                                             <button
@@ -131,23 +131,23 @@ export const AIChatMarkdown = memo(({
                             );
                         }
                         return (
-                            <code className={cn("px-1.5 py-0.5 rounded bg-white/10 text-accent-primary font-mono text-[0.9em]", className)} {...props}>
+                            <code className={cn("px-1.5 py-0.5 rounded bg-accent-primary/10 text-accent-primary font-mono text-[0.9em]", className)} {...props}>
                                 {children}
                             </code>
                         );
                     },
                     table({ children }: any) {
                         return (
-                            <div className="chat-table-wrap my-4 rounded-xl border border-white/5 overflow-hidden">
+                            <div className="chat-table-wrap my-4 rounded-xl border border-border-subtle overflow-hidden">
                                 <table className="w-full text-sm border-collapse">{children}</table>
                             </div>
                         );
                     },
                     th({ children }: any) {
-                        return <th className="px-4 py-2 bg-white/5 text-left font-bold text-text-secondary border-b border-white/5">{children}</th>;
+                        return <th className="px-4 py-2 bg-console-surface text-left font-bold text-text-secondary border-b border-border-subtle">{children}</th>;
                     },
                     td({ children }: any) {
-                        return <td className="px-4 py-2 border-b border-white/5 last:border-0">{children}</td>;
+                        return <td className="px-4 py-2 border-b border-border-subtle last:border-0">{children}</td>;
                     },
                     p({ children }) {
                         return <p className="mb-4 last:mb-0 leading-relaxed text-text-secondary">{children}</p>;
@@ -167,11 +167,11 @@ export const AIChatMarkdown = memo(({
             </ReactMarkdown>
 
             {sources.length > 0 && (
-                <div className="flex flex-wrap gap-2 mt-2 pt-4 border-t border-white/5">
+                <div className="flex flex-wrap gap-2 mt-2 pt-4 border-t border-border-subtle">
                     <span className="text-[10px] font-bold uppercase tracking-wider text-text-tertiary w-full mb-1">Sources Used:</span>
                     {sources.map((source, i) => (
-                        <div key={i} className="flex items-center gap-1.5 px-2 py-1 bg-white/5 border border-white/5 rounded-md">
-                            <Zap size={10} className="text-orange-400" />
+                        <div key={i} className="flex items-center gap-1.5 px-2 py-1 bg-console-surface border border-border-subtle rounded-md">
+                            <Zap size={10} className="text-status-warning" />
                             <span className="text-[11px] font-medium text-text-secondary truncate max-w-[150px]">{source}</span>
                         </div>
                     ))}

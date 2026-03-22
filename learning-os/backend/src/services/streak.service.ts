@@ -37,7 +37,7 @@ export const calculateStreak = async (
                 },
             },
         },
-        { $match: { totalHours: { $gte: 1 } } },
+        { $match: { totalHours: { $gte: 0.5 } } },
         { $sort: { date: -1 } },
         { $project: { date: 1, _id: 0 } },
     ]);
@@ -134,7 +134,7 @@ export const checkInactivity = async (
                 totalHours: { $add: ['$dsaHours', '$backendHours', '$projectHours'] },
             },
         },
-        { $match: { totalHours: { $gte: 1 } } },
+        { $match: { totalHours: { $gte: 0.5 } } },
         { $sort: { date: -1 } },
         { $limit: 1 },
         { $project: { date: 1 } },

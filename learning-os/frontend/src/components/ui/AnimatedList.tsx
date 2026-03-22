@@ -54,6 +54,15 @@ export function AnimatedList({
         };
     }, [updateGradients, items.length]);
 
+    const scrollToIndex = useCallback((index: number) => {
+        const el = containerRef.current;
+        if (!el) return;
+        const child = el.children[index] as HTMLElement;
+        if (child) {
+            child.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+        }
+    }, []);
+
     // Keyboard navigation
     useEffect(() => {
         if (!enableArrowNavigation) return;
@@ -84,16 +93,7 @@ export function AnimatedList({
 
         window.addEventListener('keydown', handleKeyDown);
         return () => window.removeEventListener('keydown', handleKeyDown);
-    }, [enableArrowNavigation, activeIndex, items, onItemSelect]);
-
-    const scrollToIndex = (index: number) => {
-        const el = containerRef.current;
-        if (!el) return;
-        const child = el.children[index] as HTMLElement;
-        if (child) {
-            child.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
-        }
-    };
+    }, [enableArrowNavigation, activeIndex, items, onItemSelect, scrollToIndex]);
 
     const handleItemClick = (index: number) => {
         setActiveIndex(index);

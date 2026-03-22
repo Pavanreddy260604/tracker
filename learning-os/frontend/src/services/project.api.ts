@@ -56,7 +56,8 @@ import { baseApi } from './base.api';
 export const projectApi = {
     // Projects (Bibles)
     listProjects: async (_userId?: string): Promise<Bible[]> => {
-        return baseApi.request<Bible[]>('/script/bible');
+        const data = await baseApi.request<Bible[]>('/script/bible');
+        return (data || []).filter(Boolean);
     },
 
     createProject: async (_userId: string, data: Partial<Bible>): Promise<Bible> => {
@@ -72,7 +73,8 @@ export const projectApi = {
 
     // Scenes
     listScenes: async (bibleId: string): Promise<IScene[]> => {
-        return baseApi.request<IScene[]>(`/script/scene/bible/${bibleId}`);
+        const data = await baseApi.request<IScene[]>(`/script/scene/bible/${bibleId}`);
+        return (data || []).filter(Boolean);
     },
 
     createScene: async (bibleId: string, data: Partial<IScene>): Promise<IScene> => {
@@ -124,11 +126,10 @@ export const projectApi = {
     // Critique
     critiqueScene: async (sceneId: string, content?: string): Promise<CritiqueResult> => {
         console.log('[API] critiqueScene payload:', { sceneId, contentLength: content?.length, contentPreview: content?.slice(0, 50) });
-        const data = await baseApi.request<CritiqueResult>(`/script/scene/${sceneId}/critique`, {
+        return baseApi.request<CritiqueResult>(`/script/scene/${sceneId}/critique`, {
             method: 'POST',
             body: JSON.stringify({ content }),
         });
-        return data;
     },
 
     fixScene: async (sceneId: string): Promise<{
@@ -138,7 +139,7 @@ export const projectApi = {
         isSuperior: boolean;
         benchmarkScore: number;
     }> => {
-        const data = await baseApi.request<{
+        return baseApi.request<{
             content: string;
             critique: any;
             auditNotes: string;
@@ -147,7 +148,6 @@ export const projectApi = {
         }>(`/script/scene/${sceneId}/fix`, {
             method: 'POST',
         });
-        return data;
     },
 
     // Export

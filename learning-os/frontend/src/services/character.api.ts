@@ -21,7 +21,8 @@ export interface Character {
 class CharacterApi {
 
     async getCharacters(bibleId: string): Promise<Character[]> {
-        return baseApi.request<Character[]>(`/script/character/bible/${bibleId}`);
+        const data = await baseApi.request<Character[]>(`/script/character/bible/${bibleId}`);
+        return (data || []).filter(Boolean);
     }
 
     async createCharacter(character: Partial<Character>): Promise<Character> {

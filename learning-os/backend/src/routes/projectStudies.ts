@@ -3,18 +3,32 @@ import { z } from 'zod';
 import { ProjectStudy } from '../models/ProjectStudy.js';
 import { authenticate } from '../middleware/auth.js';
 import { writeLimiter } from '../middleware/rateLimiter.js';
+import { activityService } from '../services/activity.service.js';
 import { knowledgeSync } from '../services/knowledgeSync.service.js';
-import { projectAnalyzerService } from '../services/projectAnalyzer.service.js';
 
 const router = Router();
 router.use(authenticate);
 
+const isValidGitHubUrl = (value: string) => {
+    if (!value.trim()) return true;
+
+    try {
+        const url = new URL(value);
+        const segments = url.pathname.split('/').filter(Boolean);
+        return (
+            ['github.com', 'www.github.com'].includes(url.hostname.toLowerCase()) &&
+            segments.length >= 2
+        );
+    } catch {
+        return false;
+    }
+};
+
 const projectStudySchema = z.object({
     projectName: z.string().min(1).max(200),
-    repoUrl: z.string().max(500).refine(val => {
-        if (!val) return true;
-        return val.includes('github.com');
-    }, { message: 'Must be a valid GitHub URL' }).default(''),
+    repoUrl: z.string().max(500).default('').refine(isValidGitHubUrl, {
+        message: 'Please provide a valid GitHub URL',
+    }),
     moduleStudied: z.string().min(1).max(200),
     flowUnderstood: z.boolean().default(false), // Optional boolean flag
     flowUnderstanding: z.string().default(''), // The detailed explanation
@@ -31,6 +45,10 @@ const projectStudySchema = z.object({
         text: z.string(),
         status: z.enum(['todo', 'in-progress', 'done'])
     })).default([]),
+    confidenceLevel: z.number().min(1).max(5).optional(),
+    simpleExplanation: z.string().max(2000).optional(),
+    nextReviewDate: z.string().optional(),
+    reviewStage: z.number().optional(),
 });
 
 router.get('/', async (req: Request, res: Response) => {
@@ -40,7 +58,7 @@ router.get('/', async (req: Request, res: Response) => {
         const limit = Math.min(Math.max(1, requestedLimit), 100); // Cap at 100 max
         const projectName = req.query.project as string;
 
-        const filter: Record<string, unknown> = { user: req.userId };
+        const filter: Record<string, unknown> = { userId: req.userId };
         if (projectName) filter.projectName = projectName;
 
         const [studies, total] = await Promise.all([
@@ -64,7 +82,7 @@ router.get('/', async (req: Request, res: Response) => {
 
 router.get('/:id', async (req: Request, res: Response) => {
     try {
-        const study = await ProjectStudy.findOne({ _id: req.params.id, user: req.userId }).lean();
+        const study = await ProjectStudy.findOne({ _id: req.params.id, userId: req.userId }).lean();
         if (!study) {
             res.status(404).json({ success: false, error: 'Study not found' });
             return;
@@ -84,7 +102,10 @@ router.post('/', writeLimiter, async (req: Request, res: Response) => {
             return;
         }
 
-        const study = await ProjectStudy.create({ ...result.data, user: req.userId });
+        const study = await ProjectStudy.create({ ...result.data, userId: req.userId });
+
+        // Record activity for streak
+        activityService.recordActivity(req.userId!, 'project').catch(err => console.error(err));
 
         // Sync to RAG
         knowledgeSync.syncProjectStudy(study).catch(err => console.error('[ProjectStudy] RAG Sync Error:', err));
@@ -105,7 +126,7 @@ router.patch('/:id/status', async (req: Request, res: Response) => {
         }
 
         const study = await ProjectStudy.findOneAndUpdate(
-            { _id: req.params.id, user: req.userId },
+            { _id: req.params.id, userId: req.userId },
             { $set: { flowUnderstood } },
             { new: true, runValidators: true }
         );
@@ -114,6 +135,9 @@ router.patch('/:id/status', async (req: Request, res: Response) => {
             res.status(404).json({ success: false, error: 'Study not found' });
             return;
         }
+
+        // Record activity for streak
+        activityService.recordActivity(req.userId!, 'project').catch(err => console.error(err));
 
         knowledgeSync.syncProjectStudy(study).catch(err => console.error('[ProjectStudy] RAG Sync Error:', err));
 
@@ -133,7 +157,7 @@ router.put('/:id', writeLimiter, async (req: Request, res: Response) => {
         }
 
         const study = await ProjectStudy.findOneAndUpdate(
-            { _id: req.params.id, user: req.userId },
+            { _id: req.params.id, userId: req.userId },
             { $set: result.data },
             { new: true, runValidators: true }
         );
@@ -155,7 +179,7 @@ router.put('/:id', writeLimiter, async (req: Request, res: Response) => {
 
 router.delete('/:id', writeLimiter, async (req: Request, res: Response) => {
     try {
-        const study = await ProjectStudy.findOneAndDelete({ _id: req.params.id, user: req.userId });
+        const study = await ProjectStudy.findOneAndDelete({ _id: req.params.id, userId: req.userId });
         if (!study) {
             res.status(404).json({ success: false, error: 'Study not found' });
             return;
@@ -171,37 +195,5 @@ router.delete('/:id', writeLimiter, async (req: Request, res: Response) => {
     }
 });
 
-router.post('/:id/analyze', async (req: Request, res: Response) => {
-    try {
-        const id = req.params.id as string;
-        const analysis = await projectAnalyzerService.generateArchitectureMap(id);
-        res.json({ success: true, data: analysis });
-    } catch (error: any) {
-        console.error('Project analysis error:', error);
-        res.status(500).json({ success: false, error: error.message || 'Failed to analyze project' });
-    }
-});
-
-router.post('/:id/validate-flow', async (req: Request, res: Response) => {
-    try {
-        const id = req.params.id as string;
-        const validation = await projectAnalyzerService.validateFlow(id);
-        res.json({ success: true, data: validation });
-    } catch (error: any) {
-        console.error('Flow validation error:', error);
-        res.status(500).json({ success: false, error: error.message || 'Failed to validate flow' });
-    }
-});
-
-router.post('/:id/pulse-audit', async (req: Request, res: Response) => {
-    try {
-        const id = req.params.id as string;
-        const pulse = await projectAnalyzerService.performPulseAnalysis(id);
-        res.json({ success: true, data: pulse });
-    } catch (error: any) {
-        console.error('Pulse audit error:', error);
-        res.status(500).json({ success: false, error: error.message || 'Failed to perform pulse audit' });
-    }
-});
 
 export default router;

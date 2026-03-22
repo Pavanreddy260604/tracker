@@ -251,30 +251,30 @@ export function InterviewSetup() {
                                     <label className="sw-label flex items-center gap-2">
                                         <Shield size={14} /> Strict Mode
                                     </label>
-                                    <p className="text-xs text-gray-500 mt-1">Enable proctoring and test integrity features</p>
+                                    <p className="text-xs text-text-tertiary mt-1">Enable proctoring and test integrity features</p>
                                 </div>
                                 <button
                                     onClick={() => {
                                         setStrictMode(!strictMode);
                                         if (!strictMode) setEnforceFullscreen(true);
                                     }}
-                                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${strictMode ? 'bg-blue-600' : 'bg-gray-200'}`}
+                                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${strictMode ? 'bg-accent-primary' : 'bg-console-surface-3'}`}
                                 >
-                                    <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${strictMode ? 'translate-x-6' : 'translate-x-1'}`} />
+                                    <span className={`inline-block h-4 w-4 transform rounded-full bg-[color:var(--text-on-accent)] shadow-sm transition-transform ${strictMode ? 'translate-x-6' : 'translate-x-1'}`} />
                                 </button>
                             </div>
 
                             {strictMode && (
-                                <div className="flex items-center justify-between pl-4 border-l-2 border-blue-200">
+                                <div className="flex items-center justify-between pl-4 border-l-2 border-accent-primary/20">
                                     <div>
                                         <label className="sw-label text-sm">Enforce Fullscreen</label>
-                                        <p className="text-xs text-gray-500">Require fullscreen mode during test</p>
+                                        <p className="text-xs text-text-tertiary">Require fullscreen mode during test</p>
                                     </div>
                                     <button
                                         onClick={() => setEnforceFullscreen(!enforceFullscreen)}
-                                        className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${enforceFullscreen ? 'bg-blue-600' : 'bg-gray-200'}`}
+                                        className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${enforceFullscreen ? 'bg-accent-primary' : 'bg-console-surface-3'}`}
                                     >
-                                        <span className={`inline-block h-3 w-3 transform rounded-full bg-white transition-transform ${enforceFullscreen ? 'translate-x-5' : 'translate-x-1'}`} />
+                                        <span className={`inline-block h-3 w-3 transform rounded-full bg-[color:var(--text-on-accent)] shadow-sm transition-transform ${enforceFullscreen ? 'translate-x-5' : 'translate-x-1'}`} />
                                     </button>
                                 </div>
                             )}

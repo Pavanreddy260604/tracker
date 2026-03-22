@@ -124,7 +124,7 @@ export function InterviewRoom() {
     }, 3000);
   }, [session, testTerminated, id, navigate, showAlert]);
 
-  const proctoringSecret = (session as any)?.proctoringSecret || '';
+  const proctoringSecret = session?.proctoringSecret || '';
 
   const {
     violations,
@@ -439,8 +439,8 @@ export function InterviewRoom() {
 
   if (!session) {
     return (
-      <div className="min-h-screen bg-slate-950 flex items-center justify-center">
-        <div className="text-slate-400">Loading test environment...</div>
+      <div className="min-h-screen bg-console-bg flex items-center justify-center">
+        <div className="text-text-tertiary">Loading test environment...</div>
       </div>
     );
   }
@@ -462,12 +462,12 @@ export function InterviewRoom() {
 
   const TestInterface = (
     <div className="h-full flex">
-      <div className="w-5/12 border-r border-slate-800 flex flex-col bg-slate-900">
-        <div className="flex border-b border-slate-800">
+      <div className="w-5/12 border-r border-border-subtle/30 flex flex-col bg-console-bg">
+        <div className="flex border-b border-border-subtle/30">
           <button
             onClick={() => setActiveTab('description')}
             className={`flex-1 py-3 text-sm font-medium transition-colors ${
-              activeTab === 'description' ? 'text-white border-b-2 border-blue-500 bg-slate-800' : 'text-slate-400 hover:text-slate-200'
+              activeTab === 'description' ? 'text-text-primary border-b-2 border-accent-primary bg-console-surface-2/40' : 'text-text-tertiary hover:text-text-secondary'
             }`}
           >
             Problem
@@ -475,7 +475,7 @@ export function InterviewRoom() {
           <button
             onClick={() => setActiveTab('console')}
             className={`flex-1 py-3 text-sm font-medium transition-colors ${
-              activeTab === 'console' ? 'text-white border-b-2 border-blue-500 bg-slate-800' : 'text-slate-400 hover:text-slate-200'
+              activeTab === 'console' ? 'text-text-primary border-b-2 border-accent-primary bg-console-surface-2/40' : 'text-text-tertiary hover:text-text-secondary'
             }`}
           >
             Console
@@ -497,7 +497,7 @@ export function InterviewRoom() {
           {activeTab === 'description' ? (
             <div data-protected-content="true" className="select-none">
               <div className="mb-4">
-                <h1 className="text-xl font-bold text-white mb-2">
+                <h1 className="text-xl font-bold text-text-primary mb-2">
                   {currentQuestionIdx + 1}. {question.problemName}
                 </h1>
                 <span className={`inline-block px-3 py-1 rounded-full text-xs font-medium ${
@@ -577,24 +577,24 @@ export function InterviewRoom() {
 
                   {selectedCase === 'custom' ? (
                     <div>
-                      <label className="text-sm text-slate-400 block mb-2">Custom Input</label>
+                      <label className="text-sm text-text-tertiary block mb-2">Custom Input</label>
                       <textarea
                         value={customInput}
                         onChange={(e) => setCustomInput(e.target.value)}
                         onPaste={(e) => e.preventDefault()}
                         placeholder="Enter input..."
-                        className="w-full h-32 bg-slate-800 border border-slate-700 rounded-lg p-3 text-sm text-slate-200 focus:outline-none focus:border-blue-500"
+                        className="w-full h-32 bg-console-bg border border-border-subtle/50 rounded-lg p-3 text-sm text-text-secondary focus:outline-none focus:border-accent-primary/50"
                       />
                     </div>
                   ) : (
                     <div data-protected-content="true" className="space-y-3 select-none">
                       <div>
-                        <div className="text-xs text-slate-400 mb-1">Input:</div>
-                        <pre className="text-sm text-slate-200 bg-slate-800 rounded p-2">{testCases[selectedCase as number]?.input || ''}</pre>
+                        <div className="text-xs text-text-tertiary mb-1">Input:</div>
+                        <pre className="text-sm text-text-secondary bg-console-bg border border-border-subtle/30 rounded p-2">{testCases[selectedCase as number]?.input || ''}</pre>
                       </div>
                       <div>
-                        <div className="text-xs text-slate-400 mb-1">Expected:</div>
-                        <pre className="text-sm text-green-400 bg-slate-800 rounded p-2">{testCases[selectedCase as number]?.expectedOutput || ''}</pre>
+                        <div className="text-xs text-text-tertiary mb-1">Expected:</div>
+                        <pre className="text-sm text-status-ok bg-console-bg border border-border-subtle/30 rounded p-2">{testCases[selectedCase as number]?.expectedOutput || ''}</pre>
                       </div>
                     </div>
                   )}
@@ -644,22 +644,22 @@ export function InterviewRoom() {
           )}
         </div>
 
-        <div className="border-t border-slate-800 p-4 flex items-center justify-between">
+        <div className="border-t border-border-subtle/30 p-4 flex items-center justify-between">
           <button
             onClick={goToPrevQuestion}
             disabled={currentQuestionIdx === 0}
-            className="flex items-center gap-1 px-3 py-2 rounded-lg bg-slate-800 text-slate-300 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-slate-700 transition-colors"
+            className="flex items-center gap-1 px-3 py-2 rounded-lg bg-console-surface border border-border-subtle/30 text-text-secondary disabled:opacity-50 disabled:cursor-not-allowed hover:bg-console-surface-2 transition-colors"
           >
             <ChevronLeft className="w-4 h-4" />
             Previous
           </button>
-          <span className="text-sm text-slate-400">
+          <span className="text-sm text-text-tertiary">
             Question {currentQuestionIdx + 1} of {section.questions.length}
           </span>
           <button
             onClick={goToNextQuestion}
             disabled={currentQuestionIdx === section.questions.length - 1}
-            className="flex items-center gap-1 px-3 py-2 rounded-lg bg-slate-800 text-slate-300 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-slate-700 transition-colors"
+            className="flex items-center gap-1 px-3 py-2 rounded-lg bg-console-surface border border-border-subtle/30 text-text-secondary disabled:opacity-50 disabled:cursor-not-allowed hover:bg-console-surface-2 transition-colors"
           >
             Next
             <ChevronRight className="w-4 h-4" />
@@ -667,16 +667,16 @@ export function InterviewRoom() {
         </div>
       </div>
 
-      <div className="w-7/12 flex flex-col bg-slate-950">
-        <div className="h-12 border-b border-slate-800 flex items-center justify-between px-4">
-          <div className="text-sm text-slate-400">
+      <div className="w-7/12 flex flex-col bg-console-bg">
+        <div className="h-12 border-b border-border-subtle/30 flex items-center justify-between px-4 bg-console-header/40">
+          <div className="text-sm text-text-tertiary">
             {question.type === 'sql' ? 'SQL' : session.config.language?.toUpperCase() || 'JAVASCRIPT'}
           </div>
           <div className="flex items-center gap-2">
             <button
               onClick={handleRun}
               disabled={isSubmitting}
-              className="flex items-center gap-2 px-4 py-2 bg-slate-800 text-slate-200 rounded-lg hover:bg-slate-700 transition-colors disabled:opacity-50"
+              className="flex items-center gap-2 px-4 py-2 bg-console-surface border border-border-subtle/30 text-text-secondary rounded-lg hover:bg-console-surface-2 transition-colors disabled:opacity-50"
             >
               <Play className="w-4 h-4" />
               Run
@@ -684,7 +684,7 @@ export function InterviewRoom() {
             <button
               onClick={handleSubmit}
               disabled={isSubmitting}
-              className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-500 transition-colors disabled:opacity-50"
+              className="flex items-center gap-2 px-4 py-2 bg-status-ok text-white rounded-lg opacity-90 hover:opacity-100 transition-colors disabled:opacity-50"
             >
               <CheckCircle className="w-4 h-4" />
               Submit Test
@@ -698,7 +698,7 @@ export function InterviewRoom() {
               height="100%"
               defaultLanguage={question.type === 'sql' ? 'sql' : session.config.language || 'javascript'}
               language={question.type === 'sql' ? 'sql' : session.config.language || 'javascript'}
-              theme="vs-dark"
+              theme={document.documentElement.classList.contains('light') ? 'vs' : 'vs-dark'}
               value={code}
               onChange={handleCodeChange}
               onMount={handleEditorMount}
@@ -726,19 +726,19 @@ export function InterviewRoom() {
               onChange={(e) => handleAnswerChange(e.target.value)}
               onPaste={(e) => e.preventDefault()}
               placeholder="Type your answer here..."
-              className="w-full h-full bg-slate-900 text-slate-200 p-6 resize-none focus:outline-none font-mono text-sm"
+              className="w-full h-full bg-console-bg text-text-secondary p-6 resize-none focus:outline-none font-mono text-sm"
             />
           )}
         </div>
 
-        <div className="h-14 border-t border-slate-800 flex items-center justify-between px-4">
-          <div className="text-sm text-slate-400">
+        <div className="h-14 border-t border-border-subtle/30 flex items-center justify-between px-4 bg-console-header/20">
+          <div className="text-sm text-text-tertiary">
             Section {currentSectionIdx + 1} of {session.sections.length}: {section.name}
           </div>
           <button
             onClick={handleSubmitSection}
             disabled={isSubmitting}
-            className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-500 transition-colors disabled:opacity-50 font-medium"
+            className="px-6 py-2 bg-accent-primary text-[color:var(--text-on-accent)] rounded-lg hover:opacity-90 transition-colors disabled:opacity-50 font-medium"
           >
             {currentQuestionIdx < section.questions.length - 1
               ? 'Submit & Next Question'

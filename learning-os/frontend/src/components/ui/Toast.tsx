@@ -3,17 +3,17 @@ import { CheckCircle2, XCircle, Info, AlertTriangle, X } from 'lucide-react';
 import { useToastStore, type ToastType } from '../../stores/toastStore';
 
 const iconMap: Record<ToastType, React.ReactNode> = {
-    success: <CheckCircle2 size={18} className="text-gray-300" />,
-    error: <XCircle size={18} className="text-gray-400" />,
-    info: <Info size={18} className="text-gray-300" />,
-    warning: <AlertTriangle size={18} className="text-gray-400" />,
+    success: <CheckCircle2 size={18} className="text-status-ok" />,
+    error: <XCircle size={18} className="text-status-error" />,
+    info: <Info size={18} className="text-accent-primary" />,
+    warning: <AlertTriangle size={18} className="text-status-warning" />,
 };
 
 const bgMap: Record<ToastType, string> = {
-    success: 'bg-green-500/10 border-green-500/30',
-    error: 'bg-red-500/10 border-red-500/30',
-    info: 'bg-gray-700/10 border-gray-500/30',
-    warning: 'bg-amber-500/10 border-amber-500/30',
+    success: 'bg-status-ok-soft border-status-ok/30',
+    error: 'bg-status-error-soft border-status-error/30',
+    info: 'bg-accent-soft border-accent-primary/30',
+    warning: 'bg-status-warning-soft border-status-warning/30',
 };
 
 export function ToastContainer() {
@@ -30,16 +30,16 @@ export function ToastContainer() {
                         exit={{ opacity: 0, x: 100, scale: 0.95 }}
                         transition={{ type: 'spring', damping: 20, stiffness: 300 }}
                         className={`
-                            flex items-center gap-3 px-4 py-3 rounded-xl border backdrop-blur-sm
-                            shadow-lg pointer-events-auto
+                            flex items-center gap-3 px-4 py-3 rounded-xl border backdrop-blur-xl
+                            shadow-strong pointer-events-auto text-text-primary
                             ${bgMap[toast.type]}
                         `}
                     >
                         {iconMap[toast.type]}
-                        <p className="flex-1 text-sm text-white">{toast.message}</p>
+                        <p className="flex-1 text-sm font-medium text-text-primary">{toast.message}</p>
                         <button
                             onClick={() => removeToast(toast.id)}
-                            className="p-1 rounded-lg hover:bg-white/10 text-gray-400 hover:text-gray-900 transition-colors"
+                            className="p-1 rounded-lg hover:bg-console-surface-2 text-text-tertiary hover:text-text-primary transition-colors"
                         >
                             <X size={14} />
                         </button>

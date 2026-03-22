@@ -106,8 +106,7 @@ export function Settings() {
     const handleExportData = async () => {
         try {
             const response = await api.exportData();
-            // response.data contains the export object
-            const blob = new Blob([JSON.stringify(response.data, null, 2)], { type: 'application/json' });
+            const blob = new Blob([JSON.stringify(response, null, 2)], { type: 'application/json' });
             const url = window.URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
@@ -224,13 +223,16 @@ export function Settings() {
                         </div>
                         <div className="flex items-center gap-2">
                             <Input
-                                type="number"
+                                type="text"
+                                inputMode="numeric"
                                 value={targets.dsaHours}
-                                onChange={(e) => setTargets(t => ({ ...t, dsaHours: Math.max(0, parseInt(e.target.value) || 0) }))}
+                                onChange={(e) => {
+                                    const val = e.target.value.replace(/\D/g, '');
+                                    setTargets(t => ({ ...t, dsaHours: Math.min(24, parseInt(val) || 0) }));
+                                }}
                                 className="w-24 sm:w-20 text-center font-bold"
-                                min={0}
-                                max={24}
                             />
+
                             <span className="text-text-secondary font-medium">hrs</span>
                         </div>
                     </div>
@@ -242,13 +244,16 @@ export function Settings() {
                         </div>
                         <div className="flex items-center gap-2">
                             <Input
-                                type="number"
+                                type="text"
+                                inputMode="numeric"
                                 value={targets.backendHours}
-                                onChange={(e) => setTargets(t => ({ ...t, backendHours: Math.max(0, parseInt(e.target.value) || 0) }))}
+                                onChange={(e) => {
+                                    const val = e.target.value.replace(/\D/g, '');
+                                    setTargets(t => ({ ...t, backendHours: Math.min(24, parseInt(val) || 0) }));
+                                }}
                                 className="w-24 sm:w-20 text-center font-bold"
-                                min={0}
-                                max={24}
                             />
+
                             <span className="text-text-secondary font-medium">hrs</span>
                         </div>
                     </div>
@@ -260,13 +265,16 @@ export function Settings() {
                         </div>
                         <div className="flex items-center gap-2">
                             <Input
-                                type="number"
+                                type="text"
+                                inputMode="numeric"
                                 value={targets.projectHours}
-                                onChange={(e) => setTargets(t => ({ ...t, projectHours: Math.max(0, parseInt(e.target.value) || 0) }))}
+                                onChange={(e) => {
+                                    const val = e.target.value.replace(/\D/g, '');
+                                    setTargets(t => ({ ...t, projectHours: Math.min(24, parseInt(val) || 0) }));
+                                }}
                                 className="w-24 sm:w-20 text-center font-bold"
-                                min={0}
-                                max={24}
                             />
+
                             <span className="text-text-secondary font-medium">hrs</span>
                         </div>
                     </div>
@@ -471,8 +479,8 @@ export function Settings() {
 
             {/* Footer */}
             <div className="text-center text-xs text-text-secondary opacity-60 pt-4">
-                <p>Learning OS v1.1.0 — Premium Build</p>
-                <p className="mt-1">Built with ❤️ for focused learners</p>
+                <p>Learning OS v1.1.0 - Premium Build</p>
+                <p className="mt-1">Built with care for focused learners</p>
             </div>
 
             <AlertDialog

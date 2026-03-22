@@ -21,17 +21,17 @@ export function InfiniteLayout({
     // On mobile: panels become overlays
     if (isMobile) {
         return (
-            <div className="h-full w-full overflow-hidden flex flex-col bg-zinc-900 text-zinc-100 absolute inset-0">
+            <div className="h-full w-full overflow-hidden flex flex-col bg-console-bg text-text-primary absolute inset-0">
                 {/* Main Content - Editor (always visible) */}
-                <div className="flex-1 h-full relative overflow-hidden bg-zinc-900 z-10 flex flex-col">
+                <div className="flex-1 h-full relative overflow-hidden bg-console-bg z-10 flex flex-col">
                     {children}
                 </div>
 
                 {/* Left Panel - Overlay on mobile */}
                 {leftPanelOpen && (
                     <>
-                        <div className="fixed inset-0 bg-black/50 z-40" />
-                        <div className="fixed top-0 left-0 bottom-0 w-[280px] max-w-[85vw] bg-zinc-950 border-r border-zinc-800 z-50 overflow-y-auto custom-scrollbar animate-in slide-in-from-left duration-300">
+                        <div className="fixed inset-0 bg-black/60 backdrop-blur-[2px] z-40" />
+                        <div className="fixed top-0 left-0 bottom-0 w-[280px] max-w-[85vw] bg-console-bg border-r border-border-subtle z-50 overflow-y-auto custom-scrollbar animate-in slide-in-from-left duration-300">
                             {leftPanel}
                         </div>
                     </>
@@ -40,8 +40,8 @@ export function InfiniteLayout({
                 {/* Right Panel - Overlay on mobile */}
                 {rightPanelOpen && (
                     <>
-                        <div className="fixed inset-0 bg-black/50 z-40" />
-                        <div className="fixed top-0 right-0 bottom-0 w-[340px] max-w-[88vw] bg-zinc-950 border-l border-zinc-800 z-50 overflow-y-auto custom-scrollbar animate-in slide-in-from-right duration-300">
+                        <div className="fixed inset-0 bg-black/60 backdrop-blur-[2px] z-40" />
+                        <div className="fixed top-0 right-0 bottom-0 w-[340px] max-w-[88vw] bg-console-bg border-l border-border-subtle z-50 overflow-y-auto custom-scrollbar animate-in slide-in-from-right duration-300">
                             {rightPanel}
                         </div>
                     </>
@@ -58,32 +58,32 @@ export function InfiniteLayout({
     const collapsedWidth = 'w-12';
 
     return (
-        <div className="h-full w-full overflow-hidden flex flex-row bg-zinc-900 text-zinc-100 absolute inset-0">
+        <div className="h-full w-full overflow-hidden flex flex-row bg-console-bg text-text-primary absolute inset-0">
             {/* Left Panel - Structure */}
             <div
                 className={`
-                    border-r border-zinc-800 bg-zinc-950 transition-all duration-300 ease-in-out flex-shrink-0 relative z-20
+                    border-r border-border-subtle/30 bg-console-surface-2/40 backdrop-blur-md transition-all duration-500 ease-in-out flex-shrink-0 relative z-20
                     ${leftPanelOpen ? leftWidth : collapsedWidth}
                 `}
             >
-                <div className={`h-full ${leftInnerWidth} overflow-y-auto custom-scrollbar`}>
+                <div className={`h-full ${leftInnerWidth} overflow-y-auto custom-scrollbar shadow-elevation-3`}>
                     {leftPanel}
                 </div>
             </div>
 
             {/* Main Content - Editor */}
-            <div className="flex-1 h-full relative overflow-hidden bg-zinc-900 z-10 flex flex-col">
+            <div className="flex-1 h-full relative overflow-hidden bg-console-bg z-10 flex flex-col">
                 {children}
             </div>
 
             {/* Right Panel - Context */}
             <div
                 className={`
-                    border-l border-zinc-800 bg-zinc-950 transition-all duration-300 ease-in-out flex-shrink-0 relative z-20
+                    border-l border-border-subtle/30 bg-console-surface-2/40 backdrop-blur-md transition-all duration-500 ease-in-out flex-shrink-0 relative z-20
                     ${rightPanelOpen ? rightWidth : collapsedWidth}
                 `}
             >
-                <div className={`h-full ${rightInnerWidth} overflow-y-auto custom-scrollbar`}>
+                <div className={`h-full ${rightInnerWidth} overflow-y-auto custom-scrollbar shadow-elevation-3`}>
                     {rightPanel}
                 </div>
             </div>

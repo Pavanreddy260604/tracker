@@ -67,14 +67,10 @@ export function Modal({ isOpen, onClose, title, children, size = 'md', className
                         aria-labelledby={title ? "modal-title" : undefined}
                         className={cn(
                             'relative w-full flex flex-col',
-                            /* MOBILE: full screen, no rounded corners */
                             'h-[100dvh] sm:h-auto',
                             'rounded-none sm:rounded-2xl',
                             'sm:max-h-[90vh]',
-                            /* Theme-aware colors */
-                            'bg-white dark:bg-gray-900',
-                            'sm:border sm:border-gray-200 sm:dark:border-white/10',
-                            'sm:shadow-2xl overscroll-contain',
+                            'gcp-modal overscroll-contain',
                             sizeClasses[size as keyof typeof sizeClasses] || sizeClasses.md,
                             className
                         )}
@@ -86,15 +82,15 @@ export function Modal({ isOpen, onClose, title, children, size = 'md', className
                         transition={{ duration: 0.25, ease: [0.32, 0.72, 0, 1] }}
                     >
                         {/* Sticky Header — acts as mobile app bar */}
-                        <div className="flex items-center justify-between px-4 sm:px-6 py-3 sm:py-4 border-b border-gray-200 dark:border-white/10 shrink-0 bg-white dark:bg-gray-900 sticky top-0 z-10">
-                            <h2 id="modal-title" className="text-base sm:text-lg font-semibold text-gray-900 dark:text-white truncate pr-4">
+                        <div className="flex items-center justify-between px-4 sm:px-6 py-3 sm:py-4 border-b border-border-subtle shrink-0 bg-console-surface sticky top-0 z-10">
+                            <h2 id="modal-title" className="text-base sm:text-lg font-semibold text-text-primary truncate pr-4">
                                 {title || '\u00A0'}
                             </h2>
                             <div className="flex items-center gap-1">
                                 {headerAction}
                                 <button
                                     onClick={onClose}
-                                    className="p-2.5 -mr-1 rounded-full hover:bg-gray-100 dark:hover:bg-white/10 text-gray-500 hover:text-gray-900 dark:hover:text-white transition-colors active:scale-95 shrink-0"
+                                    className="p-2.5 -mr-1 rounded-full hover:bg-console-surface-2 text-text-tertiary hover:text-text-primary transition-colors active:scale-95 shrink-0"
                                     aria-label="Close"
                                 >
                                     <X size={22} />

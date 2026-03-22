@@ -87,6 +87,12 @@ export function AssistantPanel({
     );
 
     useEffect(() => {
+        if (hasSelection && selectionKey && selectionKey !== dismissedSelectionTrayKey && scopePreference !== 'selection') {
+            setScopePreference('selection');
+        }
+    }, [hasSelection, selectionKey, dismissedSelectionTrayKey, scopePreference]);
+
+    useEffect(() => {
         const el = scrollRef.current;
         if (!el) return;
         const nearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 120;
@@ -182,13 +188,13 @@ export function AssistantPanel({
     if (!activeProject) {
         return (
             <div className="flex h-full items-center justify-center p-6 text-center">
-                <p className="max-w-[220px] text-xs leading-relaxed text-zinc-500">Open a project and scene to use the assistant.</p>
+                <p className="max-w-[220px] text-xs leading-relaxed text-text-tertiary">Open a project and scene to use the assistant.</p>
             </div>
         );
     }
 
     return (
-        <div className="flex h-full flex-col overflow-hidden bg-zinc-950 text-zinc-100">
+        <div className="flex h-full flex-col overflow-hidden bg-console-bg text-text-primary">
             <AssistantHeader />
 
             <ContextTray
@@ -242,7 +248,7 @@ export function AssistantPanel({
                     <button
                         type="button"
                         onClick={() => scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' })}
-                        className="absolute bottom-4 left-1/2 z-20 -translate-x-1/2 rounded-full border border-zinc-700 bg-zinc-900/95 p-2 text-zinc-400 shadow-xl transition-colors hover:border-zinc-600 hover:text-zinc-100"
+                        className="absolute bottom-4 left-1/2 z-20 -translate-x-1/2 rounded-full border border-border-subtle bg-console-surface/95 p-2 text-text-tertiary shadow-xl transition-colors hover:border-border-strong hover:text-text-primary"
                     >
                         <ChevronDown size={16} />
                     </button>

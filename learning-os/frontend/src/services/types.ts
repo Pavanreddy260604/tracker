@@ -121,7 +121,7 @@ export interface DSAProblem {
     _id: string;
     userId: string;
     problemName: string;
-    platform: string;
+    platform: 'leetcode' | 'gfg' | 'codeforces' | 'codechef' | 'hackerrank' | 'neetcode' | 'other';
     topic: string;
     difficulty: 'easy' | 'medium' | 'hard';
     timeSpent: number;
@@ -129,6 +129,7 @@ export interface DSAProblem {
     patternLearned: string;
     mistakes: string;
     solutionLink: string;
+    notes?: string;
     date: string;
     // DSA 2.0
     solutionCode?: string;
@@ -137,6 +138,8 @@ export interface DSAProblem {
     companyTags?: string[];
     nextReviewDate?: string;
     reviewStage?: number;
+    confidenceLevel?: number;
+    simpleExplanation?: string;
 }
 
 export interface BackendTopic {
@@ -165,8 +168,10 @@ export interface BackendTopic {
     nextReviewDate?: string;
     reviewStage?: number;
     auditScore?: number;
-    difficulty?: 'easy' | 'medium' | 'hard';
+    difficulty?: 'beginner' | 'intermediate' | 'advanced';
     timeSpent?: string;
+    confidenceLevel?: number;
+    simpleExplanation?: string;
 }
 
 export interface ProjectStudy {
@@ -188,6 +193,10 @@ export interface ProjectStudy {
         text: string;
         status: 'todo' | 'in-progress' | 'done';
     }[];
+    nextReviewDate?: string;
+    reviewStage?: number;
+    confidenceLevel?: number;
+    simpleExplanation?: string;
     createdAt: string;
     updatedAt: string;
 }
@@ -249,6 +258,7 @@ export interface InterviewSession {
     overallFeedback: string;
     startedAt: string;
     endedAt?: string;
+    proctoringSecret?: string;
     proctoring?: {
         cameraAccessGranted: boolean;
         fullscreenRequired: boolean;
@@ -302,6 +312,19 @@ export interface InterviewAnalytics {
     topicBreakdown: { topic: string; count: number; averageScore: number }[];
     strengths: string[];
     areasForImprovement: string[];
+}
+
+export interface InterviewProctoringUpdate {
+    tabSwitchCount?: number;
+    idleTime?: number;
+    lastActivityTime?: string;
+    violationType?: string;
+    violationMessage?: string;
+    timestamp?: string;
+    clientProof?: string;
+    sequenceNumber?: number;
+    mouseTrail?: { x: number; y: number; t: number }[];
+    keystrokeDynamics?: { key: string; pressTime: number; releaseTime: number }[];
 }
 
 export interface ChatSession {

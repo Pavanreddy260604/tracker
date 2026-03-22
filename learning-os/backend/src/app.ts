@@ -16,6 +16,7 @@ import aiRoutes from './routes/ai.js';
 import roadmapRoutes from './routes/roadmap.js';
 import interviewRoutes from './routes/interview.js';
 import chatRoutes from './routes/chat.js';
+import obsidianRoutes from './routes/obsidian.js';
 import { activityRoutes } from './routes/activityRoutes.js';
 
 export const createApp = (env: AppEnv) => {
@@ -52,6 +53,7 @@ export const createApp = (env: AppEnv) => {
     app.use('/api/roadmap', roadmapRoutes);
     app.use('/api/interview', interviewRoutes);
     app.use('/api/chat', chatRoutes);
+    app.use('/api/obsidian', obsidianRoutes);
     app.use('/api/activity', activityRoutes);
 
     app.use(notFound);

@@ -207,7 +207,8 @@ class ScriptWriterApi {
     }
 
     async getHistory(_userId?: string): Promise<ScriptHistoryItem[]> {
-        return baseApi.request<ScriptHistoryItem[]>('/script/history');
+        const data = await baseApi.request<ScriptHistoryItem[]>('/script/history');
+        return (data || []).filter(Boolean);
     }
 
     async getScript(id: string): Promise<IScriptDetail> {
@@ -262,12 +263,14 @@ class ScriptWriterApi {
 
     // Admin Master Scripts (PH 23)
     async getMasterScripts(): Promise<IMasterScript[]> {
-        return baseApi.request<IMasterScript[]>('/script/admin/master-scripts');
+        const data = await baseApi.request<IMasterScript[]>('/script/admin/master-scripts');
+        return (data || []).filter(Boolean);
     }
 
     async createMasterScript(data: Partial<IMasterScript> & { file?: File }): Promise<IMasterScript> {
+        const url = '/script/admin/master-scripts';
+
         if (data.file) {
-            // Use FormData for file uploads
             const formData = new FormData();
             if (data.title) formData.append('title', data.title);
             if (data.director) formData.append('director', data.director);
@@ -277,14 +280,13 @@ class ScriptWriterApi {
             if (data.rawContent) formData.append('rawContent', data.rawContent);
             formData.append('file', data.file);
 
-            return baseApi.request<IMasterScript>('/script/admin/master-scripts', {
+            return baseApi.request<IMasterScript>(url, {
                 method: 'POST',
                 body: formData
             });
         }
 
-        // Fallback to standard JSON if no file is provided
-        return baseApi.request<IMasterScript>('/script/admin/master-scripts', {
+        return baseApi.request<IMasterScript>(url, {
             method: 'POST',
             body: JSON.stringify(data)
         });
@@ -304,7 +306,8 @@ class ScriptWriterApi {
 
     async getMasterScriptChunks(id: string, scriptVersion?: string): Promise<any[]> {
         const query = scriptVersion ? `?scriptVersion=${scriptVersion}` : '';
-        return baseApi.request<any[]>(`/script/admin/master-scripts/${id}/chunks${query}`);
+        const data = await baseApi.request<any[]>(`/script/admin/master-scripts/${id}/chunks${query}`);
+        return (data || []).filter(Boolean);
     }
 
     async getMasterScriptReconstruction(id: string, scriptVersion?: string): Promise<MasterScriptReconstruction> {
@@ -357,21 +360,24 @@ class ScriptWriterApi {
     }
 
     async getAssistantHistory(sceneId: string): Promise<any[]> {
-        return baseApi.request<any[]>(`/script/scene/${sceneId}/assistant-history`);
+        const data = await baseApi.request<any[]>(`/script/scene/${sceneId}/assistant-history`);
+        return (data || []).filter(Boolean);
     }
 
     async deleteAssistantHistory(sceneId: string, messageId?: string): Promise<any[]> {
-        return baseApi.request<any[]>(`/script/scene/${sceneId}/assistant-history`, {
+        const data = await baseApi.request<any[]>(`/script/scene/${sceneId}/assistant-history`, {
             method: 'DELETE',
             body: JSON.stringify({ messageId })
         });
+        return (data || []).filter(Boolean);
     }
 
     async updateAssistantHistory(sceneId: string, messageId: string, content: string): Promise<any[]> {
-        return baseApi.request<any[]>(`/script/scene/${sceneId}/assistant-history`, {
+        const data = await baseApi.request<any[]>(`/script/scene/${sceneId}/assistant-history`, {
             method: 'PUT',
             body: JSON.stringify({ messageId, content })
         });
+        return (data || []).filter(Boolean);
     }
 }
 

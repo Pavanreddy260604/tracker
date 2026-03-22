@@ -107,14 +107,14 @@ const SidebarItem = memo(({
                         <button
                             type="button"
                             onClick={onRenameConfirm}
-                            className="p-1.5 rounded-lg bg-[color:var(--accent-primary)] text-white hover:opacity-90 transition-opacity min-w-[28px] min-h-[28px] flex items-center justify-center"
+                            className="p-1.5 rounded-lg bg-[color:var(--accent-primary)] text-console-bg hover:opacity-90 transition-opacity min-w-[28px] min-h-[28px] flex items-center justify-center"
                         >
                             <Check size={14} strokeWidth={2.5} />
                         </button>
                         <button
                             type="button"
                             onClick={onRenameCancel}
-                            className="p-1.5 rounded-lg hover:bg-white/10 text-[color:var(--text-secondary)] min-w-[28px] min-h-[28px] flex items-center justify-center"
+                            className="p-1.5 rounded-lg hover:bg-console-surface-3/50 text-[color:var(--text-secondary)] min-w-[28px] min-h-[28px] flex items-center justify-center"
                         >
                             <X size={14} />
                         </button>
@@ -122,19 +122,19 @@ const SidebarItem = memo(({
                 </div>
             ) : deleteTargetId === session._id ? (
                 <div className="flex items-center justify-between flex-1 w-full gap-2" onClick={e => e.stopPropagation()}>
-                    <span className="text-red-400 text-xs font-semibold truncate">Delete this chat?</span>
+                    <span className="text-status-error text-xs font-semibold truncate">Delete this chat?</span>
                     <div className="flex items-center gap-1.5 shrink-0">
                         <button
                             type="button"
                             onClick={onDeleteConfirm}
-                            className="px-3 py-1 rounded-lg bg-red-500/20 text-red-400 hover:bg-red-500/30 text-xs font-semibold transition-colors min-h-[30px]"
+                            className="px-3 py-1 rounded-lg bg-status-error/20 text-status-error hover:bg-status-error/30 text-xs font-semibold transition-colors min-h-[30px]"
                         >
                             Delete
                         </button>
                         <button
                             type="button"
                             onClick={onDeleteCancel}
-                            className="px-3 py-1 rounded-lg bg-white/5 text-[color:var(--text-secondary)] text-xs font-semibold transition-colors min-h-[30px]"
+                            className="px-3 py-1 rounded-lg bg-console-surface text-[color:var(--text-secondary)] text-xs font-semibold transition-colors min-h-[30px]"
                         >
                             Cancel
                         </button>
@@ -147,14 +147,14 @@ const SidebarItem = memo(({
                         <button
                             type="button"
                             onClick={(e) => onRenameInit(e, session._id, session.title)}
-                            className="p-1.5 rounded-lg hover:bg-white/10 text-[color:var(--text-secondary)] hover:text-[color:var(--text-primary)] transition-colors"
+                            className="p-1.5 rounded-lg hover:bg-console-surface-3/50 text-[color:var(--text-secondary)] hover:text-[color:var(--text-primary)] transition-colors"
                         >
                             <Edit size={15} />
                         </button>
                         <button
                             type="button"
                             onClick={(e) => onDeleteInit(e, session._id)}
-                            className="p-1.5 rounded-lg hover:bg-red-500/15 text-[color:var(--text-secondary)] hover:text-red-400 transition-colors"
+                            className="p-1.5 rounded-lg hover:bg-status-error/20 text-[color:var(--text-secondary)] hover:text-status-error transition-colors"
                         >
                             <Trash2 size={15} />
                         </button>
@@ -206,12 +206,12 @@ const MessageRow = memo(({
             )}>
                 <div className={cn(
                     "w-6 h-6 rounded-lg flex items-center justify-center shrink-0",
-                    msg.role === 'user' ? "bg-console-surface-2" : "chat-avatar"
+                    msg.role === 'user' ? "bg-console-bg/50 border border-border-subtle/30" : "chat-avatar"
                 )}>
                     {msg.role === 'user' ? (
                         <span className="text-[10px] font-bold">YOU</span>
                     ) : (
-                        <Bot size={14} className="text-white" />
+                        <Bot size={14} className="text-console-bg" />
                     )}
                 </div>
                 <span className="text-[11px] font-bold uppercase tracking-wider text-[color:var(--text-tertiary)] opacity-60">
@@ -222,7 +222,7 @@ const MessageRow = memo(({
                     <button
                         onClick={() => onSpeak(msg.content)}
                         className={cn(
-                            "p-1 rounded-md hover:bg-white/10 transition-colors",
+                            "p-1 rounded-md hover:bg-console-surface-3/50 transition-colors",
                             isSpeakingThis ? "text-accent-primary" : "text-text-tertiary opacity-40 hover:opacity-100"
                         )}
                         title={isSpeakingThis ? "Stop speaking" : "Speak message"}
@@ -487,8 +487,8 @@ const ChatInput = memo(({
                                             if (providerModels.length === 0) return null;
                                             
                                             return (
-                                                <div key={provider} className="mb-2 last:mb-0">
-                                                    <div className="px-2 py-1 flex items-center gap-2 border-b border-white/5 mb-1">
+<div key={provider} className="mb-2 last:mb-0">
+                                                    <div className="px-2 py-1 flex items-center gap-2 border-b border-border-subtle/30 mb-1">
                                                         {getProviderIcon(provider, 12)}
                                                         <span className="text-[10px] font-black uppercase tracking-widest text-text-disabled opacity-40">
                                                             {provider}
@@ -507,7 +507,7 @@ const ChatInput = memo(({
                                                                     "w-full flex items-center justify-between px-2 py-2 rounded-xl transition-all duration-150 group/item",
                                                                     selectedModel === model.id 
                                                                         ? "bg-accent-primary/[0.08] text-accent-primary" 
-                                                                        : "hover:bg-white/5 text-text-secondary hover:text-text-primary"
+                                                                        : "hover:bg-console-surface-3/50 text-text-secondary hover:text-text-primary"
                                                                 )}
                                                             >
                                                                 <div className="flex flex-col items-start min-w-0">
@@ -539,13 +539,13 @@ const ChatInput = memo(({
                     <div className="flex-1 flex flex-col min-w-0 min-h-[44px] justify-center ml-1">
                         {/* Integrated Attachment Chips */}
                         {attachments.length > 0 && (
-                            <div className="flex flex-wrap gap-1.5 py-1.5 border-b border-black/5 dark:border-white/5 mb-1.5 animate-in fade-in slide-in-from-top-1 duration-200">
+                            <div className="flex flex-wrap gap-1.5 py-1.5 border-b border-border-subtle/30 mb-1.5 animate-in fade-in slide-in-from-top-1 duration-200">
                                 {attachments.map((file, i) => (
-                                    <div key={i} className="flex items-center gap-1.5 px-2 py-1 rounded-lg bg-black/5 dark:bg-white/5 border border-black/5 dark:border-white/5 text-[10px] text-text-secondary group/chip">
+                                    <div key={i} className="flex items-center gap-1.5 px-2 py-1 rounded-lg bg-console-bg/50 border border-border-subtle/30 text-[10px] text-text-secondary group/chip">
                                         <span className="truncate max-w-[120px]">{file.name}</span>
                                         <button 
                                             onClick={() => removeAttachment(i)}
-                                            className="p-0.5 rounded-md hover:bg-red-500/10 hover:text-red-500 transition-colors"
+                                            className="p-0.5 rounded-md hover:bg-status-error/10 hover:text-status-error transition-colors"
                                         >
                                             <X size={12} />
                                         </button>
@@ -593,7 +593,7 @@ const ChatInput = memo(({
                                 exit={{ opacity: 0, scale: 0.8 }}
                                 type="button" 
                                 onClick={() => fileInputRef.current?.click()}
-                                className="chat-input-icon hover:bg-black/10 dark:hover:bg-white/10 shrink-0" 
+                                className="chat-input-icon hover:bg-console-surface-3/50 shrink-0" 
                                 aria-label="Add attachment"
                             >
                                 <Plus size={22} className="opacity-80" />
@@ -611,7 +611,7 @@ const ChatInput = memo(({
                             type="button" 
                             onClick={toggleRecording}
                             className={cn(
-                                "chat-input-icon hover:bg-black/10 dark:hover:bg-white/10 relative overflow-hidden transition-all duration-300",
+                                "chat-input-icon hover:bg-console-surface-3/50 relative overflow-hidden transition-all duration-300",
                                 isListening && "bg-accent-primary/20 text-accent-primary scale-110 shadow-[0_0_15px_rgba(var(--accent-primary-rgb),0.3)]"
                             )} 
                             aria-label="Voice"
@@ -1010,7 +1010,7 @@ export default function ChatPage() {
             {/* Mobile Sidebar Overlay */}
             {isMobile && sidebarOpen && (
                 <div
-                    className="fixed inset-0 bg-black/50 z-[99]"
+                    className="fixed inset-0 bg-black/60 backdrop-blur-[2px] z-[99]"
                     onClick={() => setSidebarOpen(false)}
                 />
             )}
@@ -1085,7 +1085,7 @@ export default function ChatPage() {
                     <div className="flex items-center gap-1">
                         <button
                             onClick={handleNewChat}
-                            className="chat-icon-button p-2 rounded-lg transition-colors bg-white hover:bg-gray-100 dark:bg-[#1f2937] dark:hover:bg-[#374151] border border-gray-200 dark:border-gray-700 max-sm:flex items-center gap-2 max-sm:px-3 max-sm:py-1.5 max-sm:rounded-full max-sm:shrink-0"
+                            className="chat-icon-button p-2 rounded-lg transition-colors bg-console-surface hover:bg-console-surface-2 border border-border-subtle max-sm:flex items-center gap-2 max-sm:px-3 max-sm:py-1.5 max-sm:rounded-full max-sm:shrink-0"
                             title="New chat"
                         >
                             <Plus size={16} />
@@ -1162,7 +1162,7 @@ export default function ChatPage() {
                                 scrollToBottom('smooth');
                                 setShouldAutoScroll(true);
                             }}
-                            className="chat-scroll-button shadow-lg shadow-black/40"
+                            className="chat-scroll-button shadow-elevation-3"
                             aria-label="Scroll to bottom"
                         >
                             <ArrowDown size={16} />
@@ -1184,7 +1184,7 @@ export default function ChatPage() {
             {/* Exit Confirmation Modal */}
             <AnimatePresence>
                 {showExitConfirm && (
-                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
                         <motion.div
                             initial={{ opacity: 0, scale: 0.95 }}
                             animate={{ opacity: 1, scale: 1 }}
@@ -1210,7 +1210,7 @@ export default function ChatPage() {
                                     </button>
                                     <button
                                         onClick={confirmExit}
-                                        className="flex-1 px-4 py-2.5 rounded-lg font-bold bg-accent-primary text-white hover:opacity-90 transition-opacity"
+                                        className="flex-1 px-4 py-2.5 rounded-lg font-bold bg-accent-primary text-console-bg hover:opacity-90 transition-opacity"
                                     >
                                         Exit
                                     </button>

@@ -6,6 +6,7 @@ import { executionQueueService } from '../services/execution/executionQueue.serv
 import { weightedScoringService } from '../services/evaluation/weightedScoring.service.js';
 import { semanticSystemDesignEvaluator } from '../services/evaluation/semanticSystemDesign.service.js';
 import { proctoringAttestationService } from '../services/proctoring/attestation.service.js';
+import type { ProctoringEvent } from '../services/proctoring/attestation.service.js';
 import { redis } from '../infrastructure/redis.js';
 import { logger, interviewMetrics } from '../infrastructure/monitoring.js';
 import {
@@ -23,6 +24,19 @@ import {
 interface ServiceError extends Error {
   statusCode?: number;
 }
+
+const PROCTORING_EVENT_TYPES: ProctoringEvent['type'][] = [
+  'tab_switch',
+  'focus_loss',
+  'fullscreen_exit',
+  'mouse_idle',
+  'key_pattern',
+  'devtools_detected',
+  'integrity_violation',
+  'paste_detected',
+  'automation_detected',
+  'unknown',
+];
 
 const sendServiceError = (res: Response, error: unknown, fallbackMessage: string) => {
   const err = error as ServiceError;
@@ -78,7 +92,7 @@ export const startInterview = async (req: Request, res: Response): Promise<void>
 
     logger.audit('interview_started', {
       userId: req.userId,
-      sessionId: session._id,
+      sessionId: session._id.toString(),
       sections: parsed.data.sectionsConfig?.length || 0
     });
 
@@ -172,8 +186,11 @@ export const updateProctoring = async (req: Request, res: Response): Promise<voi
     
     // Verify proctoring event attestation if provided
     if (parsed.data.clientProof) {
-      const event = {
-        type: parsed.data.violationType || 'unknown',
+      const eventType = PROCTORING_EVENT_TYPES.includes((parsed.data.violationType || 'unknown') as ProctoringEvent['type'])
+        ? (parsed.data.violationType || 'unknown') as ProctoringEvent['type']
+        : 'unknown';
+      const event: ProctoringEvent = {
+        type: eventType,
         timestamp: new Date(parsed.data.timestamp || Date.now()).getTime(),
         sessionId,
         clientProof: parsed.data.clientProof,
@@ -309,6 +326,7 @@ export const submitCode = async (req: Request, res: Response): Promise<void> => 
     const session = await interviewService.getSession(sessionId, req.userId!);
     const section = session.sections[session.currentSectionIndex];
     const question = section.questions[questionIndex];
+    const testCases = question.testCases ?? [];
 
     // For system design questions, use semantic evaluation
     if (question.type === 'system-design' && userAnswer) {
@@ -317,9 +335,27 @@ export const submitCode = async (req: Request, res: Response): Promise<void> => 
         {
           title: question.problemName,
           requirements: question.systemDesignParams?.requirements || [],
-          constraints: question.systemDesignParams?.constraints || {},
+          constraints: {
+            rps: typeof question.systemDesignParams?.constraints?.rps === 'number'
+              ? question.systemDesignParams.constraints.rps
+              : undefined,
+            dataVolume: typeof question.systemDesignParams?.constraints?.dataVolume === 'string'
+              ? question.systemDesignParams.constraints.dataVolume
+              : undefined,
+            latency: typeof question.systemDesignParams?.constraints?.latency === 'string'
+              ? question.systemDesignParams.constraints.latency
+              : undefined,
+            availability: typeof question.systemDesignParams?.constraints?.availability === 'string'
+              ? question.systemDesignParams.constraints.availability
+              : undefined,
+          },
           expectedComponents: question.systemDesignParams?.expectedComponents || [],
-          rubric: question.systemDesignParams?.scoringCriteria || []
+          rubric: (question.systemDesignParams?.scoringCriteria || []).map((criterion, index) => ({
+            category: `criterion-${index + 1}`,
+            weight: 1,
+            description: criterion,
+            semanticIndicators: [criterion],
+          }))
         }
       );
 
@@ -346,7 +382,7 @@ export const submitCode = async (req: Request, res: Response): Promise<void> => 
     const jobId = await executionQueueService.enqueue(
       session.config.language || 'javascript',
       code || '',
-      question.testCases.map(tc => ({
+      testCases.map(tc => ({
         input: tc.input,
         expectedOutput: tc.expectedOutput
       })),
@@ -381,7 +417,7 @@ export const submitCode = async (req: Request, res: Response): Promise<void> => 
           testResults: result.results.map((r, i) => ({
             index: i,
             input: r.testCaseIndex,
-            expected: question.testCases[i]?.expectedOutput,
+            expected: testCases[i]?.expectedOutput,
             actual: r.actualOutput,
             passed: r.passed,
             error: r.stderr || undefined
@@ -417,6 +453,7 @@ export const runCodeHandler = async (req: Request, res: Response): Promise<void>
     const session = await interviewService.getSession(sessionId, req.userId!);
     const section = session.sections[session.currentSectionIndex];
     const question = section.questions[questionIndex];
+    const testCases = question.testCases ?? [];
 
     // Use execution queue for run (lower priority)
     const jobId = await executionQueueService.enqueue(
@@ -424,7 +461,7 @@ export const runCodeHandler = async (req: Request, res: Response): Promise<void>
       code || '',
       customInput 
         ? [{ input: customInput, expectedOutput: '' }]
-        : question.testCases.slice(0, 2).map(tc => ({
+        : testCases.slice(0, 2).map(tc => ({
             input: tc.input,
             expectedOutput: tc.expectedOutput
           })),

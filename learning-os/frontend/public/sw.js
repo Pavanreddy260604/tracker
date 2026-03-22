@@ -10,6 +10,29 @@ self.addEventListener('activate', (event) => {
 });
 
 self.addEventListener('fetch', (event) => {
-    // Pass-through fetch to satisfy requirement without complex caching yet
-    event.respondWith(fetch(event.request));
+    if (event.request.method !== 'GET') {
+        return;
+    }
+
+    const requestUrl = new URL(event.request.url);
+    if (requestUrl.origin !== self.location.origin) {
+        return;
+    }
+
+    event.respondWith(
+        fetch(event.request).catch(() => {
+            if (event.request.mode === 'navigate') {
+                return new Response('Offline', {
+                    status: 503,
+                    statusText: 'Offline',
+                    headers: { 'Content-Type': 'text/plain' },
+                });
+            }
+
+            return new Response('', {
+                status: 503,
+                statusText: 'Offline',
+            });
+        })
+    );
 });

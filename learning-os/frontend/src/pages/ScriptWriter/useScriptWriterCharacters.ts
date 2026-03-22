@@ -32,8 +32,9 @@ export function useScriptWriterCharacters({ activeProjectId, setError }: UseScri
         setLoadingCharacters(true);
         try {
             const data = await characterApi.getCharacters(projectId);
-            setCharacters(data);
-            setActiveCharacterId((current) => current || data[0]?._id || null);
+            const filtered = (data || []).filter(Boolean);
+            setCharacters(filtered);
+            setActiveCharacterId((current) => current || filtered[0]?._id || null);
         } catch (err) {
             setError(getErrorMessage(err, 'Failed to load characters'));
         } finally {

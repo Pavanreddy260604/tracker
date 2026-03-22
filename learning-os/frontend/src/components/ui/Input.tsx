@@ -26,14 +26,14 @@ export function Input({
             {label && (
                 <label
                     htmlFor={inputId}
-                    className="block text-[10px] sm:text-xs font-medium text-gray-700 dark:text-gray-300"
+                    className="block text-[10px] sm:text-xs font-semibold uppercase tracking-[0.14em] text-text-tertiary"
                 >
                     {label}
                 </label>
             )}
             <div className="relative">
                 {leftIcon && (
-                    <div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">
+                    <div className="absolute left-3 top-1/2 -translate-y-1/2 text-text-tertiary">
                         {leftIcon}
                     </div>
                 )}
@@ -42,14 +42,14 @@ export function Input({
                     type={isPassword && showPassword ? 'text' : type}
                     className={cn(
                         'w-full px-2.5 py-1.5 sm:px-3 sm:py-2 text-xs sm:text-sm min-h-[30px] sm:min-h-[36px] rounded-md sm:rounded-lg transition-colors duration-150',
-                        'bg-gray-50 dark:bg-[#0d1117] border border-gray-200 dark:border-white/10',
-                        'text-gray-900 dark:text-white',
-                        'placeholder-gray-400 dark:placeholder-gray-500',
-                        'hover:border-gray-300 dark:hover:border-white/20',
-                        'focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20',
+                        'bg-console-surface border border-border-subtle',
+                        'text-text-primary',
+                        'placeholder:text-text-disabled',
+                        'hover:border-border-strong',
+                        'focus:outline-none focus:border-accent-primary focus:ring-4 focus:ring-accent-focus/20',
                         leftIcon && 'pl-10',
                         isPassword && 'pr-10',
-                        error && 'border-red-500/50 focus:border-red-500 focus:ring-red-500/10',
+                        error && 'border-status-error/50 focus:border-status-error focus:ring-status-error/10',
                         className
                     )}
                     {...props}
@@ -58,14 +58,14 @@ export function Input({
                     <button
                         type="button"
                         onClick={() => setShowPassword(!showPassword)}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-300 transition-colors"
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-text-tertiary hover:text-text-primary transition-colors"
                     >
                         {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                     </button>
                 )}
             </div>
             {error && (
-                <p className="text-sm text-red-400 animate-slide-down">{error}</p>
+                <p className="text-xs font-medium text-status-error animate-slide-down">{error}</p>
             )}
         </div>
     );

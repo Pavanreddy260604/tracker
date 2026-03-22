@@ -25,19 +25,19 @@ export function EmptyState({
     return (
         <motion.div
             className={cn(
-                'flex flex-col items-center justify-center py-16 px-6 text-center',
+                'flex flex-col items-center justify-center py-16 px-6 text-center rounded-3xl border border-border-subtle bg-console-surface/40 backdrop-blur-sm',
                 className
             )}
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.3 }}
         >
-            <div className="w-16 h-16 rounded-2xl bg-white/5 flex items-center justify-center mb-6">
-                {icon || <FileQuestion size={32} className="text-gray-500" />}
+            <div className="w-16 h-16 rounded-2xl bg-console-surface-2 border border-border-subtle flex items-center justify-center mb-6 shadow-elevation-1">
+                {icon || <FileQuestion size={32} className="text-text-tertiary" />}
             </div>
-            <h3 className="text-lg font-semibold text-white mb-2">{title}</h3>
+            <h3 className="text-lg font-semibold text-text-primary mb-2">{title}</h3>
             {description && (
-                <p className="text-sm text-gray-400 max-w-sm mb-6">{description}</p>
+                <p className="text-sm text-text-secondary max-w-sm mb-6">{description}</p>
             )}
             {action && (
                 <Button onClick={action.onClick} leftIcon={<Plus size={18} />}>

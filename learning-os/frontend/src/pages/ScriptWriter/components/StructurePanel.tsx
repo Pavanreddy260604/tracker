@@ -57,10 +57,10 @@ export function StructurePanel({
     // Collapsed State (Rail)
     if (!leftPanelOpen) {
         return (
-            <div className="flex flex-col h-full bg-zinc-950 items-center py-2 border-r border-zinc-800 w-12 text-zinc-500">
+            <div className="flex flex-col h-full bg-console-bg items-center py-2 border-r border-border-subtle w-12 text-text-tertiary">
                 <button
                     onClick={toggleLeftPanel}
-                    className="p-2 hover:text-zinc-300 transition-colors"
+                    className="p-2 hover:text-text-primary transition-colors"
                     title="Open Structure"
                 >
                     <Map size={20} />
@@ -70,22 +70,22 @@ export function StructurePanel({
     }
 
     return (
-        <div className="flex flex-col h-full bg-zinc-950 text-zinc-300">
+        <div className="flex flex-col h-full bg-console-bg text-text-secondary">
             {/* Header */}
-            <div className="h-10 border-b border-zinc-800 flex items-center px-3 bg-zinc-950 sticky top-0 z-10">
-                <Map size={14} className="mr-2 text-zinc-500" />
-                <span className="text-xs font-bold uppercase tracking-wider text-zinc-500">Structure</span>
+            <div className="h-10 border-b border-border-subtle flex items-center px-3 bg-console-bg sticky top-0 z-10">
+                <Map size={14} className="mr-2 text-text-tertiary" />
+                <span className="text-xs font-bold uppercase tracking-wider text-text-tertiary">Structure</span>
                 <div className="flex-1" />
 
                 <button
                     onClick={() => activeProject?._id && onNewScene(activeProject._id)}
-                    className="p-1 hover:bg-zinc-800 rounded text-zinc-500 hover:text-blue-400 mr-1 transition-colors"
+                    className="p-1 hover:bg-console-surface rounded text-text-tertiary hover:text-accent-primary mr-1 transition-colors"
                     title="Add New Scene"
                 >
                     <Plus size={16} />
                 </button>
 
-                <button onClick={toggleLeftPanel} className="p-1 hover:bg-zinc-800 rounded text-zinc-500 hover:text-zinc-300">
+                <button onClick={toggleLeftPanel} className="p-1 hover:bg-console-surface rounded text-text-tertiary hover:text-text-primary">
                     <AlignLeft size={16} />
                 </button>
             </div>
@@ -93,18 +93,18 @@ export function StructurePanel({
             {/* Content */}
             <div className="flex-1 overflow-y-auto custom-scrollbar p-2 space-y-1">
                 {!activeProject && (
-                    <div className="p-4 text-center text-zinc-500 text-xs">
+                    <div className="p-4 text-center text-text-tertiary text-xs">
                         No Project Selected
                     </div>
                 )}
 
                 {activeProject && scenes.length === 0 && (
-                    <div className="p-4 text-center text-zinc-500 text-xs">
+                    <div className="p-4 text-center text-text-tertiary text-xs">
                         No scenes found. Start writing!
                     </div>
                 )}
 
-                {scenes.map((scene, index) => {
+                {scenes.map((scene) => {
                     const isActive = activeScene?._id === scene._id;
                     const isEditing = editingSceneId === scene._id;
 
@@ -115,19 +115,16 @@ export function StructurePanel({
                             onContextMenu={(e) => startEditing(e, scene)}
                             className={`
                                 group flex items-start px-2 py-1.5 rounded cursor-pointer text-xs transition-all relative
-                                ${isActive ? 'bg-blue-900/20 text-blue-200 border border-blue-900/30' : 'hover:bg-zinc-900 text-zinc-400 border border-transparent'}
-                                ${isEditing ? 'ring-1 ring-blue-500/50 bg-zinc-900' : ''}
+                                ${isActive ? 'bg-accent-primary/10 text-accent-primary border border-accent-primary/20' : 'hover:bg-console-surface text-text-secondary border border-transparent'}
+                                ${isEditing ? 'ring-1 ring-accent-primary/50 bg-console-surface' : ''}
                             `}
                         >
-                            <span className={`mr-2 font-mono opacity-50 mt-0.5 ${isActive ? 'text-blue-400' : ''}`}>
-                                {index + 1}.
-                            </span>
                             <div className="flex-1 overflow-hidden">
                                 {isEditing ? (
                                     <div className="space-y-1 pr-1" onClick={(e) => e.stopPropagation()}>
                                         <input
                                             autoFocus
-                                            className="w-full bg-zinc-950 border border-zinc-800 rounded px-1 py-0.5 text-[10px] font-bold text-white outline-none focus:border-blue-500"
+                                            className="w-full bg-console-bg border border-border-subtle rounded px-1 py-0.5 text-[10px] font-bold text-text-primary outline-none focus:border-accent-primary"
                                             value={editForm.title}
                                             placeholder="Scene Title..."
                                             onChange={(e) => setEditForm((prev: { title: string; slugline: string }) => ({ ...prev, title: e.target.value }))}
@@ -137,7 +134,7 @@ export function StructurePanel({
                                             }}
                                         />
                                         <input
-                                            className="w-full bg-zinc-950 border border-zinc-800 rounded px-1 py-0.5 text-[9px] text-zinc-400 outline-none focus:border-blue-500"
+                                            className="w-full bg-console-bg border border-border-subtle rounded px-1 py-0.5 text-[9px] text-text-secondary outline-none focus:border-accent-primary"
                                             value={editForm.slugline}
                                             placeholder="EXT. LOCATION - DAY"
                                             onChange={(e) => setEditForm((prev: { title: string; slugline: string }) => ({ ...prev, slugline: e.target.value }))}
@@ -149,7 +146,7 @@ export function StructurePanel({
                                     </div>
                                 ) : (
                                     <>
-                                        <div className={`font-bold truncate ${isActive ? 'text-blue-100' : 'text-zinc-300'}`}>
+                                        <div className={`font-bold truncate ${isActive ? 'text-primary' : 'text-text-primary'}`}>
                                             {scene.title || scene.slugline || 'UNTITLED SCENE'}
                                         </div>
                                         {scene.title && scene.slugline && (
@@ -177,7 +174,7 @@ export function StructurePanel({
                                             );
                                         }
                                     }}
-                                    className="opacity-0 group-hover:opacity-100 p-1 hover:bg-zinc-800 rounded text-zinc-500 hover:text-red-400 transition-all ml-1"
+                                    className="opacity-0 group-hover:opacity-100 p-1 hover:bg-console-surface rounded text-text-tertiary hover:text-status-error transition-all ml-1"
                                     title="Delete Scene"
                                 >
                                     <Trash2 size={12} />

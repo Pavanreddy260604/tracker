@@ -46,14 +46,14 @@ export function GeneratorPanel({
     }, [scriptOutput]);
 
     if (!activeProject) {
-        return <div className="p-4 text-zinc-500">Select a project to generate.</div>;
+        return <div className="p-4 text-text-tertiary">Select a project to generate.</div>;
     }
 
     return (
         <div className="generator-panel space-y-4">
             {/* Input Section */}
-            <div className="ide-card bg-zinc-800/50 p-3 rounded-lg border border-zinc-700">
-                <div className="flex items-center gap-2 mb-3 text-blue-400 font-medium">
+            <div className="ide-card bg-console-surface/50 p-3 rounded-lg border border-border-subtle">
+                <div className="flex items-center gap-2 mb-3 text-accent-primary font-medium">
                     {isScriptGenerating ? (
                         <Loader2 size={16} className="animate-spin" />
                     ) : (
@@ -76,7 +76,7 @@ export function GeneratorPanel({
                 <div className="space-y-4 mb-6">
                     <div className="ide-field">
                         <label className="ide-label flex items-center gap-2">
-                            <FileText size={12} className="text-zinc-500" /> Project Format
+                            <FileText size={12} className="text-text-tertiary" /> Project Format
                         </label>
                         <select className="ide-select" value={scriptFormat} onChange={e => onScriptFormatChange(e.target.value)}>
                             {(scriptTemplates?.formats || []).map(f => <option key={f.id} value={f.id}>{f.name}</option>)}
@@ -93,26 +93,26 @@ export function GeneratorPanel({
                 </div>
 
                 {/* Speed Mode Toggle */}
-                <div className="flex items-center justify-between mb-4 p-2 bg-blue-500/10 rounded-md border border-blue-500/20">
+                <div className="flex items-center justify-between mb-4 p-2 bg-accent-primary/10 rounded-md border border-accent-primary/20">
                     <div className="flex items-center gap-2">
-                        <div className={`p-1 rounded ${speedMode ? 'bg-blue-500 text-white' : 'bg-zinc-700 text-zinc-400'}`}>
+                        <div className={`p-1 rounded ${speedMode ? 'bg-accent-primary text-console-bg' : 'bg-console-surface-2 text-text-secondary'}`}>
                             <Sparkles size={12} className={speedMode ? 'animate-pulse' : ''} />
                         </div>
                         <div>
-                            <div className="text-[11px] font-bold text-blue-400 uppercase tracking-tight">Lightning Speed</div>
-                            <div className="text-[9px] text-zinc-400">Bypass RAG & Optimize AI</div>
+                            <div className="text-[11px] font-bold text-accent-primary uppercase tracking-tight">Lightning Speed</div>
+                            <div className="text-[9px] text-text-tertiary">Bypass RAG & Optimize AI</div>
                         </div>
                     </div>
                     <button 
                         onClick={() => onSpeedModeChange(!speedMode)}
-                        className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${speedMode ? 'bg-blue-600' : 'bg-zinc-700'}`}
+                        className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${speedMode ? 'bg-accent-primary' : 'bg-console-surface-2'}`}
                     >
                         <span className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${speedMode ? 'translate-x-4' : 'translate-x-0'}`} />
                     </button>
                 </div>
 
                 <button
-                    className={`ide-btn ide-btn-full transition-all duration-300 ${isScriptGenerating ? 'bg-zinc-700 text-zinc-400' : 'ide-btn-primary'}`}
+                    className={`ide-btn ide-btn-full transition-all duration-300 ${isScriptGenerating ? 'bg-console-surface-2 text-text-tertiary' : 'ide-btn-primary'}`}
                     onClick={() => {
                         setShowOutput(true);
                         onGenerateScript();
@@ -125,12 +125,12 @@ export function GeneratorPanel({
 
             {/* Output Section */}
             {outputVisible && (
-                <div className="ide-card bg-zinc-900 border border-zinc-700 rounded-lg p-3 animate-in fade-in slide-in-from-bottom-2 duration-300">
+                <div className="ide-card bg-console-surface border border-border-subtle rounded-lg p-3 animate-in fade-in slide-in-from-bottom-2 duration-300">
                     <div className="flex justify-between items-center mb-2">
-                        <span className="text-xs font-bold text-zinc-400 uppercase tracking-wider">Output</span>
+                        <span className="text-xs font-bold text-text-tertiary uppercase tracking-wider">Output</span>
                         <div className="flex items-center gap-2">
                             {scriptOutput && (
-                                <button className="text-[10px] text-blue-400 hover:text-blue-300 transition-colors flex items-center gap-1" onClick={() => navigator.clipboard.writeText(scriptOutput)}>
+                                <button className="text-[10px] text-accent-primary hover:text-accent-primary-light transition-colors flex items-center gap-1" onClick={() => navigator.clipboard.writeText(scriptOutput)}>
                                     <Copy size={10} /> Copy
                                 </button>
                             )}
@@ -138,14 +138,14 @@ export function GeneratorPanel({
                     </div>
                     <div
                         ref={outputRef}
-                        className="text-sm font-mono whitespace-pre-wrap max-h-[400px] overflow-y-auto text-zinc-300 p-2 bg-zinc-950 rounded border border-zinc-800 scroll-smooth custom-scrollbar"
+                        className="text-sm font-mono whitespace-pre-wrap max-h-[400px] overflow-y-auto text-text-secondary p-2 bg-console-bg rounded border border-border-subtle scroll-smooth custom-scrollbar"
                     >
                         {scriptOutput}
                         {isScriptGenerating && (
-                            <span className="inline-block w-1.5 h-4 ml-0.5 bg-blue-500 animate-pulse align-middle" />
+                            <span className="inline-block w-1.5 h-4 ml-0.5 bg-accent-primary animate-pulse align-middle" />
                         )}
                         {!scriptOutput && !isScriptGenerating && (
-                            <span className="text-zinc-600 italic">No output yet.</span>
+                            <span className="text-text-tertiary italic">No output yet.</span>
                         )}
                     </div>
                 </div>

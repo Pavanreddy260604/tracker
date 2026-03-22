@@ -144,7 +144,7 @@ export function StudioInspector({
         );
     } else {
         headerTitle = activeMode === 'story' ? "Story Board" : "Inspector";
-        content = <div className="p-4 text-zinc-500">Coming soon</div>;
+        content = <div className="p-4 text-text-tertiary">Coming soon</div>;
     }
 
     return (

@@ -6,9 +6,9 @@ import mongoose, { Document, Schema } from 'mongoose';
  */
 
 export interface IProjectStudy extends Document {
-    user: mongoose.Types.ObjectId;
+    userId: mongoose.Types.ObjectId;
     projectName: string;
-    repoUrl: string; // Optional
+    repoUrl: string;
     moduleStudied: string;
     flowUnderstood: boolean;
     flowUnderstanding: string;
@@ -19,17 +19,19 @@ export interface IProjectStudy extends Document {
     // Project Studies 2.0
     architectureDiagram?: string;
     keyTakeaways?: string[];
-    coreComponents?: string; // New: replaces involvedTables
+    coreComponents?: string;
     tasks?: {
         id: string;
         text: string;
         status: 'todo' | 'in-progress' | 'done';
     }[];
+    confidenceLevel?: number; // 1-5 (Phychology: Metacognition)
+    simpleExplanation?: string; // Feynman Technique
 }
 
 const projectStudySchema = new Schema<IProjectStudy>(
     {
-        user: {
+        userId: {
             type: Schema.Types.ObjectId,
             ref: 'User',
             required: true,
@@ -55,7 +57,7 @@ const projectStudySchema = new Schema<IProjectStudy>(
         },
         flowUnderstanding: {
             type: String,
-            required: true,
+            default: '',
         },
         involvedTables: {
             type: String,
@@ -94,22 +96,23 @@ const projectStudySchema = new Schema<IProjectStudy>(
                 enum: ['todo', 'in-progress', 'done'],
                 default: 'todo'
             }
-        }]
+        }],
+        confidenceLevel: {
+            type: Number,
+            min: 1,
+            max: 5,
+            default: 3,
+        },
+        simpleExplanation: {
+            type: String,
+            default: '',
+            maxlength: [2000, 'Explanation cannot exceed 2000 characters'],
+        },
     },
     {
         timestamps: true,
     }
 );
-
-// Unified sync for coreComponents / involvedTables
-projectStudySchema.pre('save', function (next) {
-    if (this.coreComponents && !this.involvedTables) {
-        this.involvedTables = this.coreComponents;
-    } else if (this.involvedTables && !this.coreComponents) {
-        this.coreComponents = this.involvedTables;
-    }
-    next();
-});
 
 // Force updatedAt update on findOneAndUpdate
 projectStudySchema.pre('findOneAndUpdate', function (next) {
@@ -118,7 +121,7 @@ projectStudySchema.pre('findOneAndUpdate', function (next) {
 });
 
 // Indexes
-projectStudySchema.index({ user: 1, date: -1 });
-projectStudySchema.index({ user: 1, projectName: 1 });
+projectStudySchema.index({ userId: 1, date: -1 });
+projectStudySchema.index({ userId: 1, projectName: 1 });
 
 export const ProjectStudy = mongoose.model<IProjectStudy>('ProjectStudy', projectStudySchema);

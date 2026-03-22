@@ -1,78 +1,57 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-    Plus,
-    Search,
-    FolderGit2,
-    Edit2,
-    Trash2,
-    ChevronLeft,
-    ChevronRight,
-    ExternalLink,
-    CheckCircle2,
-    Database,
-    HelpCircle,
-    BrainCircuit
+    Plus, Search, FolderGit2, Edit2, Trash2, ChevronLeft, ChevronRight, ExternalLink,
+    CheckCircle2, Database, HelpCircle, BrainCircuit, Workflow, Activity, Compass, 
+    Layers, Github, History, Zap, Code2, LayoutGrid, Terminal
 } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { Skeleton } from '../components/ui/Skeleton';
 import { Input } from '../components/ui/Input';
-import { EmptyState } from '../components/ui/EmptyState';
-import { Badge } from '../components/ui/Badge';
-import { Card } from '../components/ui/Card';
+import { Badge, StatusBadge } from '../components/ui/Badge';
 import { DeleteModal } from '../components/ui/DeleteModal';
 import { api, type ProjectStudy } from '../services/api';
 import { toast } from '../stores/toastStore';
 import { useAI } from '../contexts/AIContext';
+import { cn } from '../lib/utils';
 
 const SAMPLE_PROJECTS = [
     {
         projectName: 'React Source Code',
         repoUrl: 'https://github.com/facebook/react',
         moduleStudied: 'Reconciliation',
-        flowUnderstanding: 'React uses a virtual DOM to optimize updates. The reconciliation process (Fiber) breaks work into units to avoid blocking the main thread. Diffing algorithm uses heuristics (keys, type checks) to update efficiently.',
-        involvedTables: 'FiberNode, current/workInProgress trees',
+        flowUnderstanding: 'React uses a virtual DOM to optimize updates. The reconciliation process (Fiber) breaks work into units to avoid blocking the main thread.',
+        coreComponents: 'FiberNode, current/workInProgress trees',
         questions: 'How does concurrent mode specifically pause and resume work?',
-        notes: 'Fiber is a reimplementation of the stack reconciler. It allows splitting rendering work into chunks.',
-        keyTakeaways: ['Virtual DOM is just a plain object tree', 'Keys are crucial for list performance', 'State updates are batched'],
+        notes: 'Fiber is a reimplementation of the stack reconciler.',
+        keyTakeaways: ['Virtual DOM is just a plain object tree', 'Keys are crucial for list performance'],
         tasks: [
             { id: '1', text: 'Read FiberNode structure', status: 'done' },
-            { id: '2', text: 'Trace useState implementation', status: 'in-progress' },
-            { id: '3', text: 'Understand scheduler priority levels', status: 'todo' }
-        ]
+            { id: '2', text: 'Trace useState implementation', status: 'in-progress' }
+        ],
+        confidenceLevel: 4,
+        simpleExplanation: 'It\'s like a smart todo list for the browser that only updates what actually changed.',
+        flowUnderstood: true
     },
     {
         projectName: 'Node.js Core',
         repoUrl: 'https://github.com/nodejs/node',
         moduleStudied: 'Event Loop (libuv)',
-        flowUnderstanding: 'The event loop has multiple phases (timers, pending callbacks, poll, check, close). process.nextTick runs before any phase. Promises (microtasks) run between phases.',
-        involvedTables: 'uv_loop_t, watcher_queue',
+        flowUnderstanding: 'The event loop has multiple phases (timers, pending callbacks, poll, check, close). process.nextTick runs before any phase.',
+        coreComponents: 'uv_loop_t, watcher_queue',
         questions: 'Difference between setImmediate and process.nextTick in depth?',
-        notes: 'Libuv handles the I/O operations asynchronously and interfaces with the OS.',
-        keyTakeaways: ['Don\'t block the Event Loop', 'Worker threads are for CPU intensive tasks', 'Streams are powerful for data processing'],
+        notes: 'Libuv handles the I/O operations asynchronously.',
+        keyTakeaways: ['Don\'t block the Event Loop', 'Worker threads are for CPU intensive tasks'],
         tasks: [
             { id: '1', text: 'Check C++ to JS bindings', status: 'todo' },
             { id: '2', text: 'Debug a slow FS operation', status: 'done' }
-        ]
-    },
-    {
-        projectName: 'Linux Kernel',
-        repoUrl: 'https://github.com/torvalds/linux',
-        moduleStudied: 'Process Scheduler (CFS)',
-        flowUnderstanding: 'Completely Fair Scheduler (CFS) models an ideal, precise multi-tasking CPU on real hardware. It uses a red-black tree to track vruntime (virtual runtime).',
-        involvedTables: 'task_struct, rb_root',
-        questions: 'How is nice value mapped to time slice weights?',
-        notes: 'Context switching costs are minimized by using vruntime logic.',
-        keyTakeaways: ['Red-black trees offer O(log n) insert/delete', 'Fairness is achieved by time weighting'],
-        tasks: [
-            { id: '1', text: 'Clone repository', status: 'done' },
-            { id: '2', text: 'Locate scheduler.c', status: 'in-progress' }
-        ]
+        ],
+        confidenceLevel: 3,
+        simpleExplanation: 'It\'s a waiter that takes orders and notifies the kitchen, but doesn\'t cook the food himself.',
+        flowUnderstood: true
     }
 ] as const;
-
-const MotionCard = motion.create(Card);
 
 export function Projects() {
     const navigate = useNavigate();
@@ -81,22 +60,23 @@ export function Projects() {
     const [search, setSearch] = useState('');
     const [page, setPage] = useState(1);
     const [pagination, setPagination] = useState({ total: 0, pages: 1 });
+    const [isSeeding, setIsSeeding] = useState(false);
 
-    // Delete Modal
     const [deleteModalOpen, setDeleteModalOpen] = useState(false);
     const [studyToDelete, setStudyToDelete] = useState<string | null>(null);
     const [isDeleting, setIsDeleting] = useState(false);
-    const [isSeeding, setIsSeeding] = useState(false);
+
     const { toggleOpen } = useAI();
 
     const fetchStudies = useCallback(async () => {
         setIsLoading(true);
         try {
-            const response = await api.getProjectStudies(page, 20);
-            setStudies(response.studies);
+            const response = await api.getProjectStudies(page, 12);
+            setStudies(response.studies || []);
             setPagination({ total: response.pagination.total, pages: response.pagination.pages });
         } catch (error) {
             console.error('Failed to fetch studies:', error);
+            toast.error('Workspace sync failed.');
         } finally {
             setIsLoading(false);
         }
@@ -107,323 +87,291 @@ export function Projects() {
     }, [fetchStudies]);
 
     const handleSeedData = async () => {
-        // Removed confirm to ensure immediate action and avoid browser blocking issues.
-        // if (!confirm('Add sample project data? This will create 3 new entries.')) return;
-
         setIsSeeding(true);
         try {
-            // Sequential to avoid race conditions or potential rate limits if any
             for (const project of SAMPLE_PROJECTS) {
                 await api.createProjectStudy({
                     ...project,
-                    // Cast keyTakeaways to mutable array since 'as const' makes it readonly
                     keyTakeaways: [...project.keyTakeaways],
-                    // Cast tasks to mutable array and ensure status match
-                    tasks: project.tasks.map(t => ({ ...t, status: t.status as 'todo' | 'in-progress' | 'done' })),
+                    tasks: project.tasks.map(t => ({ ...t, status: t.status as any })),
                     date: new Date().toISOString().split('T')[0]
-                });
+                } as any);
             }
-            toast.success('Sample projects added successfully');
+            toast.success('Sample workspaces initialized.');
             fetchStudies();
         } catch (error) {
-            console.error('Failed to seed data:', error);
-            toast.error('Failed to add sample data');
+            toast.error('Initialization failure.');
         } finally {
             setIsSeeding(false);
         }
     };
 
-    const handleDeleteClick = (id: string) => {
-        setStudyToDelete(id);
-        setDeleteModalOpen(true);
-    };
-
     const handleConfirmDelete = async () => {
         if (!studyToDelete) return;
-
         setIsDeleting(true);
         try {
             await api.deleteProjectStudy(studyToDelete);
-            toast.success('Study session deleted');
+            toast.success('Workspace purged.');
             fetchStudies();
             setDeleteModalOpen(false);
-            setStudyToDelete(null);
         } catch (error) {
-            console.error('Failed to delete:', error);
-            toast.error('Failed to delete study');
+            toast.error('Purge failure.');
         } finally {
             setIsDeleting(false);
         }
     };
 
-    const filteredStudies = studies.filter(s =>
-        s.projectName.toLowerCase().includes(search.toLowerCase()) ||
-        s.moduleStudied.toLowerCase().includes(search.toLowerCase())
-    );
+    const filteredStudies = useMemo(() => {
+        return studies.filter(s =>
+            s.projectName.toLowerCase().includes(search.toLowerCase()) ||
+            s.moduleStudied.toLowerCase().includes(search.toLowerCase())
+        );
+    }, [studies, search]);
 
-    // Group by project name
-    const projectGroups = filteredStudies.reduce((acc, study) => {
-        if (!acc[study.projectName]) {
-            acc[study.projectName] = [];
-        }
-        acc[study.projectName].push(study);
-        return acc;
-    }, {} as Record<string, ProjectStudy[]>);
+    const projectGroups = useMemo(() => {
+        return filteredStudies.reduce((acc, study) => {
+            if (!acc[study.projectName]) acc[study.projectName] = [];
+            acc[study.projectName].push(study);
+            return acc;
+        }, {} as Record<string, ProjectStudy[]>);
+    }, [filteredStudies]);
+
+    const stats = useMemo(() => {
+        const total = studies.length;
+        const understood = studies.filter(s => s.flowUnderstood).length;
+        const projects = Object.keys(projectGroups).length;
+        return { total, understood, projects };
+    }, [studies, projectGroups]);
 
     return (
-        <div className="space-y-6">
-            {/* Header */}
-            <div className="flex items-center justify-between gap-3 sm:gap-4">
-                <div>
-                    <h1 className="text-xl sm:text-2xl font-bold text-text-primary">Project Studies</h1>
-                    <p className="hidden sm:block text-sm text-text-secondary mt-1">Track code reading and project understanding</p>
-                </div>
-                <div className="flex items-center gap-2 sm:gap-3">
-                    <button
-                        onClick={toggleOpen}
-                        className="p-2 rounded-full hover:bg-accent-primary/10 text-accent-primary transition-colors active:scale-95"
-                        title="Ask AI about Projects"
-                    >
-                        <BrainCircuit size={20} />
-                    </button>
-                    {studies.length === 0 && (
-                        <Button
-                            variant="secondary"
-                            size="sm"
-                            onClick={handleSeedData}
-                            isLoading={isSeeding}
-                            leftIcon={<Database size={16} />}
-                            className="shrink-0"
-                        >
-                            <span className="hidden sm:inline">Load Sample</span>
-                            <span className="sm:hidden">Load</span>
-                        </Button>
-                    )}
-                    <Button size="sm" onClick={() => navigate('/projects/new')} leftIcon={<Plus size={16} />} className="shrink-0">
-                        <span className="hidden sm:inline">Add Study</span>
-                        <span className="sm:hidden">Add</span>
-                    </Button>
-                </div>
-            </div>
-
-            {/* Stats */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                {[
-                    { label: 'Total Sessions', value: pagination.total, icon: FolderGit2, color: 'text-accent-primary' },
-                    { label: 'Projects', value: Object.keys(projectGroups).length, icon: FolderGit2, color: 'text-accent-secondary' },
-                    { label: 'Understood', value: studies.filter(s => s.flowUnderstanding).length, icon: CheckCircle2, color: 'text-status-ok' },
-                    { label: 'To Revisit', value: studies.filter(s => !s.flowUnderstanding).length, icon: HelpCircle, color: 'text-status-warning' },
-                ].map((stat, i) => (
-                    <motion.div
-                        key={stat.label}
-                        initial={{ opacity: 0, scale: 0.95 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        transition={{ delay: i * 0.05 }}
-                        className="py-3 px-4 rounded-xl bg-console-surface border border-border-subtle shadow-premium premium-card glow-border"
-                    >
-                        <div className="flex items-center gap-2 mb-2 opacity-60">
-                            <stat.icon size={12} className={stat.color} />
-                            <p className="text-[10px] text-text-secondary uppercase tracking-[0.1em] font-bold">{stat.label}</p>
+        <div className="max-w-[1600px] mx-auto space-y-10 pb-20">
+             {/* Immersive Header */}
+             <div className="relative overflow-hidden rounded-[3rem] bg-console-surface/30 border border-white/5 p-8 lg:p-12">
+                <div className="absolute top-0 right-0 w-1/3 h-full bg-gradient-to-l from-blue-500/10 to-transparent pointer-events-none" />
+                <div className="relative z-10 flex flex-col lg:flex-row lg:items-end justify-between gap-8">
+                    <div className="space-y-4">
+                        <div className="flex items-center gap-3 text-blue-400 font-black uppercase tracking-[0.3em] text-[10px]">
+                            <Layers size={14} className="animate-pulse" />
+                            Project Architecture Intelligence
                         </div>
-                        <p className="text-2xl sm:text-3xl font-black text-text-primary leading-none text-glow">{stat.value}</p>
-                    </motion.div>
-                ))}
-            </div>
+                        <h1 className="text-5xl lg:text-6xl font-black text-text-primary tracking-tighter leading-none">
+                            Workspace <span className="text-blue-400">Analysis</span>
+                        </h1>
+                        <p className="text-text-muted text-lg max-w-xl font-medium tracking-tight">
+                            Deconstruct complex codebases into actionable mental models. Trace patterns, audit logic, and document system architecture.
+                        </p>
+                    </div>
 
-            {/* Search */}
-            <div className="relative">
-                <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-text-secondary" />
-                <Input
-                    placeholder="Search projects or modules..."
-                    value={search}
-                    onChange={(e) => setSearch(e.target.value)}
-                    className="pl-11"
-                />
-            </div>
+                    <div className="flex flex-wrap items-center gap-4">
+                         {studies.length === 0 && (
+                            <Button 
+                                variant="ghost" 
+                                onClick={handleSeedData}
+                                isLoading={isSeeding}
+                                className="h-14 px-6 rounded-2xl border border-white/5 bg-white/5 backdrop-blur-md text-text-secondary hover:text-text-primary font-bold"
+                            >
+                                <Database size={18} className="mr-2 text-blue-400" /> Load Samples
+                            </Button>
+                        )}
+                        <Button 
+                            variant="primary" 
+                            onClick={() => navigate('/projects/new')}
+                            className="h-14 px-8 rounded-2xl bg-gradient-to-r from-blue-500 to-indigo-600 text-white font-black shadow-xl shadow-blue-500/20 scale-105 hover:scale-110 transition-transform"
+                        >
+                            <Plus size={20} className="mr-2" /> Initialize Study
+                        </Button>
+                    </div>
+                </div>
 
-            {/* Studies List */}
-            {isLoading ? (
-                <div className="space-y-6">
-                    {[1, 2].map((i) => (
-                        <div key={i} className="space-y-3">
-                            <div className="flex items-center gap-3 mb-3">
-                                <Skeleton className="h-5 w-5 rounded" />
-                                <Skeleton className="h-6 w-40" />
-                                <Skeleton className="h-5 w-20 rounded-full" />
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-6 mt-12">
+                    {[
+                        { label: 'Total Sessions', value: stats.total, icon: History, color: 'text-blue-400' },
+                        { label: 'Active Clusters', value: stats.projects, icon: LayoutGrid, color: 'text-indigo-400' },
+                        { label: 'Logic Deciphered', value: stats.understood, icon: CheckCircle2, color: 'text-green-400' },
+                        { label: 'Pending Audit', value: stats.total - stats.understood, icon: HelpCircle, color: 'text-amber-400' },
+                    ].map((stat, i) => (
+                        <div key={i} className="bg-console-bg/40 backdrop-blur-xl border border-white/5 rounded-3xl p-6 flex items-center gap-5 group hover:border-blue-500/20 transition-all">
+                            <div className={cn("p-4 rounded-2xl bg-white/5", stat.color)}>
+                                <stat.icon size={24} />
                             </div>
-                            <div className="ml-7 space-y-3">
-                                <div className="p-4 rounded-xl bg-console-surface border border-border-subtle space-y-4">
-                                    <div className="flex justify-between items-start">
-                                        <div className="space-y-2 flex-1">
-                                            <Skeleton className="h-6 w-1/3" />
-                                            <div className="flex gap-2">
-                                                <Skeleton className="h-4 w-24" />
-                                                <Skeleton className="h-4 w-32" />
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <Skeleton className="h-4 w-3/4" />
-                                </div>
+                            <div>
+                                <div className="text-2xl font-black text-text-primary">{stat.value}</div>
+                                <div className="text-[10px] font-bold text-text-muted uppercase tracking-widest">{stat.label}</div>
                             </div>
                         </div>
                     ))}
                 </div>
-            ) : filteredStudies.length === 0 ? (
-                <EmptyState
-                    icon={<FolderGit2 size={32} className="text-text-disabled" />}
-                    title="No study sessions found"
-                    description={search
-                        ? "Try a different search term"
-                        : "Start reading project code and documenting your learnings"
-                    }
-                    action={!search ? {
-                        label: 'Add First Study',
-                        onClick: () => navigate('/projects/new'),
-                    } : undefined}
+            </div>
+
+            {/* Search Bar */}
+            <div className="relative group max-w-2xl mx-auto">
+                <Search size={22} className="absolute left-6 top-1/2 -translate-y-1/2 text-text-muted group-focus-within:text-blue-400 transition-colors" />
+                <Input
+                    placeholder="Search workspaces, repos, or modules..."
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    className="pl-16 h-16 bg-console-surface/70 backdrop-blur-xl border-border-subtle/40 rounded-[2rem] text-lg font-medium shadow-elevation-1 focus:shadow-elevation-premium transition-all"
                 />
-            ) : (
-                <div className="space-y-6">
-                    <AnimatePresence mode="popLayout">
-                        {Object.entries(projectGroups).map(([projectName, projectStudies], groupIndex) => (
+            </div>
+
+            {/* Content Area */}
+            <div className="space-y-12">
+                <AnimatePresence mode="popLayout">
+                    {isLoading ? (
+                         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                             {[1, 2, 3, 4].map(i => (
+                                 <div key={i} className="h-48 rounded-[2.5rem] bg-console-surface/30 animate-pulse border border-white/5" />
+                             ))}
+                         </div>
+                    ) : Object.keys(projectGroups).length === 0 ? (
+                        <motion.div 
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            className="py-32 flex flex-col items-center justify-center text-center space-y-6"
+                        >
+                            <div className="w-24 h-24 bg-console-surface/50 rounded-[2.5rem] border border-white/5 flex items-center justify-center shadow-2xl">
+                                <FolderGit2 size={40} className="text-text-disabled" />
+                            </div>
+                            <div className="space-y-2">
+                                <h3 className="text-2xl font-black text-text-primary">Workspace Empty</h3>
+                                <p className="text-text-muted max-w-sm font-medium">Initialize a new project study to begin architectural analysis.</p>
+                            </div>
+                        </motion.div>
+                    ) : (
+                        Object.entries(projectGroups).map(([projectName, groupStudies], groupIndex) => (
                             <motion.div
                                 key={projectName}
-                                initial={{ opacity: 0, y: 20 }}
+                                initial={{ opacity: 0, y: 30 }}
                                 animate={{ opacity: 1, y: 0 }}
-                                transition={{ delay: groupIndex * 0.05 }}
+                                transition={{ delay: groupIndex * 0.1 }}
+                                className="space-y-6"
                             >
-                                {/* Project Header */}
-                                <div className="flex wrap items-center gap-2 sm:gap-3 mb-2 sm:mb-3">
-                                    <FolderGit2 size={20} className="text-text-secondary sm:w-5 sm:h-5 w-4 h-4" />
-                                    <h2 className="text-base sm:text-lg font-bold text-text-primary">{projectName}</h2>
-                                    <Badge variant="info" className="uppercase text-[10px] tracking-wider">{projectStudies.length} sessions</Badge>
+                                <div className="flex items-center gap-4 px-4">
+                                     <div className="p-2 bg-blue-500/10 rounded-xl text-blue-400">
+                                         <Github size={18} />
+                                     </div>
+                                     <h2 className="text-2xl font-black text-text-primary tracking-tight">{projectName}</h2>
+                                     <Badge variant="outline" className="opacity-50 border-white/10 uppercase tracking-widest text-[9px] font-bold">
+                                         {groupStudies.length} ARCHIVES
+                                     </Badge>
                                 </div>
 
-                                {/* Project Studies */}
-                                <AnimatePresence mode="popLayout">
-                                    {projectStudies.map((study, index) => (
-                                        <MotionCard
+                                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                                    {groupStudies.map((study, i) => (
+                                        <motion.div
                                             key={study._id}
-                                            className={`p-4 border-l-4 premium-card glow-border ${study.flowUnderstanding ? 'border-l-status-ok' : 'border-l-status-warning'} relative overflow-hidden`}
-                                            initial={{ opacity: 0, y: 20 }}
-                                            animate={{ opacity: 1, y: 0 }}
-                                            exit={{ opacity: 0, x: -20 }}
-                                            transition={{ delay: index * 0.03 }}
-                                            hover={true}
+                                            whileHover={{ y: -5 }}
+                                            onClick={() => navigate(`/projects/${study._id}`)}
+                                            className="group relative bg-console-surface/30 backdrop-blur-xl border border-white/5 rounded-[2.5rem] p-8 hover:bg-console-surface/50 hover:border-blue-500/30 transition-all duration-500 cursor-pointer shadow-elevation-1 hover:shadow-elevation-premium"
                                         >
-                                            <div className="flex items-start justify-between gap-3 sm:gap-4">
-                                                <div className="flex-1 min-w-0">
-                                                    <div className="flex flex-wrap items-center gap-2 sm:gap-3 mb-1.5 sm:mb-2 flex-grow">
-                                                        <button
-                                                            onClick={() => navigate(`/projects/${study._id}`)}
-                                                            className="font-semibold sm:font-bold text-sm sm:text-base text-text-primary text-left hover:text-accent-primary hover:underline"
-                                                        >
-                                                            {study.moduleStudied}
-                                                        </button>
-                                                        {study.flowUnderstanding ? (
-                                                            <Badge variant="success">
-                                                                <CheckCircle2 size={12} className="mr-1" />
-                                                                Understood
-                                                            </Badge>
-                                                        ) : (
-                                                            <Badge variant="warning">
-                                                                <HelpCircle size={12} className="mr-1" />
-                                                                Revisit
-                                                            </Badge>
-                                                        )}
+                                            <div className="flex items-start justify-between gap-6">
+                                                <div className="space-y-4 flex-1 min-w-0">
+                                                    <div className="flex items-center gap-3">
+                                                        <div className="p-3 bg-white/5 rounded-2xl group-hover:bg-blue-500/10 transition-colors">
+                                                            <Code2 size={24} className="text-text-muted group-hover:text-blue-400" />
+                                                        </div>
+                                                        <div className="min-w-0">
+                                                            <h3 className="text-xl font-black text-text-primary truncate">{study.moduleStudied}</h3>
+                                                            <div className="flex items-center gap-2 mt-1">
+                                                                <StatusBadge status={study.flowUnderstood ? 'completed' : 'in_progress'} />
+                                                                {study.confidenceLevel && (
+                                                                    <div className="flex items-center gap-1 ml-2">
+                                                                        {[1,2,3,4,5].map(s => (
+                                                                            <div key={s} className={cn("w-1 h-3 rounded-full", s <= (study.confidenceLevel || 0) ? 'bg-blue-400' : 'bg-white/5')} />
+                                                                        ))}
+                                                                    </div>
+                                                                )}
+                                                            </div>
+                                                        </div>
                                                     </div>
-
-                                                    <div className="flex flex-wrap items-center gap-3 text-sm text-text-secondary">
-                                                        <span>{new Date(study.date).toLocaleDateString()}</span>
-                                                        {study.coreComponents && (
-                                                            <span className="flex items-center gap-1">
-                                                                <Database size={14} />
-                                                                {study.coreComponents}
-                                                            </span>
-                                                        )}
-                                                    </div>
-
-                                                    {study.questions && (
-                                                        <p className="mt-2 text-sm text-status-warning font-medium">
-                                                            ❓ {study.questions}
-                                                        </p>
-                                                    )}
 
                                                     {study.notes && (
-                                                        <p className="mt-2 text-sm text-text-primary opacity-80 line-clamp-2 italic">
-                                                            {study.notes}
+                                                        <p className="text-sm text-text-muted italic line-clamp-2 leading-relaxed opacity-60 group-hover:opacity-100 transition-opacity">
+                                                            "{study.notes}"
                                                         </p>
                                                     )}
-                                                </div>
 
-                                                <div className="flex items-center gap-1 sm:gap-2">
-                                                    {study.repoUrl && (
-                                                        <a
-                                                            href={study.repoUrl}
-                                                            target="_blank"
-                                                            rel="noopener noreferrer"
-                                                            className="p-2.5 sm:p-2 min-w-[44px] min-h-[44px] sm:min-w-0 sm:min-h-0 rounded-lg hover:bg-console-surface-2 text-text-secondary hover:text-text-primary transition-colors"
-                                                        >
-                                                            <ExternalLink size={18} />
-                                                        </a>
-                                                    )}
-                                                    <button
-                                                        onClick={() => navigate(`/projects/${study._id}`)}
-                                                        className="p-2.5 sm:p-2 min-w-[44px] min-h-[44px] sm:min-w-0 sm:min-h-0 rounded-lg hover:bg-console-surface-2 text-text-secondary hover:text-text-primary transition-colors"
-                                                    >
-                                                        <Edit2 size={18} />
-                                                    </button>
-                                                    <button
-                                                        onClick={() => handleDeleteClick(study._id)}
-                                                        className="p-2.5 sm:p-2 min-w-[44px] min-h-[44px] sm:min-w-0 sm:min-h-0 rounded-lg hover:bg-status-error/10 text-text-secondary hover:text-status-error transition-colors"
-                                                    >
-                                                        <Trash2 size={18} />
-                                                    </button>
+                                                    <div className="pt-6 border-t border-white/5 flex items-center justify-between">
+                                                        <div className="flex items-center gap-4">
+                                                             <div className="flex items-center gap-1.5 text-[10px] font-black text-text-muted uppercase tracking-widest">
+                                                                 <History size={12} className="text-blue-400" />
+                                                                 {new Date(study.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                                                             </div>
+                                                             {study.tasks && study.tasks.length > 0 && (
+                                                                 <div className="flex items-center gap-1.5 text-[10px] font-black text-text-muted uppercase tracking-widest">
+                                                                     <Workflow size={12} className="text-green-400" />
+                                                                     {study.tasks.filter(t => t.status === 'done').length}/{study.tasks.length} TASKS
+                                                                 </div>
+                                                             )}
+                                                        </div>
+                                                        <div className="flex items-center gap-2">
+                                                            {study.repoUrl && (
+                                                                <button 
+                                                                    onClick={(e) => {
+                                                                        e.stopPropagation();
+                                                                        window.open(study.repoUrl, '_blank');
+                                                                    }}
+                                                                    className="p-3 text-text-muted hover:text-blue-400 hover:bg-blue-500/10 rounded-xl transition-all"
+                                                                >
+                                                                    <ExternalLink size={16} />
+                                                                </button>
+                                                            )}
+                                                            <button 
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation();
+                                                                    setStudyToDelete(study._id);
+                                                                    setDeleteModalOpen(true);
+                                                                }}
+                                                                className="p-3 text-text-muted hover:text-status-error hover:bg-status-error/10 rounded-xl transition-all"
+                                                            >
+                                                                <Trash2 size={16} />
+                                                            </button>
+                                                        </div>
+                                                    </div>
                                                 </div>
                                             </div>
-                                        </MotionCard>
+                                        </motion.div>
                                     ))}
-                                </AnimatePresence>
+                                </div>
                             </motion.div>
-                        ))}
-                    </AnimatePresence>
-
-                    {/* Pagination */}
-                    {pagination.pages > 1 && (
-                        <div className="flex items-center justify-center gap-4 pt-4">
-                            <Button
-                                variant="secondary"
-                                size="sm"
-                                onClick={() => setPage(p => Math.max(1, p - 1))}
-                                disabled={page === 1}
-                            >
-                                <ChevronLeft size={16} />
-                            </Button>
-                            <span className="text-sm text-text-secondary font-medium">
-                                Page {page} of {pagination.pages}
-                            </span>
-                            <Button
-                                variant="secondary"
-                                size="sm"
-                                onClick={() => setPage(p => Math.min(pagination.pages, p + 1))}
-                                disabled={page === pagination.pages}
-                            >
-                                <ChevronRight size={16} />
-                            </Button>
-                        </div>
+                        ))
                     )}
-                </div>
-            )
-            }
+                </AnimatePresence>
+            </div>
 
+            {/* Pagination */}
+            {!isLoading && pagination.pages > 1 && (
+                <div className="flex items-center justify-center gap-6 pt-10">
+                    <Button
+                        variant="ghost"
+                        onClick={() => setPage(p => Math.max(1, p - 1))}
+                        disabled={page === 1}
+                        className="h-14 w-14 rounded-2xl border border-white/5 bg-console-surface/50"
+                    >
+                        <ChevronLeft size={24} />
+                    </Button>
+                    <div className="px-6 py-3 bg-console-surface/50 border border-white/5 rounded-2xl text-sm font-black uppercase tracking-widest text-text-muted">
+                        Sector {page} / {pagination.pages}
+                    </div>
+                    <Button
+                        variant="ghost"
+                        onClick={() => setPage(p => Math.min(pagination.pages, p + 1))}
+                        disabled={page === pagination.pages}
+                        className="h-14 w-14 rounded-2xl border border-white/5 bg-console-surface/50"
+                    >
+                        <ChevronRight size={24} />
+                    </Button>
+                </div>
+            )}
 
             <DeleteModal
                 isOpen={deleteModalOpen}
                 onClose={() => setDeleteModalOpen(false)}
                 onConfirm={handleConfirmDelete}
-                title="Delete Study Session"
-                description="Are you sure you want to delete this study session? This action cannot be undone."
+                title="Archive Purge"
+                description="This action will permanently erase the architectural record for this workspace."
                 isDeleting={isDeleting}
             />
-        </div >
+        </div>
     );
 }

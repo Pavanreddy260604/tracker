@@ -244,18 +244,18 @@ export function ChunkViewerModal({
     if (mode === 'modal' && !isOpen) return null;
 
     const readerFrame = (
-        <div className={`w-full flex flex-col overflow-hidden border border-zinc-800 bg-zinc-950 ${mode === 'page'
+        <div className={`w-full flex flex-col overflow-hidden border border-border-subtle bg-console-bg ${mode === 'page'
             ? 'h-full min-h-0 flex-1 rounded-[2rem] shadow-[0_30px_90px_rgba(0,0,0,0.35)]'
             : 'max-w-[1600px] h-[92vh] rounded-[2rem] shadow-[0_40px_120px_rgba(0,0,0,0.55)] animate-in zoom-in-95 duration-300'
             }`}>
-            <div className="relative overflow-hidden border-b border-zinc-900 bg-[radial-gradient(circle_at_top_left,rgba(59,130,246,0.14),transparent_32%),linear-gradient(180deg,rgba(24,24,27,1),rgba(9,9,11,1))]">
+            <div className="relative overflow-hidden border-b border-border-subtle bg-[radial-gradient(circle_at_top_left,rgba(59,130,246,0.14),transparent_32%),linear-gradient(180deg,var(--console-bg),var(--console-bg))]">
                 <div className="flex items-start justify-between gap-4 px-4 py-3 sm:px-6">
                     <div className="flex items-start gap-3 min-w-0">
                         <button
                             onClick={onClose}
                             className={`mt-0.5 rounded-2xl border p-2.5 transition-all ${mode === 'page'
-                                ? 'border-zinc-800 bg-zinc-900/70 text-zinc-300 hover:border-zinc-700 hover:text-white'
-                                : 'border-zinc-900/0 bg-transparent text-zinc-500 hover:bg-zinc-900 hover:text-white'
+                                ? 'border-border-subtle bg-console-surface/70 text-text-secondary hover:border-border-strong hover:text-text-primary'
+                                : 'border-transparent bg-transparent text-text-tertiary hover:bg-console-surface hover:text-text-primary'
                                 }`}
                         >
                             {mode === 'page' ? <ArrowLeft size={20} /> : <X size={20} />}
@@ -265,22 +265,22 @@ export function ChunkViewerModal({
                         </div>
                         <div className="min-w-0">
                             <h2 className="truncate text-lg sm:text-xl font-black tracking-tight text-white">{scriptTitle}</h2>
-                            <div className="mt-1 text-xs font-medium text-zinc-400">
+                            <div className="mt-1 text-xs font-medium text-text-tertiary">
                                 Client reader
                             </div>
-                            <div className="mt-2 flex flex-wrap items-center gap-2 text-[9px] font-black uppercase tracking-[0.16em] text-zinc-500">
+                            <div className="mt-2 flex flex-wrap items-center gap-2 text-[9px] font-black uppercase tracking-[0.16em] text-text-tertiary">
                                 {scriptVersion && (
-                                    <span className="rounded-full border border-zinc-800 bg-zinc-900/90 px-2.5 py-1">
+                                    <span className="rounded-full border border-border-subtle bg-console-surface/90 px-2.5 py-1">
                                         Version {scriptVersion}
                                     </span>
                                 )}
                                 {reconstruction && (
-                                    <span className="rounded-full border border-zinc-800 bg-zinc-900/90 px-2.5 py-1">
+                                    <span className="rounded-full border border-border-subtle bg-console-surface/90 px-2.5 py-1">
                                         {reconstruction.lineCount} source lines
                                     </span>
                                 )}
                                 {reconstruction?.pageCount ? (
-                                    <span className="rounded-full border border-zinc-800 bg-zinc-900/90 px-2.5 py-1">
+                                    <span className="rounded-full border border-border-subtle bg-console-surface/90 px-2.5 py-1">
                                         {reconstruction.pageCount} pages
                                     </span>
                                 ) : null}
@@ -299,7 +299,7 @@ export function ChunkViewerModal({
                                 ) : null}
                                 <span className={`rounded-full border px-2.5 py-1 ${chunkError
                                     ? 'border-amber-500/20 bg-amber-500/10 text-amber-200'
-                                    : 'border-zinc-800 bg-zinc-900/90'
+                                    : 'border-border-subtle bg-console-surface/90'
                                     }`}>
                                     {chunkError ? 'typed rows unavailable' : `${chunks.length} typed rows`}
                                 </span>
@@ -309,19 +309,19 @@ export function ChunkViewerModal({
                 </div>
             </div>
 
-            <div className={`border-b border-zinc-900 bg-zinc-950/95 px-4 py-3 sm:px-6 space-y-3 ${mode === 'page' ? 'sticky top-0 z-10 backdrop-blur supports-[backdrop-filter]:bg-zinc-950/85' : ''}`}>
+            <div className={`border-b border-border-subtle bg-console-bg/95 px-4 py-3 sm:px-6 space-y-3 ${mode === 'page' ? 'sticky top-0 z-10 backdrop-blur supports-[backdrop-filter]:bg-console-bg/85' : ''}`}>
                 <div className="flex flex-wrap items-center gap-3">
                     <button
                         onClick={() => handleViewModeChange('chunks')}
                         className={`min-w-[160px] rounded-2xl border px-5 py-3 text-sm font-black uppercase tracking-[0.16em] transition-all flex items-center justify-center gap-2 ${viewMode === 'chunks'
-                            ? 'border-blue-500/20 bg-blue-500/10 text-blue-300 shadow-[0_0_32px_rgba(59,130,246,0.08)]'
-                            : 'border-zinc-800 bg-zinc-900 text-zinc-500 hover:text-zinc-300'
+                            ? 'border-accent-primary/20 bg-accent-primary/10 text-accent-primary shadow-[0_0_32px_rgba(59,130,246,0.08)]'
+                            : 'border-border-subtle bg-console-surface text-text-tertiary hover:text-text-secondary'
                             }`}
                     >
                         <span>Structured Elements</span>
                         <div className="group relative">
-                            <AlertCircle size={14} className="text-zinc-600 cursor-help" />
-                            <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 w-64 p-3 bg-zinc-900 border border-zinc-800 rounded-xl text-[10px] text-zinc-400 font-medium normal-case tracking-normal leading-relaxed shadow-2xl opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity z-50">
+                            <AlertCircle size={14} className="text-text-tertiary cursor-help" />
+                            <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 w-64 p-3 bg-console-surface border border-border-subtle rounded-xl text-[10px] text-text-tertiary font-medium normal-case tracking-normal leading-relaxed shadow-2xl opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity z-50">
                                 <p className="text-blue-400 font-bold mb-1 uppercase tracking-widest">High-Accuracy RAG</p>
                                 Screenplays are indexed as individual dialogues and actions ("Leaf" nodes) inside scene containers. This granularity allows the AI to mimic exact style and rhythm from 5,000+ reference samples.
                             </div>
@@ -331,7 +331,7 @@ export function ChunkViewerModal({
                         onClick={() => handleViewModeChange('script')}
                         className={`min-w-[200px] rounded-2xl border px-5 py-3 text-sm font-black uppercase tracking-[0.16em] transition-all ${viewMode === 'script'
                             ? 'border-amber-400/20 bg-amber-400/10 text-amber-100 shadow-[0_0_32px_rgba(251,191,36,0.08)]'
-                            : 'border-zinc-800 bg-zinc-900 text-zinc-500 hover:text-zinc-300'
+                            : 'border-border-subtle bg-console-surface text-text-tertiary hover:text-text-secondary'
                             }`}
                     >
                         Screenplay
@@ -340,20 +340,20 @@ export function ChunkViewerModal({
                     <div className="ml-auto flex flex-wrap items-center gap-2">
                         {viewMode === 'script' && (
                             <>
-                                <div className="flex items-center gap-1 rounded-2xl border border-zinc-800 bg-zinc-900 px-1.5 py-1">
+                                <div className="flex items-center gap-1 rounded-2xl border border-border-subtle bg-console-surface px-1.5 py-1">
                                     <button
                                         onClick={increaseZoom}
-                                        className="rounded-xl p-1.5 text-zinc-400 transition-colors hover:bg-zinc-800 hover:text-zinc-100"
+                                        className="rounded-xl p-1.5 text-text-tertiary transition-colors hover:bg-console-surface-2 hover:text-text-primary"
                                         title="Increase zoom"
                                     >
                                         <Plus size={14} />
                                     </button>
-                                    <span className="min-w-14 text-center text-[10px] font-black uppercase tracking-[0.16em] text-zinc-400">
+                                    <span className="min-w-14 text-center text-[10px] font-black uppercase tracking-[0.16em] text-text-tertiary">
                                         {scriptZoom}%
                                     </span>
                                     <button
                                         onClick={decreaseZoom}
-                                        className="rounded-xl p-1.5 text-zinc-400 transition-colors hover:bg-zinc-800 hover:text-zinc-100"
+                                        className="rounded-xl p-1.5 text-text-tertiary transition-colors hover:bg-console-surface-2 hover:text-text-primary"
                                         title="Decrease zoom"
                                     >
                                         <Minus size={14} />
@@ -364,7 +364,7 @@ export function ChunkViewerModal({
                                     onClick={() => startTransition(() => setShowLineNumbers(current => !current))}
                                     className={`rounded-2xl border px-3.5 py-2 text-[11px] font-black uppercase tracking-[0.16em] transition-all ${showLineNumbers
                                         ? 'border-amber-400/20 bg-amber-400/10 text-amber-100'
-                                        : 'border-zinc-800 bg-zinc-900 text-zinc-400 hover:text-zinc-100'
+                                        : 'border-border-subtle bg-console-surface text-text-tertiary hover:text-text-primary'
                                         }`}
                                 >
                                     {showLineNumbers ? 'Hide Line Nos' : 'Show Line Nos'}
@@ -373,7 +373,7 @@ export function ChunkViewerModal({
                                 {reconstruction?.content && (
                                     <button
                                         onClick={() => handleCopy('reconstructed-script', reconstruction.content)}
-                                        className="flex items-center gap-2 rounded-2xl border border-zinc-800 bg-zinc-900 px-3.5 py-2 text-[11px] font-black uppercase tracking-[0.16em] text-zinc-300 transition-all hover:border-zinc-700 hover:text-white"
+                                        className="flex items-center gap-2 rounded-2xl border border-border-subtle bg-console-surface px-3.5 py-2 text-[11px] font-black uppercase tracking-[0.16em] text-text-secondary transition-all hover:border-border-strong hover:text-text-primary"
                                     >
                                         {copiedId === 'reconstructed-script' ? <Check size={14} /> : <Copy size={14} />}
                                         Copy Script
@@ -392,11 +392,11 @@ export function ChunkViewerModal({
 
                 {viewMode === 'chunks' && (
                     <div className="relative">
-                        <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-600" size={18} />
+                        <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-text-tertiary" size={18} />
                         <input
                             type="text"
                             placeholder="Search chunks by content or character..."
-                            className="w-full rounded-2xl border border-zinc-800 bg-zinc-900 pl-12 pr-4 py-3 text-sm text-zinc-200 outline-none transition-all focus:border-blue-500"
+                            className="w-full rounded-2xl border border-border-subtle bg-console-surface pl-12 pr-4 py-3 text-sm text-text-secondary outline-none transition-all focus:border-accent-primary"
                             value={searchQuery}
                             onChange={event => setSearchQuery(event.target.value)}
                         />
@@ -408,7 +408,7 @@ export function ChunkViewerModal({
                 {loading ? (
                     <div className="flex h-full flex-col items-center justify-center gap-3">
                         <div className="h-8 w-8 animate-spin rounded-full border-4 border-blue-500/20 border-t-blue-500" />
-                        <span className="text-xs font-bold uppercase tracking-[0.18em] text-zinc-600">Loading screenplay view...</span>
+                        <span className="text-xs font-bold uppercase tracking-[0.18em] text-text-tertiary">Loading screenplay view...</span>
                     </div>
                 ) : error ? (
                     <div className="flex h-full items-center justify-center">
@@ -425,7 +425,7 @@ export function ChunkViewerModal({
                             </div>
                         </div>
                     ) : filteredChunks.length === 0 ? (
-                        <div className="flex h-full flex-col items-center justify-center text-zinc-600">
+                        <div className="flex h-full flex-col items-center justify-center text-text-tertiary">
                             <Search size={48} className="mb-4 opacity-20" />
                             <p className="font-bold">No chunks match your search.</p>
                         </div>
@@ -434,12 +434,12 @@ export function ChunkViewerModal({
                             {filteredChunks.map((chunk, index) => (
                                 <div
                                     key={chunk._id || chunk.chunkId || `chunk-${index + 1}`}
-                                    className="group rounded-3xl border border-zinc-800/70 bg-zinc-900/50 p-5 transition-all hover:border-zinc-700 hover:bg-zinc-900/70"
+                                    className="group rounded-3xl border border-border-subtle/70 bg-console-surface/50 p-5 transition-all hover:border-border-strong hover:bg-console-surface/70"
                                     style={CHUNK_CARD_VISIBILITY_STYLE}
                                 >
                                     <div className="mb-3 flex items-start justify-between gap-4">
                                         <div className="flex flex-wrap items-center gap-3">
-                                            <div className="flex items-center gap-1.5 rounded-xl border border-zinc-800 bg-zinc-950 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.16em] text-zinc-500">
+                                            <div className="flex items-center gap-1.5 rounded-xl border border-border-subtle bg-console-bg px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.16em] text-text-tertiary">
                                                 <Hash size={12} className="text-blue-500/50" />
                                                 Chunk {chunk.chunkIndex ?? index + 1}
                                             </div>
@@ -449,7 +449,7 @@ export function ChunkViewerModal({
                                                     {chunk.speaker}
                                                 </div>
                                             )}
-                                            <div className="text-[10px] font-black uppercase tracking-[0.18em] text-zinc-500">
+                                            <div className="text-[10px] font-black uppercase tracking-[0.18em] text-text-tertiary">
                                                 {chunk.chunkType || 'dialogue'}
                                             </div>
                                             {chunk.sceneNumber && (
@@ -468,21 +468,21 @@ export function ChunkViewerModal({
                                                 </div>
                                             )}
                                             {typeof chunk.sceneSeq === 'number' && (
-                                                <div className="text-[10px] font-black uppercase tracking-[0.18em] text-zinc-600">
+                                                <div className="text-[10px] font-black uppercase tracking-[0.18em] text-text-tertiary">
                                                     Scene {chunk.sceneSeq} / Element {chunk.elementSeq}
                                                 </div>
                                             )}
                                         </div>
                                         <button
                                             onClick={() => handleCopy(chunk._id || chunk.chunkId || `chunk-${index + 1}`, chunk.content || '')}
-                                            className="rounded-xl bg-zinc-950/60 p-2 text-zinc-500 transition-all hover:bg-zinc-800 hover:text-blue-300"
+                                            className="rounded-xl bg-console-bg/60 p-2 text-text-tertiary transition-all hover:bg-console-surface hover:text-accent-primary"
                                             title="Copy content"
                                         >
                                             {copiedId === (chunk._id || chunk.chunkId || `chunk-${index + 1}`) ? <Check size={16} /> : <Copy size={16} />}
                                         </button>
                                     </div>
 
-                                    <div className="whitespace-pre-wrap font-serif text-sm leading-relaxed text-zinc-200 selection:bg-blue-500/30">
+                                    <div className="whitespace-pre-wrap font-serif text-sm leading-relaxed text-text-secondary selection:bg-accent-primary/30">
                                         {chunk.content === '[BLANK_LINE]' ? '' : chunk.content}
                                     </div>
                                 </div>
@@ -538,7 +538,7 @@ export function ChunkViewerModal({
                             </div>
                         </div>
                     ) : (
-                        <div className="flex h-full flex-col items-center justify-center text-zinc-600">
+                        <div className="flex h-full flex-col items-center justify-center text-text-tertiary">
                             <FileText size={48} className="mb-4 opacity-20" />
                             <p className="font-bold">No reconstructed script is available.</p>
                         </div>
@@ -550,7 +550,7 @@ export function ChunkViewerModal({
 
     if (mode === 'page') {
         return (
-            <div className="h-screen overflow-hidden bg-zinc-950 text-zinc-100 selection:bg-amber-400/20">
+            <div className="h-screen overflow-hidden bg-console-bg text-text-primary selection:bg-amber-400/20">
                 <div className="mx-auto flex h-full w-full max-w-[1850px] flex-col px-3 py-3 sm:px-5 sm:py-5">
                     {readerFrame}
                 </div>

@@ -53,15 +53,15 @@ export function ConfirmDialog({
         >
             <div className="flex flex-col gap-4">
                 <div className={`flex items-start gap-4 p-4 rounded-lg border ${variant === 'danger'
-                    ? 'bg-red-500/10 border-red-500/20'
-                    : 'bg-blue-500/10 border-blue-500/20'
+                    ? 'bg-status-error-soft border-status-error/20'
+                    : 'bg-accent-soft border-accent-primary/20'
                     }`}>
                     {variant === 'danger' ? (
-                        <AlertTriangle className="text-red-500 shrink-0 mt-0.5" size={20} />
+                        <AlertTriangle className="text-status-error shrink-0 mt-0.5" size={20} />
                     ) : (
-                        <Info className="text-blue-500 shrink-0 mt-0.5" size={20} />
+                        <Info className="text-accent-primary shrink-0 mt-0.5" size={20} />
                     )}
-                    <p className={`text-sm ${variant === 'danger' ? 'text-red-200' : 'text-blue-100'}`}>
+                    <p className="text-sm text-text-primary">
                         {description}
                     </p>
                 </div>
@@ -75,7 +75,7 @@ export function ConfirmDialog({
                             value={verificationInput}
                             onChange={(event) => setVerificationInput(event.target.value)}
                             placeholder={verificationPlaceholder || verificationText}
-                            className="w-full px-3 py-2 rounded-lg border border-border-subtle bg-console-surface-2 text-text-primary focus:outline-none focus:ring-2 focus:ring-status-warning/40"
+                            className="w-full px-3 py-2 rounded-lg border border-border-subtle bg-console-surface-2 text-text-primary focus:outline-none focus:ring-2 focus:ring-accent-primary/30 focus:border-accent-primary"
                         />
                         <p className="text-xs text-text-secondary">
                             Confirmation text: <span className="font-semibold text-text-primary">{verificationText}</span>

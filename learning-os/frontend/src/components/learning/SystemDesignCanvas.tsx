@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useEffect, useMemo } from 'react';
 import {
     ReactFlow,
     Background,
@@ -80,7 +80,7 @@ export function SystemDesignCanvas({ topics, onNodeClick }: SystemDesignCanvasPr
             data: {
                 label: topic.topicName,
                 category: topic.category,
-                auditScore: topic.auditScore || 85, // Mock score for now
+                auditScore: topic.auditScore ?? 0,
                 icon: getCategoryIcon(topic.category),
             },
         }));
@@ -88,6 +88,10 @@ export function SystemDesignCanvas({ topics, onNodeClick }: SystemDesignCanvasPr
 
     const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
     const [edges, setEdges, onEdgesChange] = useEdgesState([]);
+
+    useEffect(() => {
+        setNodes(initialNodes);
+    }, [initialNodes, setNodes]);
 
     const onConnect = (params: Connection) => setEdges((eds) => addEdge(params, eds));
 

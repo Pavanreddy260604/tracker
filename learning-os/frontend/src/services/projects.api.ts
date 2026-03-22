@@ -39,22 +39,4 @@ export const projectsApi = {
             method: 'DELETE',
         });
     },
-
-    async analyzeProject(id: string) {
-        return baseApi.request<any>(`/project-studies/${id}/analyze`, {
-            method: 'POST'
-        });
-    },
-
-    async validateProjectFlow(id: string) {
-        return baseApi.request<{ score: number; feedback: string; gaps: string[] }>(`/project-studies/${id}/validate-flow`, {
-            method: 'POST'
-        });
-    },
-
-    async pulseProjectAudit(id: string) {
-        return baseApi.request<any>(`/project-studies/${id}/pulse-audit`, {
-            method: 'POST'
-        });
-    }
 };

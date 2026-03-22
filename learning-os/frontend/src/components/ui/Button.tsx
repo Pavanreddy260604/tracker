@@ -23,11 +23,12 @@ export function Button({
     const baseStyles = 'inline-flex items-center justify-center gap-2 font-medium rounded-xl transition-[background-color,border-color,color,box-shadow,transform] duration-150 focus:outline-none focus:ring-4 focus:ring-accent-focus/20 disabled:opacity-50 disabled:cursor-not-allowed active:scale-[0.98] gpu-accelerated';
 
     const variants = {
-        primary: 'bg-accent-primary text-white border border-accent-primary-dark shadow-premium hover:bg-accent-primary-dark',
+        primary: 'bg-accent-primary text-console-bg border border-accent-primary-dark shadow-premium hover:bg-accent-primary-dark',
         secondary: 'bg-console-surface border border-border-subtle text-text-primary hover:bg-console-surface-2 hover:border-border-strong shadow-sm',
         ghost: 'bg-transparent text-text-secondary hover:bg-console-surface-2 hover:text-text-primary',
-        danger: 'bg-red-500/10 text-red-500 border border-red-500/20 hover:bg-red-500/20 active:bg-red-500/30',
+        danger: 'bg-status-error-soft text-status-error border border-status-error/30 hover:bg-status-error/20 active:bg-status-error/30',
     };
+
 
     const sizes = {
         sm: 'px-2 py-1 text-[10px] sm:text-[11px] min-h-[24px] sm:min-h-[28px]',

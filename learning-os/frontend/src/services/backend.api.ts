@@ -2,6 +2,13 @@
 import { baseApi } from './base.api';
 import type { BackendTopic, Pagination } from './types';
 
+export interface BackendTopicAudit {
+    score: number;
+    gotchas: string[];
+    checklist: { task: string; importance: 'high' | 'medium' | 'low' }[];
+    summary: string;
+}
+
 export const backendApi = {
     async getBackendTopics(page = 1, limit = 20, category?: string) {
         let url = `/backend-topics?page=${page}&limit=${limit}`;
@@ -32,10 +39,11 @@ export const backendApi = {
             method: 'DELETE',
         });
     },
-    
+
     async auditTopic(id: string) {
-        return baseApi.request<{ success: boolean; data: any }>(`/backend-topics/${id}/audit`, {
-            method: 'POST'
+        return baseApi.request<BackendTopicAudit>(`/backend-topics/${id}/audit`, {
+            method: 'POST',
+            body: JSON.stringify({}),
         });
-    }
+    },
 };

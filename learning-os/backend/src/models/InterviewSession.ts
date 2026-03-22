@@ -17,6 +17,18 @@ export interface IInterviewQuestion {
         isHidden?: boolean;
         isEdgeCase?: boolean;
     }[];
+    systemDesignParams?: {
+        requirements?: string[];
+        constraints?: {
+            rps?: string;
+            dataVolume?: string;
+            latency?: string;
+            availability?: string;
+            [key: string]: unknown;
+        };
+        expectedComponents?: string[];
+        scoringCriteria?: string[];
+    };
     timeSpent?: number; // in seconds
     submittedAt?: Date;
     lastModified?: Date; // For draft tracking
@@ -101,6 +113,12 @@ const interviewQuestionSchema = new Schema<IInterviewQuestion>(
                 isEdgeCase: { type: Boolean, default: false },
             },
         ],
+        systemDesignParams: {
+            requirements: [{ type: String }],
+            constraints: { type: Schema.Types.Mixed, default: {} },
+            expectedComponents: [{ type: String }],
+            scoringCriteria: [{ type: String }],
+        },
         timeSpent: { type: Number },
         submittedAt: { type: Date },
         lastModified: { type: Date }, // For draft tracking

@@ -96,9 +96,19 @@ export function Login() {
 
                         {/* Password Field */}
                         <div className="space-y-2">
-                            <label className="block text-sm font-medium text-text-primary">
-                                Password
-                            </label>
+                            <div className="flex justify-between items-center">
+                                <label className="block text-sm font-medium text-text-primary">
+                                    Password
+                                </label>
+                                <Link 
+                                    to="/forgot-password" 
+                                    className="text-sm font-medium hover:underline" 
+                                    style={{ color: 'var(--accent-primary)' }}
+                                    tabIndex={-1}
+                                >
+                                    Forgot Password?
+                                </Link>
+                            </div>
                             <div className="relative">
                                 <Lock size={20} className="absolute left-4 top-1/2 -translate-y-1/2 text-text-secondary" />
                                 <input

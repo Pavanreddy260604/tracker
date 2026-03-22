@@ -209,7 +209,7 @@ const AIChatInput = memo(({
                             setShowModelMenu(!showModelMenu);
                         }}
                         className={cn(
-                            "group flex items-center gap-1.5 px-2.5 py-1 rounded-full border border-white/10 bg-white/5 hover:bg-white/10 transition-all duration-300",
+                            "group flex items-center gap-1.5 px-2.5 py-1 rounded-full border border-border-subtle/30 bg-console-bg/40 hover:bg-console-surface-2/60 transition-all duration-300",
                             showModelMenu && "border-accent-primary/40 bg-accent-primary/5"
                         )}
                     >
@@ -228,7 +228,7 @@ const AIChatInput = memo(({
                                 initial={{ opacity: 0, y: 8, scale: 0.95 }}
                                 animate={{ opacity: 1, y: 0, scale: 1 }}
                                 exit={{ opacity: 0, y: 8, scale: 0.95 }}
-                                className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-[220px] rounded-xl border border-white/10 bg-console-header/95 backdrop-blur-xl shadow-2xl p-1.5 z-50 overflow-hidden"
+                                className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-[220px] rounded-xl border border-border-subtle/40 bg-console-header/95 backdrop-blur-xl shadow-2xl p-1.5 z-50 overflow-hidden"
                             >
                                 <div className="max-h-[280px] overflow-y-auto custom-scrollbar">
                                     {Array.from(new Set(AI_MODELS.map((m: any) => m.provider))).map((provider: any) => {
@@ -237,7 +237,7 @@ const AIChatInput = memo(({
                                         
                                         return (
                                             <div key={provider} className="mb-2 last:mb-0">
-                                                <div className="px-2 py-1 flex items-center gap-1.5 border-b border-white/5 mb-1">
+                                                <div className="px-2 py-1 flex items-center gap-1.5 border-b border-border-subtle/20 mb-1">
                                                     {getProviderIcon(provider)}
                                                     <span className="text-[9px] font-black uppercase tracking-widest text-text-disabled opacity-40">
                                                         {provider}
@@ -255,7 +255,7 @@ const AIChatInput = memo(({
                                                                 "w-full flex items-center justify-between px-2 py-1.5 rounded-lg transition-all duration-150",
                                                                 selectedModel === model.id 
                                                                     ? "bg-accent-primary/10 text-accent-primary" 
-                                                                    : "hover:bg-white/5 text-text-secondary hover:text-text-primary"
+                                                                    : "hover:bg-console-surface-2/40 text-text-secondary hover:text-text-primary"
                                                             )}
                                                         >
                                                             <div className="flex flex-col items-start min-w-0">
@@ -285,12 +285,12 @@ const AIChatInput = memo(({
                     onSubmit={onSendClick}
                     className="chat-input-container w-full flex flex-row items-center gap-2"
                 >
-                    <div className="flex-1 flex flex-col min-w-0 min-h-[44px] justify-center bg-white/5 dark:bg-black/20 rounded-xl px-3 border border-white/10 focus-within:border-accent-primary/50 transition-colors">
+                    <div className="flex-1 flex flex-col min-w-0 min-h-[44px] justify-center bg-console-bg/50 rounded-xl px-3 border border-border-subtle/30 focus-within:border-accent-primary/50 transition-colors">
                         {/* Integrated Attachment Chips */}
                         {attachments.length > 0 && (
-                            <div className="flex flex-wrap gap-1.5 py-1.5 border-b border-white/5 mb-1 animate-in fade-in slide-in-from-top-1 duration-200">
+                            <div className="flex flex-wrap gap-1.5 py-1.5 border-b border-border-subtle/20 mb-1 animate-in fade-in slide-in-from-top-1 duration-200">
                                 {attachments.map((file, i) => (
-                                    <div key={i} className="flex items-center gap-1.5 px-2 py-0.5 rounded-lg bg-white/5 border border-white/10 text-[9px] text-text-secondary">
+                                    <div key={i} className="flex items-center gap-1.5 px-2 py-0.5 rounded-lg bg-console-bg/60 border border-border-subtle/30 text-[9px] text-text-secondary">
                                         <span className="truncate max-w-[100px]">{file.name}</span>
                                         <button onClick={() => removeAttachment(i)} className="hover:text-red-500">
                                             <X size={10} />
@@ -313,7 +313,7 @@ const AIChatInput = memo(({
                                     exit={{ opacity: 0, width: 0 }}
                                     type="button" 
                                     onClick={() => fileInputRef.current?.click()}
-                                    className="chat-input-icon hover:bg-black/10 dark:hover:bg-white/10 shrink-0" 
+                                    className="chat-input-icon hover:bg-console-surface-3/50 shrink-0" 
                                     aria-label="Add attachment"
                                 >
                                     <Plus size={18} className="opacity-80" />
@@ -360,7 +360,7 @@ const AIChatInput = memo(({
                             type="button" 
                             onClick={toggleRecording}
                             className={cn(
-                                "chat-input-icon hover:bg-black/10 dark:hover:bg-white/10 flex relative overflow-hidden transition-all duration-300",
+                                "chat-input-icon hover:bg-console-surface-3/50 flex relative overflow-hidden transition-all duration-300",
                                 isListening && "text-accent-primary bg-accent-primary/10 shadow-[0_0_10px_rgba(var(--accent-primary-rgb),0.2)]"
                             )} 
                             aria-label="Voice"
@@ -399,7 +399,7 @@ const AIChatInput = memo(({
                         <button
                             type="submit"
                             disabled={isLoading || isIndexing || (!localInput.trim() && attachments.length === 0)}
-                            className="chat-send-button hover:bg-black/10 dark:hover:bg-white/10 disabled:opacity-50"
+                            className="chat-send-button hover:bg-console-surface-3/50 disabled:opacity-50"
                         >
                             <Send size={18} />
                         </button>
@@ -568,7 +568,7 @@ export function GlobalAIWidget() {
                                                         <div className="ai-widget-user-avatar">YO</div>
                                                     ) : (
                                                         <div className="ai-widget-assistant-avatar">
-                                                            <Sparkles size={16} className="text-white" strokeWidth={2} />
+                                                            <Sparkles size={16} className="text-console-bg" strokeWidth={2} />
                                                         </div>
                                                     )}
                                                 </div>
@@ -584,7 +584,7 @@ export function GlobalAIWidget() {
                                                                     handleSpeak(msg.content, msg.id || '');
                                                                 }}
                                                                 className={cn(
-                                                                    "p-1 rounded-md hover:bg-white/10 transition-colors",
+                                                                    "p-1 rounded-md hover:bg-console-surface-3/50 transition-colors",
                                                                     speakingMessageId === msg.id ? "text-accent-primary" : "text-text-tertiary opacity-40 hover:opacity-100"
                                                                 )}
                                                                 title={speakingMessageId === msg.id ? "Stop speaking" : "Speak message"}
@@ -598,7 +598,7 @@ export function GlobalAIWidget() {
                                                     {msg.role === 'user' && msg.attachments && msg.attachments.length > 0 && (
                                                         <div className="flex flex-wrap gap-1.5 mb-2">
                                                             {msg.attachments.map((file: any, i: number) => (
-                                                                <div key={i} className="flex items-center gap-1 px-2 py-0.5 rounded-md bg-white/5 border border-white/10 text-[9px] text-text-tertiary">
+                                                                <div key={i} className="flex items-center gap-1 px-2 py-0.5 rounded-md bg-console-bg/60 border border-border-subtle/30 text-[9px] text-text-tertiary">
                                                                     <span className="truncate max-w-[100px]">{file.name}</span>
                                                                 </div>
                                                             ))}

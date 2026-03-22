@@ -64,7 +64,7 @@ describe('Project Study Routes Integration', () => {
         (ProjectStudy.create as jest.Mock).mockResolvedValue({
             _id: 'study123',
             projectName: 'Test Project',
-            user: 'user123'
+            userId: 'user123'
         });
 
         const response = await request(app)
@@ -80,7 +80,7 @@ describe('Project Study Routes Integration', () => {
         expect(response.status).toBe(201);
         expect(response.body.success).toBe(true);
         expect(ProjectStudy.create).toHaveBeenCalledWith(expect.objectContaining({
-            user: 'user123',
+            userId: 'user123',
             repoUrl: 'https://github.com/user/repo'
         }));
         expect(knowledgeSync.syncProjectStudy).toHaveBeenCalledWith(expect.objectContaining({
@@ -105,7 +105,7 @@ describe('Project Study Routes Integration', () => {
         expect(response.status).toBe(200);
         expect(response.body.success).toBe(true);
         expect(ProjectStudy.findOneAndUpdate).toHaveBeenCalledWith(
-            { _id: 'study123', user: 'user123' },
+            { _id: 'study123', userId: 'user123' },
             { $set: { projectName: 'Updated Project', coreComponents: 'Table A, Table B' } },
             { new: true, runValidators: true }
         );

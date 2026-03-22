@@ -1,9 +1,11 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Plus, Minus, Check, Dumbbell, Moon, Trash2 } from 'lucide-react';
+import { Check, Dumbbell, Moon, Trash2 } from 'lucide-react';
 import { toast } from '../../stores/toastStore';
 import { Button } from '../ui/Button';
+import { Input } from '../ui/Input';
 import { Slider } from '../ui/Slider';
+
 import { useDataStore } from '../../stores/dataStore';
 import { DeleteModal } from '../ui/DeleteModal';
 import { cn } from '../../lib/utils';
@@ -50,13 +52,7 @@ export function QuickLog({ initialValues, onSuccess, className }: QuickLogProps)
         }
     };
 
-    const adjustValue = (field: keyof typeof values, delta: number) => {
-        setValues(prev => {
-            const current = prev[field] as number;
-            const newValue = Math.max(0, Math.min(field === 'sleepHours' ? 24 : 12, current + delta));
-            return { ...prev, [field]: newValue };
-        });
-    };
+
 
     const handleSave = async () => {
         setIsSaving(true);
@@ -116,22 +112,18 @@ export function QuickLog({ initialValues, onSuccess, className }: QuickLogProps)
                     <p className="text-[10px] uppercase tracking-wider text-gray-500 dark:text-gray-400">DSA problems today</p>
                 </div>
                 <div className="flex items-center gap-3">
-                    <button
-                        onClick={() => adjustValue('dsaProblemsSolved', -1)}
-                        className="w-9 h-9 rounded-lg bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 flex items-center justify-center text-gray-500 dark:text-gray-400 transition-colors"
-                    >
-                        <Minus size={16} />
-                    </button>
-                    <span className="w-14 text-center text-xl font-bold text-gray-900 dark:text-white">
-                        {values.dsaProblemsSolved}
-                    </span>
-                    <button
-                        onClick={() => adjustValue('dsaProblemsSolved', 1)}
-                        className="w-9 h-9 rounded-lg bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 flex items-center justify-center text-gray-500 dark:text-gray-400 transition-colors"
-                    >
-                        <Plus size={16} />
-                    </button>
+                    <Input
+                        type="text"
+                        inputMode="numeric"
+                        value={values.dsaProblemsSolved}
+                        onChange={(e) => {
+                            const val = e.target.value.replace(/\D/g, '');
+                            setValues(prev => ({ ...prev, dsaProblemsSolved: Math.min(99, parseInt(val) || 0) }));
+                        }}
+                        className="w-20 text-center font-bold h-10"
+                    />
                 </div>
+
             </div>
 
             {/* Sleep & Exercise */}
@@ -143,22 +135,18 @@ export function QuickLog({ initialValues, onSuccess, className }: QuickLogProps)
                         <span className="text-sm font-medium text-gray-900 dark:text-white">Sleep</span>
                     </div>
                     <div className="flex items-center gap-1.5">
-                        <button
-                            onClick={() => adjustValue('sleepHours', -0.5)}
-                            className="w-6 h-6 rounded bg-white dark:bg-gray-700 border border-gray-200 dark:border-white/10 hover:bg-gray-100 dark:hover:bg-gray-600 flex items-center justify-center text-gray-500 dark:text-gray-400"
-                        >
-                            <Minus size={12} />
-                        </button>
-                        <span className="w-9 text-center text-sm font-bold text-gray-900 dark:text-white">
-                            {values.sleepHours}h
-                        </span>
-                        <button
-                            onClick={() => adjustValue('sleepHours', 0.5)}
-                            className="w-6 h-6 rounded bg-white dark:bg-gray-700 border border-gray-200 dark:border-white/10 hover:bg-gray-100 dark:hover:bg-gray-600 flex items-center justify-center text-gray-500 dark:text-gray-400"
-                        >
-                            <Plus size={12} />
-                        </button>
+                        <Input
+                            type="text"
+                            inputMode="numeric"
+                            value={values.sleepHours}
+                            onChange={(e) => {
+                                const val = e.target.value.replace(/[^\d.]/g, '');
+                                setValues(prev => ({ ...prev, sleepHours: Math.min(24, parseFloat(val) || 0) }));
+                            }}
+                            className="w-16 text-center font-bold h-8 text-xs"
+                        />
                     </div>
+
                 </div>
 
                 {/* Exercise */}

@@ -322,7 +322,7 @@ router.post('/logout', async (req: Request, res: Response) => {
             await RefreshToken.deleteOne({ token: hashedToken });
         }
         res.clearCookie('refreshToken');
-        res.json({ success: true, message: 'Logged out successfully' });
+        res.json({ success: true, data: { message: 'Logged out successfully' } });
     } catch (error) {
         console.error('Logout error:', error);
         res.status(500).json({ success: false, error: 'Failed to logout' });
@@ -427,7 +427,7 @@ router.put('/ai-key', authenticate, async (req: Request, res: Response) => {
             return res.status(404).json({ success: false, error: 'User not found' });
         }
 
-        res.json({ success: true, message: 'AI Key updated securely' });
+        res.json({ success: true, data: { message: 'AI Key updated securely' } });
     } catch (error) {
         console.error('Update AI key error:', error);
         res.status(500).json({ success: false, error: 'Failed to update AI key' });
@@ -450,7 +450,7 @@ router.post('/forgot-password', authLimiter, async (req: Request, res: Response)
 
         // Always return success even if user not found (security best practice)
         if (!user) {
-            return res.json({ success: true, message: 'If an account exists, a reset link was sent' });
+            return res.json({ success: true, data: { message: 'If an account exists, a reset link was sent' } });
         }
 
         const resetToken = crypto.randomBytes(32).toString('hex');
@@ -468,7 +468,7 @@ router.post('/forgot-password', authLimiter, async (req: Request, res: Response)
 
         await emailService.sendPasswordResetEmail(user.email, resetUrl);
 
-        res.json({ success: true, message: 'If an account exists, a reset link was sent' });
+        res.json({ success: true, data: { message: 'If an account exists, a reset link was sent' } });
     } catch (error) {
         console.error('Forgot password error:', error);
         res.status(500).json({ success: false, error: 'Failed to process request' });
@@ -513,7 +513,7 @@ router.post('/reset-password', authLimiter, async (req: Request, res: Response) 
         // Optional: Revoke all existing refresh tokens here to force re-login everywhere
         await RefreshToken.deleteMany({ userId: user._id });
 
-        res.json({ success: true, message: 'Password has been reset successfully' });
+        res.json({ success: true, data: { message: 'Password has been reset successfully' } });
     } catch (error) {
         console.error('Reset password error:', error);
         res.status(500).json({ success: false, error: 'Failed to reset password' });
@@ -553,7 +553,7 @@ router.put('/change-password', authenticate, async (req: Request, res: Response)
             token: { $ne: hashToken(req.cookies?.refreshToken || '') }
         });
 
-        res.json({ success: true, message: 'Password changed successfully' });
+        res.json({ success: true, data: { message: 'Password changed successfully' } });
     } catch (error) {
         console.error('Change password error:', error);
         res.status(500).json({ success: false, error: 'Failed to change password' });
@@ -579,7 +579,7 @@ router.post('/verify-email', authenticate, authLimiter, async (req: Request, res
         }
 
         if (user.emailVerified) {
-            return res.json({ success: true, message: 'Email already verified' });
+            return res.json({ success: true, data: { message: 'Email already verified', user: user.toJSON() } });
         }
 
         if (!user.verificationToken || !user.verificationExpiry) {
@@ -638,7 +638,7 @@ router.post('/resend-verification', authenticate, authLimiter, async (req: Reque
 
         await emailService.sendVerificationEmail(user.email, verificationCode);
 
-        res.json({ success: true, message: 'Verification code sent' });
+        res.json({ success: true, data: { message: 'Verification code sent' } });
     } catch (error) {
         console.error('Resend verification error:', error);
         res.status(500).json({ success: false, error: 'Failed to resend verification code' });
@@ -687,7 +687,7 @@ router.delete('/account', authenticate, async (req: Request, res: Response) => {
             DailyLog.deleteMany({ userId }),
             DSAProblem.deleteMany({ userId }),
             BackendTopic.deleteMany({ userId }),
-            ProjectStudy.deleteMany({ user: userId }),
+            ProjectStudy.deleteMany({ userId }),
             ChatSession.deleteMany({ userId }),
             InterviewSession.deleteMany({ userId }),
             RefreshToken.deleteMany({ userId }),

@@ -21,8 +21,6 @@ interface ViewProblemModalProps {
 }
 
 export function ViewProblemModal({ problem, isOpen, onClose, onEdit, onDelete, onReview }: ViewProblemModalProps) {
-    if (!problem) return null;
-
     const modalRef = useRef<HTMLDivElement>(null);
     const { setContext, toggleOpen } = useAI();
 
@@ -34,6 +32,8 @@ export function ViewProblemModal({ problem, isOpen, onClose, onEdit, onDelete, o
             if (!isOpen) setContext(null);
         };
     }, [isOpen, problem, setContext]);
+
+    if (!problem) return null;
 
     // Close on click outside
     const handleBackdropClick = (e: React.MouseEvent) => {

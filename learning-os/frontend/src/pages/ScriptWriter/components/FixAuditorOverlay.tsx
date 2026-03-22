@@ -36,24 +36,24 @@ export function FixAuditorOverlay({
         .filter((line) => line.length > 0);
 
     return (
-        <div className="absolute inset-0 z-[100] flex flex-col bg-zinc-950/90 backdrop-blur-sm animate-in fade-in zoom-in-95 duration-300">
-            <div className="flex-none h-16 border-b border-zinc-800 bg-zinc-900/50 flex items-center justify-between px-6">
+        <div className="absolute inset-0 z-[100] flex flex-col bg-console-bg/90 backdrop-blur-sm animate-in fade-in zoom-in-95 duration-300">
+            <div className="flex-none h-16 border-b border-border-subtle bg-console-surface/50 flex items-center justify-between px-6">
                 <div className="flex items-center gap-4">
                     <div className="flex items-center gap-2">
-                        <div className={`p-2 rounded-lg ${isProposal ? 'bg-blue-500/10 text-blue-400' : isSuperior ? 'bg-emerald-500/10 text-emerald-400' : 'bg-amber-500/10 text-amber-400'}`}>
+                        <div className={`p-2 rounded-lg ${isProposal ? 'bg-accent-soft text-accent-primary' : isSuperior ? 'bg-status-ok-soft text-status-ok' : 'bg-status-warning-soft text-status-warning'}`}>
                             {isProposal ? <Sparkles size={18} /> : <Brain size={18} />}
                         </div>
                         <div>
-                            <h2 className="text-sm font-black uppercase tracking-widest text-white flex items-center gap-2">
+                            <h2 className="text-sm font-black uppercase tracking-widest text-text-primary flex items-center gap-2">
                                 {isProposal ? 'Assistant Proposal' : 'Executive Scene Audit'}
                                 {!isProposal && !isSuperior && (
-                                    <span className="bg-amber-500/10 text-amber-500 text-[10px] px-2 py-0.5 rounded border border-amber-500/20 flex items-center gap-1">
+                                    <span className="bg-status-warning-soft text-status-warning text-[10px] px-2 py-0.5 rounded border border-status-warning/20 flex items-center gap-1">
                                         <AlertTriangle size={10} />
                                         Below Quality Floor
                                     </span>
                                 )}
                             </h2>
-                            <p className="text-[10px] text-zinc-500 uppercase font-bold">
+                            <p className="text-[10px] text-text-tertiary uppercase font-bold">
                                 {isProposal ? 'Reviewing AI-Proposed Script Improvement' : 'Reviewing Ruthless Executive Analysis'}
                             </p>
                         </div>
@@ -62,15 +62,15 @@ export function FixAuditorOverlay({
 
                 <div className="flex items-center gap-6">
                     {!isProposal && currentScore > 0 && !pendingFix.isStreaming && (
-                        <div className="flex items-center gap-3 bg-zinc-950 px-4 py-2 rounded-xl border border-zinc-800 shadow-inner">
+                        <div className="flex items-center gap-3 bg-console-bg px-4 py-2 rounded-xl border border-border-subtle shadow-inner">
                             <div className="text-center">
-                                <div className="text-[8px] font-bold text-zinc-600 uppercase">Benchmark</div>
-                                <div className="text-lg font-black text-zinc-400">{currentScore}</div>
+                                <div className="text-[8px] font-bold text-text-tertiary uppercase">Benchmark</div>
+                                <div className="text-lg font-black text-text-tertiary">{currentScore}</div>
                             </div>
-                            <div className="text-zinc-600"><ChevronRight size={14} /></div>
+                            <div className="text-text-tertiary"><ChevronRight size={14} /></div>
                             <div className="text-center">
-                                <div className="text-[8px] font-bold text-blue-500 uppercase">Revised</div>
-                                <div className="text-lg font-black text-white flex items-center gap-1">
+                                <div className="text-[8px] font-bold text-accent-primary uppercase">Revised</div>
+                                <div className="text-lg font-black text-text-primary flex items-center gap-1">
                                     {newScore}
                                     {newScore > currentScore ? (
                                         <TrendingUp size={14} className="text-emerald-500" />
@@ -83,22 +83,22 @@ export function FixAuditorOverlay({
                     )}
 
                     {pendingFix.isStreaming ? (
-                        <div className="flex items-center gap-2 px-4 py-2 bg-blue-500/5 border border-blue-500/20 rounded-lg animate-pulse">
-                            <Loader2 size={14} className="text-blue-400 animate-spin" />
-                            <span className="text-[10px] font-black text-blue-400 uppercase tracking-widest">Generating Proposal...</span>
+                        <div className="flex items-center gap-2 px-4 py-2 bg-accent-soft border border-accent-primary/20 rounded-lg animate-pulse">
+                            <Loader2 size={14} className="text-accent-primary animate-spin" />
+                            <span className="text-[10px] font-black text-accent-primary uppercase tracking-widest">Generating Proposal...</span>
                         </div>
                     ) : (
                         <div className="flex items-center gap-2 animate-in fade-in slide-in-from-right-4 duration-500">
                             <button
                                 onClick={onDiscard}
-                                className="px-4 py-2 bg-zinc-800/50 hover:bg-zinc-800 text-zinc-400 hover:text-red-400 text-[10px] font-bold rounded-lg transition-all uppercase tracking-widest flex items-center gap-2 border border-zinc-700/50"
+                                className="px-4 py-2 bg-console-surface/50 hover:bg-console-surface text-text-tertiary hover:text-status-error text-[10px] font-bold rounded-lg transition-all uppercase tracking-widest flex items-center gap-2 border border-border-subtle/50"
                             >
                                 <X size={14} />
                                 Discard
                             </button>
                             <button
                                 onClick={onAccept}
-                                className="px-6 py-2 bg-zinc-800/80 hover:bg-blue-600 text-zinc-300 hover:text-white text-[10px] font-black rounded-lg transition-all uppercase tracking-widest flex items-center gap-2 border border-zinc-700 shadow-lg hover:shadow-blue-500/10"
+                                className="px-6 py-2 bg-console-surface/80 hover:bg-accent-primary text-text-secondary hover:text-console-bg text-[10px] font-black rounded-lg transition-all uppercase tracking-widest flex items-center gap-2 border border-border-subtle shadow-lg hover:shadow-accent-primary/10"
                             >
                                 <Check size={14} />
                                 Apply
@@ -110,20 +110,20 @@ export function FixAuditorOverlay({
 
             <div className="flex-1 overflow-hidden flex flex-row">
                 {(!isProposal || auditLines.length > 0) && (
-                    <div className="w-80 border-r border-zinc-800 bg-zinc-900/30 p-6 space-y-8 overflow-y-auto custom-scrollbar">
+                    <div className="w-80 border-r border-border-subtle bg-console-surface/30 p-6 space-y-8 overflow-y-auto custom-scrollbar">
                         <div className="space-y-4">
-                            <h3 className="text-[10px] font-black text-zinc-500 uppercase tracking-widest flex items-center gap-2">
+                            <h3 className="text-[10px] font-black text-text-tertiary uppercase tracking-widest flex items-center gap-2">
                                 <Sparkles size={12} />
                                 {isProposal ? 'Revision Notes' : 'Auditor Notes'}
                             </h3>
                             <div className="space-y-3">
                                 {auditLines.map((line, index) => (
-                                    <div key={`${line}-${index}`} className="p-3 bg-zinc-900/50 rounded-xl border border-zinc-800/50 text-xs text-zinc-300 leading-relaxed font-serif italic border-l-2 border-l-blue-500 animate-in fade-in slide-in-from-bottom-1 duration-300">
+                                    <div key={`${line}-${index}`} className="p-3 bg-console-surface/50 rounded-xl border border-border-subtle/50 text-xs text-text-secondary leading-relaxed font-serif italic border-l-2 border-l-accent-primary animate-in fade-in slide-in-from-bottom-1 duration-300">
                                         {line}
                                     </div>
                                 ))}
                                 {isProposal && auditLines.length === 0 && (
-                                    <div className="p-4 text-center text-[10px] text-zinc-600 uppercase font-black italic">
+                                    <div className="p-4 text-center text-[10px] text-text-tertiary uppercase font-black italic">
                                         Streaming proposal...
                                     </div>
                                 )}
@@ -132,23 +132,23 @@ export function FixAuditorOverlay({
 
                         {!isProposal && (
                             <div className="space-y-4">
-                                <h3 className="text-[10px] font-black text-zinc-500 uppercase tracking-widest">Revision Analysis</h3>
+                                <h3 className="text-[10px] font-black text-text-tertiary uppercase tracking-widest">Revision Analysis</h3>
                                 <div className="space-y-2">
-                                    <div className="flex justify-between text-[10px] text-zinc-400">
+                                    <div className="flex justify-between text-[10px] text-text-tertiary">
                                         <span>Dialogue Sharpness</span>
-                                        <span className="text-emerald-400 font-bold">+18%</span>
+                                        <span className="text-status-ok font-bold">+18%</span>
                                     </div>
-                                    <div className="w-full h-1 bg-zinc-800 rounded-full overflow-hidden">
-                                        <div className="h-full bg-emerald-500 w-[85%]" />
+                                    <div className="w-full h-1 bg-console-surface rounded-full overflow-hidden">
+                                        <div className="h-full bg-status-ok w-[85%]" />
                                     </div>
                                 </div>
                                 <div className="space-y-2">
-                                    <div className="flex justify-between text-[10px] text-zinc-400">
+                                    <div className="flex justify-between text-[10px] text-text-tertiary">
                                         <span>Pacing Subtext</span>
-                                        <span className="text-emerald-400 font-bold">+12%</span>
+                                        <span className="text-accent-primary font-bold">+12%</span>
                                     </div>
-                                    <div className="w-full h-1 bg-zinc-800 rounded-full overflow-hidden">
-                                        <div className="h-full bg-blue-500 w-[78%]" />
+                                    <div className="w-full h-1 bg-console-surface rounded-full overflow-hidden">
+                                        <div className="h-full bg-accent-primary w-[78%]" />
                                     </div>
                                 </div>
                             </div>
@@ -157,23 +157,23 @@ export function FixAuditorOverlay({
                 )}
 
                 <div className="flex-1 flex overflow-hidden">
-                    <div className="flex-1 flex flex-col border-r border-zinc-800">
-                        <div className="h-8 bg-zinc-950 flex items-center px-4 border-b border-zinc-800">
-                            <span className="text-[9px] font-black text-zinc-500 uppercase tracking-widest">Original Version</span>
+                    <div className="flex-1 flex flex-col border-r border-border-subtle">
+                        <div className="h-8 bg-console-bg flex items-center px-4 border-b border-border-subtle">
+                            <span className="text-[9px] font-black text-text-tertiary uppercase tracking-widest">Original Version</span>
                         </div>
-                        <div className="flex-1 p-6 overflow-y-auto custom-scrollbar bg-zinc-950/20">
-                            <pre className="text-sm font-mono text-zinc-500 whitespace-pre-wrap leading-relaxed opacity-50">
+                        <div className="flex-1 p-6 overflow-y-auto custom-scrollbar bg-console-bg/20">
+                            <pre className="text-sm font-mono text-text-tertiary whitespace-pre-wrap leading-relaxed opacity-50">
                                 {originalContent}
                             </pre>
                         </div>
                     </div>
 
-                    <div className="flex-1 flex flex-col bg-zinc-900/10">
-                        <div className="h-8 bg-zinc-950 flex items-center px-4 border-b border-blue-900/30">
-                            <span className="text-[9px] font-black text-blue-400 uppercase tracking-widest">Proposed Version</span>
+                    <div className="flex-1 flex flex-col bg-console-surface/10">
+                        <div className="h-8 bg-console-bg flex items-center px-4 border-b border-accent-primary/30">
+                            <span className="text-[9px] font-black text-accent-primary uppercase tracking-widest">Proposed Version</span>
                         </div>
-                        <div className="flex-1 p-6 overflow-y-auto custom-scrollbar bg-zinc-900/10">
-                            <pre className="text-sm font-mono text-zinc-100 whitespace-pre-wrap leading-relaxed">
+                        <div className="flex-1 p-6 overflow-y-auto custom-scrollbar bg-console-surface/10">
+                            <pre className="text-sm font-mono text-text-primary whitespace-pre-wrap leading-relaxed">
                                 {pendingFix.content}
                             </pre>
                         </div>
@@ -181,11 +181,11 @@ export function FixAuditorOverlay({
                 </div>
             </div>
 
-            <div className="flex-none h-8 bg-zinc-900 border-t border-zinc-800 px-6 flex items-center text-[9px] font-bold text-zinc-500 gap-4">
+            <div className="flex-none h-8 bg-console-surface border-t border-border-subtle px-6 flex items-center text-[9px] font-bold text-text-tertiary gap-4">
                 <span className="flex items-center gap-1.5"><Info size={10} /> READ-ONLY PREVIEW</span>
                 <span className="flex items-center gap-1.5"><Layout size={10} /> SIDE-BY-SIDE AUDIT MODE</span>
                 <div className="flex-1" />
-                <span className="text-zinc-600 italic">Audit generated by Hollywood-L4 Model</span>
+                <span className="text-text-tertiary italic">Audit generated by Hollywood-L4 Model</span>
             </div>
         </div>
     );

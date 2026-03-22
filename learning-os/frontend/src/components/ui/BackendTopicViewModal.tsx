@@ -29,6 +29,28 @@ interface BackendTopicViewModalProps {
     topicId: string | null;
 }
 
+const MAX_BACKEND_REVIEW_STAGE = 5;
+
+function getNextBackendReviewState(currentStage: number) {
+    const nextStage = Math.min(currentStage + 1, MAX_BACKEND_REVIEW_STAGE);
+    if (nextStage >= MAX_BACKEND_REVIEW_STAGE) {
+        return { reviewStage: MAX_BACKEND_REVIEW_STAGE, nextReviewDate: undefined };
+    }
+
+    const nextDate = new Date();
+    const offsetsByStage: Record<number, number> = {
+        1: 1,
+        2: 2,
+        3: 4,
+        4: 23,
+    };
+    nextDate.setDate(nextDate.getDate() + (offsetsByStage[currentStage] ?? 1));
+    return {
+        reviewStage: nextStage,
+        nextReviewDate: nextDate.toISOString().split('T')[0],
+    };
+}
+
 export function BackendTopicViewModal({ isOpen, onClose, topicId }: BackendTopicViewModalProps) {
     const [topic, setTopic] = useState<BackendTopic | null>(null);
     const [isLoading, setIsLoading] = useState(false);
@@ -67,19 +89,12 @@ export function BackendTopicViewModal({ isOpen, onClose, topicId }: BackendTopic
     const handleReview = async () => {
         if (!topic) return;
         const currentStage = topic.reviewStage || 1;
-        let nextDate = new Date();
-        let nextStage = currentStage + 1;
-
-        if (currentStage < 3) {
-            nextDate.setDate(nextDate.getDate() + 3);
-        } else {
-            nextStage = 4;
-        }
+        const nextReview = getNextBackendReviewState(currentStage);
 
         try {
             await api.updateBackendTopic(topic._id, {
-                nextReviewDate: nextStage <= 3 ? nextDate.toISOString().split('T')[0] : undefined,
-                reviewStage: nextStage
+                nextReviewDate: nextReview.nextReviewDate,
+                reviewStage: nextReview.reviewStage
             });
             // Refresh to get updated state
             const response = await api.getBackendTopic(topic._id);

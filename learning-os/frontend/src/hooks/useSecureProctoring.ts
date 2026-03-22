@@ -11,7 +11,7 @@ type ViolationType =
   | 'paste_detected'
   | 'automation_detected';
 
-interface SecureViolation {
+export interface SecureViolation {
   type: ViolationType;
   timestamp: number;
   message: string;
@@ -38,9 +38,20 @@ interface UseSecureProctoringReturn {
   violationCount: number;
   isLocked: boolean;
   enterFullscreen: () => Promise<boolean>;
-  generateEventProof: (type: ViolationType, data?: Record<string, unknown>) => string;
+  generateEventProof: (type: ViolationType, data?: Record<string, unknown>) => Promise<string>;
   terminateTest: () => void;
 }
+
+type FullscreenDocument = Document & {
+  webkitFullscreenElement?: Element | null;
+  mozFullScreenElement?: Element | null;
+  msFullscreenElement?: Element | null;
+};
+
+type FullscreenElement = HTMLElement & {
+  webkitRequestFullscreen?: () => Promise<void> | void;
+  msRequestFullscreen?: () => Promise<void> | void;
+};
 
 export function useSecureProctoring({
   sessionId,
@@ -61,8 +72,16 @@ export function useSecureProctoring({
   const isTerminatingRef = useRef(false);
   const mouseTrailRef = useRef<{ x: number; y: number; t: number }[]>([]);
   const keystrokeBufferRef = useRef<{ key: string; pressTime: number; releaseTime: number }[]>([]);
-  const integrityCheckIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const integrityCheckIntervalRef = useRef<number | null>(null);
   const expectedHashRef = useRef<string>('');
+
+  // Terminate test
+  const terminateTest = useCallback(() => {
+    if (isTerminatingRef.current) return;
+    isTerminatingRef.current = true;
+    setIsLocked(false);
+    onTerminate();
+  }, [onTerminate]);
 
   // Generate HMAC proof for server verification (async due to Web Crypto API)
   const generateEventProof = useCallback(async (
@@ -135,25 +154,17 @@ export function useSecureProctoring({
     }
   }, [generateEventProof, onViolation, maxViolations, enableMouseTracking, enableKeystrokeTracking]);
 
-  // Terminate test
-  const terminateTest = useCallback(() => {
-    if (isTerminatingRef.current) return;
-    isTerminatingRef.current = true;
-    setIsLocked(false);
-    onTerminate();
-  }, [onTerminate]);
-
   // Fullscreen enforcement
   const enterFullscreen = useCallback(async (): Promise<boolean> => {
     try {
-      const element = document.documentElement;
+      const element = document.documentElement as FullscreenElement;
       
       if (element.requestFullscreen) {
         await element.requestFullscreen();
-      } else if ((element as HTMLElement).webkitRequestFullscreen) {
-        await (element as HTMLElement).webkitRequestFullscreen();
-      } else if ((element as HTMLElement).msRequestFullscreen) {
-        await (element as HTMLElement).msRequestFullscreen();
+      } else if (element.webkitRequestFullscreen) {
+        await element.webkitRequestFullscreen();
+      } else if (element.msRequestFullscreen) {
+        await element.msRequestFullscreen();
       }
       
       setIsLocked(true);
@@ -190,26 +201,8 @@ export function useSecureProctoring({
     // Check every second
     const interval = window.setInterval(checkDevTools, 1000);
 
-    // Also detect via debugger timing
-    const detectDebugger = () => {
-      const start = performance.now();
-      debugger;
-      const end = performance.now();
-      
-      if (end - start > 100) {
-        recordViolation(
-          'devtools_detected',
-          'Debugger statement triggered - developer tools likely open'
-        );
-      }
-    };
-
-    // Periodic debugger detection
-    const debuggerInterval = window.setInterval(detectDebugger, 5000);
-
     return () => {
       window.clearInterval(interval);
-      window.clearInterval(debuggerInterval);
     };
   }, [recordViolation, enableIntegrityChecks]);
 
@@ -218,11 +211,12 @@ export function useSecureProctoring({
     const handleFullscreenChange = () => {
       if (isTerminatingRef.current) return;
 
+      const fullscreenDocument = document as FullscreenDocument;
       const fullscreenActive = !!(
         document.fullscreenElement ||
-        (document as Document).webkitFullscreenElement ||
-        (document as Document).mozFullScreenElement ||
-        (document as Document).msFullscreenElement
+        fullscreenDocument.webkitFullscreenElement ||
+        fullscreenDocument.mozFullScreenElement ||
+        fullscreenDocument.msFullscreenElement
       );
 
       if (!fullscreenActive && isLocked) {

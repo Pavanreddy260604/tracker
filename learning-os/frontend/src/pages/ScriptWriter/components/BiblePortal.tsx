@@ -70,7 +70,7 @@ export function BiblePortal({
     };
 
     return (
-        <div className="flex-1 overflow-auto bg-zinc-950 p-8 custom-scrollbar">
+        <div className="flex-1 overflow-auto bg-console-bg p-8 custom-scrollbar">
             <input
                 type="file"
                 ref={fileInputRef}
@@ -80,13 +80,13 @@ export function BiblePortal({
             />
             <div className="max-w-5xl mx-auto space-y-12">
                 {/* Header Section */}
-                <header className="flex justify-between items-end border-b border-zinc-800 pb-8">
+                <header className="flex justify-between items-end border-b border-border-subtle pb-8">
                     <div>
-                        <div className="flex items-center gap-3 text-blue-400 mb-2">
+                        <div className="flex items-center gap-3 text-accent-primary mb-2">
                             <Globe size={24} />
                             <span className="text-sm font-bold uppercase tracking-[0.2em]">Project Bible</span>
                         </div>
-                        <h1 className="text-5xl font-bold text-white tracking-tight">{activeProject.title}</h1>
+                        <h1 className="text-5xl font-bold text-text-primary tracking-tight">{activeProject.title}</h1>
                     </div>
                 </header>
 
@@ -94,11 +94,11 @@ export function BiblePortal({
                     {/* Left Column: Metadata & Logline */}
                     <div className="lg:col-span-1 space-y-12">
                         <section className="space-y-4">
-                            <h3 className="text-xs font-bold text-zinc-500 uppercase tracking-widest flex items-center gap-2">
+                            <h3 className="text-xs font-bold text-text-tertiary uppercase tracking-widest flex items-center gap-2">
                                 <FileText size={14} /> Narrative Overview
                             </h3>
-                            <div className="p-6 bg-zinc-900/30 rounded-2xl border border-zinc-800/50 backdrop-blur-sm">
-                                <p className="text-zinc-300 leading-relaxed italic text-lg font-serif">
+                            <div className="p-6 bg-console-surface/30 rounded-2xl border border-border-subtle/50 backdrop-blur-sm">
+                                <p className="text-text-secondary leading-relaxed italic text-lg font-serif">
                                     "{activeProject.logline || 'Establishing the core narrative engine...'}"
                                 </p>
                             </div>
@@ -109,24 +109,24 @@ export function BiblePortal({
                     <div className="lg:col-span-2 space-y-12">
                         <section className="space-y-6">
                             <div className="flex items-center justify-between">
-                                <h2 className="text-xl font-bold text-white flex items-center gap-3">
-                                    <Users className="text-blue-500" /> Cast Management & RAG Service
+                                <h2 className="text-xl font-bold text-text-primary flex items-center gap-3">
+                                    <Users className="text-accent-primary" /> Cast Management & RAG Service
                                 </h2>
                                 <button
                                     onClick={() => {
                                         onCharacterSelect?.(null);
                                         setIsAddingCharacter(true);
                                     }}
-                                    className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-xs font-bold transition-all shadow-lg shadow-blue-900/20"
+                                    className="px-4 py-2 bg-accent-primary hover:bg-accent-primary-dark text-console-bg rounded-lg text-xs font-bold transition-all shadow-lg shadow-accent-primary/20"
                                 >
                                     + Add New Character
                                 </button>
                             </div>
 
                             {isAddingCharacter && characterForm && (
-                                <div className="p-6 bg-zinc-900 border border-blue-500/30 rounded-2xl space-y-6 shadow-2xl shadow-blue-900/10">
-                                    <div className="flex justify-between items-center pb-4 border-b border-zinc-800">
-                                        <div className="flex items-center gap-2 text-blue-400">
+                                <div className="p-6 bg-console-surface border border-accent-primary/30 rounded-2xl space-y-6 shadow-2xl shadow-accent-primary/10">
+                                    <div className="flex justify-between items-center pb-4 border-b border-border-subtle">
+                                        <div className="flex items-center gap-2 text-accent-primary">
                                             <Sparkles size={16} />
                                             <h3 className="text-sm font-bold uppercase tracking-wider">
                                                 {activeCharacterId ? 'Edit Character Profile' : 'Register New Cast Member'}
@@ -137,27 +137,27 @@ export function BiblePortal({
                                                 setIsAddingCharacter(false);
                                                 onCharacterSelect?.(null);
                                             }}
-                                            className="p-1 hover:bg-zinc-800 rounded transition-colors"
+                                            className="p-1 hover:bg-console-surface-2 rounded transition-colors"
                                         >
-                                            <X size={16} className="text-zinc-500" />
+                                            <X size={16} className="text-text-tertiary" />
                                         </button>
                                     </div>
 
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                         <div className="space-y-4">
                                             <div className="space-y-1.5">
-                                                <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest px-1">Full Name</label>
+                                                <label className="text-[10px] font-bold text-text-tertiary uppercase tracking-widest px-1">Full Name</label>
                                                 <input
-                                                    className="w-full bg-zinc-950 border border-zinc-800 rounded-lg px-4 py-2.5 text-sm text-zinc-100 focus:border-blue-500 outline-none transition-all"
+                                                    className="w-full bg-console-bg border border-border-subtle rounded-lg px-4 py-2.5 text-sm text-text-primary focus:border-accent-primary outline-none transition-all"
                                                     value={characterForm.name}
                                                     onChange={(e) => onCharacterFormChange?.('name', e.target.value)}
                                                     placeholder="Character Name"
                                                 />
                                             </div>
                                             <div className="space-y-1.5">
-                                                <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest px-1">Archetype / Role</label>
+                                                <label className="text-[10px] font-bold text-text-tertiary uppercase tracking-widest px-1">Archetype / Role</label>
                                                 <select
-                                                    className="w-full bg-zinc-950 border border-zinc-800 rounded-lg px-4 py-2.5 text-sm text-zinc-100 focus:border-blue-500 outline-none transition-all"
+                                                    className="w-full bg-console-bg border border-border-subtle rounded-lg px-4 py-2.5 text-sm text-text-primary focus:border-accent-primary outline-none transition-all"
                                                     value={characterForm.role}
                                                     onChange={(e) => onCharacterFormChange?.('role', e.target.value)}
                                                 >
@@ -171,18 +171,18 @@ export function BiblePortal({
 
                                         <div className="space-y-4">
                                             <div className="space-y-1.5">
-                                                <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest px-1">Traits & Persona</label>
+                                                <label className="text-[10px] font-bold text-text-tertiary uppercase tracking-widest px-1">Traits & Persona</label>
                                                 <input
-                                                    className="w-full bg-zinc-950 border border-zinc-800 rounded-lg px-4 py-2.5 text-sm text-zinc-100 focus:border-blue-500 outline-none transition-all"
+                                                    className="w-full bg-console-bg border border-border-subtle rounded-lg px-4 py-2.5 text-sm text-text-primary focus:border-accent-primary outline-none transition-all"
                                                     value={characterForm.traits}
                                                     onChange={(e) => onCharacterFormChange?.('traits', e.target.value)}
                                                     placeholder="Strong, Witty, Nervous..."
                                                 />
                                             </div>
                                             <div className="space-y-1.5">
-                                                <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest px-1">Core Motivation</label>
+                                                <label className="text-[10px] font-bold text-text-tertiary uppercase tracking-widest px-1">Core Motivation</label>
                                                 <textarea
-                                                    className="w-full bg-zinc-950 border border-zinc-800 rounded-lg px-4 py-2.5 text-sm text-zinc-100 focus:border-blue-500 outline-none transition-all resize-none h-[88px]"
+                                                    className="w-full bg-console-bg border border-border-subtle rounded-lg px-4 py-2.5 text-sm text-text-primary focus:border-accent-primary outline-none transition-all resize-none h-[88px]"
                                                     value={characterForm.motivation}
                                                     onChange={(e) => onCharacterFormChange?.('motivation', e.target.value)}
                                                     placeholder="What drives this character?"
@@ -191,13 +191,13 @@ export function BiblePortal({
                                         </div>
                                     </div>
 
-                                    <div className="pt-4 flex justify-end gap-3 border-t border-zinc-800">
+                                    <div className="pt-4 flex justify-end gap-3 border-t border-border-subtle">
                                         <button
                                             onClick={() => {
                                                 setIsAddingCharacter(false);
                                                 onCharacterSelect?.(null);
                                             }}
-                                            className="px-6 py-2 rounded-lg text-xs font-bold text-zinc-500 uppercase tracking-wider hover:bg-zinc-800 transition-all"
+                                            className="px-6 py-2 rounded-lg text-xs font-bold text-text-tertiary uppercase tracking-wider hover:bg-console-surface-2 transition-all"
                                         >
                                             Cancel
                                         </button>
@@ -212,7 +212,7 @@ export function BiblePortal({
                                                 setIsAddingCharacter(false);
                                                 onCharacterSelect?.(null);
                                             }}
-                                            className="px-6 py-2 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-lg text-xs font-bold uppercase tracking-wider transition-all shadow-lg shadow-blue-900/20"
+                                            className="px-6 py-2 bg-accent-primary hover:bg-accent-primary-dark disabled:opacity-50 disabled:cursor-not-allowed text-console-bg rounded-lg text-xs font-bold uppercase tracking-wider transition-all shadow-lg shadow-accent-primary/20"
                                         >
                                             {isSavingCharacter ? (activeCharacterId ? 'Updating...' : 'Registering...') : (activeCharacterId ? 'Update Character' : 'Register Character')}
                                         </button>
@@ -222,11 +222,11 @@ export function BiblePortal({
 
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                                 {characters.map(char => (
-                                    <div key={char._id} className="group flex flex-col p-6 bg-zinc-900/50 border border-zinc-800 rounded-2xl hover:border-blue-500/30 transition-all hover:bg-zinc-900">
+                                    <div key={char._id} className="group flex flex-col p-6 bg-console-surface/50 border border-border-subtle rounded-2xl hover:border-accent-primary/30 transition-all hover:bg-console-surface">
                                         <div className="flex justify-between items-start mb-4">
                                             <div>
-                                                <h4 className="text-xl font-bold text-zinc-100 mb-1">{char.name}</h4>
-                                                <span className="text-[10px] font-bold uppercase text-blue-400 tracking-wider">
+                                                <h4 className="text-xl font-bold text-text-primary mb-1">{char.name}</h4>
+                                                <span className="text-[10px] font-bold uppercase text-accent-primary tracking-wider">
                                                     {char.role}
                                                 </span>
                                             </div>
@@ -236,7 +236,7 @@ export function BiblePortal({
                                                         onCharacterSelect?.(char._id);
                                                         setIsAddingCharacter(true);
                                                     }}
-                                                    className="p-2 hover:bg-zinc-800 rounded-lg text-zinc-500 hover:text-blue-400 transition-colors"
+                                                    className="p-2 hover:bg-console-surface-2 rounded-lg text-text-tertiary hover:text-accent-primary transition-colors"
                                                     title="Edit Character"
                                                 >
                                                     <Sparkles size={14} />
@@ -249,7 +249,7 @@ export function BiblePortal({
                                                             () => onDeleteCharacter?.(char._id)
                                                         );
                                                     }}
-                                                    className="p-2 hover:bg-red-900/20 rounded-lg text-zinc-500 hover:text-red-400 transition-colors"
+                                                    className="p-2 hover:bg-status-error/10 rounded-lg text-text-tertiary hover:text-status-error transition-colors"
                                                     title="Delete Character"
                                                 >
                                                     <X size={14} />
@@ -257,31 +257,31 @@ export function BiblePortal({
                                             </div>
                                         </div>
 
-                                        <p className="text-sm text-zinc-400 line-clamp-2 mb-6 min-h-[40px]">
+                                        <p className="text-sm text-text-secondary line-clamp-2 mb-6 min-h-[40px]">
                                             {char.motivation || 'Describe the deep motivation of this character...'}
                                         </p>
 
-                                        <div className="mt-auto pt-6 border-t border-zinc-800/50">
+                                        <div className="mt-auto pt-6 border-t border-border-subtle/50">
                                             <div className="flex items-center justify-between mb-3">
-                                                <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-tighter">Knowledge Base (RAG)</span>
+                                                <span className="text-[10px] font-bold text-text-tertiary uppercase tracking-tighter">Knowledge Base (RAG)</span>
                                                 {ingestingCharacterIds.includes(char._id) && (
-                                                    <span className="text-[9px] text-blue-400 animate-pulse font-bold uppercase">Ingesting...</span>
+                                                    <span className="text-[9px] text-accent-primary animate-pulse font-bold uppercase">Ingesting...</span>
                                                 )}
                                                 {voiceStatus && uploadingCharacterId === char._id && !ingestingCharacterIds.includes(char._id) && (
-                                                    <span className="text-[9px] text-green-500 font-bold uppercase">{voiceStatus}</span>
+                                                    <span className="text-[9px] text-status-ok font-bold uppercase">{voiceStatus}</span>
                                                 )}
                                             </div>
                                             <div className="flex items-center gap-2">
                                                 <button
                                                     disabled={ingestingCharacterIds.includes(char._id)}
-                                                    className="flex-1 py-2 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 rounded-lg text-[10px] font-bold uppercase transition-colors disabled:opacity-50"
+                                                    className="flex-1 py-2 bg-console-surface hover:bg-console-surface-2 text-text-secondary rounded-lg text-[10px] font-bold uppercase transition-colors disabled:opacity-50"
                                                 >
                                                     Manage Sources
                                                 </button>
                                                 <button
                                                     onClick={() => handleFileUploadRequest(char._id)}
                                                     disabled={ingestingCharacterIds.includes(char._id)}
-                                                    className="px-3 py-2 bg-zinc-800 hover:bg-zinc-700 text-blue-400 rounded-lg text-[10px] font-bold uppercase transition-colors disabled:opacity-50"
+                                                    className="px-3 py-2 bg-console-surface hover:bg-console-surface-2 text-accent-primary rounded-lg text-[10px] font-bold uppercase transition-colors disabled:opacity-50"
                                                 >
                                                     {ingestingCharacterIds.includes(char._id) ? '...' : '+ Upload'}
                                                 </button>
@@ -290,9 +290,9 @@ export function BiblePortal({
                                     </div>
                                 ))}
                                 {characters.length === 0 && (
-                                    <div className="col-span-full py-20 text-center bg-zinc-900/20 border border-dashed border-zinc-800 rounded-3xl">
-                                        <Users size={48} className="mx-auto text-zinc-800 mb-4" />
-                                        <p className="text-zinc-600 font-medium">No characters registered. Start building your world.</p>
+                                    <div className="col-span-full py-20 text-center bg-console-surface/20 border border-dashed border-border-subtle rounded-3xl">
+                                        <Users size={48} className="mx-auto text-border-subtle mb-4" />
+                                        <p className="text-text-tertiary font-medium">No characters registered. Start building your world.</p>
                                     </div>
                                 )}
                             </div>
@@ -301,19 +301,19 @@ export function BiblePortal({
                 </div>
 
                 {/* Bottom Section: Vault & Settings */}
-                <section className="pt-20 border-t border-zinc-900">
+                <section className="pt-20 border-t border-border-subtle">
                     <div className="flex items-center gap-3 mb-8">
-                        <Save className="text-zinc-600" size={20} />
-                        <h2 className="text-xl font-bold text-zinc-400 uppercase tracking-widest">Vault & System Settings</h2>
+                        <Save className="text-text-tertiary" size={20} />
+                        <h2 className="text-xl font-bold text-text-secondary uppercase tracking-widest">Vault & System Settings</h2>
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
                         <div className="space-y-6">
                             <div className="space-y-1.5">
-                                <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest px-1">Project Identity</label>
+                                <label className="text-[10px] font-bold text-text-tertiary uppercase tracking-widest px-1">Project Identity</label>
                                 <div className="flex gap-4">
                                     <input
-                                        className="flex-1 bg-zinc-900/50 border border-zinc-800 rounded-xl px-4 py-3 text-lg text-zinc-100 focus:border-blue-500 outline-none transition-all"
+                                        className="flex-1 bg-console-surface/50 border border-border-subtle rounded-xl px-4 py-3 text-lg text-text-primary focus:border-accent-primary outline-none transition-all"
                                         value={title}
                                         onChange={(e) => {
                                             setTitleDrafts((prev) => ({
@@ -325,7 +325,7 @@ export function BiblePortal({
                                     />
                                     <button
                                         onClick={() => onUpdateProject?.(activeProject._id, { title })}
-                                        className="px-6 bg-zinc-800 hover:bg-zinc-700 rounded-xl text-xs font-bold text-zinc-300 uppercase tracking-widest transition-all"
+                                        className="px-6 bg-console-surface hover:bg-console-surface-2 rounded-xl text-xs font-bold text-text-secondary uppercase tracking-widest transition-all"
                                     >
                                         Update
                                     </button>
@@ -333,9 +333,9 @@ export function BiblePortal({
                             </div>
                         </div>
 
-                        <div className="p-8 bg-red-950/5 border border-red-900/20 rounded-2xl">
-                            <h4 className="text-red-500 text-xs font-bold uppercase tracking-widest mb-2">Danger Zone</h4>
-                            <p className="text-zinc-500 text-xs mb-6">Archive or permanently delete this project Bible. This action is irreversible and will remove all associated scenes and RAG data.</p>
+                        <div className="p-8 bg-status-error-soft border border-status-error/20 rounded-2xl">
+                            <h4 className="text-status-error text-xs font-bold uppercase tracking-widest mb-2">Danger Zone</h4>
+                            <p className="text-text-tertiary text-xs mb-6">Archive or permanently delete this project Bible. This action is irreversible and will remove all associated scenes and RAG data.</p>
                             <button
                                 onClick={() => {
                                     showConfirm(
@@ -344,7 +344,7 @@ export function BiblePortal({
                                         () => onDeleteProject?.(activeProject._id)
                                     );
                                 }}
-                                className="px-6 py-3 bg-red-950/30 hover:bg-red-900/40 border border-red-900/40 text-red-400 rounded-xl text-[10px] font-bold uppercase tracking-widest transition-all"
+                                className="px-6 py-3 bg-console-surface hover:bg-status-error/12 border border-status-error/30 text-status-error rounded-xl text-[10px] font-bold uppercase tracking-widest transition-all"
                             >
                                 Purge Project Bible
                             </button>

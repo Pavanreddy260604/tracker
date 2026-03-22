@@ -172,7 +172,7 @@ export function StudioExplorer({
                                                         <FileText size={14} />
                                                         <div>
                                                             <div className="ide-explorer-title">
-                                                                {scene.sequenceNumber}. {scene.title || scene.slugline || 'Untitled Scene'}
+                                                                {scene.title || scene.slugline || 'Untitled Scene'}
                                                             </div>
                                                             <div className="ide-explorer-subtitle">{scene.summary || 'Add a summary for this scene.'}</div>
                                                         </div>

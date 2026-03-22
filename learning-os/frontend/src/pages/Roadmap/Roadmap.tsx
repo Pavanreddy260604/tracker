@@ -23,6 +23,7 @@ import {
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import { api } from '../../services/api';
+import { toast } from '../../stores/toastStore';
 import { useMobile } from '../../hooks/useMobile';
 import { useThemeStore } from '../../stores/themeStore';
 import {
@@ -159,7 +160,7 @@ function RoadmapContent() {
     const [confirmDelete, setConfirmDelete] = useState<{ type: 'node' | 'edge'; id: string } | null>(null);
     const [roadmapTool, setRoadmapTool] = useState<'pan' | 'select'>('pan');
 
-    const { getViewport } = useReactFlow();
+    const { fitView, screenToFlowPosition } = useReactFlow();
 
     // Close menus when clicking anywhere on canvas
     const closeMenus = useCallback(() => {
@@ -173,10 +174,12 @@ function RoadmapContent() {
         const loadRoadmap = async () => {
             try {
                 const response = await api.getRoadmap();
-                const data = response; // Now we directly use the response since we fixed the API service
+                const data = response;
                 if (data.nodes?.length > 0) {
                     setNodes(data.nodes.map((n: any) => ({
-                        id: n.nodeId, type: 'roadmap', position: n.position,
+                        id: n.nodeId,
+                        type: 'roadmap',
+                        position: n.position,
                         data: {
                             label: n.data.label || 'Unnamed',
                             status: n.data.status || 'todo',
@@ -188,15 +191,22 @@ function RoadmapContent() {
                         },
                     })));
                     setEdges(data.edges.map((e: any) => ({
-                        id: e.edgeId, source: e.source, target: e.target,
-                        type: 'smoothstep', style: { stroke: '#6b7280', strokeWidth: 2 },
+                        id: e.edgeId,
+                        source: e.source,
+                        target: e.target,
+                        type: 'smoothstep',
+                        style: { stroke: '#6b7280', strokeWidth: 2 },
                         markerEnd: { type: MarkerType.ArrowClosed, color: '#6b7280' },
                     })));
                 }
-            } catch (error) { console.error('Failed to load roadmap', error); }
+                setTimeout(() => fitView({ duration: 800 }), 100);
+            } catch (err) {
+                console.error('Failed to load roadmap', err);
+                toast.error('Failed to load roadmap. Please refresh.');
+            }
         };
         loadRoadmap();
-    }, [setNodes, setEdges]);
+    }, [setNodes, setEdges, fitView]);
 
     // Refs for stable access in event listeners
     const nodesRef = useRef(nodes);
@@ -259,7 +269,7 @@ function RoadmapContent() {
 
     // Auto-save with debounce
     useEffect(() => {
-        if (hasUnsavedChanges && nodes.length > 0) {
+        if (hasUnsavedChanges) {
             if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current);
             autoSaveTimer.current = setTimeout(async () => {
                 try {
@@ -267,7 +277,10 @@ function RoadmapContent() {
                     setHasUnsavedChanges(false);
                     setSaveSuccess(true);
                     setTimeout(() => setSaveSuccess(false), 1500);
-                } catch (e) { console.error('Auto-save failed', e); }
+                } catch (e) { 
+                    console.error('Auto-save failed', e);
+                    toast.error('Auto-save failed');
+                }
             }, 2000);
         }
         return () => { if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current); };
@@ -278,8 +291,8 @@ function RoadmapContent() {
         return nodes.map(node => {
             const data = node.data as RoadmapNodeData;
             const matchesSearch = !searchQuery ||
-                data.label.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                (data.description?.toLowerCase().includes(searchQuery.toLowerCase()));
+                (data.label || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+                ((data.description || '').toLowerCase().includes(searchQuery.toLowerCase()));
             const matchesCategory = filterCategory === 'all' || data.category === filterCategory;
             const matchesStatus = filterStatus === 'all' || data.status === filterStatus;
 
@@ -318,8 +331,12 @@ function RoadmapContent() {
             await api.syncRoadmap(nodes.map(n => ({ ...n, nodeId: n.id })), edges);
             setSaveSuccess(true);
             setHasUnsavedChanges(false);
+            toast.success('Roadmap saved successfully');
             setTimeout(() => setSaveSuccess(false), 2000);
-        } catch (error) { console.error('Failed to save roadmap', error); }
+        } catch (error) { 
+            console.error('Failed to save roadmap', error);
+            toast.error('Failed to save roadmap');
+        }
         finally { setIsSaving(false); }
     };
 
@@ -334,22 +351,22 @@ function RoadmapContent() {
                     y: selectedNodeRef.current.position.y + 160
                 };
             } else {
-                // Place in center of current viewport
-                const viewport = getViewport();
-                const cw = window.innerWidth;
-                const ch = window.innerHeight - 100;
-                position = {
-                    x: (cw / 2 - viewport.x) / viewport.zoom - 100,
-                    y: (ch / 2 - viewport.y) / viewport.zoom - 40
-                };
+                // Place in center of screen
+                const cx = window.innerWidth / 2;
+                const cy = window.innerHeight / 2;
+                position = screenToFlowPosition({ x: cx, y: cy });
+                
+                // Adjust for node size (roughly 220x120)
+                position.x -= 110;
+                position.y -= 60;
             }
         } catch (e) {
             console.warn('Failed to calculate intelligent position, using fallback', e);
         }
 
         // Add subtle jitter to prevent stacking
-        position.x += (Math.random() - 0.5) * 30;
-        position.y += (Math.random() - 0.5) * 30;
+        position.x += (Math.random() - 0.5) * 40;
+        position.y += (Math.random() - 0.5) * 40;
 
         const newNode: Node<RoadmapNodeData> = {
             id: `node-${Date.now()}`,
@@ -360,10 +377,21 @@ function RoadmapContent() {
 
         setNodes((nds) => [...nds, newNode]);
         setHasUnsavedChanges(true);
+        setSearchQuery(''); // CRITICAL: Clear search so the new node is visible
+        setFilterCategory('all');
+        
+        // Ensure the menu closes
         setShowAddMenu(false);
         setShowFilterMenu(false);
-        setFilterCategory('all');
-    }, [setNodes, getViewport]);
+
+        
+        // Select the new node for immediate editing
+        setSelectedNode(newNode);
+        setSelectedNodes([newNode]);
+        setShowModal(true);
+        
+        toast.success(`New ${category} topic added!`);
+    }, [setNodes, screenToFlowPosition]);
 
     const onNodeClick = useCallback((_: any, node: Node) => {
         setSelectedNode(node);
@@ -445,8 +473,8 @@ function RoadmapContent() {
         setNodes(newNodes);
         setHasUnsavedChanges(true);
         // Fit view after a small timeout to allow ReactFlow to update
-        setTimeout(() => getViewport(), 100);
-    }, [nodes, edges, setNodes, getViewport]);
+        setTimeout(() => fitView({ duration: 800 }), 100);
+    }, [nodes, edges, setNodes, fitView]);
 
     const onSelectionChange = useCallback(({ nodes: selectedNodes }: { nodes: Node[]; edges: Edge[] }) => {
         setSelectedNodes(selectedNodes);
@@ -847,8 +875,12 @@ function RoadmapContent() {
                                         <label className="text-[10px] sm:text-xs font-medium uppercase tracking-wide text-text-secondary mb-1 flex items-center gap-1">
                                             <Timer size={10} /> Est. Hours
                                         </label>
-                                        <input type="number" min="0" step="0.5" value={(selectedNode.data as RoadmapNodeData).estimatedHours || ''}
-                                            onChange={(e) => updateNodeData({ estimatedHours: parseFloat(e.target.value) || 0 })}
+                                        <input type="text" inputMode="numeric" value={(selectedNode.data as RoadmapNodeData).estimatedHours || ''}
+                                            onChange={(e) => {
+                                                const val = e.target.value.replace(/[^\d.]/g, '');
+                                                updateNodeData({ estimatedHours: parseFloat(val) || 0 });
+                                            }}
+
                                             className="w-full px-2.5 py-1.5 sm:px-3 sm:py-2.5 bg-console-surface-2 border border-border-subtle rounded-lg sm:rounded-xl text-text-primary text-[11px] sm:text-sm focus:border-accent-primary outline-none transition-colors" />
                                     </div>
                                     <div>

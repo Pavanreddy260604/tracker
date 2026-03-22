@@ -121,9 +121,9 @@ export function InspectorSceneTab({
                 </select>
             </div>
             <div className="ide-field">
-                <label className="ide-label text-blue-400">Target Language</label>
+                <label className="ide-label text-accent-primary">Target Language</label>
                 <select
-                    className="ide-select font-bold text-blue-300"
+                    className="ide-select font-bold text-accent-primary"
                     value={generationOptions.language}
                     onChange={(event) => onGenerationOptionChange('language', event.target.value)}
                 >
@@ -138,10 +138,10 @@ export function InspectorSceneTab({
                     <option value="German">German</option>
                 </select>
             </div>
-            <div className="flex items-center justify-between rounded-lg border border-zinc-800 px-3 py-2">
+            <div className="flex items-center justify-between rounded-lg border border-border-subtle px-3 py-2">
                 <div>
                     <label className="ide-label">Transliteration</label>
-                    <p className="text-[10px] text-zinc-500 mt-1">Use English letters for non-English screenplay text.</p>
+                    <p className="text-[10px] text-text-tertiary mt-1">Use English letters for non-English screenplay text.</p>
                 </div>
                 <input
                     type="checkbox"

@@ -58,9 +58,9 @@ export function InspectorProjectTab({
                 />
             </div>
             <div className="ide-field">
-                <label className="ide-label text-blue-400">Target Language</label>
+                <label className="ide-label text-accent-primary">Target Language</label>
                 <select
-                    className="ide-select font-bold text-blue-300"
+                    className="ide-select font-bold text-accent-primary"
                     value={projectForm.language}
                     onChange={(event) => onProjectFormChange('language', event.target.value)}
                 >
@@ -75,10 +75,10 @@ export function InspectorProjectTab({
                     <option value="German">German</option>
                 </select>
             </div>
-            <div className="rounded-xl border border-zinc-800 bg-zinc-950/60 p-3 space-y-3">
+            <div className="rounded-xl border border-border-subtle bg-console-bg/60 p-3 space-y-3">
                 <div>
                     <label className="ide-label text-emerald-400">Assistant Preferences</label>
-                    <p className="text-[10px] text-zinc-500 mt-1">These defaults guide the chat assistant before you ask for edits.</p>
+                    <p className="text-[10px] text-text-tertiary mt-1">These defaults guide the chat assistant before you ask for edits.</p>
                 </div>
                 <div className="ide-field">
                     <label className="ide-label">Reply Language</label>
@@ -92,10 +92,10 @@ export function InspectorProjectTab({
                         placeholder="Leave blank to follow the active project language"
                     />
                 </div>
-                <div className="flex items-center justify-between rounded-lg border border-zinc-800 px-3 py-2">
+                <div className="flex items-center justify-between rounded-lg border border-border-subtle px-3 py-2">
                     <div>
                         <label className="ide-label">Assistant Transliteration</label>
-                        <p className="text-[10px] text-zinc-500 mt-1">Use English letters for non-English replies when enabled.</p>
+                        <p className="text-[10px] text-text-tertiary mt-1">Use English letters for non-English replies when enabled.</p>
                     </div>
                     <input
                         type="checkbox"
@@ -125,10 +125,10 @@ export function InspectorProjectTab({
             <div className="space-y-2">
                 <label className="ide-label flex flex-col">
                     Export Options
-                    <span className="text-[9px] text-zinc-500 font-normal mt-0.5">Generate industry-standard script formats.</span>
+                    <span className="text-[9px] text-text-tertiary font-normal mt-0.5">Generate industry-standard script formats.</span>
                 </label>
                 <div className="ide-inline-actions">
-                    <button className="ide-btn ide-btn-primary ide-btn-sm bg-blue-600 hover:bg-blue-500 text-white" onClick={() => onExport('pdf')}>
+                    <button className="ide-btn ide-btn-primary ide-btn-sm bg-accent-primary hover:bg-accent-primary-dark text-white" onClick={() => onExport('pdf')}>
                         <Download size={12} /> Export PDF
                     </button>
                     <button className="ide-btn ide-btn-secondary ide-btn-sm" onClick={() => onExport('fountain')}>

@@ -185,7 +185,7 @@ describe('Auth Routes Integration', () => {
         expect(response.status).toBe(200);
         expect(response.body.success).toBe(true);
         expect(User.findByIdAndDelete).toHaveBeenCalledWith('user123');
-        expect(ProjectStudy.deleteMany).toHaveBeenCalledWith({ user: 'user123' });
+        expect(ProjectStudy.deleteMany).toHaveBeenCalledWith({ userId: 'user123' });
         expect(ChatSession.deleteMany).toHaveBeenCalledWith({ userId: 'user123' });
         expect(InterviewSession.deleteMany).toHaveBeenCalledWith({ userId: 'user123' });
         expect(RefreshToken.deleteMany).toHaveBeenCalledWith({ userId: 'user123' });

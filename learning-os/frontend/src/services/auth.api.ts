@@ -42,7 +42,14 @@ export const authApi = {
     },
 
     async exportData() {
-        return baseApi.request<{ data: any }>('/auth/export');
+        return baseApi.request<{
+            user: User;
+            dailyLogs: unknown[];
+            dsaProblems: unknown[];
+            backendTopics: unknown[];
+            projectStudies: unknown[];
+            exportedAt: string;
+        }>('/auth/export');
     },
 
     async forgotPassword(email: string) {

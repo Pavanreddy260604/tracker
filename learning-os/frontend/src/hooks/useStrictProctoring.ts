@@ -137,7 +137,7 @@ export function useStrictProctoring({ onViolation, onTerminate, maxViolations = 
 
   return {
     violations,
-    violationCount: violationCountRef.current,
+    violationCount: violations.length,
     isLocked,
     enterFullscreen,
     terminateTest,

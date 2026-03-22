@@ -1,6 +1,12 @@
 // Interview Simulator API Service
 import { baseApi } from './base.api';
-import type { InterviewRunResult, InterviewSession, InterviewSubmitResult, InterviewAnalytics } from './types';
+import type {
+    InterviewAnalytics,
+    InterviewProctoringUpdate,
+    InterviewRunResult,
+    InterviewSession,
+    InterviewSubmitResult,
+} from './types';
 
 export const interviewApi = {
     async startInterview(config: {
@@ -111,14 +117,7 @@ export const interviewApi = {
         return baseApi.request<InterviewAnalytics>(`/interview/${sessionId}/analytics`);
     },
 
-    async updateProctoringData(sessionId: string, proctoringData: {
-        tabSwitchCount?: number;
-        idleTime?: number;
-        lastActivityTime?: string;
-        violationType?: string;
-        violationMessage?: string;
-        timestamp?: string;
-    }) {
+    async updateProctoringData(sessionId: string, proctoringData: InterviewProctoringUpdate) {
         return baseApi.request<InterviewSession>(`/interview/${sessionId}/proctoring`, {
             method: 'POST',
             body: JSON.stringify(proctoringData),

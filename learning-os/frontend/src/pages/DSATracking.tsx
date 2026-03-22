@@ -1,66 +1,52 @@
-import { useEffect, useState, useCallback } from 'react';
-
-import { motion } from 'framer-motion';
+import { useEffect, useState, useCallback, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
-    Plus,
-    Search,
-    RefreshCw,
-    ChevronLeft,
-    ChevronRight,
-    CheckCircle2,
-    Code2,
-    SlidersHorizontal,
-    Award,
-    BrainCircuit,
+    Plus, Search, RefreshCw, ChevronLeft, ChevronRight, CheckCircle2, Code2, SlidersHorizontal, 
+    Award, BrainCircuit, Edit2, Trash2, Hexagon, Binary, Activity, Compass, Zap, Target,
+    Terminal, Globe, Cpu
 } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { Skeleton } from '../components/ui/Skeleton';
 import { Input } from '../components/ui/Input';
 import { Select } from '../components/ui/Select';
-import { Modal } from '../components/ui/Modal';
-import { EmptyState } from '../components/ui/EmptyState';
-import { DifficultyBadge, StatusBadge } from '../components/ui/Badge';
-import { Card } from '../components/ui/Card';
-import { DSAProblemForm } from '../components/forms/DSAProblemForm';
-import { ViewProblemModal } from '../components/modals/ViewProblemModal';
+import { Badge, DifficultyBadge, StatusBadge } from '../components/ui/Badge';
 import { SRSInfoModal } from '../components/ui/SRSInfoModal';
 import { DeleteModal } from '../components/ui/DeleteModal';
-import { AnimatedList } from '../components/ui/AnimatedList';
 import { api, type DSAProblem } from '../services/api';
 import { toast } from '../stores/toastStore';
 import { TOPICS, DIFFICULTIES, difficultyColors } from '../lib/constants';
 import { useAI } from '../contexts/AIContext';
+import { cn } from '../lib/utils';
 
 export function DSATracking() {
+    const navigate = useNavigate();
     const [problems, setProblems] = useState<DSAProblem[]>([]);
     const [isLoading, setIsLoading] = useState(true);
-    const [showAddModal, setShowAddModal] = useState(false);
     const [showSRSModal, setShowSRSModal] = useState(false);
-    const [editingProblem, setEditingProblem] = useState<DSAProblem | null>(null);
-    const [viewingProblem, setViewingProblem] = useState<DSAProblem | null>(null);
     const [search, setSearch] = useState('');
     const [topicFilter, setTopicFilter] = useState('');
     const [difficultyFilter, setDifficultyFilter] = useState('');
     const [showReviewDueOnly, setShowReviewDueOnly] = useState(false);
-    const [showMobileFilters, setShowMobileFilters] = useState(false);
+    const [sortBy, setSortBy] = useState('newest');
     const [page, setPage] = useState(1);
     const [pagination, setPagination] = useState({ total: 0, pages: 1 });
 
-    // Delete Modal State
     const [deleteModalOpen, setDeleteModalOpen] = useState(false);
     const [problemToDelete, setProblemToDelete] = useState<string | null>(null);
     const [isDeleting, setIsDeleting] = useState(false);
+
     const { toggleOpen } = useAI();
-    // const navigate = useNavigate();
 
     const fetchProblems = useCallback(async () => {
         setIsLoading(true);
         try {
-            const response = await api.getDSAProblems(page, 20, topicFilter || undefined, difficultyFilter || undefined);
-            setProblems(response.problems);
+            const response = await api.getDSAProblems(page, 12, topicFilter || undefined, difficultyFilter || undefined);
+            setProblems(response.problems || []);
             setPagination({ total: response.pagination.total, pages: response.pagination.pages });
         } catch (error) {
             console.error('Failed to fetch problems:', error);
+            toast.error('Sector sync failed.');
         } finally {
             setIsLoading(false);
         }
@@ -70,387 +56,309 @@ export function DSATracking() {
         fetchProblems();
     }, [fetchProblems]);
 
-    const handleDeleteClick = (id: string) => {
-        setProblemToDelete(id);
-        setDeleteModalOpen(true);
-    };
-
     const handleConfirmDelete = async () => {
         if (!problemToDelete) return;
-
         setIsDeleting(true);
         try {
             await api.deleteDSAProblem(problemToDelete);
-            toast.success('Problem deleted successfully');
+            toast.success('Record purged.');
             fetchProblems();
             setDeleteModalOpen(false);
-            setProblemToDelete(null);
         } catch (error: any) {
-            console.error('Failed to delete:', error);
-            const message = error.message || 'Failed to delete problem';
-            toast.error(message);
+            toast.error('Purge failure.');
         } finally {
             setIsDeleting(false);
         }
     };
 
-    const handleReview = async (problem: DSAProblem) => {
-        const currentStage = problem.reviewStage || 1;
-        let nextDate = new Date();
-        let nextStage = currentStage + 1;
+    const stats = useMemo(() => {
+        const total = pagination.total;
+        const solved = problems.filter(p => p.status === 'solved').length;
+        const efficiency = total === 0 ? 0 : Math.round((solved / total) * 100);
+        const reviewDue = problems.filter(p => p.nextReviewDate && new Date(p.nextReviewDate) <= new Date()).length;
+        return { total, solved, efficiency, reviewDue };
+    }, [problems, pagination.total]);
 
-        // 1-4-7 Rule Logic
-        // Stage 1 (Day 1) -> Review -> Day 4 (+3 days)
-        // Stage 2 (Day 4) -> Review -> Day 7 (+3 days)
-        // Stage 3 (Day 7) -> Review -> Done (Mastered/Solved)
-
-        if (currentStage < 3) {
-            nextDate.setDate(nextDate.getDate() + 3);
-        } else {
-            nextStage = 4; // Done
+    const filteredProblems = useMemo(() => {
+        let result = [...problems];
+        if (search) {
+            result = result.filter(p => p.problemName.toLowerCase().includes(search.toLowerCase()));
         }
-
-        try {
-            await api.updateDSAProblem(problem._id, {
-                nextReviewDate: nextStage <= 3 ? nextDate.toISOString().split('T')[0] : undefined,
-                reviewStage: nextStage,
-                status: nextStage === 4 ? 'solved' : 'revisit'
-            });
-            fetchProblems();
-        } catch (error) {
-            console.error('Review failed:', error);
+        if (showReviewDueOnly) {
+            result = result.filter(p => p.nextReviewDate && new Date(p.nextReviewDate) <= new Date());
         }
-    };
-
-    const filteredProblems = problems.filter(p => {
-        const matchesSearch = p.problemName.toLowerCase().includes(search.toLowerCase());
-        const matchesReview = showReviewDueOnly
-            ? p.nextReviewDate && new Date(p.nextReviewDate) <= new Date()
-            : true;
-        return matchesSearch && matchesReview;
-    });
-
-    // Stats
-    const stats = {
-        total: pagination.total,
-        solved: problems.filter(p => p.status === 'solved').length,
-        easy: problems.filter(p => p.difficulty === 'easy').length,
-        medium: problems.filter(p => p.difficulty === 'medium').length,
-        hard: problems.filter(p => p.difficulty === 'hard').length,
-    };
+        return result;
+    }, [problems, search, showReviewDueOnly]);
 
     return (
-        <div className="space-y-4 sm:space-y-6">
-            {/* Header */}
-            <div className="flex items-center justify-between gap-3 sm:gap-4">
-                <div>
-                    <h1 className="text-xl sm:text-2xl font-bold text-text-primary">DSA Problems</h1>
-                    <p className="hidden sm:block text-sm text-text-secondary mt-1">Track your problem-solving journey</p>
-                </div>
-                <div className="flex items-center gap-2">
-                    <button
-                        onClick={toggleOpen}
-                        className="p-2 rounded-full hover:bg-accent-primary/10 text-accent-primary transition-colors active:scale-95"
-                        title="Ask AI about DSA"
-                    >
-                        <BrainCircuit size={20} />
-                    </button>
-                    <Button size="sm" onClick={() => setShowAddModal(true)} leftIcon={<Plus size={16} />} className="shrink-0">
-                        <span className="hidden sm:inline">Add Problem</span>
-                        <span className="sm:hidden">Add</span>
-                    </Button>
-                </div>
-            </div>
-
-            {/* Stats Cards */}
-            <div className="flex gap-3 sm:gap-4 overflow-x-auto pb-4 scrollbar-hide -mx-1 px-1 sm:mx-0 sm:px-0 sm:grid sm:grid-cols-5 sm:overflow-visible">
-                {[
-                    { label: 'Total', value: stats.total, color: 'text-text-primary', icon: Code2 },
-                    { label: 'Solved', value: stats.solved, color: 'text-status-ok', icon: CheckCircle2 },
-                    { label: 'Easy', value: stats.easy, color: 'text-status-ok', icon: Award },
-                    { label: 'Medium', value: stats.medium, color: 'text-status-warning', icon: Award },
-                    { label: 'Hard', value: stats.hard, color: 'text-status-error', icon: Award },
-                ].map((stat, i) => (
-                    <motion.div
-                        key={stat.label}
-                        className="flex-shrink-0 min-w-[100px] sm:min-w-0 p-4 rounded-xl bg-console-surface border border-border-subtle shadow-premium premium-card glow-border"
-                        initial={{ opacity: 0, y: 15 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: i * 0.05 }}
-                    >
-                        <div className="flex items-center gap-2 mb-2 opacity-60">
-                            <stat.icon size={12} className={stat.color} />
-                            <p className="text-[10px] text-text-secondary uppercase tracking-[0.15em] font-bold">{stat.label}</p>
+        <div className="max-w-[1600px] mx-auto space-y-10 pb-20">
+            {/* Immersive Header */}
+            <div className="relative overflow-hidden rounded-[3rem] bg-console-surface/30 border border-white/5 p-8 lg:p-12">
+                <div className="absolute top-0 right-0 w-1/3 h-full bg-gradient-to-l from-emerald-500/10 to-transparent pointer-events-none" />
+                <div className="relative z-10 flex flex-col lg:flex-row lg:items-end justify-between gap-8">
+                    <div className="space-y-4">
+                        <div className="flex items-center gap-3 text-emerald-400 font-black uppercase tracking-[0.3em] text-[10px]">
+                            <Target size={14} className="animate-pulse" />
+                            Algorithmic Mastery Domain
                         </div>
-                        <p className={`text-2xl sm:text-3xl font-black ${stat.color} text-glow`}>{stat.value}</p>
-                    </motion.div>
-                ))}
-            </div>
-
-            {/* Filters */}
-            <div className="flex flex-col gap-3 sm:flex-row sm:gap-4">
-                <div className="flex gap-2 w-full sm:flex-1">
-                    <div className="relative flex-1">
-                        <Search size={18} className="absolute left-3 sm:left-4 top-1/2 -translate-y-1/2 text-text-secondary" />
-                        <Input
-                            placeholder="Search problems..."
-                            value={search}
-                            onChange={(e) => setSearch(e.target.value)}
-                            className="pl-9 sm:pl-11"
-                        />
-                    </div>
-                    <Button
-                        variant="secondary"
-                        onClick={() => setShowMobileFilters(!showMobileFilters)}
-                        className="sm:hidden shrink-0 px-3 w-[40px] border border-border-strong hover:bg-console-surface"
-                    >
-                        <SlidersHorizontal size={16} className={showMobileFilters ? "text-accent-primary" : "text-text-secondary"} />
-                    </Button>
-                </div>
-
-                {/* Mobile Collapsible / Desktop Flex Selects Grid */}
-                <div className={`${showMobileFilters ? "flex" : "hidden"} flex-col sm:flex sm:flex-row gap-3 sm:gap-4 animate-in fade-in slide-in-from-top-2 duration-200`}>
-                    <div className="grid grid-cols-2 gap-3 sm:flex sm:gap-4">
-                        <Select
-                            value={topicFilter}
-                            onChange={(v) => { setTopicFilter(v); setPage(1); }}
-                            options={TOPICS}
-                            className="w-full sm:w-48"
-                        />
-                        <Select
-                            value={difficultyFilter}
-                            onChange={(v) => { setDifficultyFilter(v); setPage(1); }}
-                            options={DIFFICULTIES}
-                            className="w-full sm:w-40"
-                        />
+                        <h1 className="text-5xl lg:text-6xl font-black text-text-primary tracking-tighter leading-none">
+                            DSA <span className="text-emerald-400">Intelligence</span>
+                        </h1>
+                        <p className="text-text-muted text-lg max-w-xl font-medium tracking-tight">
+                            Optimize your mental runtime. Map data structures, audit complexities, and master the mechanics of efficient problem solving.
+                        </p>
                     </div>
 
-                    <Button
-                        variant={showReviewDueOnly ? 'primary' : 'secondary'}
-                        onClick={() => setShowReviewDueOnly(!showReviewDueOnly)}
-                        className={`shrink-0 w-full sm:w-auto whitespace-nowrap ${showReviewDueOnly ? 'bg-status-warning hover:bg-status-warning' : ''}`}
-                        leftIcon={<RefreshCw size={16} className={showReviewDueOnly ? 'animate-spin-slow' : ''} />}
-                    >
-                        Review Due
-                    </Button>
+                    <div className="flex flex-wrap items-center gap-4">
+                        <Button 
+                            variant="ghost" 
+                            onClick={() => setShowSRSModal(true)}
+                            className="h-14 px-6 rounded-2xl border border-white/5 bg-white/5 backdrop-blur-md text-text-secondary hover:text-text-primary font-bold"
+                        >
+                            <Zap size={18} className="mr-2 text-emerald-400" /> Audit Matrix
+                        </Button>
+                        <Button 
+                            variant="primary" 
+                            onClick={() => navigate('/dsa/new')}
+                            className="h-14 px-8 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-600 text-white font-black shadow-xl shadow-emerald-500/20 scale-105 hover:scale-110 transition-transform"
+                        >
+                            <Plus size={20} className="mr-2" /> Initialize Problem
+                        </Button>
+                    </div>
                 </div>
-            </div>
 
-            {/* Problems List */}
-            {isLoading ? (
-                <div className="space-y-4">
-                    {[1, 2, 3].map((i) => (
-                        <div key={i} className="p-4 rounded-xl bg-console-surface border border-border-subtle space-y-4">
-                            <div className="flex justify-between items-start">
-                                <div className="space-y-2 flex-1">
-                                    <Skeleton className="h-6 w-1/3" />
-                                    <div className="flex gap-2">
-                                        <Skeleton className="h-4 w-20" />
-                                        <Skeleton className="h-4 w-24" />
-                                    </div>
-                                </div>
-                                <div className="flex gap-2">
-                                    <Skeleton className="h-8 w-8 rounded-lg" />
-                                    <Skeleton className="h-8 w-8 rounded-lg" />
-                                    <Skeleton className="h-8 w-8 rounded-lg" />
-                                </div>
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-6 mt-12">
+                    {[
+                        { label: 'Total Problems', value: stats.total, icon: Code2, color: 'text-emerald-400' },
+                        { label: 'Solved Archives', value: stats.solved, icon: CheckCircle2, color: 'text-teal-400' },
+                        { label: 'Audit Required', value: stats.reviewDue, icon: RefreshCw, color: 'text-amber-400', pulse: stats.reviewDue > 0 },
+                        { label: 'Runtime Accuracy', value: `${stats.efficiency}%`, icon: Activity, color: 'text-emerald-400' },
+                    ].map((stat, i) => (
+                        <div key={i} className="bg-console-bg/40 backdrop-blur-xl border border-white/5 rounded-3xl p-6 flex items-center gap-5 group hover:border-emerald-500/20 transition-all">
+                            <div className={cn("p-4 rounded-2xl bg-white/5", stat.color, stat.pulse && "animate-pulse")}>
+                                <stat.icon size={24} />
                             </div>
-                            <Skeleton className="h-4 w-full" />
+                            <div>
+                                <div className="text-2xl font-black text-text-primary">{stat.value}</div>
+                                <div className="text-[10px] font-bold text-text-muted uppercase tracking-widest">{stat.label}</div>
+                            </div>
                         </div>
                     ))}
                 </div>
-            ) : filteredProblems.length === 0 ? (
-                showReviewDueOnly ? (
-                    <div className="flex flex-col items-center justify-center py-20 text-center">
-                        <div className="bg-status-ok/10 p-6 rounded-full mb-4">
-                            <CheckCircle2 size={48} className="text-status-ok" />
-                        </div>
-                        <h3 className="text-xl font-bold text-text-primary mb-2">All Caught Up!</h3>
-                        <p className="text-text-secondary max-w-sm">
-                            You have no problem reviews due today. Feel free to solve new problems!
-                        </p>
-                        <Button
-                            className="mt-6"
-                            variant="secondary"
-                            onClick={() => setShowReviewDueOnly(false)}
-                        >
-                            View All Problems
-                        </Button>
-                    </div>
-                ) : (
-                    <EmptyState
-                        icon={<Code2 size={32} className="text-text-disabled" />}
-                        title="No problems found"
-                        description={search || topicFilter || difficultyFilter
-                            ? "Try adjusting your filters"
-                            : "Start tracking your DSA progress by adding your first problem"
-                        }
-                        action={!search && !topicFilter && !difficultyFilter ? {
-                            label: 'Add First Problem',
-                            onClick: () => setShowAddModal(true),
-                        } : undefined}
-                    />
-                )
-            ) : (
-                <div className="space-y-3">
-                    <AnimatedList
-                        showGradients
-                        enableArrowNavigation
-                        displayScrollbar
-                        staggerDelay={40}
-                        onItemSelect={(_item, index) => {
-                            if (filteredProblems[index]) setViewingProblem(filteredProblems[index]);
-                        }}
-                        items={filteredProblems.map((problem) => (
-                            <Card
-                                key={problem._id}
-                                className={`p-4 border-l-4 premium-card glow-border ${difficultyColors[problem.difficulty as keyof typeof difficultyColors] || 'border-l-border-subtle'} relative overflow-hidden`}
-                                hover={true}
-                                onClick={() => setViewingProblem(problem)}
-                            >
-                                <div className="flex items-center justify-between gap-4 cursor-pointer relative z-10">
-                                    <div className="flex-1 min-w-0">
-                                        <div className="flex items-center gap-3 mb-2">
-                                            <h3 className="font-bold text-text-primary truncate hover:text-accent-primary transition-colors text-sm sm:text-base tracking-tight">
-                                                {problem.problemName}
-                                            </h3>
-                                            {problem.nextReviewDate && new Date(problem.nextReviewDate) <= new Date() && (
-                                                <motion.div
-                                                    initial={{ scale: 0.8 }}
-                                                    animate={{ scale: [1, 1.2, 1] }}
-                                                    transition={{ repeat: Infinity, duration: 2 }}
-                                                    className="w-2.5 h-2.5 rounded-full bg-status-error shadow-[0_0_10px_rgba(239,68,68,0.5)]"
-                                                    title="Review Due"
-                                                />
-                                            )}
-                                        </div>
+            </div>
 
-                                        <div className="flex flex-wrap items-center gap-3 text-[11px] sm:text-xs text-text-secondary font-medium uppercase tracking-wider">
-                                            <DifficultyBadge difficulty={problem.difficulty} />
-                                            <span className="opacity-30">•</span>
-                                            <StatusBadge status={problem.status} />
-                                            <span className="opacity-30">•</span>
-                                            <span className="bg-console-surface-2 px-2 py-0.5 rounded-md border border-border-subtle">{problem.platform}</span>
-                                            {problem.reviewStage && problem.reviewStage > 0 && (
-                                                <>
-                                                    <span className="opacity-30">•</span>
-                                                    <span className="text-accent-primary bg-accent-soft px-2 py-0.5 rounded-md">Stage {problem.reviewStage}</span>
-                                                </>
-                                            )}
+            {/* Controls Bar - Ultra-Minimalist */}
+            <div className="flex flex-wrap items-center gap-2 p-1 bg-console-surface/10 backdrop-blur-sm border border-border-subtle/30 rounded-lg w-fit">
+                <div className="relative w-40 group">
+                    <Search size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-text-muted group-focus-within:text-emerald-400 transition-colors" />
+                    <Input
+                        placeholder="Search..."
+                        value={search}
+                        onChange={(e) => setSearch(e.target.value)}
+                        className="pl-8 h-7 bg-transparent border-transparent hover:border-border-subtle/50 rounded-md text-[10px] placeholder:text-text-disabled/40 w-full"
+                    />
+                </div>
+
+                <div className="h-4 w-px bg-border-subtle/50 mx-1 hidden lg:block" />
+
+                <Select
+                    value={topicFilter}
+                    onChange={setTopicFilter}
+                    options={TOPICS}
+                    className="w-32 h-7 bg-transparent border-transparent hover:bg-console-surface/20 rounded-md text-[10px] text-text-secondary"
+                />
+                <Select
+                    value={difficultyFilter}
+                    onChange={setDifficultyFilter}
+                    options={DIFFICULTIES}
+                    className="w-24 h-7 bg-transparent border-transparent hover:bg-console-surface/20 rounded-md text-[10px] text-text-secondary"
+                />
+                
+                <div className="h-4 w-px bg-border-subtle/50 mx-1 hidden lg:block" />
+
+                <Button
+                    variant={showReviewDueOnly ? 'primary' : 'secondary'}
+                    onClick={() => setShowReviewDueOnly(!showReviewDueOnly)}
+                    className={cn(
+                        "h-7 px-3 rounded-md font-bold whitespace-nowrap text-[9px] uppercase tracking-tighter transition-all",
+                        showReviewDueOnly 
+                            ? "bg-amber-500/80 text-white" 
+                            : "bg-transparent text-text-muted hover:text-text-secondary hover:bg-console-surface/30"
+                    )}
+                >
+                    <RefreshCw size={10} className={cn("mr-1.5", showReviewDueOnly && "animate-spin-slow")} />
+                    Audit
+                </Button>
+            </div>
+
+            {/* Content Area */}
+            <AnimatePresence mode="wait">
+                {isLoading ? (
+                    <motion.div 
+                        initial={{ opacity: 0 }} 
+                        animate={{ opacity: 1 }} 
+                        className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8"
+                    >
+                        {[1, 2, 3, 4, 5, 6].map((i) => (
+                            <div key={i} className="h-48 rounded-[2.5rem] bg-console-surface/30 animate-pulse border border-white/5" />
+                        ))}
+                    </motion.div>
+                ) : filteredProblems.length === 0 ? (
+                    <motion.div 
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="py-32 flex flex-col items-center justify-center text-center space-y-6"
+                    >
+                        <div className="w-24 h-24 bg-console-surface/50 rounded-[2.5rem] border border-white/5 flex items-center justify-center shadow-2xl">
+                            <Binary size={40} className="text-text-disabled" />
+                        </div>
+                        <div className="space-y-2">
+                             <h3 className="text-2xl font-black text-text-primary">Problem Void</h3>
+                             <p className="text-text-muted max-w-sm font-medium">No algorithmic records identified in this sector. Execute initialization to proceed.</p>
+                        </div>
+                    </motion.div>
+                ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                        {filteredProblems.map((problem, i) => (
+                            <motion.div
+                                key={problem._id}
+                                initial={{ opacity: 0, scale: 0.95 }}
+                                animate={{ opacity: 1, scale: 1 }}
+                                transition={{ delay: i * 0.05 }}
+                                onClick={() => navigate(`/dsa/${problem._id}`)}
+                                className={cn(
+                                    "group relative bg-console-surface/30 backdrop-blur-xl border border-white/5 rounded-[2.5rem] p-8 hover:bg-console-surface/50 transition-all duration-500 cursor-pointer shadow-elevation-1 hover:shadow-elevation-premium overflow-hidden",
+                                    `hover:border-${problem.difficulty === 'hard' ? 'status-error' : problem.difficulty === 'medium' ? 'status-warning' : 'status-ok'}/30`
+                                )}
+                            >
+                                <div className="absolute top-0 right-0 p-8 opacity-0 group-hover:opacity-100 transition-opacity">
+                                     <div className="p-3 bg-emerald-500/10 rounded-2xl text-emerald-400">
+                                         <Hexagon size={20} />
+                                     </div>
+                                </div>
+
+                                <div className="space-y-6">
+                                    <div className="flex items-center gap-4">
+                                        <div className={cn(
+                                            "p-4 rounded-[1.5rem] border border-white/5 transition-all shadow-inner bg-console-bg",
+                                            difficultyColors[problem.difficulty as keyof typeof difficultyColors]?.replace('text-', 'bg-').replace('border-', 'border-') + '/10'
+                                        )}>
+                                            <Binary size={24} className={difficultyColors[problem.difficulty as keyof typeof difficultyColors]} />
+                                        </div>
+                                        <div className="min-w-0">
+                                            <h3 className="text-xl font-black text-text-primary truncate tracking-tight">{problem.problemName}</h3>
+                                            <div className="flex items-center gap-2 mt-1">
+                                                <DifficultyBadge difficulty={problem.difficulty} />
+                                                <span className="text-[10px] font-bold text-text-muted uppercase tracking-widest">{problem.platform}</span>
+                                            </div>
                                         </div>
                                     </div>
 
-                                    <Button
-                                        size="sm"
-                                        variant="ghost"
-                                        onClick={(e) => {
-                                            e.stopPropagation();
-                                            setViewingProblem(problem);
-                                        }}
-                                        className="text-text-secondary hover:text-text-primary hover:bg-white/5 rounded-full w-10 h-10 p-0"
-                                    >
-                                        <ChevronRight size={20} />
-                                    </Button>
+                                    <div className="flex flex-wrap gap-2">
+                                        <StatusBadge status={problem.status} />
+                                        {problem.nextReviewDate && new Date(problem.nextReviewDate) <= new Date() && (
+                                            <Badge variant="warning" className="animate-pulse">Audit Due</Badge>
+                                        )}
+                                        {problem.reviewStage && problem.reviewStage > 0 && (
+                                             <Badge variant="purple">Matrix {problem.reviewStage}</Badge>
+                                        )}
+                                    </div>
+
+                                    {problem.topic && (
+                                        <div className="flex items-center gap-2 px-3 py-1.5 bg-white/5 rounded-xl border border-white/5 w-fit">
+                                            <Compass size={12} className="text-blue-400" />
+                                            <span className="text-[10px] font-black text-text-secondary uppercase tracking-widest">{problem.topic}</span>
+                                        </div>
+                                    )}
+
+                                    <div className="pt-6 border-t border-white/5 flex items-center justify-between">
+                                        <div className="flex items-center gap-4 text-[10px] font-black text-text-muted uppercase tracking-widest">
+                                            <div className="flex items-center gap-1.5">
+                                                <History size={12} className="text-emerald-400" />
+                                                {new Date(problem.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                                            </div>
+                                        </div>
+                                        <button 
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                setProblemToDelete(problem._id);
+                                                setDeleteModalOpen(true);
+                                            }}
+                                            className="p-3 text-text-muted hover:text-status-error hover:bg-status-error/10 rounded-xl transition-all"
+                                        >
+                                            <Trash2 size={16} />
+                                        </button>
+                                    </div>
                                 </div>
-                                {/* Subtle difficulty-themed background glow */}
-                                <div className={`absolute -right-4 -bottom-4 w-24 h-24 blur-3xl opacity-10 pointer-events-none rounded-full
-                                    ${problem.difficulty === 'easy' ? 'bg-status-ok' : problem.difficulty === 'medium' ? 'bg-status-warning' : 'bg-status-error'}`}
-                                />
-                            </Card>
+
+                                {/* Difficulty Watermark */}
+                                <div className={cn(
+                                    "absolute -left-4 -bottom-4 opacity-[0.02] rotate-12 pointer-events-none group-hover:opacity-[0.05] transition-opacity duration-500",
+                                    difficultyColors[problem.difficulty as keyof typeof difficultyColors]
+                                )}>
+                                    <Binary size={120} />
+                                </div>
+                            </motion.div>
                         ))}
-                    />
-
-                    {/* Pagination */}
-                    {pagination.pages > 1 && (
-                        <div className="flex items-center justify-center gap-4 pt-4">
-                            <Button
-                                variant="secondary"
-                                size="sm"
-                                onClick={() => setPage(p => Math.max(1, p - 1))}
-                                disabled={page === 1}
-                            >
-                                <ChevronLeft size={16} />
-                            </Button>
-                            <span className="text-sm text-text-secondary">
-                                Page {page} of {pagination.pages}
-                            </span>
-                            <Button
-                                variant="secondary"
-                                size="sm"
-                                onClick={() => setPage(p => Math.min(pagination.pages, p + 1))}
-                                disabled={page === pagination.pages}
-                            >
-                                <ChevronRight size={16} />
-                            </Button>
-                        </div>
-                    )}
-                </div>
-            )
-            }
-
-            {/* SRS Modal */}
-            <SRSInfoModal
-                isOpen={showSRSModal}
-                onClose={() => setShowSRSModal(false)}
-            />
-
-            {/* Add Modal */}
-            <Modal
-                isOpen={showAddModal}
-                onClose={() => setShowAddModal(false)}
-                title="Add DSA Problem"
-                size="3xl"
-            >
-                <DSAProblemForm
-                    onSuccess={() => {
-                        setShowAddModal(false);
-                        fetchProblems();
-                    }}
-                    onCancel={() => setShowAddModal(false)}
-                />
-            </Modal>
-
-            {/* Edit Modal */}
-            <Modal
-                isOpen={!!editingProblem}
-                onClose={() => setEditingProblem(null)}
-                title="Edit Problem"
-                size="3xl"
-            >
-                {editingProblem && (
-                    <DSAProblemForm
-                        initialValues={editingProblem}
-                        onSuccess={() => {
-                            setEditingProblem(null);
-                            fetchProblems();
-                        }}
-                        onCancel={() => setEditingProblem(null)}
-                    />
+                    </div>
                 )}
-            </Modal>
+            </AnimatePresence>
 
-            {/* View Modal */}
-            <ViewProblemModal
-                isOpen={!!viewingProblem}
-                problem={viewingProblem}
-                onClose={() => setViewingProblem(null)}
-                onEdit={(problem) => setEditingProblem(problem)}
-                onDelete={(id) => {
-                    handleDeleteClick(id);
-                    setViewingProblem(null);
-                }}
-                onReview={handleReview}
-            />
+            {/* Pagination */}
+            {!isLoading && pagination.pages > 1 && (
+                <div className="flex items-center justify-center gap-6 pt-10">
+                    <Button
+                        variant="ghost"
+                        onClick={() => setPage(p => Math.max(1, p - 1))}
+                        disabled={page === 1}
+                        className="h-14 w-14 rounded-2xl border border-white/5 bg-console-surface/50"
+                    >
+                        <ChevronLeft size={24} />
+                    </Button>
+                    <div className="px-6 py-3 bg-console-surface/50 border border-white/5 rounded-2xl text-sm font-black uppercase tracking-widest text-text-muted">
+                        Sector {page} / {pagination.pages}
+                    </div>
+                    <Button
+                        variant="ghost"
+                        onClick={() => setPage(p => Math.min(pagination.pages, p + 1))}
+                        disabled={page === pagination.pages}
+                        className="h-14 w-14 rounded-2xl border border-white/5 bg-console-surface/50"
+                    >
+                        <ChevronRight size={24} />
+                    </Button>
+                </div>
+            )}
 
-            {/* Delete Modal */}
+            <SRSInfoModal isOpen={showSRSModal} onClose={() => setShowSRSModal(false)} />
             <DeleteModal
                 isOpen={deleteModalOpen}
                 onClose={() => setDeleteModalOpen(false)}
                 onConfirm={handleConfirmDelete}
-                title="Delete Problem"
-                description="Are you sure you want to delete this problem? This action cannot be undone."
+                title="Sector Purge"
+                description="This action will permanently erase the algorithmic archive for this problem."
                 isDeleting={isDeleting}
             />
-        </div >
+        </div>
     );
 }
+
+const History = ({ size, className }: { size: number, className: string }) => (
+    <Clock size={size} className={className} />
+);
+
+const Clock = ({ size, className }: { size: number, className: string }) => (
+    <svg 
+        xmlns="http://www.w3.org/2000/svg" 
+        width={size} 
+        height={size} 
+        viewBox="0 0 24 24" 
+        fill="none" 
+        stroke="currentColor" 
+        strokeWidth="2" 
+        strokeLinecap="round" 
+        strokeLinejoin="round" 
+        className={className}
+    >
+        <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+    </svg>
+);

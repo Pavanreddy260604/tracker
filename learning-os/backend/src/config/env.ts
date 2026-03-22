@@ -70,6 +70,7 @@ export interface AppEnv {
     PISTON_API_KEY_HEADER?: string;
     PISTON_API_KEY_PREFIX?: string;
     PISTON_TIMEOUT_MS?: string;
+    OBSIDIAN_VAULT_PATH: string;
 }
 
 export const validateAppEnv = (): AppEnv => {
@@ -94,5 +95,6 @@ export const validateAppEnv = (): AppEnv => {
         PISTON_API_KEY_HEADER: getOptionalEnv('PISTON_API_KEY_HEADER'),
         PISTON_API_KEY_PREFIX: getOptionalEnv('PISTON_API_KEY_PREFIX'),
         PISTON_TIMEOUT_MS: getOptionalEnv('PISTON_TIMEOUT_MS'),
+        OBSIDIAN_VAULT_PATH: getOptionalEnv('OBSIDIAN_VAULT_PATH', './obsidian-vault') || './obsidian-vault',
     };
 };
