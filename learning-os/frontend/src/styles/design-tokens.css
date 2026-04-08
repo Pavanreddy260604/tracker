@@ -30,6 +30,14 @@
   --accent-soft: rgba(59, 130, 246, 0.12);
   --accent-focus: rgba(59, 130, 246, 0.25);
 
+  /* Project CRYSTAL semantic accents */
+  --crystal-github-core: #7dd3fc;
+  --crystal-github-edge: #38bdf8;
+  --crystal-github-glow: rgba(56, 189, 248, 0.32);
+  --crystal-analysis-core: #60a5fa;
+  --crystal-analysis-glow: rgba(96, 165, 250, 0.22);
+  --crystal-reliability-ring: rgba(59, 130, 246, 0.16);
+
   /* Status */
   --status-ok: #22c55e;
   --status-warning: #f59e0b;
@@ -55,6 +63,11 @@
   --elevation-3: 0 16px 40px rgba(0, 0, 0, 0.7);
   --elevation-premium: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
   --elevation-strong: 0 20px 25px -5px rgba(0, 0, 0, 0.2), 0 8px 10px -6px rgba(0, 0, 0, 0.2);
+  --motion-fast: 120ms;
+  --motion-medium: 180ms;
+  --motion-slow: 260ms;
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 
@@ -80,6 +93,12 @@
   --accent-primary-rgb: 29, 78, 216;
   --accent-soft: rgba(29, 78, 216, 0.1);
   --accent-focus: rgba(29, 78, 216, 0.25);
+  --crystal-github-core: #0ea5e9;
+  --crystal-github-edge: #2563eb;
+  --crystal-github-glow: rgba(14, 165, 233, 0.2);
+  --crystal-analysis-core: #2563eb;
+  --crystal-analysis-glow: rgba(37, 99, 235, 0.16);
+  --crystal-reliability-ring: rgba(29, 78, 216, 0.12);
 
   --border-subtle: #cbd5e1;
   --border-strong: #94a3b8;
@@ -93,12 +112,6 @@
   --status-warning-soft: rgba(217, 119, 6, 0.12);
   --status-error-soft: rgba(220, 38, 38, 0.12);
 
-  /* Motion */
-  --motion-fast: 120ms;
-  --motion-medium: 180ms;
-  --motion-slow: 260ms;
-  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
-  --ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 /* Tailwind v4 Theme Mapping */
@@ -230,5 +243,4 @@
   -ms-overflow-style: none;
   scrollbar-width: none;
 }
-
 

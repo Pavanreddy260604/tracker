@@ -4,7 +4,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { motion } from 'framer-motion';
-import { Mail, Lock, ArrowRight } from 'lucide-react';
+import { Mail, Lock, ArrowRight, Eye, EyeOff } from 'lucide-react';
 import { useAuthStore } from '../stores/authStore';
 import { cn } from '../lib/utils';
 import { Logo } from '../components/ui/Logo';
@@ -17,6 +17,7 @@ const loginSchema = z.object({
 type LoginForm = z.infer<typeof loginSchema>;
 
 export function Login() {
+    const [showPassword, setShowPassword] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const navigate = useNavigate();
     const location = useLocation(); // hook added
@@ -112,15 +113,23 @@ export function Login() {
                             <div className="relative">
                                 <Lock size={20} className="absolute left-4 top-1/2 -translate-y-1/2 text-text-secondary" />
                                 <input
-                                    type="password"
+                                    type={showPassword ? 'text' : 'password'}
                                     autoComplete="current-password"
                                     className={cn(
-                                        "auth-input w-full pl-12 pr-4 text-base",
+                                        "auth-input w-full pl-12 pr-12 text-base",
                                         errors.password && "auth-input-error"
                                     )}
                                     placeholder="Enter your password"
                                     {...register('password')}
                                 />
+                                <button
+                                    type="button"
+                                    className="password-toggle"
+                                    onClick={() => setShowPassword(!showPassword)}
+                                    tabIndex={-1}
+                                >
+                                    {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                                </button>
                             </div>
                             {errors.password && (
                                 <p className="text-sm text-status-error font-medium">{errors.password.message}</p>

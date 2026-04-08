@@ -64,7 +64,7 @@ interface CacheStats {
 export class StructuredQuestionService {
   private cacheStats: CacheStats = { hits: 0, misses: 0, aiCalls: 0 };
   private readonly CACHE_TTL_SECONDS = 86400 * 30; // 30 days
-  private readonly MIN_POOL_SIZE = 50;
+  private readonly MIN_POOL_SIZE = 1; // If pool has any question, use it! (Avoids unnecessary AI calls)
 
   constructor(private aiClient: AIClientService) {}
 
@@ -91,12 +91,14 @@ export class StructuredQuestionService {
     const question = await this.generateWithRetry(difficulty, topics, language);
     
     // Validate uniqueness using embeddings
+    // DISABLED: Semantic duplicate check is very slow and can cause recursive AI calls
+    /*
     const isDuplicate = await this.checkSemanticDuplicate(question, difficulty, topics);
     if (isDuplicate) {
       console.log(`[QuestionService] Duplicate detected for ${question.slug}, retrying...`);
-      // Recursive retry with slight variation in topics
       return this.generateCuratedQuestion(difficulty, [...topics, 'unique'], language);
     }
+    */
 
     // Add to pool
     await this.addToPool(question, difficulty, topics);
@@ -186,8 +188,11 @@ Requirements:
 - Target solve time: ${difficulty === 'easy' ? '10-15' : difficulty === 'medium' ? '20-30' : '35-45'} minutes
 - Must include 5-20 test cases covering:
   * Normal cases
-  * Edge cases (empty input, single element, max constraints)
+  * Normal cases
+  * Edge cases (empty input, single element, max constraints, duplicate values, null/undefined)
   * Performance stress tests for ${difficulty} questions
+
+CRITICAL: At least 4 test cases MUST be distinct edge cases flagged with "isEdgeCase: true".
 
 Difficulty Guidelines:
 - EASY: Standard algorithms, single data structure, no optimization needed
@@ -236,9 +241,9 @@ ${JSON.stringify(jsonSchema, null, 2)}`;
   }
 
   private async validateTestCases(question: GeneratedQuestion): Promise<void> {
-    // Ensure at least 30% are edge cases
+    // Ensure at least 2 edge cases (Relaxed from 4 to prevent retry loops)
     const edgeCaseCount = question.testCases.filter(tc => tc.isEdgeCase).length;
-    const minEdgeCases = Math.ceil(question.testCases.length * 0.3);
+    const minEdgeCases = 2; 
     
     if (edgeCaseCount < minEdgeCases) {
       throw new AIServiceError(

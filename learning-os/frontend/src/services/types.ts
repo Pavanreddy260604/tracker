@@ -327,7 +327,7 @@ export interface InterviewProctoringUpdate {
     keystrokeDynamics?: { key: string; pressTime: number; releaseTime: number }[];
 }
 
-export interface ChatSession {
+export interface ChatConversation {
     _id: string;
     userId: string;
     title: string;
@@ -340,3 +340,6 @@ export interface ChatSession {
     createdAt: string;
     updatedAt: string;
 }
+
+/** @deprecated Use ChatConversation */
+export type ChatSession = ChatConversation;

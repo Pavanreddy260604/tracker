@@ -150,6 +150,273 @@
   box-shadow: var(--elevation-1);
 }
 
+.chat-status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 12px;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--border-subtle) 80%, transparent);
+  background: color-mix(in srgb, var(--console-surface) 78%, transparent);
+  color: var(--text-secondary);
+  box-shadow: 0 0 0 1px var(--crystal-reliability-ring);
+  backdrop-filter: blur(16px);
+}
+
+.chat-status-pill.is-github {
+  border-color: color-mix(in srgb, var(--crystal-github-edge) 50%, transparent);
+  color: var(--text-primary);
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--crystal-github-edge) 22%, transparent),
+    0 18px 40px color-mix(in srgb, var(--crystal-github-glow) 55%, transparent);
+}
+
+.chat-status-pill.is-live {
+  box-shadow:
+    0 0 0 1px var(--crystal-reliability-ring),
+    0 12px 28px rgba(0, 0, 0, 0.16);
+}
+
+.chat-thinking-inline,
+.chat-thinking-footer {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.chat-thinking-footer {
+  padding-top: 4px;
+}
+
+.chat-thinking-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.chat-thinking-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: color-mix(in srgb, var(--text-primary) 92%, transparent);
+  line-height: 1.1;
+}
+
+.chat-thinking-detail {
+  font-size: 11px;
+  line-height: 1.45;
+  color: color-mix(in srgb, var(--text-tertiary) 94%, transparent);
+}
+
+.chat-loading-label {
+  display: inline-flex;
+  align-items: center;
+  position: relative;
+  min-width: 0;
+  white-space: nowrap;
+}
+
+.chat-loading-label.is-thinking {
+  gap: 0;
+}
+
+.chat-loading-char {
+  display: inline-block;
+  animation: chat-thought-reform 2.1s ease-in-out infinite;
+  animation-delay: calc(var(--char-index, 0) * 95ms);
+  will-change: transform, opacity, filter;
+}
+
+.chat-loading-char.is-space {
+  width: 0.34em;
+}
+
+.chat-loading-label.is-knowledge,
+.chat-loading-label.is-writing {
+  display: inline-flex;
+  align-items: center;
+  min-width: 0;
+}
+
+.chat-loading-label.is-knowledge {
+  padding-bottom: 4px;
+}
+
+.chat-loading-label-text {
+  display: inline-block;
+  min-width: 0;
+}
+
+.chat-loading-label.is-knowledge::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 1px;
+  background:
+    linear-gradient(90deg,
+      transparent 0%,
+      color-mix(in srgb, var(--accent-primary) 82%, white) 18%,
+      color-mix(in srgb, var(--accent-primary) 82%, white) 42%,
+      transparent 64%);
+  background-size: 180% 100%;
+  animation: chat-knowledge-scan 1.9s linear infinite;
+  opacity: 0.82;
+}
+
+.chat-loading-branch {
+  position: absolute;
+  left: 38%;
+  bottom: 1px;
+  width: 11px;
+  height: 7px;
+  border-top: 1px solid color-mix(in srgb, var(--accent-primary) 62%, transparent);
+  border-right: 1px solid color-mix(in srgb, var(--accent-primary) 62%, transparent);
+  transform-origin: left bottom;
+  animation: chat-knowledge-branch 1.9s ease-in-out infinite;
+  opacity: 0.72;
+  pointer-events: none;
+}
+
+.chat-loading-label.is-tools,
+.chat-loading-label.is-github {
+  gap: 0.32em;
+}
+
+.chat-loading-segment {
+  display: inline-block;
+  animation: chat-tool-snap 1.85s cubic-bezier(0.2, 0.82, 0.2, 1) infinite;
+  animation-delay: calc(var(--segment-index, 0) * 120ms);
+  will-change: transform, opacity, filter;
+}
+
+.chat-loading-label.is-github {
+  padding-right: 10px;
+}
+
+.chat-loading-label.is-github::after {
+  content: "";
+  position: absolute;
+  top: 0.08em;
+  bottom: 0.08em;
+  width: 2px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--crystal-github-edge) 84%, white);
+  left: 0;
+  transform: translateX(-1px);
+  animation: chat-repo-cursor 1.8s steps(4, end) infinite;
+  box-shadow: 0 0 10px color-mix(in srgb, var(--crystal-github-glow) 55%, transparent);
+}
+
+.chat-loading-segment.is-repo {
+  animation-name: chat-repo-segment;
+}
+
+.chat-loading-label.is-writing {
+  padding-bottom: 3px;
+}
+
+.chat-loading-label.is-writing::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: 100%;
+  height: 1px;
+  background:
+    linear-gradient(90deg,
+      transparent 0%,
+      color-mix(in srgb, var(--accent-primary) 76%, white) 30%,
+      transparent 72%);
+  background-size: 200% 100%;
+  animation: chat-writing-flow 2.1s ease-in-out infinite;
+  opacity: 0.74;
+}
+
+@keyframes chat-thought-reform {
+  0%, 100% {
+    transform: translate3d(0, 0, 0);
+    opacity: 0.78;
+    filter: blur(0);
+  }
+  25% {
+    transform: translate3d(-1px, 0.5px, 0);
+    opacity: 0.46;
+    filter: blur(0.35px);
+  }
+  55% {
+    transform: translate3d(1px, -0.5px, 0);
+    opacity: 1;
+    filter: blur(0);
+  }
+}
+
+@keyframes chat-knowledge-scan {
+  0% {
+    background-position: 140% 0;
+  }
+  100% {
+    background-position: -40% 0;
+  }
+}
+
+@keyframes chat-knowledge-branch {
+  0%, 100% {
+    opacity: 0.18;
+    transform: scaleX(0.72) scaleY(0.72);
+  }
+  40% {
+    opacity: 0.82;
+    transform: scaleX(1) scaleY(1);
+  }
+}
+
+@keyframes chat-tool-snap {
+  0%, 100% {
+    transform: translate3d(0, 0, 0);
+    opacity: 0.82;
+    filter: blur(0);
+  }
+  22% {
+    transform: translate3d(0, 1px, 0) scale(0.985);
+    opacity: 0.45;
+    filter: blur(0.5px);
+  }
+  48% {
+    transform: translate3d(0, -1px, 0) scale(1.01);
+    opacity: 1;
+    filter: blur(0);
+  }
+}
+
+@keyframes chat-repo-cursor {
+  0% {
+    left: 0;
+  }
+  100% {
+    left: calc(100% - 2px);
+  }
+}
+
+@keyframes chat-repo-segment {
+  0%, 100% {
+    opacity: 0.7;
+  }
+  35% {
+    opacity: 1;
+  }
+}
+
+@keyframes chat-writing-flow {
+  0% {
+    background-position: 120% 0;
+  }
+  100% {
+    background-position: -20% 0;
+  }
+}
+
 .chat-message {
   color: var(--text-secondary);
 }

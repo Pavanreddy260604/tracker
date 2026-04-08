@@ -1,9 +1,12 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Calendar, Clock, Trophy, Play, History } from 'lucide-react';
+import { Calendar, Clock, Trophy, Play, History, TrendingUp, Target, Timer } from 'lucide-react';
 import { api } from '../../services/api';
 import type { InterviewSession } from '../../services/api';
+import { Button } from '../../components/ui/Button';
+import { Badge } from '../../components/ui/Badge';
+import { cn } from '../../lib/utils';
 
 const formatDate = (value: string) =>
     new Date(value).toLocaleDateString(undefined, {
@@ -36,126 +39,168 @@ export function InterviewHistory() {
         return { submitted, avgScore, avgDuration };
     }, [sessions]);
 
-    if (isLoading) return <div className="sw-page text-center sw-muted">Loading your interviews…</div>;
+    if (isLoading) {
+        return (
+            <div className="min-h-[400px] flex flex-col items-center justify-center gap-4">
+                <div className="w-12 h-12 border-4 border-accent-primary/20 border-t-accent-primary rounded-full animate-spin" />
+                <span className="text-[10px] font-black text-text-muted uppercase tracking-widest animate-pulse">Retrieving Archives...</span>
+            </div>
+        );
+    }
 
     return (
-        <div className="sw-page max-w-6xl mx-auto space-y-8">
-            <div className="interview-hero">
-                <div className="flex flex-wrap items-start justify-between gap-6">
-                    <div className="space-y-3">
-                        <span className="interview-chip is-info">Cinematic AI Interview Lab</span>
-                        <h1 className="text-3xl md:text-4xl font-semibold text-[color:var(--text-primary)]">
-                            Interview History
-                        </h1>
-                        <p className="text-base text-[color:var(--text-secondary)] max-w-2xl">
-                            Review every mock, track your growth curve, and jump back in with a studio-grade experience.
-                        </p>
-                        <div className="flex flex-wrap gap-3">
-                            <button
+        <div className="max-w-7xl mx-auto space-y-12 py-8 px-6">
+            <div className="relative p-10 rounded-[3rem] bg-console-surface/40 border border-white/5 overflow-hidden group">
+                <div className="absolute top-0 right-0 w-1/2 h-full bg-gradient-to-l from-accent-primary/5 to-transparent pointer-events-none" />
+                
+                <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-12">
+                    <div className="space-y-6 max-w-2xl">
+                        <div className="flex items-center gap-3">
+                             <Badge variant="info" className="bg-accent-primary/10 text-accent-primary border-accent-primary/20 font-black uppercase tracking-[0.2em] text-[9px] px-3">
+                                Mission Log
+                             </Badge>
+                             <div className="h-px w-12 bg-white/10" />
+                        </div>
+                        <div className="space-y-2">
+                            <h1 className="text-5xl font-black text-text-primary tracking-tighter">
+                                Interview <span className="text-accent-primary">Vault</span>
+                            </h1>
+                            <p className="text-lg text-text-muted font-medium leading-relaxed">
+                                Decrypt your past performance metrics, analyze the growth trajectory, and re-engage with the core simulation protocols.
+                            </p>
+                        </div>
+                        <div className="flex flex-wrap gap-4 pt-2">
+                            <Button
                                 onClick={() => navigate('/interview/setup')}
-                                className="sw-btn sw-btn-primary interview-cta"
+                                className="h-12 px-8 bg-accent-primary text-white shadow-xl shadow-accent-primary/20 hover:scale-105 active:scale-95 transition-all text-xs font-black uppercase tracking-widest rounded-2xl"
                             >
-                                <Play size={16} /> Start New Interview
-                            </button>
-                            <button
+                                <Play className="w-4 h-4 mr-2" fill="currentColor" /> Initialize Session
+                            </Button>
+                            <Button
                                 onClick={() => navigate('/interview/history')}
-                                className="sw-btn sw-btn-secondary interview-cta"
+                                variant="secondary"
+                                className="h-12 px-8 bg-white/5 border-white/5 hover:bg-white/10 text-xs font-black uppercase tracking-widest rounded-2xl"
                             >
-                                <History size={16} /> Manage History
-                            </button>
+                                <History className="w-4 h-4 mr-2" /> Global Archives
+                            </Button>
                         </div>
                     </div>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 min-w-[280px] w-full sm:w-auto">
-                        <div className="interview-stat-card">
-                            <p className="interview-stat-label">Submitted</p>
-                            <p className="interview-stat-value">{stats.submitted}</p>
-                        </div>
-                        <div className="interview-stat-card">
-                            <p className="interview-stat-label">Avg Score</p>
-                            <p className="interview-stat-value">{stats.avgScore}%</p>
-                        </div>
-                        <div className="interview-stat-card">
-                            <p className="interview-stat-label">Avg Duration</p>
-                            <p className="interview-stat-value">{stats.avgDuration}m</p>
-                        </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 lg:w-[450px]">
+                        {[
+                            { label: 'Completed', value: stats.submitted, icon: Target, color: 'text-status-ok' },
+                            { label: 'Avg Efficiency', value: `${stats.avgScore}%`, icon: TrendingUp, color: 'text-accent-primary' },
+                            { label: 'Air Time', value: `${stats.avgDuration}m`, icon: Timer, color: 'text-amber-500' }
+                        ].map((stat, i) => (
+                            <div key={i} className="p-6 rounded-3xl bg-console-bg/60 border border-white/5 backdrop-blur-sm group-hover:border-white/10 transition-colors">
+                                <stat.icon className={cn("w-5 h-5 mb-4", stat.color)} />
+                                <div className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em] mb-1">{stat.label}</div>
+                                <div className="text-2xl font-black text-text-primary tracking-tighter">{stat.value}</div>
+                            </div>
+                        ))}
                     </div>
                 </div>
             </div>
 
             {sessions.length === 0 ? (
-                <div className="interview-card text-center py-16">
-                    <div className="inline-flex items-center justify-center mx-auto h-14 w-14 rounded-2xl bg-[color:var(--accent-soft)] text-[color:var(--accent-primary)] shadow-lg shadow-[color:var(--accent-focus)]/40 mb-4">
-                        <Trophy size={24} />
+                <div className="p-20 rounded-[3rem] bg-console-surface/20 border-2 border-dashed border-white/5 text-center space-y-8">
+                    <div className="w-24 h-24 mx-auto rounded-3xl bg-accent-primary/5 flex items-center justify-center border border-accent-primary/10">
+                        <Trophy className="w-12 h-12 text-accent-primary opacity-40" />
                     </div>
-                    <h3 className="text-xl font-semibold text-[color:var(--text-primary)]">No interviews yet</h3>
-                    <p className="text-[color:var(--text-secondary)] mt-2">
-                        Kick off your first AI-powered mock and your progress will appear here.
-                    </p>
-                    <div className="mt-6">
-                        <button
+                    <div className="space-y-3">
+                        <h3 className="text-2xl font-black text-text-primary tracking-tight">Archives Empty</h3>
+                        <p className="text-text-muted font-medium max-w-sm mx-auto leading-relaxed">
+                            No logs found in the secure vault. Initialize your first simulation protocol to begin tracking performance data.
+                        </p>
+                    </div>
+                    <div className="flex justify-center gap-4">
+                        <Button
                             onClick={() => navigate('/interview/setup')}
-                            className="sw-btn sw-btn-primary interview-cta mr-3"
+                            className="h-12 px-10 bg-accent-primary text-white shadow-xl shadow-accent-primary/20 text-xs font-black uppercase tracking-widest rounded-2xl"
                         >
-                            <Play size={16} /> Start Now
-                        </button>
-                        <button
-                            onClick={() => navigate('/interview/history')}
-                            className="sw-btn sw-btn-secondary interview-cta"
-                        >
-                            <History size={16} /> View History
-                        </button>
+                            <Play className="w-4 h-4 mr-2" fill="currentColor" /> Launch Simulation
+                        </Button>
                     </div>
                 </div>
             ) : (
-                <div className="grid gap-4 md:grid-cols-2">
+                <div className="grid gap-6 md:grid-cols-2">
                     {sessions.map((session) => {
-                        const statusClass =
-                            session.status === 'submitted'
-                                ? 'is-success'
-                                : 'is-info';
                         const score = Math.max(0, session.totalScore || 0);
+                        const isHighPerformance = score >= 80;
+                        const isMediumPerformance = score >= 50 && score < 80;
+
                         return (
                             <motion.div
                                 key={session._id}
                                 initial={{ opacity: 0, y: 10 }}
                                 animate={{ opacity: 1, y: 0 }}
-                                className="interview-card"
+                                onClick={() => navigate(
+                                session.status === 'submitted' 
+                                    ? `/interview/${session._id}/analytics`
+                                    : `/interview/room/${session._id}`
+                            )}
+                                className="p-8 rounded-[2.5rem] bg-console-surface border border-white/5 hover:border-accent-primary/30 hover:bg-console-surface-2 transition-all cursor-pointer group relative overflow-hidden"
                             >
-                                <div className="flex items-start justify-between gap-4">
-                                    <div className="space-y-2">
-                                        <div className="flex flex-wrap items-center gap-2">
-                                            <span className={`interview-chip ${statusClass}`}>{session.status}</span>
-                                            <span className="interview-meta flex items-center gap-1">
-                                                <Calendar size={14} />
-                                                {formatDate(session.startedAt)}
-                                            </span>
-                                            <span className="interview-meta flex items-center gap-1">
-                                                <Clock size={14} />
-                                                {session.config.duration}m
-                                            </span>
-                                            <span className="interview-meta">Q{session.config.sectionCount}</span>
+                                <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-bl from-accent-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                                
+                                <div className="flex items-start justify-between gap-6 relative z-10">
+                                    <div className="space-y-6">
+                                        <div className="flex flex-wrap items-center gap-3">
+                                            <Badge 
+                                                className={cn(
+                                                    "font-black uppercase tracking-[0.2em] text-[9px] px-3",
+                                                    session.status === 'submitted' ? 'bg-status-ok/10 text-status-ok border-status-ok/20' : 'bg-accent-primary/10 text-accent-primary border-accent-primary/20'
+                                                )}
+                                            >
+                                                {session.status}
+                                            </Badge>
+                                            <div className="flex items-center gap-4 text-text-muted/60">
+                                                <div className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest">
+                                                    <Calendar size={12} className="text-text-muted" />
+                                                    {formatDate(session.startedAt)}
+                                                </div>
+                                                <div className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest">
+                                                    <Clock size={12} className="text-text-muted" />
+                                                    {session.config.duration}m
+                                                </div>
+                                            </div>
                                         </div>
-                                        <div className="flex flex-wrap gap-2">
-                                            <span className="interview-pill">{session.config.difficulty} level</span>
-                                            <span className="interview-pill">
-                                                {session.config.language ? session.config.language : 'Language: JS'}
-                                            </span>
+                                        
+                                        <div className="space-y-3">
+                                            <div className="flex items-center gap-2">
+                                                <Badge variant="secondary" className="bg-white/5 border-white/5 text-[9px] font-black uppercase tracking-widest">{session.config.difficulty}</Badge>
+                                                <Badge variant="secondary" className="bg-white/5 border-white/5 text-[9px] font-black uppercase tracking-widest">{session.config.language || 'JAVASCRIPT'}</Badge>
+                                            </div>
+                                            <div className="text-[10px] font-black text-text-muted uppercase tracking-[0.2em]">Deployment Protocol v1.4</div>
                                         </div>
                                     </div>
+
                                     <div className="text-right space-y-1">
-                                        <p className="interview-meta uppercase tracking-[0.12em] text-[11px]">Score</p>
-                                        <p className="text-3xl font-semibold text-[color:var(--text-primary)]">
-                                            {score}
-                                            <span className="text-base text-[color:var(--text-secondary)]">%</span>
-                                        </p>
+                                        <div className="text-[9px] font-black text-text-muted uppercase tracking-[0.2em] opacity-40">System Score</div>
+                                        <div className={cn(
+                                            "text-4xl font-black tracking-tighter",
+                                            isHighPerformance ? "text-status-ok" : isMediumPerformance ? "text-amber-500" : "text-status-error"
+                                        )}>
+                                            {score}<span className="text-lg opacity-40 ml-0.5">%</span>
+                                        </div>
                                     </div>
                                 </div>
-                                <div className="interview-progress mt-4">
-                                    <div
-                                        className="interview-progress-bar"
-                                        style={{ width: `${Math.min(score, 100)}%` }}
-                                    />
+
+                                <div className="mt-8 relative pt-4 border-t border-white/5">
+                                    <div className="flex items-center justify-between mb-2">
+                                        <span className="text-[9px] font-black text-text-muted uppercase tracking-[0.2em]">Efficiency Coefficient</span>
+                                        <span className="text-[9px] font-black text-text-primary mb-1">{score}%</span>
+                                    </div>
+                                    <div className="h-1.5 w-full bg-white/5 rounded-full overflow-hidden">
+                                        <motion.div
+                                            initial={{ width: 0 }}
+                                            animate={{ width: `${Math.min(score, 100)}%` }}
+                                            className={cn(
+                                                "h-full rounded-full transition-all duration-1000",
+                                                isHighPerformance ? "bg-status-ok" : isMediumPerformance ? "bg-amber-500 shadow-[0_0_10px_rgba(245,158,11,0.2)]" : "bg-status-error shadow-[0_0_10px_rgba(239,68,68,0.2)]"
+                                            )}
+                                        />
+                                    </div>
                                 </div>
                             </motion.div>
                         );

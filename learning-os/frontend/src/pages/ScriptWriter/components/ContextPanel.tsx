@@ -4,6 +4,7 @@ import { useScriptWriter } from '../../../contexts/ScriptWriterContext';
 import { useScriptWriterGenerator } from '../useScriptWriterGenerator';
 import { useScriptWriterTreatments } from '../useScriptWriterTreatments';
 import { AssistantPanel } from './AssistantPanel';
+import { DiffReviewModal } from './DiffReviewModal';
 import type { Bible, CritiqueResult, IScene as Scene } from '../../../services/project.api';
 import { scriptWriterApi } from '../../../services/scriptWriter.api';
 import type { Character } from '../../../services/character.api';
@@ -37,6 +38,7 @@ interface ContextPanelProps {
     setPendingFix?: (fix: PendingFixState | null) => void;
     setError: (message: string | null) => void;
     characters?: Character[];
+    isCritiqueStale?: boolean;
 }
 
 export function ContextPanel({
@@ -63,7 +65,8 @@ export function ContextPanel({
     editorSelection,
     setPendingFix,
     setError,
-    characters = []
+    characters = [],
+    isCritiqueStale
 }: ContextPanelProps) {
     const { uiState, setRightPanelTool, toggleRightPanel, activeProject: contextActiveProject, editorContent, setEditorContent } = useScriptWriter();
     const activeProject = propActiveProject || contextActiveProject;
@@ -73,6 +76,19 @@ export function ContextPanel({
     const [aiProvider, setAiProvider] = useState<string>('ollama');
     const [isSwitchingProvider, setIsSwitchingProvider] = useState(false);
     const projectTitle = activeProject ? projectTitleDrafts[activeProject._id] ?? activeProject.title ?? '' : '';
+
+    // Diff Review State
+    const [reviewModal, setReviewModal] = useState<{
+        isOpen: boolean;
+        originalContent: string;
+        newContent: string;
+        messageId: string;
+    }>({
+        isOpen: false,
+        originalContent: '',
+        newContent: '',
+        messageId: ''
+    });
 
     useEffect(() => {
         scriptWriterApi.getAIProvider().then(setAiProvider).catch(console.error);
@@ -87,6 +103,7 @@ export function ContextPanel({
         handleDeleteAssistantMessage,
         handleUpdateAssistantMessage,
         handleClearChat,
+        handleConfirmEdit,
         assistantProgress,
         aiModel,
         setAiModel
@@ -130,7 +147,7 @@ export function ContextPanel({
     // Collapsed State (Rail)
     if (!rightPanelOpen) {
         return (
-            <div className="flex flex-col h-full bg-console-bg/30 backdrop-blur-md items-center py-4 border-l border-border-subtle/30 w-12 z-20">
+            <div className="flex flex-col h-full bg-console-surface/30 backdrop-blur-md items-center py-4 border-l border-border-subtle/30 w-12 z-20">
                 {tabs.map(tab => (
                     <button
                         key={tab.id}
@@ -151,7 +168,7 @@ export function ContextPanel({
     }
 
     return (
-        <div className="flex flex-col h-full bg-console-bg text-text-secondary">
+        <div className="flex flex-col h-full bg-console-surface text-text-secondary">
             {/* Tab Header - Context Switcher */}
             <div className="h-12 border-b border-border-subtle/30 flex items-center bg-console-header/90 backdrop-blur-xl sticky top-0 z-30 overflow-hidden shadow-sm">
                 <div className="flex-1 flex items-center overflow-x-auto no-scrollbar h-full px-1">
@@ -173,7 +190,7 @@ export function ContextPanel({
                     ))}
                 </div>
 
-                <div className="flex-none px-2 flex items-center border-l border-border-subtle bg-console-bg h-full">
+                <div className="flex-none px-2 flex items-center border-l border-border-subtle bg-console-surface h-full">
                     <button
                         onClick={toggleRightPanel}
                         className="rounded-md p-1 text-text-tertiary transition-colors hover:bg-console-surface hover:text-text-secondary"
@@ -195,7 +212,7 @@ export function ContextPanel({
                             progress={assistantProgress}
                             activeSceneName={activeScene?.slugline || undefined}
                             selection={editorSelection || null}
-                            onSendMessage={(request) => handleAssistantSendMessage(request, activeScene?._id || null, (updatedContent, finished, activeRequest, proposalMessageId) => {
+                            onSendMessage={(request) => handleAssistantSendMessage(request, (updatedContent, finished, activeRequest, proposalMessageId) => {
                                 if (setPendingFix && activeRequest?.mode !== 'ask' && activeRequest?.scope === 'scene') {
                                     if (!updatedContent?.trim()) {
                                         setPendingFix(null);
@@ -208,33 +225,48 @@ export function ContextPanel({
                                         proposalMessageId,
                                         commitProposal: proposalMessageId
                                             ? async () => {
-                                                await handleApplyProposal(proposalMessageId, activeScene?._id || null);
+                                                const res = await handleApplyProposal(proposalMessageId);
+                                                if (res?.requiresReview) {
+                                                    setReviewModal({
+                                                        isOpen: true,
+                                                        originalContent: res.originalContent || '',
+                                                        newContent: res.newContent || '',
+                                                        messageId: res.messageId || ''
+                                                    });
+                                                }
                                             }
                                             : undefined,
                                         discardProposal: proposalMessageId
                                             ? async () => {
-                                                await handleDiscardProposal(proposalMessageId, activeScene?._id || null);
+                                                await handleDiscardProposal(proposalMessageId);
                                             }
                                             : undefined
                                     });
                                 }
                             })}
-                            onApplyProposal={(id: string) => {
-                                handleApplyProposal(id, activeScene?._id || null);
-                                if (pendingFix?.proposalMessageId === id && setPendingFix) {
+                            onApplyProposal={async (id: string) => {
+                                const res = await handleApplyProposal(id);
+                                if (res?.requiresReview) {
+                                    setReviewModal({
+                                        isOpen: true,
+                                        originalContent: res.originalContent || '',
+                                        newContent: res.newContent || '',
+                                        messageId: res.messageId || ''
+                                    });
+                                } else if (pendingFix?.proposalMessageId === id && setPendingFix) {
                                     setPendingFix(null);
                                 }
                             }}
                             onDiscardProposal={(id: string) => {
-                                handleDiscardProposal(id, activeScene?._id || null);
+                                handleDiscardProposal(id);
                                 if (pendingFix?.proposalMessageId === id && setPendingFix) {
                                     setPendingFix(null);
                                 }
                             }}
-                            onDeleteMessage={(id: string) => handleDeleteAssistantMessage(id, activeScene?._id || null)}
-                            onUpdateMessage={(id: string, content: string) => handleUpdateAssistantMessage(id, content, activeScene?._id || null)}
+                            onDeleteMessage={(id: string) => handleDeleteAssistantMessage(id)}
+                            onUpdateMessage={(id: string, content: string) => handleUpdateAssistantMessage(id, content)}
                             onClearChat={() => {
-                                handleClearChat(activeScene?._id || null);
+                                handleClearChat();
                                 if (setPendingFix) setPendingFix(null);
                             }}
                             onSavePreferenceCandidate={async (candidate) => {
@@ -274,7 +306,7 @@ export function ContextPanel({
                                 <div className="space-y-1">
                                     <label className="text-[10px] font-bold text-text-tertiary uppercase px-1">Scene Title</label>
                                     <input
-                                        className="w-full bg-console-bg border border-border-subtle rounded px-2 py-1.5 text-xs text-text-primary font-bold focus:border-accent-primary outline-none"
+                                        className="w-full bg-console-surface border border-border-subtle rounded px-2 py-1.5 text-xs text-text-primary font-bold focus:border-accent-primary outline-none"
                                         value={sceneForm?.title}
                                         onChange={(e) => onSceneFormChange?.('title', e.target.value)}
                                         placeholder="The Betrayal"
@@ -283,7 +315,7 @@ export function ContextPanel({
                                 <div className="space-y-1">
                                     <label className="text-[10px] font-bold text-text-tertiary uppercase px-1">Scene Slugline</label>
                                     <input
-                                        className="w-full bg-console-bg border border-border-subtle rounded px-2 py-1.5 text-xs text-text-primary focus:border-accent-primary outline-none"
+                                        className="w-full bg-console-surface border border-border-subtle rounded px-2 py-1.5 text-xs text-text-primary focus:border-accent-primary outline-none"
                                         value={sceneForm?.slugline}
                                         onChange={(e) => onSceneFormChange?.('slugline', e.target.value)}
                                         placeholder="EXT. HOUSE - DAY"
@@ -292,7 +324,7 @@ export function ContextPanel({
                                 <div className="space-y-1">
                                     <label className="text-[10px] font-bold text-text-tertiary uppercase px-1">Dramatic Goal</label>
                                     <textarea
-                                        className="w-full bg-console-bg border border-border-subtle rounded px-2 py-1.5 text-xs text-text-primary placeholder:text-text-tertiary focus:border-accent-primary outline-none resize-none"
+                                        className="w-full bg-console-surface border border-border-subtle rounded px-2 py-1.5 text-xs text-text-primary placeholder:text-text-tertiary focus:border-accent-primary outline-none resize-none"
                                         rows={2}
                                         value={sceneForm?.goal}
                                         onChange={(e) => onSceneFormChange?.('goal', e.target.value)}
@@ -370,11 +402,11 @@ export function ContextPanel({
                                     <div className="flex gap-2">
                                         <button
                                             onClick={onCritique}
-                                            disabled={isCritiquing || isGenerating}
-                                            title="Runs the Executive Audit again with your new changes."
+                                            disabled={isCritiquing || isGenerating || (!!critique && !isCritiqueStale)}
+                                            title={(!isCritiqueStale && !!critique) ? "Content is currently up-to-date. Edit the script to re-analyze." : "Runs the Executive Audit again with your new changes."}
                                             className={`flex-1 py-2 border rounded-lg text-[10px] font-bold transition-all uppercase tracking-widest
-                                                ${(critique && canRefreshCritique === false)
-                                                    ? 'border-status-warning/30 hover:bg-status-warning/10 text-text-tertiary'
+                                                ${(!isCritiqueStale && !!critique)
+                                                    ? 'border-status-ok/30 bg-status-ok/5 text-text-tertiary opacity-50 cursor-not-allowed'
                                                     : 'border-border-subtle hover:bg-console-surface text-text-tertiary hover:text-text-secondary'
                                                 }
                                             `}
@@ -383,14 +415,20 @@ export function ContextPanel({
                                         </button>
                                         <button
                                             onClick={onFix}
-                                            disabled={isGenerating || isCritiquing || !!pendingFix}
-                                            title="Auto-applies Hollywood-level corrections to your scene."
+                                            disabled={isGenerating || isCritiquing || !!pendingFix || isCritiqueStale}
+                                            title={isCritiqueStale ? "Analysis is stale. Please run analysis again before fixing." : "Auto-applies Hollywood-level corrections to your scene."}
                                             className="flex-1 py-2 bg-accent-primary hover:bg-accent-primary-dark disabled:bg-console-surface-3 text-console-bg disabled:text-text-tertiary text-[10px] font-black rounded-lg transition-all uppercase tracking-widest flex items-center justify-center gap-2"
                                         >
                                             {isGenerating ? <Loader2 size={12} className="animate-spin" /> : <Sparkles size={12} />}
                                             {pendingFix ? 'In Review' : 'Apply Fixes'}
                                         </button>
                                     </div>
+                                    {isCritiqueStale && (
+                                        <div className="text-[9px] text-status-warning/80 bg-status-warning/5 border border-status-warning/20 p-2 rounded-lg flex items-center gap-2 animate-in fade-in slide-in-from-top-1">
+                                            <Brain size={10} />
+                                            <span>Content changed. Re-analyze to enable Fixes.</span>
+                                        </div>
+                                    )}
                                     {critique && canRefreshCritique === false && (
                                         <div className="text-[10px] text-status-warning/70 text-center mt-2 px-2 py-1 bg-status-warning/10 rounded border border-status-warning/20">
                                             Your next critique refresh will use the latest draft changes.
@@ -414,7 +452,7 @@ export function ContextPanel({
                                     <div className="space-y-1">
                                         <label className="text-[10px] font-bold text-text-tertiary uppercase px-1">Style Reference</label>
                                         <select
-                                            className="w-full bg-console-bg border border-border-subtle rounded-lg px-2 py-1.5 text-xs text-text-secondary outline-none"
+                                            className="w-full bg-console-surface border border-border-subtle rounded-lg px-2 py-1.5 text-xs text-text-secondary outline-none"
                                             value={generationOptions?.style}
                                             onChange={(e) => onGenerationOptionChange?.('style', e.target.value)}
                                         >
@@ -427,7 +465,7 @@ export function ContextPanel({
                                     <div className="space-y-1">
                                         <label className="text-[10px] font-bold text-text-tertiary uppercase px-1">Scene Length</label>
                                         <select
-                                            className="w-full bg-console-bg border border-border-subtle rounded-lg px-2 py-1.5 text-xs text-text-secondary outline-none"
+                                            className="w-full bg-console-surface border border-border-subtle rounded-lg px-2 py-1.5 text-xs text-text-secondary outline-none"
                                             value={generationOptions?.sceneLength}
                                             onChange={(e) => onGenerationOptionChange?.('sceneLength', e.target.value as GenerationOptions['sceneLength'])}
                                         >
@@ -458,7 +496,7 @@ export function ContextPanel({
                                     <div className="space-y-1">
                                         <label className="text-[10px] font-bold text-text-tertiary uppercase px-1">Language</label>
                                         <select
-                                            className="w-full bg-console-bg border border-border-subtle rounded-lg px-2 py-1.5 text-xs text-accent-primary font-bold outline-none"
+                                            className="w-full bg-console-surface border border-border-subtle rounded-lg px-2 py-1.5 text-xs text-accent-primary font-bold outline-none"
                                             value={generationOptions?.language || 'English'}
                                             onChange={(e) => onGenerationOptionChange?.('language', e.target.value)}
                                         >
@@ -517,7 +555,7 @@ export function ContextPanel({
                                 <div className="space-y-2">
                                     <label className="text-[10px] font-bold text-text-tertiary uppercase px-1">Logline / Foundation</label>
                                     <textarea
-                                        className="w-full bg-console-bg border border-border-subtle/80 rounded-xl px-3 py-2 text-xs text-text-primary placeholder:text-text-disabled focus:border-accent-primary outline-none resize-none font-serif italic"
+                                        className="w-full bg-console-surface border border-border-subtle/80 rounded-xl px-3 py-2 text-xs text-text-primary placeholder:text-text-disabled focus:border-accent-primary outline-none resize-none font-serif italic"
                                         rows={4}
                                         placeholder="In a world where..."
                                         value={treatmentLogline}
@@ -529,7 +567,7 @@ export function ContextPanel({
                                     <input
                                         type="text"
                                         inputMode="numeric"
-                                        className="w-full bg-console-bg border border-border-subtle/80 rounded-lg px-2 py-1.5 text-xs text-text-secondary outline-none"
+                                        className="w-full bg-console-surface border border-border-subtle/80 rounded-lg px-2 py-1.5 text-xs text-text-secondary outline-none"
                                         value={treatmentSceneCount}
                                         onChange={(e) => {
                                             const val = e.target.value.replace(/\D/g, '');
@@ -675,7 +713,7 @@ export function ContextPanel({
                                 <label className="text-[10px] font-bold text-text-tertiary uppercase px-1">Specific AI Model</label>
                                 {aiProvider === 'groq' ? (
                                     <select
-                                        className="w-full bg-console-bg border border-border-subtle rounded px-2 py-1.5 text-xs text-status-warning focus:border-status-warning outline-none"
+                                        className="w-full bg-console-surface border border-border-subtle rounded px-2 py-1.5 text-xs text-status-warning focus:border-status-warning outline-none"
                                         value={aiModel}
                                         onChange={(e) => setAiModel(e.target.value)}
                                     >
@@ -688,7 +726,7 @@ export function ContextPanel({
                                 ) : (
                                     <div className="flex gap-2">
                                         <input
-                                            className="flex-1 bg-console-bg border border-border-subtle rounded px-2 py-1.5 text-xs text-text-secondary focus:border-accent-primary outline-none"
+                                            className="flex-1 bg-console-surface border border-border-subtle rounded px-2 py-1.5 text-xs text-text-secondary focus:border-accent-primary outline-none"
                                             value={aiModel}
                                             onChange={(e) => setAiModel(e.target.value)}
                                             placeholder="e.g. llama3, mistral, deepseek-r1:7b"
@@ -735,7 +773,7 @@ export function ContextPanel({
                                 <label className="text-[10px] font-bold text-text-tertiary uppercase px-1">Project Name</label>
                                 <div className="flex gap-2">
                                     <input
-                                        className="flex-1 bg-console-bg border border-border-subtle rounded px-3 py-2 text-sm text-text-primary focus:border-accent-primary outline-none"
+                                        className="flex-1 bg-console-surface border border-border-subtle rounded px-3 py-2 text-sm text-text-primary focus:border-accent-primary outline-none"
                                         value={projectTitle}
                                         onChange={(e) => {
                                             if (!activeProject) {
@@ -773,6 +811,25 @@ export function ContextPanel({
                     </div>
                 )}
             </div>
+
+            <DiffReviewModal
+                isOpen={reviewModal.isOpen}
+                originalContent={reviewModal.originalContent}
+                newContent={reviewModal.newContent}
+                onDiscard={async () => {
+                    await handleDiscardProposal(reviewModal.messageId);
+                    setReviewModal(prev => ({ ...prev, isOpen: false }));
+                    if (setPendingFix) setPendingFix(null);
+                }}
+                onApply={async () => {
+                    const res = await handleConfirmEdit(reviewModal.messageId, reviewModal.newContent);
+                    if (res?.success && setEditorContent) {
+                        setEditorContent(reviewModal.newContent);
+                    }
+                    setReviewModal(prev => ({ ...prev, isOpen: false }));
+                    if (setPendingFix) setPendingFix(null);
+                }}
+            />
         </div>
     );
 }

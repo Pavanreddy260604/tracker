@@ -1,5 +1,9 @@
 import express from 'express';
+import mongoose from 'mongoose';
 import { z } from 'zod';
+import os from 'os';
+import path from 'path';
+import fs from 'fs';
 import { authenticate } from '../middleware/auth.js';
 import { ChatSession } from '../models/ChatSession.js';
 import { AIServiceError } from '../services/aiClient.service.js';
@@ -9,9 +13,21 @@ import { knowledgeRagService } from '../services/knowledgeRag.service.js';
 import { ChatAttachment } from '../models/ChatAttachment.js';
 import multer from 'multer';
 
+const uploadDirectory = path.join(os.tmpdir(), 'learning-os-chat-uploads');
+fs.mkdirSync(uploadDirectory, { recursive: true });
+
 const upload = multer({
-    storage: multer.memoryStorage(),
-    limits: { fileSize: 10 * 1024 * 1024 } // 10MB limit
+    storage: multer.diskStorage({
+        destination: (_req, _file, callback) => callback(null, uploadDirectory),
+        filename: (_req, file, callback) => {
+            const safeName = file.originalname.replace(/[^a-zA-Z0-9._-]/g, '_');
+            callback(null, `${Date.now()}-${safeName}`);
+        }
+    }),
+    limits: {
+        fileSize: 50 * 1024 * 1024,
+        files: 5
+    }
 });
 
 const router = express.Router();
@@ -83,6 +99,80 @@ const updateSessionSchema = z.object({
 
 const toSessionTitle = (message?: string) =>
     message ? message.substring(0, 30) + (message.length > 30 ? '...' : '') : 'New Chat';
+
+const UNTITLED_SESSION_TITLES = new Set(['New Chat', 'New Conversation']);
+
+const isUntitledSessionTitle = (title?: string | null) => UNTITLED_SESSION_TITLES.has(title || '');
+
+const isValidObjectId = (value?: string | null) => Boolean(value && mongoose.Types.ObjectId.isValid(value));
+
+const SUPPORTED_ATTACHMENT_EXTENSIONS = new Set([
+    '.txt', '.md', '.markdown', '.json', '.js', '.jsx', '.ts', '.tsx', '.py', '.css', '.scss', '.sass',
+    '.html', '.htm', '.xml', '.csv', '.yml', '.yaml', '.toml', '.ini', '.conf', '.log', '.env',
+    '.sql', '.sh', '.bash', '.zsh', '.ps1', '.bat', '.cmd',
+    '.java', '.kt', '.swift', '.c', '.cpp', '.h', '.hpp', '.go', '.rs', '.rb', '.php', '.lua', '.r',
+    '.pdf', '.doc', '.docx', '.xlsx', '.xls'
+]);
+
+const SUPPORTED_ATTACHMENT_MIME_TYPES = new Set([
+    'application/pdf',
+    'application/msword',
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    'application/vnd.ms-excel',
+    'application/json',
+    'application/javascript',
+    'application/x-javascript',
+    'application/typescript',
+    'application/x-typescript',
+    'application/xml',
+    'text/xml',
+    'text/markdown',
+    'text/x-markdown',
+    'text/csv',
+    'application/csv',
+    'application/x-yaml',
+    'text/yaml',
+    'text/x-yaml',
+    'application/x-sh',
+    'text/x-shellscript',
+    'text/x-python',
+    'application/x-python',
+    'application/x-httpd-php',
+    'text/x-java-source',
+    'text/x-c',
+    'text/x-c++',
+    'text/x-go',
+    'text/x-rust',
+    'text/x-sql',
+]);
+
+const cleanupUploadedFiles = async (files: Array<Express.Multer.File | undefined | null>) => {
+    await Promise.all(files.filter(Boolean).map(async (file) => {
+        if (!file?.path) return;
+        try {
+            await fs.promises.unlink(file.path);
+        } catch {
+            // Ignore cleanup failures for temp files.
+        }
+    }));
+};
+
+const isSupportedAttachment = (file?: Express.Multer.File | null) => {
+    if (!file) return false;
+
+    const mimeType = (file.mimetype || '').toLowerCase();
+    if (mimeType.startsWith('image/')) {
+        return false;
+    }
+
+    if (mimeType.startsWith('text/') || SUPPORTED_ATTACHMENT_MIME_TYPES.has(mimeType)) {
+        return true;
+    }
+
+    const extension = path.extname(file.originalname || '').toLowerCase();
+    return SUPPORTED_ATTACHMENT_EXTENSIONS.has(extension);
+};
 
 function normalizeScriptWriterContext(context?: z.infer<typeof contextSchema>): string {
     if (!context) return '';
@@ -195,7 +285,8 @@ function isSpecificQuery(message: string): boolean {
 
 const getSystemPrompt = (
     assistantType: 'learning-os' | 'script-writer',
-    normalizedContext = ''
+    normalizedContext = '',
+    conversationId = ''
 ) => {
     if (assistantType === 'script-writer') {
         const basePrompt = `You are a senior screenplay assistant working inside a script editor.
@@ -218,22 +309,215 @@ Default behavior:
         return `${basePrompt}\n\n## ACTIVE SCRIPT CONTEXT\n${normalizedContext}`;
     }
 
-    return `You are the "Learning OS Copilot", a specialized AI assistant in this workspace.
-Identify as the Learning OS Copilot. Be a senior software engineer and mentor.
-You have access to tools to see the user's roadmap, logs, and DSA progress-use them if the user asks about their state.
+    return `You are a fast, high-signal workspace assistant.
 
-GROUNDEDNESS RULES:
-1. If "RELEVANT DOCUMENT CONTEXT" is provided, you MUST prioritize this information over your general knowledge.
-2. If the context contains the answer, cite the filename using (Source: <filename>).
-3. If the context is insufficient but relevant, combine it with your knowledge but clearly distinguish what comes from the document.
-4. If "RELEVANT KNOWLEDGE BASE CONTEXT" is provided, cite it as (Knowledge Base: <title>).
-5. If the user asks about something in their files and the context is missing, explicitly state "I don't see that information in the uploaded files."
-6. When you use any provided context, add a short "Sources Summary:" list with 1-line summaries for each cited source.
-7. DO NOT hallucinate or make up facts about the user's personal documents.`;
+Core rules:
+- Answer directly and concisely first. Expand only when useful.
+- Use tools silently only when they materially improve accuracy.
+- Use analyzeWorkspaceData for trends/data, listChatAttachments for current files, reviewGitHubRepo for GitHub URLs, and scrapeWebpage for webpages.
+- Generate charts only when useful, and only as one \`\`\`chart\`\`\` JSON block with { "type", "title", "data", "xAxisKey", "dataKey" }.
+- Ground answers in RELEVANT DOCUMENT CONTEXT and cite (Source: <filename>).
+- If data is missing, say so plainly. Never hallucinate.
+
+Conversation: ${conversationId}`;
+};
+
+const buildChatResponsePlan = async ({
+    reqUserId,
+    conversationId,
+    session,
+    message,
+    requestedAssistantType,
+    context,
+    attachmentIds
+}: {
+    reqUserId: string;
+    conversationId: string;
+    session: any;
+    message: string;
+    requestedAssistantType?: 'learning-os' | 'script-writer';
+    context?: z.infer<typeof contextSchema>;
+    attachmentIds?: string[];
+}) => {
+    const contextMessages = session.messages.slice(-24).map((entry: any) => ({
+        role: entry.role,
+        content: entry.content
+    }));
+
+    const sessionModel = typeof session.metadata?.model === 'string' && session.metadata.model.trim().length > 0
+        ? session.metadata.model
+        : undefined;
+
+    const assistantType = requestedAssistantType
+        ? requestedAssistantType
+        : (session.metadata?.assistantType === 'script-writer' ? 'script-writer' : 'learning-os');
+
+    const hasAttachmentIds = Array.isArray(attachmentIds) && attachmentIds.length > 0;
+    const hasInlineContext = hasResourceContext(context);
+    const isSpecific = isSpecificQuery(message);
+    const shouldInspectConversationAttachments = assistantType === 'learning-os' && !hasAttachmentIds && (hasInlineContext || isSpecific);
+    const conversationHasAttachments = shouldInspectConversationAttachments
+        ? await ChatAttachment.countDocuments({
+            conversationId: new mongoose.Types.ObjectId(conversationId),
+            status: 'completed'
+        }) > 0
+        : false;
+
+    const shouldRetrieveTargetAttachments = assistantType === 'learning-os' && hasAttachmentIds;
+    const shouldRetrieveConversationWide = assistantType === 'learning-os' && !hasAttachmentIds && conversationHasAttachments && isSpecific;
+    const shouldRetrieveKnowledgeRag = assistantType === 'learning-os' && (hasInlineContext || shouldRetrieveTargetAttachments || shouldRetrieveConversationWide);
+
+    const [ragContext, knowledgeContext] = await Promise.all([
+        (shouldRetrieveTargetAttachments || shouldRetrieveConversationWide)
+            ? chatRagService.retrieveContext(
+                reqUserId,
+                conversationId,
+                message,
+                shouldRetrieveTargetAttachments ? attachmentIds : undefined
+            ).catch((ragError) => {
+                console.warn('[Chat RAG] Retrieval failed:', ragError);
+                return '';
+            })
+            : Promise.resolve(''),
+        shouldRetrieveKnowledgeRag
+            ? knowledgeRagService.retrieveContext(reqUserId, message).catch((ragError) => {
+                console.warn('[Knowledge RAG] Retrieval failed:', ragError);
+                return '';
+            })
+            : Promise.resolve('')
+    ]);
+
+    const normalizedContext = assistantType === 'script-writer'
+        ? normalizeScriptWriterContext(context)
+        : '';
+    const systemPrompt = getSystemPrompt(assistantType, normalizedContext, conversationId);
+    const fullPrompt = [systemPrompt, ragContext, knowledgeContext].filter(Boolean).join('\n\n');
+
+    return {
+        assistantType,
+        contextMessages,
+        fullPrompt,
+        sessionModel
+    };
+};
+
+const streamAssistantReply = async ({
+    req,
+    res,
+    chatService,
+    contextMessages,
+    fullPrompt,
+    message,
+    conversationId,
+    images,
+    abortController
+}: {
+    req: express.Request;
+    res: express.Response;
+    chatService: AIChatService;
+    contextMessages: Array<{ role: string; content: string }>;
+    fullPrompt: string;
+    message: string;
+    conversationId: string;
+    images?: string[];
+    abortController: AbortController;
+}) => {
+    const abortSignal = abortController.signal;
+    res.setHeader('Content-Type', 'text/plain');
+    res.setHeader('Transfer-Encoding', 'chunked');
+
+    let assistantText = '';
+    const handleDisconnect = () => {
+        if (!abortSignal.aborted) {
+            abortController.abort();
+        }
+    };
+
+    req.on('close', handleDisconnect);
+    res.on('close', handleDisconnect);
+
+    try {
+        try {
+            for await (const chunk of chatService.generateChatStream(contextMessages, fullPrompt, images, abortSignal)) {
+                if (!chunk) continue;
+                assistantText += chunk;
+
+                if (abortSignal.aborted) {
+                    break;
+                }
+
+                if (!res.writableEnded) {
+                    res.write(chunk);
+                }
+            }
+        } catch (streamingError) {
+            if (abortSignal.aborted) {
+                // Client disconnected; keep partial text if any.
+            } else {
+                console.warn('[chat] Streaming API unavailable, falling back to buffered response:', streamingError);
+                const fallbackHistory = [...contextMessages];
+                const lastHistoryMessage = fallbackHistory[fallbackHistory.length - 1];
+                if (lastHistoryMessage?.role === 'user' && lastHistoryMessage.content === message) {
+                    fallbackHistory.pop();
+                }
+                const responseText = await chatService.chat(
+                    message,
+                    [{ role: 'system', content: fullPrompt }, ...fallbackHistory]
+                );
+
+                if (responseText) {
+                    const chunkSize = 8;
+                    for (let index = 0; index < responseText.length; index += chunkSize) {
+                        if (abortSignal.aborted) break;
+
+                        const chunk = responseText.slice(index, index + chunkSize);
+                        assistantText += chunk;
+                        if (!res.writableEnded) {
+                            res.write(chunk);
+                        }
+                        await new Promise((resolve) => setTimeout(resolve, 4));
+                    }
+                }
+            }
+        }
+
+        if (assistantText.trim().length > 0) {
+            await ChatSession.updateOne(
+                { _id: conversationId },
+                {
+                    $push: { messages: { role: 'assistant', content: assistantText, timestamp: new Date() } },
+                    $set: { updatedAt: new Date() }
+                }
+            );
+        }
+
+        if (!abortSignal.aborted && !res.writableEnded) {
+            res.end();
+        }
+    } catch (streamError) {
+        if (abortSignal.aborted) {
+            if (!res.writableEnded) {
+                res.end();
+            }
+            return;
+        }
+
+        console.error('Chat processing failed:', streamError);
+        if (!res.writableEnded) {
+            const errorMessage = streamError instanceof AIServiceError
+                ? streamError.message
+                : 'AI chat processing failed.';
+            res.write(errorMessage);
+            res.end();
+        }
+    } finally {
+        req.off('close', handleDisconnect);
+        res.off('close', handleDisconnect);
+    }
 };
 
 // GET /api/chat/history
-// List recent chat sessions (sidebar)
+// List recent chat conversations (sidebar)
 router.get('/history', authenticate, async (req: any, res) => {
     try {
         const sessions = await ChatSession.find({ userId: req.userId })
@@ -247,9 +531,12 @@ router.get('/history', authenticate, async (req: any, res) => {
 });
 
 // GET /api/chat/:id
-// Get full session details
+// Get full conversation details
 router.get('/:id', authenticate, async (req: any, res) => {
     try {
+        if (!isValidObjectId(req.params.id)) {
+            return res.status(400).json({ success: false, error: 'Invalid conversation id' });
+        }
         const session = await ChatSession.findOne({
             _id: req.params.id,
             userId: req.userId
@@ -262,7 +549,7 @@ router.get('/:id', authenticate, async (req: any, res) => {
 });
 
 // POST /api/chat
-// Start NEW session
+// Start NEW conversation
 router.post('/', authenticate, async (req: any, res) => {
     try {
         const parsed = createSessionSchema.safeParse(req.body ?? {});
@@ -271,7 +558,7 @@ router.post('/', authenticate, async (req: any, res) => {
         }
         const { message, model, assistantType } = parsed.data;
 
-        // INFRA: Cleanup empty sessions for this user before creating a new one
+        // INFRA: Cleanup empty conversations for this user before creating a new one
         // This prevents accumulating "New Chat" orphans that were never used.
         await ChatSession.deleteMany({
             userId: req.userId,
@@ -304,17 +591,19 @@ router.post('/', authenticate, async (req: any, res) => {
 // Send message & Stream response
 router.post('/:id/message', authenticate, async (req: any, res) => {
     try {
+        if (!isValidObjectId(req.params.id)) {
+            return res.status(400).json({ success: false, error: 'Invalid conversation id' });
+        }
         const parsed = messageSchema.safeParse(req.body ?? {});
         if (!parsed.success) {
             return res.status(400).json({ success: false, error: parsed.error.errors[0].message });
         }
         const { message, assistantType: requestedAssistantType, context, images, attachmentIds } = parsed.data;
-        const sessionId = req.params.id;
+        const conversationId = req.params.id;
 
         // 1. ATOMIC: Save User Message
-        // Use findOneAndUpdate to ensure atomic append and return updated doc if needed
         const session = await ChatSession.findOneAndUpdate(
-            { _id: sessionId, userId: req.userId },
+            { _id: conversationId, userId: req.userId },
             {
                 $push: { 
                     messages: { 
@@ -329,131 +618,48 @@ router.post('/:id/message', authenticate, async (req: any, res) => {
             { new: true }
         );
 
-        if (!session) return res.status(404).json({ success: false, error: 'Session not found' });
+        if (!session) return res.status(404).json({ success: false, error: 'Conversation not found' });
 
         // Update title if it's the first message
-        if (session.messages.length === 1 && session.title === 'New Chat') {
+        if (session.messages.length === 1 && isUntitledSessionTitle(session.title)) {
             await ChatSession.updateOne(
-                { _id: sessionId },
+                { _id: conversationId },
                 { $set: { title: toSessionTitle(message) } }
             );
         }
 
-        // 2. Prepare Context (Last 20 messages)
-        const contextMessages = session.messages.slice(-20).map(m => ({
-            role: m.role,
-            content: m.content
-        }));
-
-        // 3. Resolve assistant type + RAG context
-        const sessionModel = typeof session.metadata?.model === 'string' && session.metadata.model.trim().length > 0
-            ? session.metadata.model
-            : undefined;
-        const assistantType = requestedAssistantType
-            ? requestedAssistantType
-            : (session.metadata?.assistantType === 'script-writer' ? 'script-writer' : 'learning-os');
-
         if (requestedAssistantType && session.metadata?.assistantType !== requestedAssistantType) {
             await ChatSession.updateOne(
-                { _id: sessionId },
+                { _id: conversationId },
                 { $set: { 'metadata.assistantType': requestedAssistantType } }
             );
         }
 
-        const hasAttachmentIds = Array.isArray(attachmentIds) && attachmentIds.length > 0;
-        const sessionHasAttachments = session.messages.some(
-            (entry) => Array.isArray(entry.attachmentIds) && entry.attachmentIds.length > 0
-        );
-        const hasInlineContext = hasResourceContext(context);
-        const isSpecific = isSpecificQuery(message);
-        const shouldRetrieveChatRag = (hasAttachmentIds || sessionHasAttachments) && isSpecific;
-        const shouldRetrieveKnowledgeRag =
-            assistantType === 'learning-os' &&
-            (hasInlineContext || ((hasAttachmentIds || sessionHasAttachments) && isSpecific));
+        const { contextMessages, fullPrompt, sessionModel } = await buildChatResponsePlan({
+            reqUserId: req.userId.toString(),
+            conversationId,
+            session,
+            message,
+            requestedAssistantType,
+            context,
+            attachmentIds
+        });
 
-        const [ragContext, knowledgeContext] = await Promise.all([
-            shouldRetrieveChatRag
-                ? chatRagService.retrieveContext(
-                    req.userId.toString(),
-                    sessionId,
-                    message,
-                    attachmentIds
-                ).catch((ragError) => {
-                    console.warn('[Chat RAG] Retrieval failed:', ragError);
-                    return '';
-                })
-                : Promise.resolve(''),
-            shouldRetrieveKnowledgeRag
-                ? knowledgeRagService.retrieveContext(req.userId.toString(), message).catch((ragError) => {
-                    console.warn('[Knowledge RAG] Retrieval failed:', ragError);
-                    return '';
-                })
-                : Promise.resolve('')
-        ]);
+        const effectiveUserId = (req as any).userId || req.body.userId || 'test-user';
+        const chatService = new AIChatService(sessionModel, effectiveUserId);
+        const abortController = new AbortController();
 
-        const normalizedContext = assistantType === 'script-writer'
-            ? normalizeScriptWriterContext(context)
-            : '';
-        const systemPrompt = getSystemPrompt(assistantType, normalizedContext);
-        const fullPrompt = [systemPrompt, ragContext, knowledgeContext].filter(Boolean).join('\n\n');
-
-        // 4. Stream Response
-        res.setHeader('Content-Type', 'text/plain');
-        res.setHeader('Transfer-Encoding', 'chunked');
-
-        try {
-            // User requested Ollama (local) usage.
-            // We now initialize AIChatService with userId to enable "System Awareness" tools.
-            const chatService = new AIChatService(sessionModel, req.userId);
-
-            let assistantText = '';
-
-            try {
-                for await (const chunk of chatService.generateChatStream(contextMessages, fullPrompt)) {
-                    if (!chunk) continue;
-                    assistantText += chunk;
-                    res.write(chunk);
-                }
-            } catch (streamingError) {
-                console.warn('[chat] Streaming API unavailable, falling back to buffered response:', streamingError);
-                const responseText = await chatService.chat(
-                    message,
-                    [{ role: 'system', content: fullPrompt }, ...contextMessages]
-                );
-                if (responseText) {
-                    // Keep fallback chunks small so the UI still gets incremental feedback.
-                    const chunkSize = 8;
-                    for (let i = 0; i < responseText.length; i += chunkSize) {
-                        const chunk = responseText.slice(i, i + chunkSize);
-                        assistantText += chunk;
-                        res.write(chunk);
-                        await new Promise(resolve => setTimeout(resolve, 4));
-                    }
-                }
-            }
-
-            if (assistantText.trim().length > 0) {
-                // Save Assistant Response
-                await ChatSession.updateOne(
-                    { _id: sessionId },
-                    {
-                        $push: { messages: { role: 'assistant', content: assistantText, timestamp: new Date() } },
-                        $set: { updatedAt: new Date() }
-                    }
-                );
-            }
-            res.end();
-
-        } catch (streamError) {
-            console.error("Chat processing failed:", streamError);
-            if (!res.writableEnded) {
-                const message = streamError instanceof AIServiceError
-                    ? streamError.message
-                    : 'AI chat processing failed.';
-                res.write(message);
-                res.end();
-            }
-        }
+        await streamAssistantReply({
+            req,
+            res,
+            chatService,
+            contextMessages,
+            fullPrompt,
+            message,
+            conversationId,
+            images,
+            abortController
+        });
 
     } catch (error) {
         console.error('Chat Error:', error);
@@ -461,10 +667,90 @@ router.post('/:id/message', authenticate, async (req: any, res) => {
     }
 });
 
+// POST /api/chat/:id/regenerate
+// Regenerate the latest assistant reply
+router.post('/:id/regenerate', authenticate, async (req: any, res) => {
+    try {
+        const conversationId = req.params.id;
+        if (!isValidObjectId(conversationId)) {
+            return res.status(400).json({ success: false, error: 'Invalid conversation id' });
+        }
+
+        const session = await ChatSession.findOne({
+            _id: conversationId,
+            userId: req.userId
+        });
+
+        if (!session) {
+            return res.status(404).json({ success: false, error: 'Conversation not found' });
+        }
+
+        const sessionMessages = Array.isArray(session.messages) ? [...session.messages] : [];
+        const trimmedMessages = sessionMessages[sessionMessages.length - 1]?.role === 'assistant'
+            ? sessionMessages.slice(0, -1)
+            : sessionMessages;
+
+        const lastUserMessage = [...trimmedMessages].reverse().find((entry: any) => entry.role === 'user');
+        if (!lastUserMessage) {
+            return res.status(400).json({ success: false, error: 'No user message available to regenerate' });
+        }
+
+        if (trimmedMessages.length !== sessionMessages.length) {
+            await ChatSession.updateOne(
+                { _id: conversationId, userId: req.userId },
+                {
+                    $set: {
+                        messages: trimmedMessages,
+                        updatedAt: new Date()
+                    }
+                }
+            );
+        }
+
+        const sessionForRegeneration = {
+            ...session.toObject(),
+            messages: trimmedMessages
+        };
+
+        const { contextMessages, fullPrompt, sessionModel } = await buildChatResponsePlan({
+            reqUserId: req.userId.toString(),
+            conversationId,
+            session: sessionForRegeneration,
+            message: lastUserMessage.content,
+            requestedAssistantType: session.metadata?.assistantType,
+            attachmentIds: Array.isArray(lastUserMessage.attachmentIds)
+                ? lastUserMessage.attachmentIds
+                : undefined
+        });
+
+        const chatService = new AIChatService(sessionModel, req.userId);
+        const abortController = new AbortController();
+
+        await streamAssistantReply({
+            req,
+            res,
+            chatService,
+            contextMessages,
+            fullPrompt,
+            message: lastUserMessage.content,
+            conversationId,
+            abortController
+        });
+    } catch (error) {
+        console.error('Chat Regenerate Error:', error);
+        if (!res.headersSent) {
+            res.status(500).json({ success: false, error: 'Failed to regenerate message' });
+        }
+    }
+});
+
 // PATCH /api/chat/:id
 // Update session (e.g. title)
 router.patch('/:id', authenticate, async (req: any, res) => {
     try {
+        if (!isValidObjectId(req.params.id)) {
+            return res.status(400).json({ success: false, error: 'Invalid conversation id' });
+        }
         const parsed = updateSessionSchema.safeParse(req.body ?? {});
         if (!parsed.success) {
             return res.status(400).json({ success: false, error: parsed.error.errors[0].message });
@@ -497,14 +783,17 @@ router.patch('/:id', authenticate, async (req: any, res) => {
 // DELETE /api/chat/:id
 router.delete('/:id', authenticate, async (req: any, res) => {
     try {
-        const sessionId = req.params.id;
+        const conversationId = req.params.id;
+        if (!isValidObjectId(conversationId)) {
+            return res.status(400).json({ success: false, error: 'Invalid conversation id' });
+        }
         // Clean up RAG data first
-        await chatRagService.deleteSessionData(sessionId);
+        await chatRagService.deleteConversationData(conversationId);
         
-        await ChatSession.deleteOne({ _id: sessionId, userId: req.userId });
+        await ChatSession.deleteOne({ _id: conversationId, userId: req.userId });
         res.json({ success: true });
     } catch (error) {
-        res.status(500).json({ success: false, error: 'Failed to delete session' });
+        res.status(500).json({ success: false, error: 'Failed to delete conversation' });
     }
 });
 
@@ -512,25 +801,102 @@ router.delete('/:id', authenticate, async (req: any, res) => {
 // Upload and index a file for RAG
 router.post('/:id/attachments', authenticate, upload.single('file'), async (req: any, res) => {
     try {
-        const sessionId = req.params.id;
+        const conversationId = req.params.id;
         const file = req.file;
+
+        if (!isValidObjectId(conversationId)) {
+            await cleanupUploadedFiles([file]);
+            return res.status(400).json({ success: false, error: 'Invalid conversation id' });
+        }
 
         if (!file) {
             return res.status(400).json({ success: false, error: 'No file uploaded' });
         }
 
+        if (file.size > 50 * 1024 * 1024) {
+            await cleanupUploadedFiles([file]);
+            return res.status(400).json({ success: false, error: 'File exceeds the 50MB limit' });
+        }
+
+        if (!isSupportedAttachment(file)) {
+            await cleanupUploadedFiles([file]);
+            return res.status(400).json({
+                success: false,
+                error: `Unsupported attachment type for analysis: ${file.originalname}`
+            });
+        }
+
+        const buffer = await fs.promises.readFile(file.path);
         const attachmentId = await chatRagService.indexFile(
             req.userId.toString(),
-            sessionId,
+            conversationId,
             file.originalname,
             file.mimetype,
-            file.buffer
+            buffer
         );
 
         res.json({ success: true, data: { attachmentId } });
     } catch (error: any) {
         console.error('[Chat Attachment] Upload failed:', error);
         res.status(500).json({ success: false, error: error.message || 'Failed to index file' });
+    } finally {
+        await cleanupUploadedFiles([req.file]);
+    }
+});
+
+// POST /api/chat/:id/attachments/bulk
+// Bulk upload and index multiple files
+router.post('/:id/attachments/bulk', authenticate, upload.array('files', 5), async (req: any, res) => {
+    try {
+        const conversationId = req.params.id;
+        const files = req.files as Express.Multer.File[];
+
+        if (!isValidObjectId(conversationId)) {
+            await cleanupUploadedFiles(files || []);
+            return res.status(400).json({ success: false, error: 'Invalid conversation id' });
+        }
+
+        if (!files || files.length === 0) {
+            return res.status(400).json({ success: false, error: 'No files uploaded' });
+        }
+
+        const oversized = files.find(f => f.size > 50 * 1024 * 1024);
+        if (oversized) {
+            await cleanupUploadedFiles(files);
+            return res.status(400).json({ success: false, error: `File ${oversized.originalname} exceeds the 50MB limit` });
+        }
+
+        const totalSize = files.reduce((sum, file) => sum + file.size, 0);
+        if (totalSize > 100 * 1024 * 1024) {
+            await cleanupUploadedFiles(files);
+            return res.status(400).json({ success: false, error: 'Bulk upload exceeds the 100MB total limit' });
+        }
+
+        const unsupportedFile = files.find((file) => !isSupportedAttachment(file));
+        if (unsupportedFile) {
+            await cleanupUploadedFiles(files);
+            return res.status(400).json({
+                success: false,
+                error: `Unsupported attachment type for analysis: ${unsupportedFile.originalname}`
+            });
+        }
+
+        const attachmentIds = await chatRagService.indexFilesBulk(
+            req.userId.toString(),
+            conversationId,
+            await Promise.all(files.map(async (f) => ({
+                name: f.originalname,
+                type: f.mimetype,
+                buffer: await fs.promises.readFile(f.path)
+            })))
+        );
+
+        res.json({ success: true, data: { attachmentIds } });
+    } catch (error: any) {
+        console.error('[Chat Bulk Attachment] Upload failed:', error);
+        res.status(500).json({ success: false, error: error.message || 'Failed to index files' });
+    } finally {
+        await cleanupUploadedFiles((req.files as Express.Multer.File[]) || []);
     }
 });
 

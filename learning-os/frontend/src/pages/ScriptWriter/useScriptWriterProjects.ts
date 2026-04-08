@@ -253,6 +253,24 @@ export function useScriptWriterProjects({
         [projectScenes, searchTerm]
     );
 
+    const handleReorderScenes = async (projectId: string, activeScenes: Scene[]) => {
+        // Optimistically update state
+        setProjectScenes(prev => ({ ...prev, [projectId]: activeScenes }));
+
+        try {
+            // Persist new sequence numbers
+            // Usually we'd have a bulk update, but for now we update each scene's sequenceNumber
+            const promises = activeScenes.map((scene, index) => 
+                projectApi.updateScene(scene._id, { sequenceNumber: index + 1 })
+            );
+            await Promise.all(promises);
+        } catch (err) {
+            setError(getErrorMessage(err, 'Failed to persist reordering'));
+            // Revert on failure (reload scenes)
+            void loadScenes(projectId, false);
+        }
+    };
+
     return {
         projects,
         loadingProjects,
@@ -283,6 +301,7 @@ export function useScriptWriterProjects({
         handleDeleteScene,
         handleUpdateProject,
         handleDeleteProject,
+        handleReorderScenes,
         filteredScenes
     };
 }

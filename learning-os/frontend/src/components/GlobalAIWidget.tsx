@@ -1,11 +1,12 @@
 import { useState, useRef, useEffect, memo, useCallback } from 'react';
-import { MessageSquare, Send, Sparkles, Bot, X, Check, ArrowDown, Plus, Mic, ChevronDown, Volume2, StopCircle } from 'lucide-react';
+import { MessageSquare, Send, Sparkles, Bot, X, Check, ArrowDown, Plus, Mic, ChevronDown, Volume2, StopCircle, FileText, Image as ImageIcon, Wrench, Gauge } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Link, useLocation } from 'react-router-dom';
-import { useAI } from '../contexts/AIContext';
+import { useAI, type AIModelOption } from '../contexts/AIContext';
 import { useSpeech } from '../hooks/useSpeech';
 import { cn } from '../lib/utils';
-import { AIChatMarkdown, getProviderIcon } from './chat/AIChatRenderer';
+import { AIChatMarkdown } from './chat/AIChatRenderer';
+import { getProviderIcon } from './chat/ChatUtils';
 
 // Local renderer removed in favor of AIChatMarkdown
 
@@ -77,9 +78,9 @@ const AIChatInput = memo(({
         error
     } = speech;
 
-    const { selectedModel, setSelectedModel, AI_MODELS, uploadAttachment } = useAI() as any;
-    const currentModel = AI_MODELS.find((m: any) => m.id === selectedModel);
-    const supportsImages = currentModel?.supportsFiles ?? false;
+    const { selectedModel, setSelectedModel, AI_MODELS } = useAI();
+    const currentModel = AI_MODELS.find((m) => m.id === selectedModel);
+    const supportsImages = currentModel?.supportsImages ?? false;
     const isIndexing = attachments.some((att: any) => att.status === 'indexing');
 
     // Close menu on outside click
@@ -163,7 +164,7 @@ const AIChatInput = memo(({
                 isBinary: isDoc,
                 isText,
                 shouldIndex,
-                status: shouldIndex ? 'indexing' : 'completed'
+                status: shouldIndex ? 'pending' : 'completed'
             }]);
 
             if (isImage || isText) {
@@ -182,14 +183,6 @@ const AIChatInput = memo(({
                 }
             }
 
-            if (shouldIndex) {
-                uploadAttachment(file).then((attachmentId: string | null) => {
-                    setAttachments(prev => prev.map(att => att.localId === localId
-                        ? { ...att, attachmentId: attachmentId ?? undefined, status: attachmentId ? 'completed' : 'failed' }
-                        : att
-                    ));
-                });
-            }
         });
         if (fileInputRef.current) fileInputRef.current.value = '';
     };
@@ -202,7 +195,7 @@ const AIChatInput = memo(({
         <div className="ai-widget-input-wrap shrink-0 z-10 w-full px-4 pb-4 pt-2">
             <div className="flex flex-col gap-2">
                 {/* Categorized Model Selector */}
-                <div className="relative flex justify-center mb-1" ref={menuRef}>
+                <div className="relative flex justify-center mb-1 hidden" ref={menuRef}>
                     <button
                         onMouseDown={(e) => {
                             e.stopPropagation();
@@ -231,8 +224,8 @@ const AIChatInput = memo(({
                                 className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-[220px] rounded-xl border border-border-subtle/40 bg-console-header/95 backdrop-blur-xl shadow-2xl p-1.5 z-50 overflow-hidden"
                             >
                                 <div className="max-h-[280px] overflow-y-auto custom-scrollbar">
-                                    {Array.from(new Set(AI_MODELS.map((m: any) => m.provider))).map((provider: any) => {
-                                        const providerModels = AI_MODELS.filter((m: any) => m.provider === provider);
+                                    {Array.from(new Set(AI_MODELS.map((m) => m.provider))).map((provider) => {
+                                        const providerModels = AI_MODELS.filter((m) => m.provider === provider);
                                         if (providerModels.length === 0) return null;
                                         
                                         return (
@@ -244,7 +237,7 @@ const AIChatInput = memo(({
                                                     </span>
                                                 </div>
                                                 <div className="space-y-0.5">
-                                                    {providerModels.map((model: any) => (
+                                                    {providerModels.map((model) => (
                                                         <button
                                                             key={model.id}
                                                             onClick={() => {
@@ -257,17 +250,18 @@ const AIChatInput = memo(({
                                                                     ? "bg-accent-primary/10 text-accent-primary" 
                                                                     : "hover:bg-console-surface-2/40 text-text-secondary hover:text-text-primary"
                                                             )}
-                                                        >
-                                                            <div className="flex flex-col items-start min-w-0">
-                                                                <span className="text-[10px] font-semibold truncate w-full">
-                                                                    {model.name}
-                                                                </span>
-                                                                <span className="text-[8px] opacity-50 truncate w-full text-left">
-                                                                    {model.category}
-                                                                </span>
-                                                            </div>
-                                                            {selectedModel === model.id && (
-                                                                <Check size={10} className="shrink-0" />
+                                                            >
+                                                                <div className="flex flex-col items-start min-w-0">
+                                                                    <span className="text-[10px] font-semibold truncate w-full">
+                                                                        {model.name}
+                                                                    </span>
+                                                                    <span className="text-[8px] opacity-50 truncate w-full text-left">
+                                                                        {model.category}
+                                                                    </span>
+                                                                    {renderCapabilityBadge(model)}
+                                                                </div>
+                                                                {selectedModel === model.id && (
+                                                                    <Check size={10} className="shrink-0" />
                                                             )}
                                                         </button>
                                                     ))}
@@ -678,3 +672,37 @@ export function GlobalAIWidget() {
         </AnimatePresence>
     );
 }
+    const renderCapabilityBadge = (model: AIModelOption) => {
+        const speedTone = model.speedTier === 'fast'
+            ? 'text-status-ok'
+            : model.speedTier === 'deep'
+                ? 'text-status-warning'
+                : 'text-accent-primary';
+
+        return (
+            <div className="mt-1 flex flex-wrap items-center gap-1">
+                <span className={cn("inline-flex items-center gap-1 rounded-full border border-border-subtle/30 px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-wider", speedTone)}>
+                    <Gauge size={8} />
+                    {model.speedTier}
+                </span>
+                {model.supportsFiles && (
+                    <span className="inline-flex items-center gap-1 rounded-full border border-border-subtle/30 px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-wider text-text-secondary">
+                        <FileText size={8} />
+                        Files
+                    </span>
+                )}
+                {model.supportsImages && (
+                    <span className="inline-flex items-center gap-1 rounded-full border border-border-subtle/30 px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-wider text-text-secondary">
+                        <ImageIcon size={8} />
+                        Vision
+                    </span>
+                )}
+                {model.supportsTools && (
+                    <span className="inline-flex items-center gap-1 rounded-full border border-border-subtle/30 px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-wider text-text-secondary">
+                        <Wrench size={8} />
+                        Tools
+                    </span>
+                )}
+            </div>
+        );
+    };

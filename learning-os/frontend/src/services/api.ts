@@ -37,10 +37,12 @@ export type {
     DSAProblem,
     BackendTopic,
     ProjectStudy,
+    InterviewQuestion,
     InterviewSession,
     InterviewTestResult,
     InterviewRunResult,
     InterviewSubmitResult,
+    ChatConversation,
     ChatSession,
 } from './types';
 
@@ -125,11 +127,20 @@ class ApiService {
 
     // Chat
     getChatHistory = chatApi.getChatHistory;
-    getChatSession = chatApi.getChatSession;
-    createChatSession = chatApi.createChatSession;
+    getChatConversation = chatApi.getChatConversation;
+    createChatConversation = chatApi.createChatConversation;
     sendChatMessage = chatApi.sendChatMessage;
-    updateChatSession = chatApi.updateChatSession;
-    deleteChatSession = chatApi.deleteChatSession;
+    regenerateChatResponse = chatApi.regenerateChatResponse;
+    uploadChatAttachment = chatApi.uploadChatAttachment;
+    uploadChatAttachmentsBulk = chatApi.uploadChatAttachmentsBulk;
+    updateChatConversation = chatApi.updateChatConversation;
+    deleteChatConversation = chatApi.deleteChatConversation;
+
+    // Backward compatibility aliases
+    getChatSession = chatApi.getChatConversation;
+    createChatSession = chatApi.createChatConversation;
+    updateChatSession = chatApi.updateChatConversation;
+    deleteChatSession = chatApi.deleteChatConversation;
 
     // Activity / System Awareness
     logActivity = activityApi.log;

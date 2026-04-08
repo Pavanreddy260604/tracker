@@ -69,12 +69,24 @@ interface RoadmapNodeData extends Record<string, unknown> {
     resourceUrl?: string;
 }
 
+type CustomRoadmapNode = Node<RoadmapNodeData & { topicId?: string; auditScore?: number }>;
+
 // Professional Node Component
-const RoadmapNode = memo(({ data, selected }: NodeProps<Node<RoadmapNodeData>>) => {
-    const nodeData = data as RoadmapNodeData;
+const RoadmapNode = memo(({ data, selected }: NodeProps<CustomRoadmapNode>) => {
+    const nodeData = data as RoadmapNodeData & { topicId?: string; auditScore?: number };
     const category = CATEGORY_ICONS[nodeData.category] || CATEGORY_ICONS.general;
     const CategoryIcon = category.icon;
     const priority = nodeData.priority ? PRIORITY_CONFIG[nodeData.priority] : null;
+
+    // Calculate Health Glow intensity based on auditScore (0-100)
+    const getHealthGlow = () => {
+        const score = nodeData.auditScore ?? 0;
+        if (score >= 90) return 'shadow-[0_0_25px_rgba(34,197,94,0.4)] border-status-ok/60';
+        if (score >= 70) return 'shadow-[0_0_20px_rgba(59,130,246,0.3)] border-accent-primary/60';
+        if (score >= 40) return 'shadow-[0_0_15px_rgba(255,152,0,0.2)] border-status-warning/60';
+        if (score > 0) return 'shadow-[0_0_15px_rgba(239,68,68,0.3)] border-status-error/60';
+        return '';
+    };
 
     const statusStyles = {
         'todo': 'border-border-subtle',
@@ -87,6 +99,7 @@ const RoadmapNode = memo(({ data, selected }: NodeProps<Node<RoadmapNodeData>>) 
             rounded-xl border-2 ${statusStyles[nodeData.status]}
             bg-console-surface/60 backdrop-blur-xl shadow-premium transition-all min-w-[180px] max-w-[240px]
             relative overflow-visible hover:border-accent-primary/50
+            ${getHealthGlow()}
             ${selected ? 'ring-2 ring-accent-primary shadow-[0_0_20px_rgba(59,130,246,0.2)]' : ''}
         `}>
             {/* Optimized handles for visibility and connection */}
@@ -137,10 +150,15 @@ const RoadmapNode = memo(({ data, selected }: NodeProps<Node<RoadmapNodeData>>) 
 RoadmapNode.displayName = 'RoadmapNode';
 const nodeTypes = { roadmap: RoadmapNode };
 
-function RoadmapContent() {
+interface RoadmapProps {
+    initialTopics?: any[]; // For Backend Integration
+    onNodeClick?: (topicId: string) => void;
+}
+
+function RoadmapContent({ initialTopics, onNodeClick: onExternalNodeClick }: RoadmapProps) {
     const { isMobile } = useMobile();
     const { theme } = useThemeStore();
-    const [nodes, setNodes, onNodesChange] = useNodesState<Node<RoadmapNodeData>>([]);
+    const [nodes, setNodes, onNodesChange] = useNodesState<CustomRoadmapNode>([]);
     const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
     const [isSaving, setIsSaving] = useState(false);
     const [selectedNode, setSelectedNode] = useState<Node | null>(null);
@@ -175,30 +193,71 @@ function RoadmapContent() {
             try {
                 const response = await api.getRoadmap();
                 const data = response;
+                let finalNodes: CustomRoadmapNode[] = [];
+                let finalEdges: Edge[] = [];
+
                 if (data.nodes?.length > 0) {
-                    setNodes(data.nodes.map((n: any) => ({
-                        id: n.nodeId,
-                        type: 'roadmap',
-                        position: n.position,
-                        data: {
-                            label: n.data.label || 'Unnamed',
-                            status: n.data.status || 'todo',
-                            category: n.data.category || 'general',
-                            description: n.data.description || '',
-                            priority: n.data.priority || 'medium',
-                            estimatedHours: n.data.estimatedHours || 0,
-                            resourceUrl: n.data.resourceUrl || '',
-                        },
-                    })));
-                    setEdges(data.edges.map((e: any) => ({
+                    finalNodes = data.nodes.map((n: any) => {
+                        const linkedTopic = initialTopics?.find(t => t._id === n.topicId);
+                        return {
+                            id: n.nodeId,
+                            type: 'roadmap',
+                            position: n.position,
+                            data: {
+                                label: linkedTopic?.topicName || n.data.label || 'Unnamed',
+                                status: linkedTopic?.status || n.data.status || 'todo',
+                                category: linkedTopic?.category || n.data.category || 'general',
+                                description: n.data.description || '',
+                                priority: n.data.priority || 'medium',
+                                estimatedHours: n.data.estimatedHours || 0,
+                                resourceUrl: n.data.resourceUrl || '',
+                                auditScore: linkedTopic?.auditScore || n.data.auditScore || 0,
+                                topicId: n.topicId,
+                            },
+                        } as CustomRoadmapNode;
+                    });
+                    finalEdges = data.edges.map((e: any) => ({
                         id: e.edgeId,
                         source: e.source,
                         target: e.target,
                         type: 'smoothstep',
                         style: { stroke: '#6b7280', strokeWidth: 2 },
                         markerEnd: { type: MarkerType.ArrowClosed, color: '#6b7280' },
-                    })));
+                    }));
                 }
+
+                // SUB-FEATURE: Sector Discovery (Auto-sync with Backend Topics)
+                if (initialTopics && initialTopics.length > 0) {
+                    const existingTopicIds = new Set(finalNodes.map(n => n.data?.topicId).filter(Boolean));
+                    const missingTopics = initialTopics.filter(t => !existingTopicIds.has(t._id));
+
+                    if (missingTopics.length > 0) {
+                        const newNodes = missingTopics.map((topic, idx) => ({
+                            id: topic._id,
+                            type: 'roadmap',
+                            position: { x: idx * 250, y: 0 }, // Temporary position, onLayout will fix it
+                            data: {
+                                label: topic.topicName,
+                                status: (topic.status as any) || 'todo',
+                                category: (topic.category as any) || 'general',
+                                description: topic.notes || '',
+                                priority: 'high' as PriorityType,
+                                estimatedHours: 0,
+                                auditScore: topic.auditScore || 0,
+                                topicId: topic._id,
+                            }
+                        } as CustomRoadmapNode));
+                        
+                        finalNodes = [...finalNodes, ...newNodes];
+                        // Trigger a magic layout soon if we added many topics
+                        if (missingTopics.length > 0) {
+                            setTimeout(() => onLayout(), 500);
+                        }
+                    }
+                }
+
+                setNodes(finalNodes);
+                setEdges(finalEdges);
                 setTimeout(() => fitView({ duration: 800 }), 100);
             } catch (err) {
                 console.error('Failed to load roadmap', err);
@@ -209,7 +268,7 @@ function RoadmapContent() {
     }, [setNodes, setEdges, fitView]);
 
     // Refs for stable access in event listeners
-    const nodesRef = useRef(nodes);
+    const nodesRef = useRef<CustomRoadmapNode[]>(nodes);
     const selectedNodeRef = useRef(selectedNode);
     nodesRef.current = nodes;
     selectedNodeRef.current = selectedNode;
@@ -328,7 +387,11 @@ function RoadmapContent() {
     const onSave = async () => {
         setIsSaving(true);
         try {
-            await api.syncRoadmap(nodes.map(n => ({ ...n, nodeId: n.id })), edges);
+            await api.syncRoadmap(nodes.map(n => ({ 
+                ...n, 
+                nodeId: n.id,
+                topicId: n.data.topicId 
+            })), edges);
             setSaveSuccess(true);
             setHasUnsavedChanges(false);
             toast.success('Roadmap saved successfully');
@@ -368,11 +431,11 @@ function RoadmapContent() {
         position.x += (Math.random() - 0.5) * 40;
         position.y += (Math.random() - 0.5) * 40;
 
-        const newNode: Node<RoadmapNodeData> = {
+        const newNode: CustomRoadmapNode = {
             id: `node-${Date.now()}`,
             type: 'roadmap',
             position,
-            data: { label: 'New Topic', status: 'todo', category, description: '', priority: 'medium', estimatedHours: 0, resourceUrl: '' },
+            data: { label: 'New Topic', status: 'todo', category, description: '', priority: 'medium' as PriorityType, estimatedHours: 0, resourceUrl: '' },
         };
 
         setNodes((nds) => [...nds, newNode]);
@@ -1021,10 +1084,10 @@ function RoadmapContent() {
     );
 }
 
-export function Roadmap() {
+export function Roadmap(props: RoadmapProps) {
     return (
         <ReactFlowProvider>
-            <RoadmapContent />
+            <RoadmapContent {...props} />
         </ReactFlowProvider>
     );
 }

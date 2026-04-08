@@ -13,7 +13,10 @@ const STRUCTURED_SECTION_LABELS = [
     'SCENE_SCRIPT',
     'CHARACTER_MEMORY_UPDATE',
     'PLOT_STATE_UPDATE',
-    'NARRATIVE_CRAFT'
+    'NARRATIVE_CRAFT',
+    'RESEARCH_DISCLOSURE',
+    'CREATIVE_PLAN',
+    'AGENT_EXPLANATION'
 ] as const;
 
 const REWRITE_VERB_PATTERN = /\b(rewrite|redraft|edit|revise|fix|improve|tighten|change|replace|translate|transliterate|shorten|expand|cut|add|remove|rework|polish|convert|patch|make)\b/i;
@@ -250,6 +253,7 @@ export function extractBestEffortAssistantAnswer(content: string): string {
 
     const summary = extractStructuredSection(cleaned, 'STORY_CONTEXT_SUMMARY', [
         'SCENE_PLAN',
+        'CREATIVE_PLAN',
         'SCENE_SCRIPT',
         'CHARACTER_MEMORY_UPDATE',
         'PLOT_STATE_UPDATE'
@@ -259,8 +263,16 @@ export function extractBestEffortAssistantAnswer(content: string): string {
         'CHARACTER_MEMORY_UPDATE',
         'PLOT_STATE_UPDATE',
         'NARRATIVE_CRAFT'
+    ]) || extractStructuredSection(cleaned, 'CREATIVE_PLAN', [
+        'SCENE_SCRIPT',
+        'CHARACTER_MEMORY_UPDATE',
+        'PLOT_STATE_UPDATE',
+        'AGENT_EXPLANATION'
     ]);
     const craft = extractStructuredSection(cleaned, 'NARRATIVE_CRAFT', [
+        'PLOT_STATE_UPDATE'
+    ]) || extractStructuredSection(cleaned, 'AGENT_EXPLANATION', [
+        'CHARACTER_MEMORY_UPDATE',
         'PLOT_STATE_UPDATE'
     ]);
 
@@ -272,31 +284,48 @@ export function extractStructuredAssistantSections(content: string): {
     plan?: string;
     script: string;
     craft?: string;
+    research?: string;
 } {
     const summary = extractStructuredSection(content, 'STORY_CONTEXT_SUMMARY', [
         'SCENE_PLAN',
+        'CREATIVE_PLAN',
         'SCENE_SCRIPT',
         'CHARACTER_MEMORY_UPDATE',
         'PLOT_STATE_UPDATE',
         'NARRATIVE_CRAFT'
+    ]);
+    const research = extractStructuredSection(content, 'RESEARCH_DISCLOSURE', [
+        'SCENE_PLAN',
+        'CREATIVE_PLAN',
+        'SCENE_SCRIPT'
     ]);
     const plan = extractStructuredSection(content, 'SCENE_PLAN', [
         'SCENE_SCRIPT',
         'CHARACTER_MEMORY_UPDATE',
         'PLOT_STATE_UPDATE',
         'NARRATIVE_CRAFT'
+    ]) || extractStructuredSection(content, 'CREATIVE_PLAN', [
+        'SCENE_SCRIPT',
+        'CHARACTER_MEMORY_UPDATE',
+        'PLOT_STATE_UPDATE',
+        'AGENT_EXPLANATION'
     ]);
     const finalScriptText = extractStructuredSection(content, 'SCENE_SCRIPT', [
         'CHARACTER_MEMORY_UPDATE',
         'PLOT_STATE_UPDATE',
-        'NARRATIVE_CRAFT'
+        'NARRATIVE_CRAFT',
+        'AGENT_EXPLANATION'
     ]);
     const craft = extractStructuredSection(content, 'NARRATIVE_CRAFT', [
+        'PLOT_STATE_UPDATE'
+    ]) || extractStructuredSection(content, 'AGENT_EXPLANATION', [
+        'CHARACTER_MEMORY_UPDATE',
         'PLOT_STATE_UPDATE'
     ]);
 
     return {
         summary: summary || undefined,
+        research: research || undefined,
         plan: plan || undefined,
         script: normalizeScreenplayWhitespace(finalScriptText) || extractBestEffortScreenplay(content),
         craft: craft || undefined
@@ -311,7 +340,7 @@ export function classifyAssistantIntent(content: string, scope: AssistantScope, 
         return { intent: 'chat', confidence: 0 };
     }
 
-    // Instant Small Talk Detection (Frontend Heuristic)
+    // Instant Small Talk Detection
     const normalized = trimmed.toLowerCase().replace(/[^\w\s]/g, '').trim();
     if (SMALL_TALK_PATTERN.test(normalized)) {
         return { intent: 'chat', confidence: 0.99 };
@@ -321,14 +350,37 @@ export function classifyAssistantIntent(content: string, scope: AssistantScope, 
     const asksQuestion = trimmed.includes('?') || QUESTION_START_PATTERN.test(trimmed);
     const asksForAnalysis = ANALYSIS_PATTERN.test(trimmed);
     
-    // If it's a very short question or analysis, we lean Chat but mark as ML for safety
-    if (asksForAnalysis || (asksQuestion && trimmed.length < 50)) {
+    if (asksForAnalysis) {
+        // If they ask for analysis but also say "then rewrite it", it's an edit
+        if (REWRITE_VERB_PATTERN.test(trimmed)) {
+            return { intent: (scope === 'selection' || hasSelection) ? 'selection_edit' : 'scene_edit', confidence: 0.6 };
+        }
+        return { intent: 'chat', confidence: 0.8 };
+    }
+
+    if (asksQuestion && trimmed.length < 50) {
         return { intent: 'chat', confidence: 0.7 };
     }
 
-    // For everything else, we signal that Elite ML should handle the routing
-    // We return 'ambiguous' or 'chat' as a baseline, but useScriptWriterGenerator will see the low confidence
-    return { intent: 'chat', confidence: 0.1 }; 
+    // Agentic Action Detection (Rewrite, Fix, Make...)
+    const hasRewriteVerb = REWRITE_VERB_PATTERN.test(trimmed);
+    const startsWithRewrite = STARTS_WITH_REWRITE_VERB_PATTERN.test(trimmed);
+    
+    // Catch subtle agentic directives: "shorter", "punchy", "more emotion", "fix grammar"
+    const isSubtleEdit = /^(make|make this|make it|sounds|sound|fix|change|update|remove|add|delete)\b/i.test(trimmed) || 
+                         /^(shorter|longer|punchier|better|more emotional|funnier|scarier)\b/i.test(trimmed);
+
+    if (startsWithRewrite || hasRewriteVerb || isSubtleEdit) {
+        const intent: AssistantIntent = (scope === 'selection' || hasSelection) ? 'selection_edit' : 'scene_edit';
+        return { intent, confidence: 0.85 }; // High confidence because user used action verbs
+    }
+
+    // Baseline fallback: Assume edit if it's very short and not a question, else chat
+    if (trimmed.length < 30 && !asksQuestion) {
+        return { intent: (scope === 'selection' || hasSelection) ? 'selection_edit' : 'scene_edit', confidence: 0.4 };
+    }
+
+    return { intent: 'chat', confidence: 0.2 }; 
 }
 
 export function getIntentHint(intent: AssistantIntent): string {

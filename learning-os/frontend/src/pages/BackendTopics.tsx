@@ -16,7 +16,6 @@ import { DeleteModal } from '../components/ui/DeleteModal';
 import { api, type BackendTopic } from '../services/api';
 import { toast } from '../stores/toastStore';
 import { useAI } from '../contexts/AIContext';
-import { SystemDesignCanvas } from '../components/learning/SystemDesignCanvas';
 import { cn } from '../lib/utils';
 
 const CATEGORIES = [
@@ -56,7 +55,6 @@ export function BackendTopics() {
     const [sortBy, setSortBy] = useState('newest');
     const [page, setPage] = useState(1);
     const [pagination, setPagination] = useState({ total: 0, pages: 1 });
-    const [viewMode, setViewMode] = useState<'list' | 'canvas'>('list');
 
     const [deleteModalOpen, setDeleteModalOpen] = useState(false);
     const [topicToDelete, setTopicToDelete] = useState<string | null>(null);
@@ -82,6 +80,11 @@ export function BackendTopics() {
     useEffect(() => {
         fetchTopics();
     }, [fetchTopics]);
+    
+    const handleDeleteClick = (id: string) => {
+        setTopicToDelete(id);
+        setDeleteModalOpen(true);
+    };
 
     const handleConfirmDelete = async () => {
         if (!topicToDelete) return;
@@ -190,26 +193,6 @@ export function BackendTopics() {
                             className="pl-14 h-14 bg-console-bg/80 border-border-subtle/30 rounded-2xl text-base"
                         />
                     </div>
-                    <div className="hidden lg:flex items-center gap-2 p-1.5 bg-console-bg/80 rounded-2xl border border-border-subtle/30">
-                        <button
-                            onClick={() => setViewMode('list')}
-                            className={cn(
-                                "p-3 rounded-xl transition-all",
-                                viewMode === 'list' ? "bg-accent-primary text-white shadow-lg" : "text-text-muted hover:text-text-primary"
-                            )}
-                        >
-                            <SlidersHorizontal size={20} />
-                        </button>
-                        <button
-                            onClick={() => setViewMode('canvas')}
-                            className={cn(
-                                "p-3 rounded-xl transition-all",
-                                viewMode === 'canvas' ? "bg-accent-primary text-white shadow-lg" : "text-text-muted hover:text-text-primary"
-                            )}
-                        >
-                            <LayoutGrid size={20} />
-                        </button>
-                    </div>
                 </div>
 
                 <div className="flex items-center gap-4 w-full lg:w-auto">
@@ -245,18 +228,6 @@ export function BackendTopics() {
                         {[1, 2, 3, 4, 5, 6].map((i) => (
                             <div key={i} className="h-64 rounded-[2.5rem] bg-console-surface/30 animate-pulse border border-white/5" />
                         ))}
-                    </motion.div>
-                ) : viewMode === 'canvas' ? (
-                    <motion.div
-                        key="canvas"
-                        initial={{ opacity: 0, scale: 0.95 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        className="w-full bg-console-surface/20 rounded-[3rem] border border-white/5 overflow-hidden shadow-inner"
-                    >
-                        <SystemDesignCanvas 
-                            topics={filteredTopics} 
-                            onNodeClick={(id) => navigate(`/backend/${id}`)}
-                        />
                     </motion.div>
                 ) : filteredTopics.length === 0 ? (
                     <motion.div 

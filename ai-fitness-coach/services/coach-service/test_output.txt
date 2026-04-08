@@ -1,0 +1,52 @@
+
+> coach-service@1.0.0 test
+> jest --detectOpenHandles src/__tests__/coach.test.ts
+
+FAIL src/__tests__/coach.test.ts
+  Coach Engine Logic
+    × Property: Context includes daily overview data (27 ms)
+    √ Property: History is truncated to last 5 messages (2 ms)
+
+  ● Coach Engine Logic › Property: Context includes daily overview data
+
+    Property failed after 2 tests
+    { seed: 432931071, path: "1:0:0:0:0:0:0:0:0:0:0:0:0", endOnFailure: true }
+    Counterexample: ["     ","     "]
+    Shrunk 12 time(s)
+
+    Hint: Enable verbose mode in order to have the list of all failing values encountered during the run
+
+      at buildError (node_modules/fast-check/lib/cjs/fast-check.js:2449:16)
+      at asyncThrowIfFailed (node_modules/fast-check/lib/cjs/fast-check.js:2461:8)
+
+    Cause:
+    expect(received).toContain(expected) // indexOf
+
+    Expected substring: "     "
+    Received string:    "You are an AI Fitness Coach.·
+        Context for Today (yM r&H)&y0.!`):
+        Workout: WORKOUT_MSG. Active: None.
+        Nutrition: NUTRITION_MSG.·
+        Macros: {\"calories\":100}
+        Targets: {}·····
+        If the user reports low difficulty (RPE 1-2) for complex movements, suggest specific form cues.
+        Be concise, encouraging, and science-based."
+
+    [0m [90m 38 |[39m
+     [90m 39 |[39m                     expect(systemPrompt)[33m.[39mtoContain([32m'You are an AI Fitness Coach'[39m)[33m;[39m
+    [31m[1m>[22m[39m[90m 40 |[39m                     expect(systemPrompt)[33m.[39mtoContain(date)[33m;[39m
+     [90m    |[39m                                          [31m[1m^[22m[39m
+     [90m 41 |[39m                     expect(systemPrompt)[33m.[39mtoContain([32m'WORKOUT_MSG'[39m)[33m;[39m
+     [90m 42 |[39m                     expect(systemPrompt)[33m.[39mtoContain([32m'NUTRITION_MSG'[39m)[33m;[39m
+     [90m 43 |[39m                 }[0m
+
+      at src/__tests__/coach.test.ts:40:42
+      at AsyncProperty.run (node_modules/fast-check/lib/cjs/fast-check.js:1208:19)
+      at asyncRunIt (node_modules/fast-check/lib/cjs/fast-check.js:2503:15)
+      at Object.<anonymous> (src/__tests__/coach.test.ts:17:9)
+
+Test Suites: 1 failed, 1 total
+Tests:       1 failed, 1 passed, 2 total
+Snapshots:   0 total
+Time:        2.882 s, estimated 6 s
+Ran all test suites matching src/__tests__/coach.test.ts.

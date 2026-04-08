@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Shield, Clock, AlertTriangle, Fullscreen, ChevronRight } from 'lucide-react';
+import { cn } from '../lib/utils';
 
 interface Violation {
   type: string;
@@ -55,7 +56,7 @@ export function FullscreenLockdown({
     };
   }, []);
 
-  // Handle new violations
+  // Handle new violations — reset ref so each new violation shows
   useEffect(() => {
     if (violations.length > 0) {
       if (hasShownViolationWarningRef.current) return;
@@ -68,9 +69,10 @@ export function FullscreenLockdown({
         onViolation(latest.message);
       }
 
-      // Show a single transient warning, then return to normal state.
       const timer = setTimeout(() => {
         setShowViolationAlert(false);
+        // Reset so the NEXT violation can show a new alert
+        hasShownViolationWarningRef.current = false;
       }, 2500);
 
       return () => clearTimeout(timer);
@@ -91,9 +93,9 @@ export function FullscreenLockdown({
 
   // Get timer color based on time left
   const getTimerColor = () => {
-    if (timeLeft < 300) return 'text-red-500 animate-pulse'; // Less than 5 min
-    if (timeLeft < 900) return 'text-yellow-500'; // Less than 15 min
-    return 'text-green-400';
+    if (timeLeft < 300) return 'text-status-error animate-pulse'; // Less than 5 min
+    if (timeLeft < 900) return 'text-amber-500'; // Less than 15 min
+    return 'text-status-ok';
   };
 
   if (!isActive) {
@@ -103,40 +105,40 @@ export function FullscreenLockdown({
   // Pre-test fullscreen gate
   if (!isFullscreen) {
     return (
-      <div className="fixed inset-0 z-[9999] bg-slate-950 flex flex-col items-center justify-center">
+      <div className="fixed inset-0 z-[9999] bg-console-bg flex flex-col items-center justify-center">
         <div className="max-w-lg w-full mx-4">
           {/* Header */}
           <div className="text-center mb-8">
-            <div className="w-20 h-20 bg-gradient-to-br from-blue-600 to-indigo-700 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-2xl">
+            <div className="w-20 h-20 bg-gradient-to-br from-accent-primary to-accent-dark rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-2xl shadow-accent-primary/20">
               <Shield className="w-10 h-10 text-white" />
             </div>
-            <h1 className="text-3xl font-bold text-white mb-2">Secure Assessment</h1>
-            <p className="text-slate-400">Enterprise Proctored Environment</p>
+            <h1 className="text-3xl font-black text-text-primary tracking-tight mb-2">Secure Assessment</h1>
+            <p className="text-text-muted font-medium">Enterprise Proctored Environment</p>
           </div>
 
           {/* Test Info Card */}
-          <div className="bg-slate-900/80 border border-slate-700 rounded-xl p-6 mb-6">
+          <div className="bg-console-surface/80 border border-white/5 rounded-2xl p-6 mb-6 backdrop-blur-xl">
             <div className="flex items-center gap-3 mb-4">
-              <div className="w-10 h-10 bg-blue-500/20 rounded-lg flex items-center justify-center">
-                <Fullscreen className="w-5 h-5 text-blue-400" />
+              <div className="w-10 h-10 bg-accent-primary/10 rounded-xl flex items-center justify-center border border-accent-primary/20">
+                <Fullscreen className="w-5 h-5 text-accent-primary" />
               </div>
               <div>
-                <h2 className="text-lg font-semibold text-white">{testName}</h2>
-                <p className="text-sm text-slate-400">Technical Assessment</p>
+                <h2 className="text-lg font-black text-text-primary tracking-tight">{testName}</h2>
+                <p className="text-sm text-text-muted font-medium">Technical Assessment</p>
               </div>
             </div>
 
             <div className="space-y-3 text-sm">
-              <div className="flex items-center gap-2 text-slate-300">
-                <ChevronRight className="w-4 h-4 text-blue-400" />
+              <div className="flex items-center gap-2 text-text-secondary">
+                <ChevronRight className="w-4 h-4 text-accent-primary" />
                 <span>Fullscreen mode is required throughout the test</span>
               </div>
-              <div className="flex items-center gap-2 text-slate-300">
-                <ChevronRight className="w-4 h-4 text-blue-400" />
-                <span>Tab switching or window switching will terminate the test</span>
+              <div className="flex items-center gap-2 text-text-secondary">
+                <ChevronRight className="w-4 h-4 text-accent-primary" />
+                <span>Tab switching or window switching will trigger violations</span>
               </div>
-              <div className="flex items-center gap-2 text-slate-300">
-                <ChevronRight className="w-4 h-4 text-blue-400" />
+              <div className="flex items-center gap-2 text-text-secondary">
+                <ChevronRight className="w-4 h-4 text-accent-primary" />
                 <span>{maxViolations} violation(s) allowed before auto-termination</span>
               </div>
             </div>
@@ -145,7 +147,7 @@ export function FullscreenLockdown({
           {/* Action Button */}
           <button
             onClick={onEnterFullscreen}
-            className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-semibold py-4 rounded-xl transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-[1.02]"
+            className="w-full bg-gradient-to-r from-accent-primary to-accent-dark text-white font-black py-4 rounded-2xl transition-all duration-200 shadow-xl shadow-accent-primary/20 hover:scale-[1.02] active:scale-95 uppercase tracking-widest text-sm"
           >
             <div className="flex items-center justify-center gap-2">
               <Fullscreen className="w-5 h-5" />
@@ -153,7 +155,7 @@ export function FullscreenLockdown({
             </div>
           </button>
 
-          <p className="text-center text-xs text-slate-500 mt-4">
+          <p className="text-center text-[10px] text-text-muted/60 mt-4 uppercase tracking-wider font-bold">
             By entering fullscreen, you agree to the proctoring terms and conditions
           </p>
         </div>
@@ -162,23 +164,28 @@ export function FullscreenLockdown({
   }
 
   return (
-    <div className="fixed inset-0 z-[9999] bg-slate-950">
+    <div className="fixed inset-0 z-[9999] bg-console-bg">
       {/* Violation Alert Overlay */}
       {showViolationAlert && currentViolation && (
         <div className="fixed top-4 left-1/2 -translate-x-1/2 z-[10000]">
-          <div className={`${currentViolation.penalized === false ? 'bg-blue-600/95 border-blue-500' : 'bg-red-600/95 border-red-500'} border rounded-xl px-6 py-4 shadow-2xl animate-pulse`}>
+          <div className={cn(
+            "border rounded-2xl px-6 py-4 shadow-2xl backdrop-blur-xl animate-pulse",
+            currentViolation.penalized === false 
+              ? 'bg-accent-primary/90 border-accent-primary/50' 
+              : 'bg-status-error/90 border-status-error/50'
+          )}>
             <div className="flex items-center gap-3">
               <AlertTriangle className="w-6 h-6 text-white" />
               <div>
-                <p className="font-semibold text-white">
-                  {currentViolation.penalized === false ? 'Action Blocked' : 'Proctoring Violation Detected'}
+                <p className="font-black text-white uppercase tracking-widest text-xs">
+                  {currentViolation.penalized === false ? 'Action Blocked' : 'Proctoring Violation'}
                 </p>
-                <p className="text-slate-100 text-sm">{currentViolation.message}</p>
+                <p className="text-white/80 text-sm font-medium">{currentViolation.message}</p>
                 {currentViolation.penalized === false ? (
-                  <p className="text-slate-200 text-xs mt-1">No penalty applied. Continue your test.</p>
+                  <p className="text-white/60 text-xs mt-1 font-medium">No penalty applied. Continue your test.</p>
                 ) : (
-                  <p className="text-red-200 text-xs mt-1">
-                    Violation {violationCount} of {maxViolations} - Test will terminate on next violation
+                  <p className="text-white/60 text-xs mt-1 font-bold">
+                    Warning {violationCount} of {maxViolations} — Test will terminate on next violation
                   </p>
                 )}
               </div>
@@ -187,32 +194,35 @@ export function FullscreenLockdown({
         </div>
       )}
 
-      {/* Top Bar - Minimal */}
-      <div className="h-14 bg-slate-900 border-b border-slate-800 flex items-center justify-between px-6">
+      {/* Top Bar */}
+      <div className="h-14 bg-console-surface/60 backdrop-blur-2xl border-b border-white/5 flex items-center justify-between px-6">
         {/* Left: Test Info */}
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-2">
-            <Shield className="w-5 h-5 text-green-400" />
-            <span className="text-white font-medium">{testName}</span>
+            <Shield className="w-5 h-5 text-status-ok" />
+            <span className="text-text-primary font-black text-sm uppercase tracking-widest">{testName}</span>
           </div>
-          <div className="h-6 w-px bg-slate-700" />
-          <div className="flex items-center gap-2 text-slate-400 text-sm">
+          <div className="h-6 w-px bg-white/5" />
+          <div className="flex items-center gap-2 text-text-muted text-[10px] font-black uppercase tracking-widest">
             <span>Secure Mode Active</span>
-            <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
+            <span className="w-2 h-2 bg-status-ok rounded-full animate-pulse" />
           </div>
         </div>
 
         {/* Center: Timer */}
         <div className="flex items-center gap-3">
-          <Clock className={`w-5 h-5 ${getTimerColor()}`} />
-          <span className={`font-mono text-xl font-bold ${getTimerColor()}`}>
+          <Clock className={cn("w-5 h-5", getTimerColor())} />
+          <span className={cn("font-mono text-xl font-black", getTimerColor())}>
             {formatTime(timeLeft)}
           </span>
         </div>
 
         {/* Right: Violation Counter */}
         <div className="flex items-center gap-4">
-          <div className={`text-sm font-medium ${violationCount >= maxViolations - 1 ? 'text-red-400' : 'text-slate-400'}`}>
+          <div className={cn(
+            "text-[10px] font-black uppercase tracking-widest",
+            violationCount >= maxViolations - 1 ? 'text-status-error' : 'text-text-muted'
+          )}>
             Warnings: {violationCount}/{maxViolations}
           </div>
         </div>

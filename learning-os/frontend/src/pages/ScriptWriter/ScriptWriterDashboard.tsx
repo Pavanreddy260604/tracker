@@ -1,10 +1,11 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useScriptWriterProjects } from './useScriptWriterProjects';
 import { ProjectDashboard } from './ProjectDashboard';
 
 export function ScriptWriterDashboard() {
     const navigate = useNavigate();
+    const [searchParams] = useSearchParams();
     const [error, setError] = useState<string | null>(null);
 
     const {
@@ -25,6 +26,14 @@ export function ScriptWriterDashboard() {
         activeSceneId: null,
         setActiveSceneId: () => { }
     });
+
+    // Handle automatic actions from URL params (e.g. from AI-SAAS-APP)
+    useEffect(() => {
+        const action = searchParams.get('action');
+        if (action === 'new') {
+            setIsCreatingProject(true);
+        }
+    }, [searchParams, setIsCreatingProject]);
 
     const handleProjectSelect = (projectId: string) => {
         // Navigate to the specific project route

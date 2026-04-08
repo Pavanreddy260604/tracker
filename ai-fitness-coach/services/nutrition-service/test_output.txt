@@ -1,0 +1,28 @@
+FAIL src/__tests__/nutrition_signals.test.ts
+  Nutrition Controller Signals
+    × Property 1: logEntry signals activity and closed-loop event (16 ms)
+
+  ● Nutrition Controller Signals › Property 1: logEntry signals activity and closed-loop event
+
+    expect(jest.fn()).toHaveBeenCalledWith(...expected)
+
+    Expected: "user123", "INPUT", ObjectContaining {"food": "Apple"}
+    Received: "user123", "INPUT", {"date": 2026-04-08T00:00:00.000Z, "entryData": {"food": "Apple"}}
+
+    Number of calls: 1
+
+    [0m [90m 32 |[39m
+     [90m 33 |[39m     expect(signalActivity)[33m.[39mtoHaveBeenCalledWith([32m'test-token'[39m)[33m;[39m
+    [31m[1m>[22m[39m[90m 34 |[39m     expect(signalEvent)[33m.[39mtoHaveBeenCalledWith([32m'user123'[39m[33m,[39m [32m'INPUT'[39m[33m,[39m expect[33m.[39mobjectContaining({ food[33m:[39m [32m'Apple'[39m }))[33m;[39m
+     [90m    |[39m                         [31m[1m^[22m[39m
+     [90m 35 |[39m     expect(mockResponse[33m.[39mstatus)[33m.[39mtoHaveBeenCalledWith([35m201[39m)[33m;[39m
+     [90m 36 |[39m   })[33m;[39m
+     [90m 37 |[39m })[33m;[39m[0m
+
+      at Object.<anonymous> (src/__tests__/nutrition_signals.test.ts:34:25)
+
+Test Suites: 1 failed, 1 total
+Tests:       1 failed, 1 total
+Snapshots:   0 total
+Time:        3.37 s, estimated 8 s
+Ran all test suites matching src/__tests__/nutrition_signals.test.ts.

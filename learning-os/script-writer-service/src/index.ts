@@ -51,6 +51,7 @@ import { characterRoutes } from './routes/character.routes';
 import { treatmentRoutes } from './routes/treatment.routes';
 import { aiRoutes } from './routes/ai.routes';
 import adminRoutes from './routes/admin.routes';
+import { healthRoutes } from './routes/health.routes';
 
 // Routes
 app.use('/api/script', scriptRoutes);
@@ -61,13 +62,34 @@ app.use('/api/script/character', characterRoutes);
 app.use('/api/script/treatment', treatmentRoutes);
 app.use('/api/script/ai', aiRoutes); // Switch provider, etc.
 app.use('/api/script/admin', adminRoutes); // PH 21
+app.use('/api/script/health', healthRoutes); // Infrastructure monitoring
 
 
 // Start server
 const startServer = async () => {
     await connectDB();
 
-    app.listen(PORT, () => {
+    // Infrastructure Check: Redis Connectivity
+    try {
+        const { Redis } = await import('ioredis');
+        const redis = new Redis({
+            host: process.env.REDIS_HOST || '127.0.0.1',
+            port: Number(process.env.REDIS_PORT) || 6379,
+            connectTimeout: 2000,
+            lazyConnect: true
+        });
+        await redis.connect();
+        console.log('[Infrastructure] Redis Connected Successfully');
+        await redis.quit();
+    } catch (err) {
+        console.warn('\n' + '═'.repeat(60));
+        console.warn('⚠️  CRITICAL INFRASTRUCTURE WARNING: REDIS DISCONNECTED');
+        console.warn('Description: Background tasks (Discovery, Summary, Queues) will FAIL.');
+        console.warn('Action: Please start Redis (e.g., redis-server) to enable full features.');
+        console.warn('═'.repeat(60) + '\n');
+    }
+
+    const server = app.listen(PORT, () => {
         console.log(`
 ╔════════════════════════════════════════════════════════════╗
 ║                                                            ║
@@ -82,6 +104,14 @@ const startServer = async () => {
 ╚════════════════════════════════════════════════════════════╝
         `);
     });
+
+    server.timeout = 120000; // 120 seconds
 };
 
-startServer();
+// Only start if run directly
+if (require.main === module || !module.parent) {
+    startServer().catch(err => {
+        console.error('Failed to start server:', err);
+        process.exit(1);
+    });
+}

@@ -373,7 +373,7 @@ router.post('/:id/fix', async (req, res) => {
             // --- ATTEMPT 1 ---
             console.log(`[SceneAPI] Audit Chain: Attempt 1 (${language})...`);
             const t1 = Date.now();
-            const attempt1Content = await scriptGenerator.reviseSceneBatch(originalContent, scene.critique, scene.goal || scene.summary, false, currentBestScore, language);
+            const attempt1Content = await scriptGenerator.reviseSceneBatch(originalContent, scene.critique, scene.goal || scene.summary, false, currentBestScore, language, scene.bibleId, scene._id);
             const attempt1Critique = await criticService.evaluateScene(attempt1Content, scene.goal || scene.summary, genre, language);
             console.log(`[SceneAPI] Attempt 1 complete in ${Date.now() - t1}ms. Score: ${attempt1Critique.score}`);
 
@@ -387,7 +387,7 @@ router.post('/:id/fix', async (req, res) => {
                 // --- ATTEMPT 2 (SELF-CORRECTION) ---
                 const t2 = Date.now();
                 // Pass targetScore and language to make prompt more aggressive and localized
-                const attempt2Content = await scriptGenerator.reviseSceneBatch(originalContent, attempt1Critique, scene.goal || scene.summary, true, currentBestScore, language);
+                const attempt2Content = await scriptGenerator.reviseSceneBatch(originalContent, attempt1Critique, scene.goal || scene.summary, true, currentBestScore, language, scene.bibleId, scene._id);
                 const attempt2Critique = await criticService.evaluateScene(attempt2Content, scene.goal || scene.summary, genre, language);
                 console.log(`[SceneAPI] Attempt 2 complete in ${Date.now() - t2}ms. Score: ${attempt2Critique.score}`);
 
@@ -490,7 +490,13 @@ router.post('/:id/assisted-edit', async (req, res) => {
             transliteration
         });
 
+        let isClosed = false;
+        req.on('close', () => {
+            isClosed = true;
+        });
+
         for await (const chunk of stream) {
+            if (isClosed) break;
             res.write(chunk);
         }
 

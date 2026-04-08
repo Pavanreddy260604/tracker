@@ -1,7 +1,7 @@
 import { InterviewSession, type IInterviewSession } from '../models/InterviewSession.js';
 import { Question } from '../models/Question.js';
 import { UserActivity } from '../models/UserActivity.js';
-import { QuestionGenerationService } from './questionGeneration.service.js';
+import { StructuredQuestionService } from './ai/structuredQuestion.service.js';
 import { AIClientService, AIServiceError } from './aiClient.service.js';
 import { AIJudgeService } from './aiJudge.service.js';
 import {
@@ -27,8 +27,8 @@ import {
 // ─── Singleton Instances ─────────────────────────────────────────────────────
 
 const aiJudge = new AIJudgeService();
-const questionGenerator = new QuestionGenerationService();
 const aiClient = new AIClientService();
+const questionGenerator = new StructuredQuestionService(aiClient);
 const interviewJudge = new InterviewJudgeService();
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -114,9 +114,24 @@ const generateQuestionForType = async (
         try {
             const generated = await questionGenerator.generateCuratedQuestion(config.difficulty, config.topics);
             if (generated?.title) {
-                const q = new Question({ ...generated, difficulty: asDifficulty(String(generated.difficulty || 'medium')) });
-                await q.save();
-                return q.toObject() as unknown as Record<string, unknown>;
+                const q = new Question({
+                    ...generated,
+                    difficulty: asDifficulty(String(generated.difficulty || 'medium')),
+                    source: 'ai_generated',
+                    aiGenerated: true
+                });
+                
+                try {
+                    await q.save();
+                    return q.toObject() as unknown as Record<string, unknown>;
+                } catch (saveError: any) {
+                    // Handle duplicate key error (E11000) - if slug exists, use existing question
+                    if (saveError.code === 11000) {
+                        const existing = await Question.findOne({ slug: generated.slug });
+                        if (existing) return existing.toObject() as unknown as Record<string, unknown>;
+                    }
+                    throw saveError;
+                }
             }
         } catch (e) {
             console.error('[InterviewService] Question generation failed:', e);
@@ -155,10 +170,8 @@ const generateQuestionForType = async (
 // ─── Build Interview Sections ────────────────────────────────────────────────
 
 const buildInterviewSections = async (sectionsConfig: SectionConfig[]) => {
-    const sections: Record<string, unknown>[] = [];
-
-    for (let sectionIdx = 0; sectionIdx < sectionsConfig.length; sectionIdx++) {
-        const sectionConfig = sectionsConfig[sectionIdx];
+    // Build all sections in parallel for fast initialization
+    const sectionPromises = sectionsConfig.map(async (sectionConfig, sectionIdx) => {
         const normalizedSectionType = normalizeRequestedSectionType(sectionConfig.type);
 
         const section: Record<string, unknown> = {
@@ -171,9 +184,8 @@ const buildInterviewSections = async (sectionsConfig: SectionConfig[]) => {
             startTime: sectionIdx === 0 ? new Date() : undefined,
         };
 
-        const questions = section.questions as Record<string, unknown>[];
-
-        for (let questionIdx = 0; questionIdx < sectionConfig.questionCount; questionIdx++) {
+        // Generate ALL questions for this section in parallel
+        const questionConfigs = Array.from({ length: sectionConfig.questionCount }, (_, questionIdx) => {
             const rawConfig = Array.isArray(sectionConfig.questionsConfig)
                 ? sectionConfig.questionsConfig[questionIdx]
                 : undefined;
@@ -182,17 +194,24 @@ const buildInterviewSections = async (sectionsConfig: SectionConfig[]) => {
                 Array.isArray(sectionConfig.topics) && sectionConfig.topics.length > 0
                     ? sectionConfig.topics
                     : ['Array'];
-            const config = {
+            return {
                 difficulty: rawConfig?.difficulty || sectionDifficulty,
                 topics:
                     Array.isArray(rawConfig?.topics) && rawConfig.topics.length > 0
                         ? rawConfig.topics
                         : sectionTopics,
             };
+        });
 
-            const question = await generateQuestionForType(normalizedSectionType, config);
+        const questionResults = await Promise.allSettled(
+            questionConfigs.map(config => generateQuestionForType(normalizedSectionType, config))
+        );
 
-            if (question) {
+        const questions = section.questions as Record<string, unknown>[];
+
+        for (const result of questionResults) {
+            if (result.status === 'fulfilled' && result.value) {
+                const question = result.value;
                 const questionType = normalizeQuestionType(question.type || 'coding');
                 const rawCases = (question.testCases as Record<string, unknown>[]) || [];
                 const normalizedCases = normalizeTestCases(rawCases, questionType);
@@ -209,10 +228,11 @@ const buildInterviewSections = async (sectionsConfig: SectionConfig[]) => {
             }
         }
 
-        sections.push(section);
-    }
+        return section;
+    });
 
-    return sections.filter((s) => (s.questions as unknown[]).length > 0);
+    const sections = await Promise.all(sectionPromises);
+    return sections.filter((s) => ((s.questions as unknown[]).length > 0));
 };
 
 // ─── Public Service Functions ────────────────────────────────────────────────

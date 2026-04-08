@@ -1,7 +1,7 @@
-
 import express from 'express';
 import mongoose from 'mongoose';
 import { scriptGenerator, ScriptRequest } from '../services/scriptGenerator.service';
+import { intentService } from '../services/intent.service';
 import { FORMAT_TEMPLATES, STYLE_PROMPTS } from '../prompts/hollywood';
 import { Script } from '../models/Script';
 import { Bible } from '../models/Bible';
@@ -160,6 +160,31 @@ router.post('/generate', async (req, res) => {
             res.write('\n\n[ERROR: Generation interrupted]');
             res.end();
         }
+    }
+});
+
+// POST /api/script/assistant/classify - High-performance AI intent classification
+router.post('/assistant/classify', async (req, res) => {
+    const { instruction, context } = req.body;
+
+    if (!instruction) {
+        return res.status(400).json({ error: 'Instruction is required' });
+    }
+
+    try {
+        const result = await intentService.classifyIntentElite(instruction, {
+            hasScene: Boolean(context?.hasScene),
+            hasSelection: Boolean(context?.hasSelection),
+            currentMode: context?.currentMode || 'ask'
+        });
+
+        res.json({
+            success: true,
+            data: result
+        });
+    } catch (error) {
+        console.error('[API] Classification error:', error);
+        res.status(500).json({ error: 'Classification failed' });
     }
 });
 

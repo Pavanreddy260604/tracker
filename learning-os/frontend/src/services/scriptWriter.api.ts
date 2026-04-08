@@ -1,103 +1,32 @@
 import type { AssistantPreferences } from './project.api';
 
-export interface ScriptTemplates {
-    formats: {
-        id: string;
-        name: string;
-        description: string;
-    }[];
-    styles: {
-        id: string;
-        name: string;
-        description: string;
-    }[];
-}
+import type {
+    ScriptTemplates,
+    ScriptRequest,
+    ScriptHistoryItem,
+    IScriptDetail,
+    IMasterScript,
+    ProcessMasterScriptResponse,
+    MasterScriptValidationReport,
+    MasterScriptReconstruction,
+    VoiceIngestResult,
+    AssistedEditOptions,
+    ProjectAssistantOptions
+} from './scriptWriter.types';
 
-export interface ScriptRequest {
-    userId?: string; // kept optional for backward compatibility, server now derives from token
-    idea: string;
-    format: string;
-    style: string;
-    language?: string;
-    duration?: number;
-    genre?: string;
-    tone?: string;
-    transliteration?: boolean;
-    bibleId?: string;
-    characterIds?: string[];
-    sceneLength?: 'short' | 'medium' | 'long' | 'extended';
-    currentContent?: string;
-    model?: string;
-}
-
-export interface ScriptHistoryItem {
-    _id: string;
-    title: string;
-    prompt: string;
-    format: string;
-    style: string;
-    status: 'generating' | 'completed' | 'failed' | 'draft';
-    createdAt: string;
-}
-
-export interface IScriptDetail {
-    _id: string;
-    content: string;
-    title: string;
-    metadata: any;
-}
-
-export interface IMasterScript {
-    _id: string;
-    title: string;
-    director: string;
-    description?: string;
-    tags: string[];
-    language: string; // PH Multilingual RAG
-    rawContent: string;
-    status: 'pending' | 'processing' | 'validating' | 'indexed' | 'failed';
-    progress?: number;
-    processedChunks: number;
-    activeScriptVersion?: string;   // Added for structural versioning
-    processingScriptVersion?: string; // Added for structural versioning
-    parserVersion?: string;
-    sourceFormat?: 'pdf' | 'docx' | 'txt' | 'md' | 'fountain' | 'script' | 'raw_text';
-    pageCount?: number;
-    layoutVersion?: string;
-    readerReady?: boolean;
-    ragReady?: boolean;
-    ingestWarnings?: string[];
-    gateStatus?: 'pending' | 'passed' | 'failed'; // Audit status
-    lastValidationSummary?: string;
-    createdAt: string;
-}
-
-export interface ProcessMasterScriptResponse {
-    message: string;
-    scriptId: string;
-    scriptVersion?: string | null;
-    gateStatus?: 'pending' | 'passed' | 'failed';
-}
-
-export interface MasterScriptValidationReport {
-    scriptVersion: string;
-    status: 'passed' | 'failed';
-    summary: string;
-    reconstructionMismatch: boolean;
-    missingLines: Array<{ lineNo: number; lineId?: string; detail?: string }>;
-    extraLines: Array<{ lineNo: number; lineId?: string; detail?: string }>;
-    layoutMismatches: Array<{ lineNo: number; lineId?: string; detail?: string }>;
-    classificationMismatches: Array<{ lineNo: number; lineId?: string; detail?: string }>;
-    orderMismatches: Array<{ sceneSeq: number; elementSeq: number; detail: string }>;
-    hierarchyMismatches: Array<{ chunkId?: string; detail: string }>;
-    geAudit?: {
-        status: 'passed' | 'failed' | 'skipped';
-        summary?: string;
-        checkedAt?: string;
-        command?: string;
-        details?: Record<string, unknown>;
-    };
-}
+export type {
+    ScriptTemplates,
+    ScriptRequest,
+    ScriptHistoryItem,
+    IScriptDetail,
+    IMasterScript,
+    ProcessMasterScriptResponse,
+    MasterScriptValidationReport,
+    MasterScriptReconstruction,
+    VoiceIngestResult,
+    AssistedEditOptions,
+    ProjectAssistantOptions
+};
 
 export interface MasterScriptReconstructionLine {
     lineNo: number;
@@ -111,30 +40,6 @@ export interface MasterScriptReconstructionLine {
     sourceKind: 'title_page' | 'body' | 'page_marker';
     xStart?: number;
     yTop?: number;
-}
-
-export interface MasterScriptReconstruction {
-    scriptVersion: string;
-    parserVersion?: string;
-    sourceFormat?: 'pdf' | 'docx' | 'txt' | 'md' | 'fountain' | 'script' | 'raw_text';
-    pageCount?: number;
-    layoutVersion?: string;
-    readerReady?: boolean;
-    ragReady?: boolean;
-    warnings?: string[];
-    lineCount: number;
-    content: string;
-    lines: MasterScriptReconstructionLine[];
-    titlePage?: Record<string, string | string[]>;
-}
-
-export interface VoiceIngestResult {
-    count: number;
-    skippedDuplicates: number;
-    skippedShort: number;
-    characters: string[];
-    sceneCount: number;
-    message: string;
 }
 
 export interface AssistantSelectionPayload {
@@ -172,26 +77,6 @@ export interface AssistantContextPayload {
     assistantPreferences?: AssistantPreferences;
 }
 
-export interface AssistedEditOptions {
-    language?: string;
-    mode?: 'ask' | 'edit' | 'agent';
-    target?: 'scene' | 'selection';
-    currentContent?: string;
-    selection?: AssistantSelectionPayload | null;
-    transliteration?: boolean;
-    model?: string;
-}
-
-export interface ProjectAssistantOptions {
-    language?: string;
-    mode?: 'ask';
-    target?: 'scene' | 'selection';
-    currentContext?: string | AssistantContextPayload;
-    selection?: AssistantSelectionPayload | null;
-    transliteration?: boolean;
-    model?: string;
-}
-
 
 // Microservice runs on a different port (5003)
 
@@ -213,6 +98,10 @@ class ScriptWriterApi {
 
     async getScript(id: string): Promise<IScriptDetail> {
         return baseApi.request<IScriptDetail>(`/script/history/${id}`);
+    }
+
+    async getScene(id: string): Promise<any> {
+        return baseApi.request<any>(`/scene/${id}`);
     }
 
     async generateScriptStream(
@@ -378,6 +267,14 @@ class ScriptWriterApi {
             body: JSON.stringify({ messageId, content })
         });
         return (data || []).filter(Boolean);
+    }
+
+    async classifyIntent(instruction: string, context: { hasScene?: boolean; hasSelection?: boolean; currentMode?: string }): Promise<{ intent: string; confidence: number }> {
+        const response = await baseApi.request<{ success: boolean; data: { intent: string; confidence: number } }>('/script/assistant/classify', {
+            method: 'POST',
+            body: JSON.stringify({ instruction, context })
+        });
+        return response.data;
     }
 }
 

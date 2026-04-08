@@ -2,6 +2,7 @@ import request from 'supertest';
 import express from 'express';
 import type { NextFunction, Request, Response } from 'express';
 import { jest } from '@jest/globals';
+import mongoose from 'mongoose';
 import chatRoutes from '../../routes/chat.js';
 import { ChatSession } from '../../models/ChatSession.js';
 
@@ -38,6 +39,8 @@ app.use(express.json());
 app.use('/api/chat', chatRoutes);
 
 describe('Chat Routes Integration', () => {
+    const conversationId = new mongoose.Types.ObjectId().toString();
+
     beforeEach(() => {
         jest.clearAllMocks();
         (ChatSession.updateOne as jest.Mock).mockResolvedValue({ acknowledged: true });
@@ -45,7 +48,7 @@ describe('Chat Routes Integration', () => {
 
     it('accepts structured script-writer context and forwards it into a conversation-first system prompt', async () => {
         (ChatSession.findOneAndUpdate as jest.Mock).mockResolvedValue({
-            _id: 'sess1',
+            _id: conversationId,
             title: 'Scene chat',
             messages: [
                 { role: 'assistant', content: 'Earlier answer', timestamp: new Date() },
@@ -58,7 +61,7 @@ describe('Chat Routes Integration', () => {
         });
 
         const response = await request(app)
-            .post('/api/chat/sess1/message')
+            .post(`/api/chat/${conversationId}/message`)
             .send({
                 message: 'Why is this scene weak?',
                 assistantType: 'script-writer',
@@ -108,7 +111,7 @@ describe('Chat Routes Integration', () => {
 
     it('rejects malformed structured context before hitting the chat backend', async () => {
         const response = await request(app)
-            .post('/api/chat/sess1/message')
+            .post(`/api/chat/${conversationId}/message`)
             .send({
                 message: 'Hello',
                 assistantType: 'script-writer',

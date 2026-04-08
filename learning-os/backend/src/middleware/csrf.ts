@@ -31,6 +31,9 @@ const CSRF_EXEMPT_PATHS = [
     '/api/auth/logout',
     '/api/auth/forgot-password',
     '/api/auth/reset-password',
+    '/api/chat',      // Allow CLI/curl testing
+    '/api/ai',        // Allow CLI/curl testing
+    '/api/interview'  // State-heavy, better handled via session/auth
 ];
 
 export const csrfProtection = (req: Request, res: Response, next: NextFunction) => {

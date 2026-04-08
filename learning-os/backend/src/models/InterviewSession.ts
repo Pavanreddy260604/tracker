@@ -69,6 +69,7 @@ export interface IInterviewSession extends Document {
     overallFeedback: string;
     startedAt: Date;
     endedAt?: Date;
+    proctoringSecret?: string;
     // Proctoring data
     proctoring?: {
         cameraAccessGranted: boolean;
@@ -180,6 +181,7 @@ const interviewSessionSchema = new Schema<IInterviewSession>(
         overallFeedback: { type: String },
         startedAt: { type: Date, default: Date.now },
         endedAt: { type: Date },
+        proctoringSecret: { type: String },
         proctoring: {
             cameraAccessGranted: { type: Boolean, default: false },
             fullscreenRequired: { type: Boolean, default: true },

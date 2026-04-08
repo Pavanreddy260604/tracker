@@ -35,6 +35,8 @@ const PROCTORING_EVENT_TYPES: ProctoringEvent['type'][] = [
   'integrity_violation',
   'paste_detected',
   'automation_detected',
+  'camera_lost',
+  'audio_threshold_reached',
   'unknown',
 ];
 
@@ -49,6 +51,15 @@ const sendServiceError = (res: Response, error: unknown, fallbackMessage: string
     path: res.req?.path
   });
 };
+
+async function getSessionWithSecret(sessionId: string, userId: string) {
+  const session = await interviewService.getSession(sessionId, userId);
+  const proctoringSecret = await proctoringAttestationService.generateSessionSecret(sessionId);
+  return {
+    ...session.toObject(),
+    proctoringSecret
+  };
+}
 
 const sendExecutionProviderFallback = (res: Response, error: unknown, customInput?: string | null) => {
   const message = error instanceof Error ? error.message : 'Code execution unavailable.';
@@ -97,12 +108,11 @@ export const startInterview = async (req: Request, res: Response): Promise<void>
     });
 
     // Return session with proctoring secret (for client attestation)
+    const sessionData = await getSessionWithSecret(session._id.toString(), req.userId!);
+    
     res.json({ 
       success: true, 
-      data: {
-        ...session.toObject(),
-        proctoringSecret // Client needs this to sign events
-      }
+      data: sessionData
     });
   } catch (error) {
     if (isExecutionProviderError(error)) {
@@ -127,7 +137,8 @@ export const nextSection = async (req: Request, res: Response): Promise<void> =>
       sectionIndex: session.currentSectionIndex - 1
     });
     
-    res.json({ success: true, data: session });
+    const sessionData = await getSessionWithSecret(sessionId, req.userId!);
+    res.json({ success: true, data: sessionData });
   } catch (error) {
     sendServiceError(res, error, 'Failed to move to next section');
   }
@@ -162,12 +173,10 @@ export const submitSection = async (req: Request, res: Response): Promise<void> 
       questionsAttempted: sectionScoreResult.questionScores.length
     });
     
+    const sessionData = await getSessionWithSecret(sessionId, req.userId!);
     res.json({ 
       success: true, 
-      data: {
-        session: updatedSession,
-        scoring: sectionScoreResult
-      }
+      data: sessionData
     });
   } catch (error) {
     sendServiceError(res, error, 'Failed to submit section');
@@ -191,7 +200,7 @@ export const updateProctoring = async (req: Request, res: Response): Promise<voi
         : 'unknown';
       const event: ProctoringEvent = {
         type: eventType,
-        timestamp: new Date(parsed.data.timestamp || Date.now()).getTime(),
+        timestamp: parsed.data.timestamp || new Date().toISOString(),
         sessionId,
         clientProof: parsed.data.clientProof,
         sequenceNumber: parsed.data.sequenceNumber || 0
@@ -475,15 +484,42 @@ export const runCodeHandler = async (req: Request, res: Response): Promise<void>
     // Wait for result (shorter timeout for run)
     const result = await executionQueueService.waitForResult(jobId, 10000);
 
-    res.json({
-      success: true,
-      data: {
-        status: result.status,
-        stdout: result.results?.[0]?.stdout || '',
-        stderr: result.results?.[0]?.stderr || '',
-        executionTimeMs: result.executionTimeMs
-      }
-    });
+    // Map execution result to the shape the frontend expects
+    if (result.results && result.results.length > 0) {
+      const passedCount = result.results.filter(r => r.passed).length;
+      res.json({
+        success: true,
+        data: {
+          status: result.status === 'completed' ? (passedCount === result.results.length ? 'success' : 'fail') : 'error',
+          feedback: result.results.map((r, i) => 
+            r.passed ? `Case ${i + 1}: ✓ Passed` : `Case ${i + 1}: ✗ ${r.stderr || 'Wrong output'}`
+          ).join('\n'),
+          summary: {
+            passed: passedCount,
+            total: result.results.length
+          },
+          testResults: result.results.map((r, i) => ({
+            index: i,
+            input: testCases[i]?.input,
+            expected: testCases[i]?.expectedOutput,
+            actual: r.actualOutput || r.stdout || '',
+            passed: r.passed,
+            error: r.stderr || undefined,
+            isCustom: !!customInput
+          }))
+        }
+      });
+    } else {
+      res.json({
+        success: true,
+        data: {
+          status: 'error',
+          feedback: result.error || 'No output returned from execution',
+          summary: { passed: 0, total: 0 },
+          testResults: []
+        }
+      });
+    }
   } catch (error) {
     if (isExecutionProviderError(error)) {
       sendExecutionProviderFallback(res, error, req.body?.customInput);
@@ -568,17 +604,7 @@ export const endInterview = async (req: Request, res: Response): Promise<void> =
 
     res.json({ 
       success: true, 
-      data: {
-        session,
-        scoring: {
-          totalScore,
-          percentile: await weightedScoringService.calculatePercentile(
-            totalScore,
-            session.config.difficulty,
-            [] // TODO: get actual topics
-          )
-        }
-      }
+      data: session
     });
   } catch (error) {
     sendServiceError(res, error, 'Failed to end session');
@@ -597,8 +623,8 @@ export const getHistory = async (req: Request, res: Response): Promise<void> => 
 export const getSession = async (req: Request, res: Response): Promise<void> => {
   try {
     const sessionId = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
-    const session = await interviewService.getSession(sessionId, req.userId!);
-    res.json({ success: true, data: session });
+    const sessionData = await getSessionWithSecret(sessionId, req.userId!);
+    res.json({ success: true, data: sessionData });
   } catch (error) {
     sendServiceError(res, error, 'Error fetching session');
   }

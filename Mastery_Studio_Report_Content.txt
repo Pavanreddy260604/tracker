@@ -1,0 +1,92 @@
+3. SYSTEM ANALYSIS
+
+3.1 Introduction
+The emergence of Large Language Models (LLMs) has fundamentally transformed the creative writing landscape, yet a significant gap remains between general-purpose artificial intelligence and the specialized requirements of professional screenplay development. Mastery Studio is an advanced AI-SaaS platform engineered specifically to address this discrepancy. By implementing a sophisticated Retrieval-Augmented Generation (RAG) architecture, the system provides an environment where AI-assisted writing is not merely generative, but contextually grounded in a project's unique narrative DNA. The system acts as a "Master Authority" over a screenplay's universe, ensuring that every character voice, plot beat, and world-building rule is strictly adhered to during the creative process.
+
+3.2 Problem Statement
+The current digital ecosystem for screenwriters is characterized by fragmentation and a lack of integrated intelligence. Professional writers face several critical challenges:
+1. Narrative Hallucination: Standard LLMs (like GPT-4 or Claude) lack persistent state for long-form narrative. This leads to "context drift" where the AI forgets key information about characters or previous scenes.
+2. Manual Documentation Fatigue: Writers are forced to manually maintain "Story Bibles" in separate documents (Word/Evernote), leading to inconsistencies when those bibles are not synchronized with the actual script.
+3. Formatting Inefficiency: Screenplay standards are rigid (standardized sluglines, character cues, dialogue). General AI tools often fail to maintain these formats, requiring hours of manual post-generation cleanup.
+4. Economic Barriers: Power users often need multiple AI subscriptions to access different models (Groq for speed, Ollama for privacy, OpenAI for reasoning), leading to high costs and siloed data.
+
+3.3 Existing System
+The existing system relies on disconnected silos of information and generic AI tools.
+* Generic LLM Interfaces: Tools like ChatGPT provide high-quality text but operate on a "stateless" basis within a single session. They do not have access to an external, validated database of "Story Authority" (Bible) unless manually pasted in, which is limited by token windows.
+* Traditional Screenwriting Software: Industry-standard apps like Final Draft provide excellent formatting tools but lack integrated narrative intelligence. They operate as "dumb" text editors that do not understand the subtext or character arcs being written.
+* Manual Collaboration: Teams must share bibles and drafts via cloud storage, which often leads to version control issues and "out-of-sync" creative decisions.
+
+3.4 Proposed System
+Mastery Studio proposes a unified, RAG-driven ecosystem that centralizes the "Story Bible" as the ground truth for all AI operations.
+1. Master Authority RAG Gateway: The system indexes the entire project history, including character profiles, location bibles, and previous scene drafts, into a high-performance vector database (Redis/LlamaIndex).
+2. Context-Aware Assistance: When a writer requests assistance or generates a scene, the system automatically retrieves the "Top-K" most relevant narrative chunks from the bible, injecting them into the LLM prompt to ensure 100% accuracy.
+3. Multi-Model Orchestration: A custom "AI Nexus" allows users to toggle between Groq (sub-second generation), Ollama (local private inference), and OpenAI (deep reasoning) without leaving the editor.
+4. Automated Validation: The system features a "Critic Service" that analyzes newly written scenes against the established bible to flag inconsistencies in character behavior or plot logic.
+
+3.4.1 Advantages of Proposed System
+1. Superior Context Reliability: High-fidelity RAG using BGE-M3 embeddings ensures the AI never "forgets" a project detail.
+2. Standardized Formatting: Integrated Fountain/PDF parsers ensure every generated output is production-ready.
+3. Local Data Privacy: Through Ollama integration, sensitive IP remains on the writer's local hardware during the creative phase.
+4. Unified Credit Economy: Eliminates subscription fatigue by providing a single platform for all cutting-edge AI models.
+5. Real-Time Scene Analytics: Scene-by-scene word count tracking and narrative density analysis.
+6. Seamless Multi-Language Support: Native support for Telugu, Hindi, and other regional languages via specialized transliteration layers.
+7. Collaborative Integrity: Centralized "Bible" ensures all co-writers are working from the same story facts.
+8. Reduced Cognitive Load: AI handles the "drudge work" of formatting and continuity checking, allowing the writer to focus on story.
+
+3.5 Software & Hardware Requirement Specification
+
+Hardware Requirements:
+* Processor: Intel Core i5/i7 (11th Gen+) or Apple Silicon (M1/M2/M3) for vector processing.
+* RAM: 8 GB Minimum (16 GB Recommended for local LLM inference via Ollama).
+* Storage: 256 GB SSD (Minimum) for high-speed indexing and vector storage.
+* Network: High-speed internet (for Cloud LLM API access).
+
+Software Requirements:
+* Operating System: Windows 10/11, macOS (Ventura+), or Linux.
+* Frontend: React 18+, TypeScript 5.0, Tailwind CSS, Lucide Icons.
+* Backend: Node.js (v18+), Express.js, TypeScript.
+* Database: PostgreSQL (Relational), Redis (Vector store/Similarity search).
+* AI Frameworks: LlamaIndex (RAG), BGE-M3 (Embeddings), HuggingFace Transformers.
+* IDE: Visual Studio Code.
+
+---
+
+4. SYSTEM DESIGN
+
+4.1 Introduction
+System design involves defining the architecture, modules, and data flow of the Mastery Studio platform to ensure scalability, reliability, and low-latency AI interaction. The design emphasizes a "Service-Oriented Architecture" (SOA) where AI processing, vector retrieval, and state management are handled by decoupled, high-performance services.
+
+4.2 System Architecture
+The platform follows a modern three-tier architecture:
+1. Presentation Layer: A responsive React application providing the Studio Editor, Project Dashboard, and Admin Panel.
+2. Application Layer: A Node/Express backend that orchestrates the AI Nexus, RAG Gateway, and Ingestion Pipeline.
+3. Data Layer: A dual-database strategy using PostgreSQL for transactional data (user projects, bibles) and Redis for high-speed vector embeddings and cache management.
+
+[DIAGRAM SPACE: SYSTEM ARCHITECTURE BLOCK DIAGRAM]
+
+4.3 Module Description
+1. Project & Bible Management: Handles the CRUD operations for story "Universes." It tracks genres, loglines, and project metadata.
+2. Ingestion & Parsing Service: A specialized pipeline that takes input (PDF, Fountain, Text) and uses a regex-based screenplay parser to break scripts into "chunks" (Scene, Dialogue, Action).
+3. RAG Query Engine: Uses LlamaIndex to perform cosine similarity searches on the vector database, identifying the most relevant story context for any given user query.
+4. Assistant Nexus: The core interaction module that supports real-time selection-based AI generation, streaming responses, and progress tracking.
+5. Critic & Validator Service: Performs automated audits of script versions to ensure consistency between the generated text and the master bible.
+
+4.4 Database Design
+The relational database is designed around a hierarchical narrative structure:
+* Bible: The root entity representing a project. It holds global context like genre and universe-level loglines.
+* Scene: Child entity of Bible. Stores the raw text, word count, and current production status.
+* Character: Stores character descriptions, personality traits, and voice samples for RAG context.
+* MasterScript: Represents the "Authority" source docs used to train or refine the AI's understanding of a specific project style.
+* User: Manages authentication, roles, and project permissions.
+
+[DIAGRAM SPACE: ENTITY RELATIONSHIP DIAGRAM (ERD)]
+
+4.5 AI Process Flow (Sequence Detail)
+1. Selection Event: The user highlights a section of text in the Studio Editor.
+2. Context Retrieval: The backend sends the previous 2000 tokens + selection to the RAG Query Engine.
+3. Vector Search: Redis identifies relevant "Bible" chunks (Character traits, plot points) based on the current scene.
+4. Prompt Synthesis: The system combines the user's instruction, the RAG context, and the current scene into a "Master Prompt."
+5. Inference: The prompt is sent to the selected model (Groq/Ollama/OpenAI) via the AI Nexus.
+6. Transformation: The AI response is formatted by the Screenplay Parser and streamed back to the editor.
+
+[DIAGRAM SPACE: SEQUENCE DIAGRAM - AI INFERENCE FLOW]

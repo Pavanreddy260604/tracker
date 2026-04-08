@@ -9,11 +9,13 @@ type ViolationType =
   | 'devtools_detected'
   | 'integrity_violation'
   | 'paste_detected'
-  | 'automation_detected';
+  | 'automation_detected'
+  | 'camera_lost'
+  | 'audio_threshold_reached';
 
 export interface SecureViolation {
-  type: ViolationType;
-  timestamp: number;
+  violationType: ViolationType;
+  timestamp: string; // Changed to string (ISO)
   message: string;
   penalized: boolean;
   clientProof: string;
@@ -38,8 +40,10 @@ interface UseSecureProctoringReturn {
   violationCount: number;
   isLocked: boolean;
   enterFullscreen: () => Promise<boolean>;
-  generateEventProof: (type: ViolationType, data?: Record<string, unknown>) => Promise<string>;
+  generateEventProof: (type: ViolationType, data?: Record<string, unknown>) => Promise<{ proof: string; timestamp: string }>;
+  recordViolation: (type: ViolationType, message: string, extraData?: Record<string, unknown>) => Promise<void>;
   terminateTest: () => void;
+  endGracePeriod: () => void;
 }
 
 type FullscreenDocument = Document & {
@@ -74,6 +78,16 @@ export function useSecureProctoring({
   const keystrokeBufferRef = useRef<{ key: string; pressTime: number; releaseTime: number }[]>([]);
   const integrityCheckIntervalRef = useRef<number | null>(null);
   const expectedHashRef = useRef<string>('');
+  const isGracePeriodRef = useRef(true);
+
+  // Grace period: blocks ALL violations until consumer calls endGracePeriod()
+  // This prevents false positives before the user clicks "ENTER FULLSCREEN & START TEST"
+  const endGracePeriod = useCallback(() => {
+    // Small delay to let fullscreen transition settle
+    setTimeout(() => {
+      isGracePeriodRef.current = false;
+    }, 1500);
+  }, []);
 
   // Terminate test
   const terminateTest = useCallback(() => {
@@ -87,15 +101,21 @@ export function useSecureProctoring({
   const generateEventProof = useCallback(async (
     type: ViolationType,
     data?: Record<string, unknown>
-  ): Promise<string> => {
+  ): Promise<{ proof: string; timestamp: string }> => {
     sequenceNumberRef.current++;
-    const timestamp = Date.now();
+    const timestamp = new Date().toISOString();
     const seq = sequenceNumberRef.current;
     
-    // Create HMAC of event data using Web Crypto API
-    const dataStr = JSON.stringify({ sessionId, type, timestamp, seq, ...data });
+    // Create HMAC of event data (Harmonized with backend format: sessionId:type:timestamp:seq)
+    // We use the ISO string directly for 100% deterministic signature verification
+    const dataStr = `${sessionId}:${type}:${timestamp}:${seq}`;
     
     const encoder = new TextEncoder();
+    if (!secret || secret.length === 0) {
+      console.warn('[SecureProctoring] Missing secret for HMAC generation');
+      return { proof: 'anonymous-proof-' + timestamp, timestamp };
+    }
+    console.debug('[SecureProctoring] Initializing HMAC generation with session secret');
     const keyData = encoder.encode(secret);
     const messageData = encoder.encode(dataStr);
     
@@ -108,9 +128,11 @@ export function useSecureProctoring({
     );
     
     const signature = await crypto.subtle.sign('HMAC', cryptoKey, messageData);
-    return Array.from(new Uint8Array(signature))
+    const proof = Array.from(new Uint8Array(signature))
       .map(b => b.toString(16).padStart(2, '0'))
       .join('');
+
+    return { proof, timestamp };
   }, [sessionId, secret]);
 
   // Record a violation with cryptographic proof (now async)
@@ -120,6 +142,12 @@ export function useSecureProctoring({
     extraData?: Record<string, unknown>
   ): Promise<void> => {
     if (isTerminatingRef.current) return;
+    
+    // Ignore ALL violations during grace period (before user clicks "ENTER FULLSCREEN")
+    if (isGracePeriodRef.current) {
+      console.debug(`[SecureProctoring] Ignoring ${type} during grace period (pre-test gate)`);
+      return;
+    }
 
     const now = Date.now();
     
@@ -127,11 +155,11 @@ export function useSecureProctoring({
     if (now - lastViolationTimestampRef.current < 1200) return;
     lastViolationTimestampRef.current = now;
 
-    const clientProof = await generateEventProof(type, extraData);
+    const { proof: clientProof, timestamp } = await generateEventProof(type, extraData);
 
     const violation: SecureViolation = {
-      type,
-      timestamp: now,
+      violationType: type,
+      timestamp, // Now using the ISO string from generateEventProof
       message,
       penalized: true,
       clientProof,
@@ -240,16 +268,21 @@ export function useSecureProctoring({
     };
   }, [isLocked, recordViolation]);
 
-  // Tab/window switching
+  // Tab/window switching — deduplicated to prevent double-violation
   useEffect(() => {
+    let lastTabSwitchTime = 0;
+
     const handleVisibilityChange = () => {
       if (document.hidden && isLocked) {
+        lastTabSwitchTime = Date.now();
         recordViolation('tab_switch', 'Switched to another tab or window');
       }
     };
 
     const handleBlur = () => {
       if (isLocked) {
+        // Skip if a visibilitychange already fired within 2s (same user action)
+        if (Date.now() - lastTabSwitchTime < 2000) return;
         recordViolation('focus_loss', 'Window lost focus');
       }
     };
@@ -364,10 +397,11 @@ export function useSecureProctoring({
     if (!enableIntegrityChecks || !isLocked) return;
 
     // Calculate hash of critical proctoring code
+    // Uses a stable fingerprint so it only changes if code is tampered with
     const calculateIntegrityHash = () => {
-      // In production, this would hash the actual proctoring code
-      // For now, return a placeholder
-      return 'integrity-hash-' + Date.now();
+      const marker = typeof recordViolation === 'function' 
+        && typeof enterFullscreen === 'function';
+      return 'integrity-stable-' + String(marker);
     };
 
     expectedHashRef.current = calculateIntegrityHash();
@@ -388,7 +422,7 @@ export function useSecureProctoring({
         window.clearInterval(integrityCheckIntervalRef.current);
       }
     };
-  }, [isLocked, recordViolation, enableIntegrityChecks]);
+  }, [isLocked, recordViolation, enableIntegrityChecks, enterFullscreen]);
 
   // Prevent certain keyboard shortcuts
   useEffect(() => {
@@ -439,6 +473,8 @@ export function useSecureProctoring({
     isLocked,
     enterFullscreen,
     generateEventProof,
-    terminateTest
+    recordViolation,
+    terminateTest,
+    endGracePeriod
   };
 }

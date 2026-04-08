@@ -3,6 +3,7 @@ export interface ChatOptions {
     temperature?: number;
     max_tokens?: number;
     format?: 'json' | 'text';
+    seed?: number;
 }
 
 export interface IAIService {

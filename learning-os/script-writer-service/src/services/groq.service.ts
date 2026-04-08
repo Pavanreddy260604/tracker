@@ -36,8 +36,9 @@ export class GroqService implements IAIService {
                 messages: messages as any,
                 model: options?.model || this.model,
                 response_format: options?.format === 'json' ? { type: 'json_object' } : undefined,
-                temperature: options?.temperature ?? 0.7,
-                max_tokens: options?.max_tokens
+                temperature: options?.temperature ?? 0.0,
+                max_tokens: options?.max_tokens,
+                seed: options?.seed
             });
 
             return completion.choices[0]?.message?.content || '';
@@ -62,8 +63,9 @@ export class GroqService implements IAIService {
                 messages: formattedMessages as any,
                 model: options?.model || this.model,
                 stream: true,
-                temperature: options?.temperature ?? 0.7,
-                max_tokens: options?.max_tokens
+                temperature: options?.temperature ?? 0.0,
+                max_tokens: options?.max_tokens,
+                seed: options?.seed
             });
 
             for await (const chunk of stream) {

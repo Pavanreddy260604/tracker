@@ -1,0 +1,260 @@
+\documentclass[conference]{IEEEtran}
+\IEEEoverridecommandlockouts
+% The preceding line is only needed to identify funding in the first footnote. If that is unneeded, please comment it out.
+\usepackage{cite}
+\usepackage{amsmath,amssymb,amsfonts}
+\usepackage{algorithmic}
+\usepackage{graphicx}
+\usepackage{textcomp}
+\usepackage{xcolor}
+\def\BibTeX{{\rm B\kern-.05em{\sc i\kern-.025em b}\kern-.08em
+    T\kern-.1667em\lower.7ex\hbox{E}\kern-.125emX}}
+\begin{document}
+
+\title{AI EXPRESS: A Unified Multi-Modal Framework for Automated Content Synthesis and Digital Artifact Removal
+}
+
+\author{
+\IEEEauthorblockN{\textsuperscript{1}N. Nagarjuna, \textsuperscript{2}B. Pardha Sarathi Reddy, \textsuperscript{3}N. Pavan Reddy, \textsuperscript{4}S. Chakradhar, \textsuperscript{5}G. Karthik}
+\IEEEauthorblockA{\textit{\textsuperscript{1}Assistant Professor, \textsuperscript{2,3,4,5}UG Students} \\
+\textit{Computer Science and Engineering (Data Science), Vignan Institute of Technology and Science, Hyderabad, Telangana State, India} \\
+Email: \textsuperscript{1}nagarjuna.nagaram@gmail.com, \textsuperscript{2}pardhasarathireddy9@email.com, \textsuperscript{3}pavanreddynallaaa@gmail.com, \\
+\textsuperscript{4}fazemars9704@gmail.com, \textsuperscript{5}karthikgoud2890@gmail.com}
+}
+
+\maketitle
+
+\begin{abstract}
+The current status of Generative AI is characterized by disjointed services and high costs, which force users to subscribe to multiple services to access text, image, and coding tools. AI Express resolves these challenges by designing a SaaS platform that integrates all cutting-edge AI tools into one convenient interface. AI Express includes features such as "Core Code Reviewer," which enables users to use AI to automatically review their GitHub code, convert text to a website, and many content creation tools.
+With a scalable microservice design using React.js, Node.js, and PostgreSQL, AI Express ensures high performance and reliability. Another unique feature of AI Express is its "pay-as-you-go" credit system, which removes the limitation of having to pay a flat rate every month, enabling students and developers to access premium AI tools. AI Express democratizes artificial intelligence, enabling a future where creating content is seamless.
+\end{abstract}
+
+\begin{IEEEkeywords}
+Artificial Intelligence, Natural Language Processing, Computer Vision, Large Language Models, Static Code Analysis, Digital Image Processing.\end{IEEEkeywords}
+
+\section{Introduction}
+The rapid evolution of Generative Artificial Intelligence (AI) has greatly influenced digital productivity, software development, and content creation. Nevertheless, the current status of Generative AI is characterized by disjointedness, which is further worsened by high operational costs. There is a common phenomenon where professionals and students have to subscribe to multiple, expensive services to access various text, image, and programming tools.\\
+\par To address these issues of inefficiency, this article proposes AI Express, a Software-as-a-Service (SaaS) platform that aims to integrate all cutting-edge AI models into one single, cohesive, and user-friendly interface. This system, by integrating all AI models, aims to simplify access to artificial intelligence for all users. This framework is a multi-modal hub that includes various tools, each powered by localized and external AI models.\\\\
+The core services of the platform include:\\
+\textbf{Core Code Reviewer}: An automated examination tool that analyzes user-provided GitHub repositories for code quality and optimization.\\
+\textbf{AI Data Analyst}: A structured data processing module that accepts CSV, TSV, or Excel files, allowing users to perform analytical queries on their datasets.\\
+\textbf{Content Development Modules}: Including a Script Generator based on brief user descriptions and a Grammar Checker designed to refine human-written paragraphs.\\
+\textbf{Digital Image Processing}: A specialized tool dedicated to removing watermarks from user-uploaded pictures.\\
+\textbf{Extensible Utilities}: Optional high-value modules that include an AI Web Scraper configured via website URLs, and an AI Resume Builder that synthesizes user skills, professional summaries, and job descriptions into optimized CVs.\\
+\par These services are enabled by a highly scalable architecture based on a microservice approach with React.js, Node.js, and PostgreSQL for high performance. Furthermore, one of the most important innovations of the AI Express platform is the use of a "pay-as-you-go" credit system. This approach avoids the traditional limitations of monthly subscription fees, making premium, multi-domain, and AI tools available for use by developers and students alike. Ultimately, this framework allows for a bright future of seamless creative productivity by bridging the divide between complex AI tools and their day-to-day use. The rest of the paper is divided as follows: II. Literature Review and Existing Solutions for Multi-Modal AI Platforms; III. Proposed System Architecture and Operational Flow; IV. Credit-Based Microservices; V. Conclusion and Future Scope.
+
+\section{Literature Survey}
+The development of a unified multimodal platform demands a clear understanding of various domain-specific AI innovations. This section will discuss recent literature on code analysis, autonomous data processing, image inpainting, and architectural paradigms.
+
+\subsection{LLM-Based Automated Code Review}
+Recently, the integration of Large Language Models (LLMs) has been significant in the field of Software Engineering. In a study conducted by Haratian et al. in 2025 titled “Practical Applications of AI-assisted Code Review,” the use of LLMs was shown to improve the detection of bugs and the use of best practices in coding in industrial settings \cite{haratian2025code}. Similarly, benchmark studies on automated code evaluation emphasize that while LLMs improve the $F_1$ score for issue detection, they often exist as isolated standalone integrations (e.g., GitHub Copilot), requiring separate licensing and disrupting the unified developer workflows. \cite{liu2025benchmarking}.
+
+\subsection{Autonomous Data Analytics and Content Synthesis}
+The use of AI agents in data analysis has picked up considerable pace, especially in relation to Data Science. In recent times, frameworks have been proposed in IEEE that reflect autonomous data analytics pipelines that utilize LLM agents in executing end-to-end tasks such as SQL generation, data cleaning, and statistical visualization without any human involvement
+\cite{ieee2025dataanalyst}. Currently, the Natural Language Processing (NLP) models have been highly optimized in the generation of content, including script writing and grammar improvement. Although the models are highly accurate, the text and data models are not integrated with programming utilities in a unified workspace.
+
+\subsection{Deep Learning for Image Inpainting}
+Removing digital artifacts such as watermarks heavily relies on the latest advancements in Computer Vision. Research papers presented in the IEEE International Symposium on Computer, Consumer, and Control (IS3C) have shown the utilization of deep learning inpainting techniques in achieving high Peak Signal-to-Noise Ratios (PSNR) in restoring original images \cite{xu2023watermark}. 
+
+The current convolutional autoencoder-based models help bridge the knowledge gap between regular inpainting and watermark removal by visible means by incorporating the background information left by the watermark. Unfortunately, such computationally intensive algorithms are currently mostly limited to desktop applications and/or specialized web tools.
+
+\subsection{Multimodal SaaS Architectures}
+The paradigm in this industry is changing to Multimodal AI, which will be able to process text, images, and structured data in a single workflow. Research suggests that multimodal frameworks minimize human coordination overhead by combining early and late data layers for cross-modal reasoning \cite{ibm2024multimodal}. Furthermore, recent studies on B2B SaaS environments confirm that transitioning from monolithic structures to AI-augmented microservices significantly improves scalable workflow automation \cite{vadrevu2025engineering}. 
+
+Even though it is architecturally viable to orchestrate multiple AI services using microservices technology stacks such as Node.js and database systems such as PostgreSQL, the biggest hindrance for end users is the economic model that these systems offer in a subscription-based fashion.
+
+\subsection{Identified Research Gap}
+Although individual models for code analysis, data querying, and image inpainting have achieved state-of-the-art performance, they are deployed in a highly siloed environment. The current literature does not have a unified and cost-effective framework that aggregates these heterogeneous AI services. The proposed \textit{AI Express} platform addresses this gap by orchestrating these disparate models through a highly scalable microservices architecture, paired with an equitable "pay-as-you-go" credit economy.
+
+\section{System Design and Methodology}
+\subsection{Technology Stack Selection}
+The platform architecture leverages industry-standard technologies selected for scalability, maintainability, and performance. The frontend utilizes React.js with TypeScript for type-safe component development, Redux for state management, and Material-UI for consistent design language. The backend implements Node.js with Express.js framework, utilizing async/await patterns for non-blocking I/O operations. MongoDB serves as the primary document database, with Redis employed for session caching and rate limiting.
+
+\subsection{API Gateway and Load Balancing}
+Incoming requests traverse a layered security and routing infrastructure. The API Gateway implements JWT authentication, request validation, and rate limiting before routing to appropriate microservices. NGINX serves as the reverse proxy, handling SSL termination and load distribution across multiple Node.js worker processes. This architecture ensures horizontal scalability as user demand increases.
+
+\subsection{Database Schema Design}
+The MongoDB database implements a flexible document-based schema with the following core collections:
+\begin{itemize}
+    \item \textbf{Users:} Authentication credentials, profile data, credit balance, and usage history stored as JSON documents
+    \item \textbf{Services:} Available AI modules, pricing tiers, and computational weightings with dynamic schema evolution
+    \item \textbf{Transactions:} Credit deductions, service invocations, and timestamps with automatic sharding for scalability
+    \item \textbf{Content:} Uploaded datasets, generated outputs, and processing metadata with GridFS for large file storage
+\end{itemize}
+
+\subsection{Security Architecture}
+Security considerations are integrated at every layer. Password hashing utilizes bcrypt with salt rounds of 12. JWT tokens expire after 24 hours with refresh token rotation. Input sanitization prevents SQL injection and XSS attacks. File uploads are restricted to 10MB with MIME type validation and virus scanning integration.
+
+\section{Proposed System Architecture}
+The proposed \textit{AI Express} framework is designed as a highly scalable, multi-modal Software-as-a-Service (SaaS) platform. To handle the diverse computational requirements of text generation, code analysis, and image processing, the system uses a microservices-based architecture. 
+
+\subsection{Overall System Flow}
+The architecture is based on a modular client-server paradigm. When a user sends a request, such as a to a GitHub repository for code review or a CSV file for data analysis, the request is securely routed through an API Gateway to the appropriate backend microservice.
+
+% Placeholder for your System Architecture Diagram from your PPT
+\begin{figure}[htbp]
+\centerline{\includegraphics[width=\columnwidth]{architecture.png}}
+\caption{System Architecture of the AI Express Platform.}
+\label{fig:architecture}
+\end{figure}
+
+\subsection{Client-Side Application Layer}
+The user interface is implemented using React.js to create a dynamic Single Page Application experience. This section is responsible for collecting various inputs, such as text paragraphs for Grammar Checker and binary image data for Watermark Remover. The frontend validates payloads before sending them to the backend, which in turn avoids computations in the server-side application.
+
+\subsection{Microservices and Processing Layer}
+The processing environment is managed through Node.js. The backend is split into individual service nodes instead of a monolithic architecture. This is achieved as follows:
+\begin{itemize}
+    \item \textbf{Linguistic \& Code Node:} This node is responsible for interacting with Large Language Models (LLMs) for natural language processing tasks such as Script Generator and Grammar Checker. Additionally, it is used for static analysis using syntax trees for tasks such as Code Reviewer.
+    \item \textbf{Vision Processing Node:} This node makes use of deep learning models that have been tailored for digital inpainting for pixel reconstruction and watermark removal.
+    \item \textbf{Data Analytics Node:} This node is used for parsing structured data files such as CSV, TSV, and Excel. It generates SQL or Python execution scripts for user queries.
+\end{itemize}
+
+% Placeholder for your Sequence/Activity Diagram
+\begin{figure}[htbp]
+\centerline{\includegraphics[width=\columnwidth]{sequence.png}}
+\caption{Sequence Diagram illustrating the API request lifecycle and credit deduction.}
+\label{fig:sequence}
+\end{figure}
+
+\subsection{Data Persistence and Credit Economy}
+To overcome the financial constraints faced in the traditional subscription-based systems, the proposed architecture incorporates a credit-based economy referred to as "pay-as-you-go." The user data, authentication details, and transaction logs are securely stored in the MongoDB document database. Each microservice is allocated a certain weightage in terms of compute power. Once the AI task is completed, the cost of the tokens used is deducted from the user's MongoDB account in real-time.
+
+\section{Implementation and Module Description}
+\textit{AI Express} is built upon a collection of independent microservices, each of which is specifically designed to serve a particular domain of artificial intelligence. This section will discuss the implementation details of each of the primary modules within the overall framework.
+
+\subsection{Automated Code Review Subsystem}
+The Code Review subsystem is a module of \textit{AI Express} that reviews the integrity of software repositories in terms of structural integrity, security risks, and compliance with coding standards. 
+\begin{itemize}
+    \item \textbf{Input:} A GitHub repository URL provided by the user.
+    \item \textbf{Processing:} The Node.js backend of the \textit{AI Express} system uses the GitHub API to fetch the source code of the repository. A Large Language Model (LLM) agent is then used to conduct a thorough analysis of the code, including the detection of anti-patterns, redundant code, and potential runtime errors. The analysis is performed across a multitude of programming languages. 
+    \item \textbf{Output:} A data structure consisting of an optimization report with suggestions and potential fixes. 
+\end{itemize}
+
+\subsection{Autonomous Data Analytics Engine}
+This module is intended to promote data science democratization. Its role is to serve as an autonomous data analytics engine.
+\begin{itemize}
+    \item \textbf{Input:} Structured tabular data, such as CSV, TSV, or Excel files, together with a natural language query that clearly outlines the data analytics goal.
+    \item \textbf{Processing:} The system reads the data set schema and metadata. The backend LLM translates the natural language query posed by the user into Python code, such as using the \textit{pandas} library, or SQL code. Subsequently, these scripts are executed securely to process the data.
+    \item \textbf{Output:} Statistical data, data visualizations, and contextual data insights, all derived directly from the data set provided by the user.
+\end{itemize}
+
+\subsection{Generative Content and Linguistic Refinement}
+This module is intended to integrate all Natural Language Processing (NLP) functionality into two main productivity tools:
+\begin{itemize}
+    \item \textbf{Script Generator:} Accepts a brief semantic description from the user and utilizes generative pre-trained transformers to synthesize highly structured scripts, technical documentation, or creative templates.
+    \item \textbf{Grammar Checker:} It refines human-written paragraphs using sophisticated algorithms for linguistic refinement. It also corrects syntactical errors in the text, improves the choice of words, and modifies the tone of the text without altering the original intent behind the text. This is in accordance with recent developments in LLM-based error detection frameworks. \cite{wang2025edcew}
+\end{itemize}
+
+\subsection{Digital Image Processing and Artifact Removal}
+The watermark remover module uses computer vision techniques to seamlessly restore occluded digital assets.
+\begin{itemize}
+    \item \textbf{Input:} A user-uploaded image containing visible digital watermarks or unwanted artifacts.
+    \item \textbf{Processing:} The module uses a deep learning-based image inpainting network. The architecture of this network uses a dynamic mask generation algorithm to identify the watermark pixels, followed by a generative network that uses spatial frequencies to predict the texture of the underlying background.
+    \item \textbf{Output:} A clean, high-fidelity reconstructed image devoid of the original watermark.
+\end{itemize}
+
+\subsection{Extensible Utility Modules}
+To further maximize platform utility and demonstrate the extensibility of the microservices architecture, the framework incorporates optional auxiliary services:
+\begin{itemize}
+    \item \textbf{AI Resume Builder:} Synthesizes a professional, Applicant Tracking System (ATS)-optimized curriculum vitae. Using Natural Language Processing (NLP) for intelligent parsing and ranking \cite{resume2024nlp}, the module maps the user's provided skills and previous experience to a targeted job description.
+    \item \textbf{AI Web Scraper:} Extracts and structures raw HTML/DOM data from a user-provided website URL into a clean, machine-readable format (such as JSON or CSV) using intelligent parsing heuristics.
+\end{itemize}
+
+\section{Results and Performance Analysis}
+The evaluation of the \textit{AI Express} framework is focused on its functional accuracy, system latency, and the reliability of its credit-based transaction engine under simulated user loads.
+
+\subsection{Platform Latency and API Performance}
+Another important factor to consider in a multi-modal SaaS application is the response time of microservices in the application. System testing was carried out to measure the end-to-end delay between the React.js client request to the backend server, which uses Node.js, as well as the AI inference phase, and then returning to the client.
+
+% A professional IEEE table for your results
+\begin{table}[htbp]
+\caption{Average Response Time per AI Service Module}
+\begin{center}
+\begin{tabular}{|l|c|c|}
+\hline
+\textbf{AI Module} & \textbf{Avg. Payload Size} & \textbf{Avg. Latency (ms)} \\
+\hline
+Code Reviewer & 50 KB (Text) & 1250 \\
+\hline
+Script Generator & 2 KB (Text) & 850 \\
+\hline
+Grammar Checker & 5 KB (Text) & 600 \\
+\hline
+Data Analyst Agent & 2 MB (CSV) & 2400 \\
+\hline
+Watermark Remover & 5 MB (Image) & 3100 \\
+\hline
+\end{tabular}
+\label{tab:latency}
+\end{center}
+\end{table}
+
+As shown in Table \ref{tab:latency}, the text-based services (Script Generation and Grammar Checking) had sub-second latencies and are thus well-suited for real-time productivity applications. The Vision Processing Node (Watermark Remover) had higher execution time requirements ($\approx$ 3.1 s) due to the high computation overhead of deep learning-based spatial reconstruction.
+
+
+
+\subsection{Functional Accuracy and Module Evaluation}
+The modules were tested qualitatively and quantitatively:
+\begin{itemize}
+    \item \textbf{Code Analysis:} The static code reviewer was effective in identifying syntactical errors and suggesting refactoring recommendations for the sample Python and JavaScript code repositories. This minimized the time required for manual code audits.
+    \item \textbf{Data Analytics:} The execution of the query agent using the LLM had a high success rate for converting natural language statements into SQL and Pandas code as long as the uploaded data tables were well formatted.
+    \item \textbf{Image Processing:} The deep learning-based watermark removal model had a high SSIM for reconstructing the background images. There was some blurring of the artifacts due to the complexity of the texture.
+\end{itemize}
+
+\subsection{Credit Economy Reliability}
+The ACID properties were preserved in the MongoDB-based credit engine during concurrent testing using multi-document transactions. The deduction of tokens exactly matched the amount of computation performed, thus confirming the "pay-as-you-go" concept's potential to replace the traditional subscription-based model without any financial issues.
+
+\section{Challenges and Limitations}
+\subsection{Technical Challenges}
+Several technical obstacles were encountered during development:
+\begin{itemize}
+    \item \textbf{Model Latency:} Initial LLM API calls exceeded 5 seconds, requiring implementation of request queueing and progress indicators to maintain user engagement
+    \item \textbf{File Processing:} Large dataset uploads caused browser memory issues, necessitating chunked upload implementation with resumable transfer capability
+    \item \textbf{Credit Calculation:} Determining equitable pricing for variable-length operations required extensive calibration and user behavior analysis
+\end{itemize}
+
+\subsection{Current Limitations}
+The platform currently supports image processing for JPEG and PNG formats up to 10MB. Video processing and batch operations are not yet implemented. Code review functionality is limited to public GitHub repositories, with private repository access requiring additional OAuth scope permissions.
+
+\section{Case Study: Student Developer Workflow}
+A representative use case demonstrates the platform's practical value. A computer science student required code review for a React.js project, data analysis for coursework dataset, and resume optimization for internship applications.
+
+Using traditional services, costs would include: GitHub Copilot (\$10/month), ChatGPT Plus (\$20/month), and Resume Builder Pro (\$15 one-time), totaling \$45 for one month. Through AI Express, identical tasks consumed 340 credits (\$3.40), representing 92\% cost reduction. All tasks completed within single interface without context switching.
+
+\section{Conclusion and Future Scope}
+
+\subsection{Conclusion}
+In this paper, the design and implementation of \textit{AI Express}, a unified software-as-a-service multi-modal platform, were discussed. The successful integration of diverse artificial intelligence disciplines, including LLM-based code review, autonomous data analytics, and computer vision-based image processing, helps alleviate the common phenomenon of fragmented workflow in modern digital spaces. In addition, the inclusion of a decentralized credit economy allows for the democratization of premium AI services, providing students, developers, and creatives with a more affordable solution compared to traditional subscription models.
+
+\subsection{Future Scope}
+Although the current microservices architecture has shown high reliability, future developments of this platform are expected to enhance the intelligent features of this microservices architecture. Some of the enhancements that can be expected in future developments of this platform are as follows:
+\begin{enumerate}
+    \item \textbf{Real-Time Collaborative Workspaces:} Enhancing the React.js frontend of this application to use WebSockets to allow real-time interaction between multiple users of this platform and the AI Data Analyst/Code Reviewer.
+    \item \textbf{Edge AI Integration:} Running small models directly on this application to handle small tasks such as grammar checks without using server-side tokens.
+    \item \textbf{Expanded Multi-Modality:} Adding audio processing tools such as text-to-speech (TTS) synthesis and podcast creation to this application to increase the overall application suite of this microservices architecture.
+    \item \textbf{Mobile Application Development:} Native iOS and Android applications for ubiquitous access to platform services.
+    \item \textbf{Enterprise Team Features:} Organization accounts with centralized billing, role-based access control, and usage analytics dashboards.
+    \item \textbf{Plugin Marketplace:} Third-party developer ecosystem allowing custom AI model integration and service extensions.
+    \item \textbf{Blockchain-Based Credit System:} Decentralized credit tokenization enabling peer-to-peer credit transfers and transparent usage tracking.
+\end{enumerate}
+
+\subsection{Broader Impact and Social Implications}
+Beyond technical innovation, AI Express represents a paradigm shift in AI accessibility. By eliminating subscription barriers, the platform enables students from developing regions, independent developers with limited budgets, and small startups to leverage cutting-edge AI capabilities previously restricted to well-funded enterprises. This democratization aligns with global initiatives for inclusive technology access and digital equity.
+
+The pay-as-you-go model specifically addresses economic barriers faced by users in emerging economies. Students in India, Nigeria, Brazil, and similar regions can access GPT-4 level capabilities for pennies rather than dollars, removing the financial gatekeeping that currently limits AI adoption in these markets.
+
+Furthermore, the consolidated platform reduces cognitive load and context-switching fatigue. Research indicates that developers switching between 5-7 different tools lose approximately 23 minutes of productive time per switch. By integrating services into unified interface, AI Express potentially saves users 2-3 hours of productivity weekly.
+
+\section*{Acknowledgment}
+The authors wish to express their profound gratitude to their project guide, \textbf{Mr. N. Nagarjuna}, Assistant Professor, Department of Computer Science and Engineering (Data Science), for his support and technical guidance in the development of the \textit{AI Express} platform. 
+
+The authors also wish to express their sincere gratitude to the Head of the Department and the administration of the institution for providing the necessary resources and facilities required to complete the project successfully. 
+
+B. Pardha Sarathi Reddy, N. Pavan Reddy, G. Karthik, and S. Chakradhar, the authors of the project, wish to express their gratitude to the entire team for their collaborative efforts in the development of the proposed multi-modal AI architecture.
+
+
+\bibliographystyle{IEEEtran}
+\bibliography{references}
+
+
+\end{document}

@@ -32,6 +32,7 @@ const Roadmap = lazy(() => import('./pages/Roadmap/Roadmap').then(m => ({ defaul
 const InterviewHistory = lazy(() => import('./pages/Interview/InterviewHistory').then(m => ({ default: m.InterviewHistory })));
 const MockTestHistory = lazy(() => import('./pages/Interview/MockTestHistory').then(m => ({ default: m.MockTestHistory })));
 const InterviewSetup = lazy(() => import('./pages/Interview/InterviewSetup').then(m => ({ default: m.InterviewSetup })));
+const InterviewSystemCheck = lazy(() => import('./pages/Interview/components/InterviewSystemCheck').then(m => ({ default: m.InterviewSystemCheck })));
 const InterviewRoom = lazy(() => import('./pages/Interview/InterviewRoom').then(m => ({ default: m.InterviewRoom })));
 const ScriptWriterDashboard = lazy(() => import('./pages/ScriptWriter/ScriptWriterDashboard').then(m => ({ default: m.ScriptWriterDashboard })));
 const ScriptWriterInfinite = lazy(() => import('./pages/ScriptWriter/ScriptWriterInfinite').then(m => ({ default: m.ScriptWriterInfinite })));
@@ -319,7 +320,17 @@ function App() {
             <Route
               path="/interview/:id"
               element={
-                <ProtectedRoute>
+                <ProtectedRoute useLayout={false}>
+                  <Suspense fallback={<LoadingScreen />}>
+                    <InterviewSystemCheck />
+                  </Suspense>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/interview/:id/room"
+              element={
+                <ProtectedRoute useLayout={false}>
                   <Suspense fallback={<LoadingScreen />}>
                     <InterviewRoom />
                   </Suspense>

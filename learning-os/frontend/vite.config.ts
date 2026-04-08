@@ -24,12 +24,17 @@ export default defineConfig({
     },
   },
   server: {
-    port: 5173,
+    port: 5174,
     host: true, // Listen on all network interfaces (allows mobile device access)
     allowedHosts: true, // Allow ngrok and other tunnels to bypass the Host header check
     proxy: {
       // Script Writer Service Routes (Port 5003)
-      '/api/script': { target: 'http://localhost:5003', changeOrigin: true },
+      '/api/script': { 
+        target: 'http://localhost:5003', 
+        changeOrigin: true,
+        proxyTimeout: 120000,
+        timeout: 120000
+      },
 
       // Main Backend (Catch-all for other /api)
       '/api': {

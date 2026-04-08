@@ -4,7 +4,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { motion } from 'framer-motion';
-import { User, Mail, Lock, ArrowRight, Check, X } from 'lucide-react';
+import { User, Mail, Lock, ArrowRight, Check, X, Eye, EyeOff } from 'lucide-react';
 import { useAuthStore } from '../stores/authStore';
 import { cn } from '../lib/utils';
 import { Logo } from '../components/ui/Logo';
@@ -27,6 +27,8 @@ const registerSchema = z.object({
 type RegisterForm = z.infer<typeof registerSchema>;
 
 export function Register() {
+    const [showPassword, setShowPassword] = useState(false);
+    const [showConfirmPassword, setShowConfirmPassword] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const navigate = useNavigate();
     const { register: registerUser, isLoading } = useAuthStore();
@@ -138,15 +140,23 @@ export function Register() {
                             <div className="relative">
                                 <Lock size={20} className="absolute left-4 top-1/2 -translate-y-1/2 text-text-secondary" />
                                 <input
-                                    type="password"
+                                    type={showPassword ? 'text' : 'password'}
                                     autoComplete="new-password"
                                     className={cn(
-                                        "auth-input w-full pl-12 pr-4 text-base",
+                                        "auth-input w-full pl-12 pr-12 text-base",
                                         errors.password && "auth-input-error"
                                     )}
                                     placeholder="Create a strong password"
                                     {...register('password')}
                                 />
+                                <button
+                                    type="button"
+                                    className="password-toggle"
+                                    onClick={() => setShowPassword(!showPassword)}
+                                    tabIndex={-1}
+                                >
+                                    {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                                </button>
                             </div>
 
                             {/* Password Requirements - Better Layout */}
@@ -187,15 +197,23 @@ export function Register() {
                             <div className="relative">
                                 <Lock size={20} className="absolute left-4 top-1/2 -translate-y-1/2 text-text-secondary" />
                                 <input
-                                    type="password"
+                                    type={showConfirmPassword ? 'text' : 'password'}
                                     autoComplete="new-password"
                                     className={cn(
-                                        "auth-input w-full pl-12 pr-4 text-base",
+                                        "auth-input w-full pl-12 pr-12 text-base",
                                         errors.confirmPassword && "auth-input-error"
                                     )}
                                     placeholder="Confirm your password"
                                     {...register('confirmPassword')}
                                 />
+                                <button
+                                    type="button"
+                                    className="password-toggle"
+                                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                                    tabIndex={-1}
+                                >
+                                    {showConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                                </button>
                             </div>
                             {errors.confirmPassword && (
                                 <p className="text-sm text-status-error font-medium">{errors.confirmPassword.message}</p>

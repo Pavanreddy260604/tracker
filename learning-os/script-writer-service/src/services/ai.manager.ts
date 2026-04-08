@@ -9,8 +9,16 @@ import crypto from 'crypto';
 
 export type AIProvider = 'ollama' | 'groq';
 
+// PH 25: Centralized patterns for surgical patching parity
+export const SCRIPT_WRITER_PATTERNS = {
+    STOP_WORDS: ['[END]', '---', 'STORY_CONTEXT_SUMMARY:', 'SCENE_PLAN:', 'SCENE_SCRIPT:', 'CHARACTER_MEMORY_UPDATE:', 'PLOT_STATE_UPDATE:'],
+    SEARCH_MARKER: '<<<SEARCH>>>',
+    REPLACE_MARKER: '<<<REPLACE>>>',
+    JSON_BLOCK: /```json\n?([\s\S]*?)\n?```/i
+};
+
 export class AIServiceManager implements IAIService {
-    private activeProvider: AIProvider = 'ollama'; // Default to Ollama (Local)
+    private activeProvider: AIProvider = (process.env.AI_PROVIDER as AIProvider) || 'ollama'; 
     private providers: Record<AIProvider, IAIService>;
     private configPath: string;
     private lastEmbeddingDimension: number = 0;
@@ -130,7 +138,7 @@ export class AIServiceManager implements IAIService {
     }
 
     async generateEmbedding(text: string): Promise<number[]> {
-        return this.withEmbeddingLock(() => this.generateEmbeddingInternal(text));
+        return this.withEmbeddingLock(() => this.generateEmbeddingInternal(text), 15000); // 15s timeout
     }
 
     private sanitizeEmbeddingText(text: string): string {
@@ -232,15 +240,21 @@ export class AIServiceManager implements IAIService {
         return await llamaindexService.getEmbedding(text);
     }
 
-    private async withEmbeddingLock<T>(work: () => Promise<T>): Promise<T> {
+    private async withEmbeddingLock<T>(work: () => Promise<T>, timeoutMs?: number): Promise<T> {
         const prior = this.embeddingTail;
         let release!: () => void;
         this.embeddingTail = new Promise<void>(resolve => {
             release = resolve;
         });
 
-        await prior;
+        const timeout = timeoutMs ? new Promise((_, reject) => setTimeout(() => reject(new Error('Embedding lock timeout')), timeoutMs)) : null;
+
         try {
+            if (timeout) {
+                await Promise.race([prior, timeout]);
+            } else {
+                await prior;
+            }
             return await work();
         } finally {
             release();

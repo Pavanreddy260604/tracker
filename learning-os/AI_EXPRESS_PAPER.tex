@@ -1,0 +1,117 @@
+\documentclass[conference]{IEEEtran}
+\IEEEoverridecommandlockouts
+\usepackage{cite}
+\usepackage{amsmath,amssymb,amsfonts}
+\usepackage{algorithmic}
+\usepackage{graphicx}
+\usepackage{textcomp}
+\usepackage{xcolor}
+\def\BibTeX{{\rm B\kern-.05em{\sc i\kern-.025em b}\kern-.08em T\kern-.1667em\lower.7ex\hbox{E}\kern-.125emX}}
+\begin{document}
+
+\title{AI Express: Unified Multi-Modal Framework for Automated Content Synthesis}
+
+\author{
+\IEEEauthorblockN{N. Nagarjuna\textsuperscript{1}, B. Pardha Sarathi Reddy\textsuperscript{2}, N. Pavan Reddy\textsuperscript{3}, S. Chakradhar\textsuperscript{4}, G. Karthik\textsuperscript{5}}
+\IEEEauthorblockA{\textit{\textsuperscript{1}Assistant Professor, \textsuperscript{2-5}UG Students} \\
+\textit{CSE (Data Science), Vignan Institute of Technology and Science, Hyderabad, India} \\
+\textsuperscript{1}nagarjuna.nagaram@gmail.com, \textsuperscript{3}pavanreddynallaaa@gmail.com}
+}
+
+\maketitle
+
+\begin{abstract}
+Generative AI services are currently fragmented and expensive, requiring multiple subscriptions. AI Express addresses this by providing a unified SaaS platform integrating text, image, and coding tools. Key features include automated code review, content creation tools, and watermark removal. Built with React.js, Node.js, and PostgreSQL using a microservice architecture, the platform implements a "pay-as-you-go" credit system making premium AI tools accessible to students and developers.
+\end{abstract}
+
+\begin{IEEEkeywords}
+Artificial Intelligence, Multi-Modal AI, SaaS, Microservices, Code Analysis, Image Inpainting.
+\end{IEEEkeywords}
+
+\section{Introduction}
+Generative AI has revolutionized digital productivity, but current solutions are fragmented and expensive. Users need multiple subscriptions for text, image, and coding tools. AI Express addresses this by providing a unified SaaS platform integrating cutting-edge AI models into a single interface.
+
+The platform offers: (1) \textbf{Code Reviewer}---automated GitHub repository analysis; (2) \textbf{Data Analyst}---CSV/Excel processing with natural language queries; (3) \textbf{Content Tools}---script generation and grammar checking; (4) \textbf{Watermark Remover}---deep learning-based image inpainting; (5) \textbf{Utilities}---web scraper and resume builder.
+
+Built on React.js, Node.js, and PostgreSQL with a microservice architecture, AI Express implements a "pay-as-you-go" credit system, democratizing access to premium AI tools for students and developers.
+
+\section{Related Work}
+\subsection{LLM-Based Code Review}
+LLMs have significantly improved code review processes. Haratian et al.\cite{haratian2025code} demonstrated practical AI-assisted code review in industrial settings. However, existing solutions like GitHub Copilot require separate licensing, disrupting unified workflows.
+
+\subsection{Autonomous Data Analytics}
+Recent frameworks use LLM agents for end-to-end data tasks including SQL generation and visualization\cite{ieee2025dataanalyst}. While accurate, these tools remain isolated from programming utilities.
+
+\subsection{Image Inpainting}
+Deep learning techniques achieve high PSNR in watermark removal\cite{xu2023watermark}. However, such tools are typically limited to desktop applications rather than integrated web platforms.
+
+\subsection{Research Gap}
+Although individual AI models achieve high performance, they are deployed in siloed environments. AI Express addresses this gap by orchestrating heterogeneous AI services through a scalable microservices architecture with an equitable credit-based economy.
+
+\section{System Architecture}
+AI Express employs a microservices architecture (Fig. \ref{fig:architecture}) with three processing nodes:
+
+\textbf{Client Layer:} React.js SPA handling input validation and API communication.
+
+\textbf{Microservices:} (1) \textit{Linguistic \& Code Node}---LLM integration for NLP and static code analysis; (2) \textit{Vision Node}---deep learning inpainting for watermark removal; (3) \textit{Data Node}---structured data parsing and SQL generation.
+
+\textbf{Credit Economy:} PostgreSQL manages user data and real-time token deduction based on computational cost.
+
+\begin{figure}[htbp]
+\centerline{\includegraphics[width=0.9\columnwidth]{architecture.png}}
+\caption{AI Express microservice architecture.}
+\label{fig:architecture}
+\end{figure}
+
+\section{Module Implementation}
+\textbf{Code Review:} GitHub API fetches repository source code; LLM agents analyze for anti-patterns, security risks, and optimization opportunities across multiple languages.
+
+\textbf{Data Analyst:} Accepts CSV/TSV/Excel with natural language queries. Backend LLM translates queries to Pandas/SQL, executing securely to return statistics and visualizations.
+
+\textbf{Content Tools:} Script Generator creates structured content from brief descriptions. Grammar Checker uses LLM-based error detection for syntactic correction and tone refinement.
+
+\textbf{Watermark Removal:} Deep learning inpainting network with dynamic mask generation identifies watermark pixels, then reconstructs background using spatial frequency prediction.
+
+\textbf{Utilities:} Resume Builder creates ATS-optimized CVs via skill-job description mapping. Web Scraper extracts structured data from URLs using intelligent parsing.
+
+\section{Results and Analysis}
+\subsection{Performance Metrics}
+Table \ref{tab:latency} shows average response times. Text services achieve sub-second latency; image processing requires $\approx$3.1s due to deep learning overhead.
+
+\begin{table}[htbp]
+\caption{Average Response Time per Service}
+\begin{center}
+\begin{tabular}{|l|c|c|}
+\hline
+\textbf{Service} & \textbf{Payload} & \textbf{Latency (ms)} \\
+\hline
+Code Reviewer & 50 KB & 1250 \\
+Script Generator & 2 KB & 850 \\
+Grammar Checker & 5 KB & 600 \\
+Data Analyst & 2 MB & 2400 \\
+Watermark Remover & 5 MB & 3100 \\
+\hline
+\end{tabular}
+\label{tab:latency}
+\end{center}
+\end{table}
+
+\subsection{Evaluation}
+Code analysis successfully identified syntactical errors and refactoring opportunities. Data analyst achieved high success rates for well-formatted tables. Watermark removal showed high SSIM scores with minor artifact blurring on complex textures.
+
+\subsection{Credit Economy}
+PostgreSQL ACID properties were verified under concurrent load testing. Token deductions matched computation costs, confirming the pay-as-you-go model's viability versus subscription pricing.
+
+\section{Conclusion}
+AI Express successfully integrates LLM-based code review, autonomous data analytics, and computer vision into a unified SaaS platform. The microservice architecture with pay-as-you-go credit economy democratizes premium AI tools, providing an affordable alternative to fragmented subscription services.
+
+\subsection{Future Work}
+Planned enhancements include: (1) WebSocket-based collaborative workspaces; (2) Edge AI for client-side grammar checking; (3) Audio processing modules for TTS and podcast generation.
+
+\section*{Acknowledgment}
+The authors thank Mr. N. Nagarjuna for technical guidance and the institution for providing necessary resources.
+
+\bibliographystyle{IEEEtran}
+\bibliography{references}
+
+\end{document}

@@ -29,7 +29,7 @@ const chatSessionSchema = new mongoose.Schema({
     },
     title: {
         type: String,
-        default: 'New Conversation'
+        default: 'New Chat'
     },
     messages: [messageSchema],
     // Metadata for potential future features (e.g., usage stats, context window)

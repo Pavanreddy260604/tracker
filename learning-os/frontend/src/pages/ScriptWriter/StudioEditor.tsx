@@ -40,6 +40,7 @@ export function StudioEditor({
     const saveLabel = saveState === 'saving' ? 'Saving...' : saveState === 'saved' ? 'Saved' : saveState === 'error' ? 'Save failed' : 'Unsaved';
 
     const textareaRef = useRef<HTMLTextAreaElement>(null);
+    const bodyRef = useRef<HTMLDivElement>(null);
 
     const syncSelection = () => {
         const textarea = textareaRef.current;
@@ -75,123 +76,103 @@ export function StudioEditor({
         });
     };
 
-    // Auto-focus and scroll to top when switching scenes
+    // PH 25: PRO-LEVEL INFINITE CANVAS (ResizeObserver + Ref Sync)
     useEffect(() => {
-        if (activeScene) {
-            // Small timeout to ensure DOM update is complete and textarea is mounted
-            const timer = setTimeout(() => {
-                if (textareaRef.current) {
-                    textareaRef.current.scrollTop = 0;
-                    textareaRef.current.focus();
-                    console.log('[StudioEditor] Focused scene:', activeScene.slugline);
-                }
-            }, 50);
-            return () => clearTimeout(timer);
+        const textarea = textareaRef.current;
+        if (!textarea) return;
+
+        const syncHeight = () => {
+            textarea.style.height = 'auto';
+            const frameHeight = Math.max(1100, textarea.scrollHeight);
+            textarea.style.height = `${frameHeight}px`;
+            
+            const paper = textarea.parentElement;
+            if (paper) paper.style.height = `${frameHeight}px`;
+        };
+
+        const observer = new ResizeObserver(syncHeight);
+        observer.observe(textarea);
+        
+        // Initial sync
+        syncHeight();
+
+        return () => observer.disconnect();
+    }, [editorContent]);
+
+    // Clean Scrolls & Auto-focus
+    useEffect(() => {
+        if (activeScene && textareaRef.current) {
+            if (bodyRef.current) bodyRef.current.scrollTop = 0;
+            textareaRef.current.focus();
         }
-        onSelectionChange(null);
-    }, [activeScene, activeScene?._id, onSelectionChange]);
+    }, [activeScene?._id]);
 
     return (
         <div className="ide-editor">
             <div className="ide-editor-header">
-                <div>
-                    <div className="flex items-center gap-3">
-                        <div className="h-2 w-2 rounded-full bg-accent-primary animate-pulse" />
-                        <div className="ide-editor-title font-bold tracking-tight text-[color:var(--text-primary)]">
-                            {activeScene ? activeScene.title || activeScene.slugline || 'Untitled Scene' : 'Scene Editor'}
-                        </div>
+                <div className="flex items-center gap-3">
+                    <div className="h-2 w-2 rounded-full bg-accent-primary animate-pulse" />
+                    <div className="ide-editor-title font-bold tracking-tight text-text-primary">
+                        {activeScene ? activeScene.title || activeScene.slugline || 'Untitled Scene' : 'Script Studio'}
                     </div>
                 </div>
                 <div className="ide-editor-stats flex items-center gap-4 text-[11px] font-medium text-text-secondary">
-                    {editorSelection && (
-                        <>
-                            <span className="rounded-md border border-accent-primary/40 bg-accent-primary/10 px-2 py-0.5 text-[10px] font-bold text-accent-primary uppercase tracking-wider">
-                                Selection: {editorSelection.lineCount} lines
-                            </span>
-                            <div className="h-4 w-[1px] bg-border-subtle" />
-                        </>
-                    )}
-                    <span className="flex items-center gap-1.5">
-                        <span className="h-1 w-1 rounded-full bg-text-secondary/40" />
-                        {wordCount} words
-                    </span>
+                    <span className="flex items-center gap-1.5">{wordCount} words</span>
                     <div className="h-4 w-[1px] bg-border-subtle" />
                     <span className={`ide-save-status flex items-center gap-1.5 ${saveState}`}>
-                        <span className={`h-1.5 w-1.5 rounded-full ${
-                            saveState === 'saved' ? 'bg-status-ok' : 
-                            saveState === 'saving' ? 'bg-accent-primary animate-ping' : 
-                            'bg-status-error'
-                        }`} />
+                        <span className={`h-1.5 w-1.5 rounded-full ${saveState === 'saved' ? 'bg-status-ok' : 'bg-accent-primary'}`} />
                         {saveLabel}
                     </span>
                 </div>
             </div>
-            <div className="ide-editor-body">
+            
+            <div ref={bodyRef} className="ide-editor-body">
                 {activeScene ? (
                     <div className="ide-paper relative">
                         {isGenerating && (
                             <div className="absolute top-0 left-0 right-0 z-20 px-8 pt-4 pb-6 bg-gradient-to-b from-console-bg via-console-bg/80 to-transparent">
                                 <ProgressBar 
                                     progress={generationProgress} 
-                                    label="Drafting Scene..." 
+                                    label="Synchronizing Narrative..." 
                                     className="max-w-md mx-auto"
                                 />
                             </div>
                         )}
+
                         {editorSelection && (
-                            <div className="mx-auto mb-6 max-w-2xl animate-in fade-in slide-in-from-top-4 duration-500">
-                                <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-border-subtle/40 bg-console-bg/50 p-4 text-xs text-text-primary backdrop-blur-md shadow-lg">
-                                    <span className="rounded-lg border border-accent-primary/30 bg-accent-primary/15 px-2.5 py-1 font-bold uppercase tracking-widest text-[9px] text-accent-primary">
-                                        Assistant Focused
+                            <div className="mx-auto mb-6 max-w-2xl animate-in fade-in slide-in-from-top-4 duration-500 absolute top-[-60px] left-0 right-0 z-50">
+                                <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-accent-primary/20 bg-console-bg/80 p-3 text-xs text-text-primary backdrop-blur-xl shadow-2xl">
+                                    <span className="rounded-lg border border-accent-primary/30 bg-accent-primary/10 px-2.5 py-1 font-bold uppercase tracking-widest text-[9px] text-accent-primary">
+                                        Selection Focus
                                     </span>
-                                    <span className="font-medium text-text-secondary italic">
-                                        "Targeting {editorSelection.lineCount} lines..."
+                                    <div className="h-4 w-px bg-border-subtle/40" />
+                                    <span className="font-medium text-text-secondary">
+                                        {editorSelection.lineCount} lines selected
                                     </span>
-                                    <div className="ml-auto flex items-center gap-2 text-accent-primary/80 font-semibold">
-                                        <div className="h-1.5 w-1.5 rounded-full bg-accent-primary animate-pulse" />
-                                        Ready for Assist
-                                    </div>
                                 </div>
                             </div>
                         )}
+
                         <textarea
                             ref={textareaRef}
-                            className={`ide-script-editor ${isGenerating ? 'is-locked opacity-80 cursor-not-allowed select-none' : ''}`}
+                            className={`ide-script-editor ${isGenerating ? 'is-locked opacity-60' : ''}`}
                             value={editorContent}
-                            onChange={(event) => !isGenerating && onContentChange(event.target.value)}
-                            readOnly={isGenerating}
-                            placeholder={isGenerating ? "AI is drafting... Editor locked." : "Begin with INT. or EXT. and write your scene..."}
-                            spellCheck={false}
-                            onFocus={onFocus}
-                            onBlur={onBlur}
+                            onChange={(e) => onContentChange(e.target.value)}
                             onSelect={syncSelection}
                             onKeyUp={syncSelection}
                             onMouseUp={syncSelection}
+                            onFocus={onFocus}
+                            onBlur={onBlur}
+                            placeholder="Begin the sequence..."
+                            spellCheck={false}
                         />
                     </div>
                 ) : (
-                    <div className="ide-empty">
-                        <div className="ide-empty-content">
-                            <h3>{activeProject ? activeProject.title : 'Create a project'}</h3>
-                            <p>{activeProject ? activeProject.logline || 'Add a logline to guide the writing.' : 'Start by creating a Script project.'}</p>
-                            {activeProject && (
-                                <div className="ide-overview">
-                                    <div className="ide-overview-card">
-                                        <span>Genre</span>
-                                        <strong>{activeProject.genre || 'Drama'}</strong>
-                                    </div>
-                                    <div className="ide-overview-card">
-                                        <span>Scenes</span>
-                                        <strong>{sceneCount}</strong>
-                                    </div>
-                                    <div className="ide-overview-card">
-                                        <span>Cast</span>
-                                        <strong>{characterCount}</strong>
-                                    </div>
-                                </div>
-                            )}
-
+                    <div className="flex flex-col items-center justify-center h-full gap-4 text-text-tertiary">
+                        <div className="p-4 rounded-3xl bg-console-surface border border-border-subtle animate-bounce">
+                            <span className="text-2xl">✍️</span>
                         </div>
+                        <p className="text-sm font-medium italic">Select a sequence to initiate writing flow.</p>
                     </div>
                 )}
             </div>

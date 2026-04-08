@@ -1,0 +1,9 @@
+PASS src/__tests__/rateLimiter.test.ts
+  Property 37: Rate Limiting
+    √ should reject requests after 5 attempts per minute (60 ms)
+
+Test Suites: 1 passed, 1 total
+Tests:       1 passed, 1 total
+Snapshots:   0 total
+Time:        3.373 s
+Ran all test suites matching src/__tests__/rateLimiter.test.ts.

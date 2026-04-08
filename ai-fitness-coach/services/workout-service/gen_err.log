@@ -1,0 +1,40 @@
+FAIL src/__tests__/workoutGenerator.test.ts (5.391 s)
+  Workout Generator Logic
+    × should generate a plan with the correct number of days (5 ms)
+    × should assign correct rep ranges for strength goal (2 ms)
+
+  ● Workout Generator Logic › should generate a plan with the correct number of days
+
+    TypeError: exercise_1.Exercise.find(...).limit is not a function
+
+    [0m [90m 68 |[39m         equipment[33m:[39m { $not[33m:[39m { $elemMatch[33m:[39m { $nin[33m:[39m availableEquipment } } }[33m,[39m
+     [90m 69 |[39m         isActive[33m:[39m [36mtrue[39m
+    [31m[1m>[22m[39m[90m 70 |[39m       })[33m.[39mlimit([35m5[39m)[33m;[39m
+     [90m    |[39m          [31m[1m^[22m[39m
+     [90m 71 |[39m
+     [90m 72 |[39m       [36mif[39m (possibleExercises[33m.[39mlength [33m>[39m [35m0[39m) {
+     [90m 73 |[39m         [90m// Pick one (randomized or sequential for variety)[39m[0m
+
+      at generateWorkoutPlan (src/services/workoutGenerator.ts:70:10)
+      at Object.<anonymous> (src/__tests__/workoutGenerator.test.ts:28:45)
+
+  ● Workout Generator Logic › should assign correct rep ranges for strength goal
+
+    TypeError: exercise_1.Exercise.find(...).limit is not a function
+
+    [0m [90m 68 |[39m         equipment[33m:[39m { $not[33m:[39m { $elemMatch[33m:[39m { $nin[33m:[39m availableEquipment } } }[33m,[39m
+     [90m 69 |[39m         isActive[33m:[39m [36mtrue[39m
+    [31m[1m>[22m[39m[90m 70 |[39m       })[33m.[39mlimit([35m5[39m)[33m;[39m
+     [90m    |[39m          [31m[1m^[22m[39m
+     [90m 71 |[39m
+     [90m 72 |[39m       [36mif[39m (possibleExercises[33m.[39mlength [33m>[39m [35m0[39m) {
+     [90m 73 |[39m         [90m// Pick one (randomized or sequential for variety)[39m[0m
+
+      at generateWorkoutPlan (src/services/workoutGenerator.ts:70:10)
+      at Object.<anonymous> (src/__tests__/workoutGenerator.test.ts:47:45)
+
+Test Suites: 1 failed, 1 total
+Tests:       2 failed, 2 total
+Snapshots:   0 total
+Time:        5.505 s, estimated 6 s
+Ran all test suites matching src/__tests__/workoutGenerator.test.ts.

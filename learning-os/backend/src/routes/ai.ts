@@ -73,8 +73,9 @@ router.post('/chat', authenticate, upload.single('image'), async (req: any, res)
             });
         }
 
-        // Use Ollama via AIClientService — no API key needed
-        const aiClient = new AIClientService(model, req.user._id.toString());
+        // Fallback for CLI testing without JWT
+        const effectiveUserId = req.user?._id?.toString() || req.body.userId || 'test-user';
+        const aiClient = new AIClientService(model, effectiveUserId);
 
         // Build context messages
         const contextMessages = [

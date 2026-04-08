@@ -18,6 +18,7 @@ export interface IScene extends Document {
         role: 'user' | 'assistant';
         type: 'instruction' | 'thought' | 'proposal' | 'chat';
         content: string;
+        status?: 'pending' | 'applied' | 'discarded';
         timestamp: Date;
         metadata?: {
             explanation?: string[];
@@ -157,6 +158,7 @@ const SceneSchema: Schema = new Schema({
         role: { type: String, enum: ['user', 'assistant'] },
         type: { type: String, enum: ['instruction', 'thought', 'proposal', 'chat'] },
         content: { type: String, maxlength: 100000 },
+        status: { type: String, enum: ['pending', 'applied', 'discarded'] },
         timestamp: { type: Date, default: Date.now },
         metadata: { type: Schema.Types.Mixed },
         retrievalMetadata: { type: Schema.Types.Mixed }

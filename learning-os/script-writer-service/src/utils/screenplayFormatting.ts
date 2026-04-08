@@ -5,7 +5,10 @@ const STRUCTURED_SECTION_LABELS = [
     'SCENE_SCRIPT',
     'CHARACTER_MEMORY_UPDATE',
     'PLOT_STATE_UPDATE',
-    'NARRATIVE_CRAFT'
+    'NARRATIVE_CRAFT',
+    'RESEARCH_DISCLOSURE',
+    'CREATIVE_PLAN',
+    'AGENT_EXPLANATION'
 ] as const;
 
 function isIntentionalForcedBlankLine(line: string): boolean {
@@ -216,6 +219,7 @@ export function extractBestEffortAssistantAnswer(content: string): string {
 
     const summary = extractStructuredSection(cleaned, 'STORY_CONTEXT_SUMMARY', [
         'SCENE_PLAN',
+        'CREATIVE_PLAN',
         'SCENE_SCRIPT',
         'CHARACTER_MEMORY_UPDATE',
         'PLOT_STATE_UPDATE'
@@ -225,8 +229,16 @@ export function extractBestEffortAssistantAnswer(content: string): string {
         'CHARACTER_MEMORY_UPDATE',
         'PLOT_STATE_UPDATE',
         'NARRATIVE_CRAFT'
+    ]) || extractStructuredSection(cleaned, 'CREATIVE_PLAN', [
+        'SCENE_SCRIPT',
+        'CHARACTER_MEMORY_UPDATE',
+        'PLOT_STATE_UPDATE',
+        'AGENT_EXPLANATION'
     ]);
     const craft = extractStructuredSection(cleaned, 'NARRATIVE_CRAFT', [
+        'PLOT_STATE_UPDATE'
+    ]) || extractStructuredSection(cleaned, 'AGENT_EXPLANATION', [
+        'CHARACTER_MEMORY_UPDATE',
         'PLOT_STATE_UPDATE'
     ]);
 
@@ -238,31 +250,48 @@ export function extractStructuredAssistantSections(content: string): {
     plan?: string;
     script: string;
     craft?: string;
+    research?: string;
 } {
     const summary = extractStructuredSection(content, 'STORY_CONTEXT_SUMMARY', [
         'SCENE_PLAN',
+        'CREATIVE_PLAN',
         'SCENE_SCRIPT',
         'CHARACTER_MEMORY_UPDATE',
         'PLOT_STATE_UPDATE',
         'NARRATIVE_CRAFT'
+    ]);
+    const research = extractStructuredSection(content, 'RESEARCH_DISCLOSURE', [
+        'SCENE_PLAN',
+        'CREATIVE_PLAN',
+        'SCENE_SCRIPT'
     ]);
     const plan = extractStructuredSection(content, 'SCENE_PLAN', [
         'SCENE_SCRIPT',
         'CHARACTER_MEMORY_UPDATE',
         'PLOT_STATE_UPDATE',
         'NARRATIVE_CRAFT'
+    ]) || extractStructuredSection(content, 'CREATIVE_PLAN', [
+        'SCENE_SCRIPT',
+        'CHARACTER_MEMORY_UPDATE',
+        'PLOT_STATE_UPDATE',
+        'AGENT_EXPLANATION'
     ]);
     const finalScriptText = extractStructuredSection(content, 'SCENE_SCRIPT', [
         'CHARACTER_MEMORY_UPDATE',
         'PLOT_STATE_UPDATE',
-        'NARRATIVE_CRAFT'
+        'NARRATIVE_CRAFT',
+        'AGENT_EXPLANATION'
     ]);
     const craft = extractStructuredSection(content, 'NARRATIVE_CRAFT', [
+        'PLOT_STATE_UPDATE'
+    ]) || extractStructuredSection(content, 'AGENT_EXPLANATION', [
+        'CHARACTER_MEMORY_UPDATE',
         'PLOT_STATE_UPDATE'
     ]);
 
     return {
         summary: summary || undefined,
+        research: research || undefined,
         plan: plan || undefined,
         script: normalizeScreenplayWhitespace(finalScriptText) || extractBestEffortScreenplay(content),
         craft: craft || undefined

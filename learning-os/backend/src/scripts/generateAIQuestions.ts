@@ -1,13 +1,15 @@
 import mongoose from 'mongoose';
 import dotenv from 'dotenv';
-import { QuestionGenerationService } from '../services/questionGeneration.service.js';
+import { StructuredQuestionService } from '../services/ai/structuredQuestion.service.js';
+import { AIClientService } from '../services/aiClient.service.js';
 import { Question } from '../models/Question.js';
 
 dotenv.config();
 
 const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/learning-os';
 
-const questionGenerator = new QuestionGenerationService();
+const aiClient = new AIClientService();
+const questionGenerator = new StructuredQuestionService(aiClient);
 
 const TOPICS = [
     'Array', 'String', 'HashTable', 'DynamicProgramming',

@@ -1,30 +1,36 @@
-
-import { createContext, useContext, useState, useCallback, useEffect, useRef, useMemo, type ReactNode } from 'react';
+import {
+    createContext,
+    useContext,
+    useState,
+    useCallback,
+    useEffect,
+    useRef,
+    useMemo,
+    type ReactNode,
+} from 'react';
 import { api } from '../services/api';
 import { useAuthStore } from '../stores/authStore';
+import { storage } from '../lib/safeStorage';
 
-// ============================================
-// AI MODELS CONFIGURATION (Ollama + Groq)
-// ============================================
-// AI MODELS CONFIGURATION
-// Categorized by Provider/Capability
-// ============================================
-export const AI_MODELS = [
-    // Groq Direct (Cloud)
-    { id: 'groq:llama-3.3-70b-versatile', name: 'Llama 3.3 70B', provider: 'Groq', category: 'Cloud', description: 'Ultra-fast cloud inference', supportsFiles: true },
-    { id: 'groq:llama-3.2-90b-vision-preview', name: 'Llama 3.2 90B Vision', provider: 'Groq', category: 'Cloud', description: 'High-performance vision', supportsFiles: true },
-    
-    // Cloud Proxy (Ollama-Cloud)
-    { id: 'deepseek-v3.1:671b-cloud', name: 'DeepSeek V3.1', provider: 'Ollama-Cloud', category: 'Cloud Proxy', description: 'Cloud-proxied reasoning', supportsFiles: true },
-    { id: 'gpt-oss:120b-cloud', name: 'GPT OSS 120B', provider: 'Ollama-Cloud', category: 'Cloud Proxy', description: 'Cloud-proxied high capacity', supportsFiles: true },
-    { id: 'qwen3-coder:480b-cloud', name: 'Qwen3 Coder', provider: 'Ollama-Cloud', category: 'Cloud Proxy', description: 'Cloud-proxied coding', supportsFiles: true },
-    { id: 'glm-4.6:cloud', name: 'GLM 4.6', provider: 'Ollama-Cloud', category: 'Cloud Proxy', description: 'Cloud-proxied balanced', supportsFiles: true },
-    { id: 'qwen3-vl:235b-cloud', name: 'Qwen3 VL', provider: 'Ollama-Cloud', category: 'Cloud Proxy', description: 'Cloud-proxied multimodal', supportsFiles: true },
-    
-    // Local (GPU)
-    { id: 'gemma3:4b', name: 'Gemma 3 4B', provider: 'Local', category: 'Local (GPU)', description: 'Lightweight local model', supportsFiles: false },
-    { id: 'tinyllama:latest', name: 'TinyLlama', provider: 'Local', category: 'Local (GPU)', description: 'Minimal footprint', supportsFiles: false },
-    { id: 'hf.co/bartowski/Llama-3.2-1B-Instruct-GGUF:latest', name: 'Llama 3.2 1B', provider: 'Local', category: 'Local (GPU)', description: 'Optimized local model', supportsFiles: false },
+export interface AIModelOption {
+    id: string;
+    name: string;
+    provider: 'Groq' | 'Ollama-Cloud' | 'Local';
+    category: string;
+    description: string;
+    supportsFiles: boolean;
+    supportsImages: boolean;
+    supportsTools: boolean;
+    speedTier: 'fast' | 'balanced' | 'deep';
+}
+
+export const AI_MODELS: AIModelOption[] = [
+    { id: 'groq:gpt-oss-120b', name: 'GPT OSS 120B', provider: 'Groq', category: 'Cloud', description: 'High-performance direct Groq model', supportsFiles: true, supportsImages: false, supportsTools: true, speedTier: 'fast' },
+    { id: 'groq:llama-3.3-70b-versatile', name: 'Llama 3.3 70B', provider: 'Groq', category: 'Cloud', description: 'High-end general reasoning', supportsFiles: true, supportsImages: false, supportsTools: true, speedTier: 'fast' },
+    { id: 'groq:llama-3.2-90b-vision-preview', name: 'Llama 3.2 90B Vision', provider: 'Groq', category: 'Cloud', description: 'Vision-enabled cloud model', supportsFiles: true, supportsImages: true, supportsTools: true, speedTier: 'balanced' },
+    { id: 'deepseek-v3.1:671b-cloud', name: 'DeepSeek V3.1', provider: 'Ollama-Cloud', category: 'Cloud Proxy', description: 'Strong reasoning through cloud proxy', supportsFiles: true, supportsImages: false, supportsTools: true, speedTier: 'balanced' },
+    { id: 'qwen3-coder:480b-cloud', name: 'Qwen3 Coder', provider: 'Ollama-Cloud', category: 'Cloud Proxy', description: 'Code-oriented cloud proxy model', supportsFiles: true, supportsImages: false, supportsTools: true, speedTier: 'balanced' },
+    { id: 'gemma3:4b', name: 'Gemma 3 4B', provider: 'Local', category: 'Local (GPU)', description: 'Lightweight local model', supportsFiles: true, supportsImages: false, supportsTools: true, speedTier: 'fast' },
 ];
 
 export interface Attachment {
@@ -34,7 +40,8 @@ export interface Attachment {
     type: string;
     file?: File;
     attachmentId?: string;
-    status?: 'pending' | 'indexing' | 'completed' | 'failed';
+    status?: 'pending' | 'indexing' | 'completed' | 'failed' | 'cancelled';
+    errorMessage?: string;
     isImage?: boolean;
     isBinary?: boolean;
     isText?: boolean;
@@ -47,36 +54,139 @@ export interface Message {
     content: string;
     timestamp: Date;
     attachments?: Attachment[];
-    status?: 'pending' | 'indexing' | 'completed' | 'failed';
-    loadingLabel?: 'thinking' | 'knowledge';
+    status?: 'pending' | 'indexing' | 'completed' | 'failed' | 'cancelled';
+    loadingLabel?: 'thinking' | 'knowledge' | 'github';
     resourceSummary?: string[];
+    progressText?: string;
+    progressSteps?: string[];
+    progressPhase?: number;
+    modelUsed?: string;
 }
 
 interface AIContextType {
     isOpen: boolean;
     toggleOpen: () => void;
-    sessionId: string | null;
-    setSessionId: (id: string | null) => void;
+    conversationId: string | null;
+    setConversationId: (id: string | null) => void;
     messages: Message[];
     setMessages: React.Dispatch<React.SetStateAction<Message[]>>;
     isLoading: boolean;
     setIsLoading: React.Dispatch<React.SetStateAction<boolean>>;
     sendMessage: (content: string, attachments?: Attachment[], onChunk?: (chunk: string) => void) => Promise<void>;
+    stopStreaming: () => void;
+    regenerateLastResponse: (onChunk?: (chunk: string) => void) => Promise<void>;
     clearMessages: () => void;
     selectedModel: string;
     setSelectedModel: (model: string) => void;
     AI_MODELS: typeof AI_MODELS;
     context: any;
     setContext: (data: any) => void;
-    ensureChatSession: () => Promise<string>;
-    uploadAttachment: (file: File) => Promise<string | null>;
+    ensureChatConversation: () => Promise<string>;
+    indexAttachment: (conversationId: string, attachment: Attachment, onStatusUpdate?: (patch: Partial<Attachment>) => void) => Promise<string>;
 }
 
 const AIContext = createContext<AIContextType | undefined>(undefined);
 
+const EMPTY_ASSISTANT_RESPONSE = 'No response from the assistant.';
+const PROGRESS_PREFIX = '__PROGRESS__:';
+const PROGRESS_PREFIX_GUARD = PROGRESS_PREFIX.length - 1;
+
+const isAbortError = (error: unknown) => {
+    if (error instanceof DOMException && error.name === 'AbortError') return true;
+    if (error instanceof Error && error.name === 'AbortError') return true;
+    return false;
+};
+
+const inferLoadingLabel = (
+    progressText: string,
+    fallback: Message['loadingLabel'] = 'thinking'
+): Message['loadingLabel'] => {
+    const normalized = progressText.toLowerCase();
+    if (/\b(github|repo|repository|branch|tree|files|audit|review)\b/.test(normalized)) {
+        return 'github';
+    }
+    if (/\b(knowledge|attachment|document|context|vector|index|retriev|workspace)\b/.test(normalized)) {
+        return 'knowledge';
+    }
+    return fallback;
+};
+
+const inferProgressPhase = (label: Message['loadingLabel'], progressText: string) => {
+    const normalized = progressText.toLowerCase();
+
+    if (label === 'github') {
+        if (/\b(connect|metadata|access)\b/.test(normalized)) return 1;
+        if (/\b(tree|branch|scan|structure)\b/.test(normalized)) return 2;
+        if (/\b(read|download|files)\b/.test(normalized)) return 3;
+        if (/\b(review|audit|generat|final)\b/.test(normalized)) return 4;
+    }
+
+    if (label === 'knowledge') {
+        if (/\b(index|attachment|document)\b/.test(normalized)) return 1;
+        if (/\b(search|retriev|context|knowledge)\b/.test(normalized)) return 2;
+        return 3;
+    }
+
+    return /\b(plan|tool|analy|synth)\b/.test(normalized) ? 2 : 1;
+};
+
+const consumeStreamingChunk = (
+    previousBuffer: string,
+    chunk: string,
+    onProgress: (progress: string) => void,
+    flush: boolean = false
+) => {
+    let buffer = previousBuffer + chunk;
+    let visibleText = '';
+
+    while (buffer.length > 0) {
+        const markerIndex = buffer.indexOf(PROGRESS_PREFIX);
+
+        if (markerIndex === -1) {
+            if (flush) {
+                visibleText += buffer;
+                buffer = '';
+            } else {
+                const safeLength = Math.max(0, buffer.length - PROGRESS_PREFIX_GUARD);
+                visibleText += buffer.slice(0, safeLength);
+                buffer = buffer.slice(safeLength);
+            }
+            break;
+        }
+
+        if (markerIndex > 0) {
+            visibleText += buffer.slice(0, markerIndex);
+            buffer = buffer.slice(markerIndex);
+        }
+
+        const newlineIndex = buffer.indexOf('\n');
+        if (newlineIndex === -1) {
+            if (flush && buffer.startsWith(PROGRESS_PREFIX)) {
+                const trailingProgress = buffer.slice(PROGRESS_PREFIX.length).trim();
+                if (trailingProgress) {
+                    onProgress(trailingProgress);
+                }
+                buffer = '';
+            }
+            break;
+        }
+
+        const progressText = buffer.slice(PROGRESS_PREFIX.length, newlineIndex).trim();
+        if (progressText) {
+            onProgress(progressText);
+        }
+        buffer = buffer.slice(newlineIndex + 1);
+    }
+
+    return {
+        visibleText,
+        remainder: buffer
+    };
+};
+
 export function AIProvider({ children }: { children: ReactNode }) {
     const [isOpen, setIsOpen] = useState(false);
-    const [sessionId, setSessionId] = useState<string | null>(null);
+    const [conversationId, setConversationId] = useState<string | null>(null);
     const [messages, setMessages] = useState<Message[]>([
         {
             id: 'welcome',
@@ -87,47 +197,40 @@ export function AIProvider({ children }: { children: ReactNode }) {
     ]);
     const [isLoading, setIsLoading] = useState(false);
     const [selectedModel, setSelectedModel] = useState(() => {
-        if (typeof window !== 'undefined') {
-            return localStorage.getItem('learning-os-ai-model') || 'deepseek-v3.1:671b-cloud';
-        }
-        return 'deepseek-v3.1:671b-cloud';
+        return storage.get('learning-os-ai-model', 'groq:gpt-oss-120b');
     });
     const lastSyncedModelRef = useRef<string | null>(null);
     const [context, setContext] = useState<any>({});
     const sessionInitPromiseRef = useRef<Promise<string> | null>(null);
     const messagesRef = useRef<Message[]>([]);
+    const abortControllerRef = useRef<AbortController | null>(null);
 
-    // Persist model selection
-    useEffect(() => {
-        if (typeof window !== 'undefined') {
-            localStorage.setItem('learning-os-ai-model', selectedModel);
-        }
-    }, [selectedModel]);
-
-    // Sync model selection to active chat session metadata
-    useEffect(() => {
-        if (!sessionId) {
-            lastSyncedModelRef.current = null;
-            return;
-        }
-        if (!selectedModel || selectedModel === lastSyncedModelRef.current) return;
-
-        api.updateChatSession(sessionId, { model: selectedModel })
-            .then(() => {
-                lastSyncedModelRef.current = selectedModel;
-            })
-            .catch(() => {
-                // Non-blocking: keep UI responsive even if the update fails
-            });
-    }, [sessionId, selectedModel]);
-
-    // System Awareness State
     const [systemContext, setSystemContext] = useState('');
     const { token } = useAuthStore();
 
     useEffect(() => {
         messagesRef.current = messages;
     }, [messages]);
+
+    useEffect(() => {
+        storage.set('learning-os-ai-model', selectedModel);
+    }, [selectedModel]);
+
+    useEffect(() => {
+        if (!conversationId) {
+            lastSyncedModelRef.current = null;
+            return;
+        }
+        if (!selectedModel || selectedModel === lastSyncedModelRef.current) return;
+
+        api.updateChatConversation(conversationId, { model: selectedModel })
+            .then(() => {
+                lastSyncedModelRef.current = selectedModel;
+            })
+            .catch(() => {
+                // Non-blocking: keep UI responsive even if the update fails
+            });
+    }, [conversationId, selectedModel]);
 
     const isSpecificChatQuery = useCallback((value: string) => {
         const text = value.trim().toLowerCase();
@@ -150,9 +253,8 @@ export function AIProvider({ children }: { children: ReactNode }) {
         return Boolean(att.shouldIndex || att.isText || (!att.isImage && !att.isBinary));
     }, []);
 
-    const toggleOpen = useCallback(() => setIsOpen(prev => !prev), []);
+    const toggleOpen = useCallback(() => setIsOpen((prev) => !prev), []);
 
-    // Update welcome message based on context when opening
     useEffect(() => {
         if (isOpen && messages.length <= 1) {
             const path = window.location.pathname;
@@ -168,8 +270,7 @@ export function AIProvider({ children }: { children: ReactNode }) {
                 contextMsg = "Working on backend architecture? I can help with system design.";
             }
 
-            setMessages(prev => {
-                // Only update if it's the initial welcome message
+            setMessages((prev) => {
                 if (prev.length === 0 || (prev.length === 1 && prev[0].id === 'welcome')) {
                     return [{
                         id: 'welcome',
@@ -181,22 +282,25 @@ export function AIProvider({ children }: { children: ReactNode }) {
                 return prev;
             });
         }
-    }, [isOpen]);
+    }, [isOpen, messages.length]);
 
     const clearMessages = useCallback(() => {
+        abortControllerRef.current?.abort();
+        abortControllerRef.current = null;
         setMessages([]);
-        setSessionId(null);
+        setConversationId(null);
+        setIsLoading(false);
     }, []);
 
-    const ensureChatSession = useCallback(async () => {
-        if (sessionId) return sessionId;
+    const ensureChatConversation = useCallback(async () => {
+        if (conversationId) return conversationId;
         if (sessionInitPromiseRef.current) return sessionInitPromiseRef.current;
 
         const createPromise = (async () => {
-            const newSession = await api.createChatSession(undefined, selectedModel);
-            setSessionId(newSession._id);
+            const newConversation = await api.createChatConversation(undefined, selectedModel);
+            setConversationId(newConversation._id);
             lastSyncedModelRef.current = selectedModel;
-            return newSession._id;
+            return newConversation._id;
         })();
 
         sessionInitPromiseRef.current = createPromise;
@@ -205,26 +309,167 @@ export function AIProvider({ children }: { children: ReactNode }) {
         } finally {
             sessionInitPromiseRef.current = null;
         }
-    }, [sessionId, selectedModel]);
+    }, [conversationId, selectedModel]);
 
-    const uploadAttachment = useCallback(async (file: File): Promise<string | null> => {
-        try {
-            const activeId = await ensureChatSession();
-            const formData = new FormData();
-            formData.append('file', file, file.name);
-            const uploadRes = await api.post(`/chat/${activeId}/attachments`, formData);
-            if (uploadRes?.success && uploadRes?.data?.attachmentId) {
-                return uploadRes.data.attachmentId as string;
-            }
-            return null;
-        } catch (error) {
-            console.error('[AIContext] Attachment upload failed:', error);
-            return null;
+    const updateMessageById = useCallback((messageId: string | null, updater: (message: Message) => Message) => {
+        if (!messageId) return;
+        setMessages((prev) => prev.map((message) => (
+            message.id === messageId ? updater(message) : message
+        )));
+    }, []);
+
+    const removeMessageById = useCallback((messageId: string | null) => {
+        if (!messageId) return;
+        setMessages((prev) => prev.filter((message) => message.id !== messageId));
+    }, []);
+
+    const indexAttachment = useCallback(async (
+        activeConversationId: string,
+        attachment: Attachment,
+        onStatusUpdate?: (patch: Partial<Attachment>) => void
+    ) => {
+        const updateStatus = (patch: Partial<Attachment>) => {
+            if (onStatusUpdate) onStatusUpdate(patch);
+            
+            setMessages((prev) => prev.map((msg) => {
+                if (!msg.attachments) return msg;
+                const hasMatch = msg.attachments.some(a => a.localId === attachment.localId);
+                if (!hasMatch) return msg;
+                return {
+                    ...msg,
+                    attachments: msg.attachments.map(a => 
+                        a.localId === attachment.localId ? { ...a, ...patch } : a
+                    )
+                };
+            }));
+        };
+
+        if (attachment.attachmentId && attachment.status === 'completed') {
+            return attachment.attachmentId;
         }
-    }, [ensureChatSession]);
 
-    const _sendMessage = useCallback(async (displayContent: string, attachments: Attachment[] = [], hiddenPayload: string, onChunk?: (chunk: string) => void) => {
-        if (!displayContent.trim() && attachments.length === 0 || isLoading) return;
+        updateStatus({ status: 'indexing', errorMessage: undefined });
+
+        try {
+            let uploadTarget: File | Blob;
+            if (attachment.file) {
+                uploadTarget = attachment.file;
+            } else if (attachment.content) {
+                if (attachment.content.startsWith('data:')) {
+                    const res = await fetch(attachment.content);
+                    uploadTarget = await res.blob();
+                } else {
+                    uploadTarget = new Blob([attachment.content], { type: attachment.type || 'text/plain' });
+                }
+            } else {
+                throw new Error('Attachment content is unavailable');
+            }
+
+            const uploadRes = await api.uploadChatAttachment(activeConversationId, uploadTarget, attachment.name);
+            updateStatus({
+                attachmentId: uploadRes.attachmentId,
+                status: 'completed',
+                errorMessage: undefined
+            });
+            return uploadRes.attachmentId;
+        } catch (error) {
+            const errorMessage = error instanceof Error ? error.message : 'Upload failed';
+            updateStatus({ status: 'failed', errorMessage });
+            throw error;
+        }
+    }, [setMessages]);
+
+    const prepareAttachmentsForSend = useCallback(async (
+        activeConversationId: string,
+        attachments: Attachment[],
+        userMessageId: string
+    ) => {
+        const collectedAttachmentIds: string[] = [];
+        const indexedAttachmentNames: string[] = [];
+        const failedAttachmentNames: string[] = [];
+        const fallbackTextAttachments: Attachment[] = [];
+        const images: string[] = [];
+
+        const updateAttachmentStatus = (localId: string | undefined, patch: Partial<Attachment>) => {
+            if (!localId) return;
+            updateMessageById(userMessageId, (message) => ({
+                ...message,
+                attachments: (message.attachments || []).map((attachment) => (
+                    attachment.localId === localId ? { ...attachment, ...patch } : attachment
+                ))
+            }));
+        };
+
+        for (const attachment of attachments) {
+            if (attachment.isImage) {
+                const base64 = typeof attachment.content === 'string' ? attachment.content.split(',')[1] : '';
+                if (base64) {
+                    images.push(base64);
+                    updateAttachmentStatus(attachment.localId, { status: 'completed' });
+                }
+                continue;
+            }
+
+            if (!attachment.shouldIndex) {
+                if (attachment.isText && attachment.content) {
+                    fallbackTextAttachments.push(attachment);
+                }
+                updateAttachmentStatus(attachment.localId, { status: 'completed' });
+                continue;
+            }
+
+            // Already indexed (e.g. from immediate upload)
+            if (attachment.attachmentId && attachment.status === 'completed') {
+                collectedAttachmentIds.push(attachment.attachmentId);
+                indexedAttachmentNames.push(attachment.name);
+                continue;
+            }
+
+            // Wait for in-progress indexing if needed
+            if (attachment.status === 'indexing') {
+                // Polling or waiting would be better, but for now we re-trigger if it failed/pending
+                // In premium UI, the button should be disabled while indexing
+            }
+
+            try {
+                const attachmentId = await indexAttachment(activeConversationId, attachment);
+                collectedAttachmentIds.push(attachmentId);
+                indexedAttachmentNames.push(attachment.name);
+            } catch (error) {
+                failedAttachmentNames.push(attachment.name);
+                if (attachment.isText && attachment.content) {
+                    fallbackTextAttachments.push(attachment);
+                }
+            }
+        }
+
+        return {
+            collectedAttachmentIds,
+            indexedAttachmentNames,
+            failedAttachmentNames,
+            fallbackTextAttachments,
+            images
+        };
+    }, [updateMessageById, indexAttachment]);
+
+    const finalizeAssistantMessage = useCallback((messageId: string, content: string, status?: Message['status']) => {
+        const finalContent = content.trim() || EMPTY_ASSISTANT_RESPONSE;
+        updateMessageById(messageId, (message) => ({
+            ...message,
+            content: finalContent,
+            status,
+            progressText: undefined,
+            progressSteps: undefined,
+            progressPhase: undefined
+        }));
+    }, [updateMessageById]);
+
+    const sendMessage = useCallback(async (
+        content: string,
+        attachments: Attachment[] = [],
+        onChunk?: (chunk: string) => void
+    ) => {
+        if ((!content.trim() && attachments.length === 0) || isLoading) return;
 
         const priorResources = messagesRef.current
             .flatMap((msg) => msg.attachments || [])
@@ -234,205 +479,341 @@ export function AIProvider({ children }: { children: ReactNode }) {
             .filter(isResourceAttachment)
             .map((att) => att.name);
         const resourceSummary = Array.from(new Set([...priorResources, ...currentResources]));
-        const isSpecific = isSpecificChatQuery(displayContent);
+        const isSpecific = isSpecificChatQuery(content);
         const loadingLabel: Message['loadingLabel'] = resourceSummary.length > 0 && isSpecific
             ? 'knowledge'
             : 'thinking';
 
+        const userMessageId = Date.now().toString();
+        const assistantMessageId = `${Date.now() + 1}`;
+        const normalizedAttachments: Attachment[] = attachments.map((attachment) => ({
+            ...attachment,
+            status: attachment.isImage
+                ? 'completed'
+                : (attachment.shouldIndex ? 'pending' : 'completed') as Attachment['status']
+        }));
+
         setIsLoading(true);
+        setMessages((prev) => [
+            ...prev,
+            {
+                id: userMessageId,
+                role: 'user',
+                content: content.trim(),
+                timestamp: new Date(),
+                attachments: normalizedAttachments.length > 0 ? normalizedAttachments : undefined,
+                status: normalizedAttachments.some((att) => att.shouldIndex && !att.isImage) ? 'indexing' : undefined
+            },
+            {
+                id: assistantMessageId,
+                role: 'assistant',
+                content: '',
+                timestamp: new Date(),
+                loadingLabel,
+                resourceSummary: resourceSummary.slice(0, 6)
+            }
+        ]);
 
-        const userMsg: Message = {
-            id: Date.now().toString(),
-            role: 'user',
-            content: displayContent.trim(),
-            timestamp: new Date(),
-            attachments: attachments.length > 0 ? attachments : undefined,
-            status: attachments.some(a => a.shouldIndex && !a.isImage && !a.attachmentId) ? 'indexing' : undefined
+        const controller = new AbortController();
+        abortControllerRef.current = controller;
+
+        let botContent = '';
+        let pendingChunk = '';
+        let streamBuffer = '';
+        let lastUpdate = Date.now();
+
+        const handleProgressUpdate = (progressText: string) => {
+            if (progressText.startsWith('SYSTEM:Inference via ')) {
+                const modelId = progressText.replace('SYSTEM:Inference via ', '');
+                updateMessageById(assistantMessageId, (message) => ({
+                    ...message,
+                    modelUsed: modelId
+                }));
+                return;
+            }
+
+            updateMessageById(assistantMessageId, (message) => {
+                const nextLabel = inferLoadingLabel(progressText, message.loadingLabel || loadingLabel);
+                const nextSteps = Array.from(new Set([...(message.progressSteps || []), progressText])).slice(-4);
+
+                return {
+                    ...message,
+                    loadingLabel: nextLabel,
+                    progressText,
+                    progressSteps: nextSteps,
+                    progressPhase: inferProgressPhase(nextLabel, progressText)
+                };
+            });
         };
-        setMessages(prev => [...prev, userMsg]);
-
-        const botMsgId = (Date.now() + 1).toString();
-        // Create placeholder
-        setMessages(prev => [...prev, {
-            id: botMsgId,
-            role: 'assistant',
-            content: '',
-            timestamp: new Date(),
-            loadingLabel,
-            resourceSummary: resourceSummary.slice(0, 6)
-        }]);
 
         try {
-            let activeId = sessionId;
-            if (!activeId) {
-                // Ensure model is set when creating session
-                const newSession = await api.createChatSession(undefined, selectedModel);
-                setSessionId(newSession._id);
-                activeId = newSession._id;
-                lastSyncedModelRef.current = selectedModel; // Avoid double sync on new session
+            let injectedContext = '';
+
+            if (systemContext && systemContext.trim()) {
+                injectedContext += `${systemContext.trim()}\n\n`;
+                setSystemContext('');
             }
 
-            let botContent = '';
-            let apiPayload = hiddenPayload ? `${hiddenPayload}\n${displayContent}` : displayContent;
-            const images: string[] = [];
+            if (context && Object.keys(context).length > 0) {
+                const contextStr = JSON.stringify(context, null, 2);
+                const safeContext = contextStr.length > 4000 ? `${contextStr.slice(0, 4000)}...` : contextStr;
+                injectedContext += `[Current Data Context: ${safeContext}]\n\n`;
+            }
 
-            // Handle RAG Indexing for non-image files (docs + text/code)
-            const collectedAttachmentIds: string[] = attachments
-                .filter(a => a.attachmentId)
-                .map(a => a.attachmentId as string);
-            const indexedAttachmentNames: string[] = attachments
-                .filter(a => a.attachmentId)
-                .map(a => a.name);
-            const indexableAttachments = attachments.filter(a => a.shouldIndex && !a.isImage && !a.attachmentId);
-            const failedTextAttachments: Attachment[] = [];
-            
-            if (indexableAttachments.length > 0) {
-                // We need to upload them to the backend for indexing
-                for (const att of indexableAttachments) {
-                    try {
-                        const uploadRes = att.file
-                            ? await (async () => {
-                                const formData = new FormData();
-                                formData.append('file', att.file as File, att.name);
-                                return api.post(`/chat/${activeId}/attachments`, formData);
-                            })()
-                            : await (async () => {
-                                if (!att.content) throw new Error('Missing attachment content');
-                                let blob: Blob;
-                                if (att.content.startsWith('data:')) {
-                                    // Extract binary from dataURL
-                                    const res = await fetch(att.content);
-                                    blob = await res.blob();
-                                } else {
-                                    blob = new Blob([att.content], { type: att.type || 'text/plain' });
-                                }
-                                const formData = new FormData();
-                                formData.append('file', blob, att.name);
-                                return api.post(`/chat/${activeId}/attachments`, formData);
-                            })();
-                        if (uploadRes.success && uploadRes.data?.attachmentId) {
-                            collectedAttachmentIds.push(uploadRes.data.attachmentId);
-                            indexedAttachmentNames.push(att.name);
-                        } else if (att.isText) {
-                            failedTextAttachments.push(att);
-                        }
-                    } catch (uploadError) {
-                        console.error(`[AIContext] Failed to upload ${att.name}:`, uploadError);
-                        if (att.isText) failedTextAttachments.push(att);
+            const activeConversationId = await ensureChatConversation();
+            const {
+                collectedAttachmentIds,
+                indexedAttachmentNames,
+                failedAttachmentNames,
+                fallbackTextAttachments,
+                images
+            } = await prepareAttachmentsForSend(activeConversationId, attachments, userMessageId);
+
+            if (
+                attachments.some((attachment) => attachment.shouldIndex && !attachment.isImage) &&
+                collectedAttachmentIds.length === 0 &&
+                fallbackTextAttachments.length === 0
+            ) {
+                throw new Error(`Failed to analyze attachments: ${failedAttachmentNames.join(', ') || 'upload failed'}`);
+            }
+
+            let apiPayload = injectedContext ? `${injectedContext}${content.trim()}` : content.trim();
+            const indexedNotice = indexedAttachmentNames.length > 0
+                ? `ATTACHED FILES INDEXED FOR RETRIEVAL:\n- ${indexedAttachmentNames.join('\n- ')}\n\n`
+                : '';
+            const failedNotice = failedAttachmentNames.length > 0
+                ? `THE FOLLOWING ATTACHMENTS FAILED TO INDEX AND MAY BE UNAVAILABLE:\n- ${failedAttachmentNames.join('\n- ')}\n\n`
+                : '';
+
+            if (fallbackTextAttachments.length > 0) {
+                const fileContext = fallbackTextAttachments.map((attachment) => {
+                    const rawContent = typeof attachment.content === 'string' ? attachment.content : '';
+                    const safeContent = rawContent.length > 6000 ? `${rawContent.slice(0, 6000)}...` : rawContent;
+                    return `[File Attachment: ${attachment.name}]\n${safeContent}`;
+                }).join('\n\n');
+
+                apiPayload = `${indexedNotice}${failedNotice}CONTEXT FROM ATTACHED FILES (fallback text):\n${fileContext}\n\nUSER MESSAGE: ${apiPayload}`;
+            } else if (indexedNotice || failedNotice) {
+                apiPayload = `${indexedNotice}${failedNotice}USER MESSAGE: ${apiPayload}`;
+            }
+
+            await api.sendChatMessage(
+                activeConversationId,
+                apiPayload,
+                (chunk) => {
+                    const parsedChunk = consumeStreamingChunk(streamBuffer, chunk, handleProgressUpdate);
+                    streamBuffer = parsedChunk.remainder;
+                    if (parsedChunk.visibleText) {
+                        botContent += parsedChunk.visibleText;
+                        pendingChunk += parsedChunk.visibleText;
                     }
-                }
+
+                    const now = Date.now();
+                    if (now - lastUpdate > 32) {
+                        lastUpdate = now;
+                        updateMessageById(assistantMessageId, (message) => ({
+                            ...message,
+                            content: botContent
+                        }));
+                        if (pendingChunk) onChunk?.(pendingChunk);
+                        pendingChunk = '';
+                    }
+                },
+                controller.signal,
+                'learning-os',
+                undefined,
+                images,
+                collectedAttachmentIds
+            );
+
+            const finalChunk = consumeStreamingChunk(streamBuffer, '', handleProgressUpdate, true);
+            if (finalChunk.visibleText) {
+                botContent += finalChunk.visibleText;
+                pendingChunk += finalChunk.visibleText;
             }
 
-            // Separate text attachments from image attachments
-            if (attachments.length > 0) {
-                const textAttachments = attachments.filter(a => a.isText && !a.isImage);
-                const imageAttachments = attachments.filter(a => a.isImage);
-                
-                const fallbackTextAttachments = textAttachments
-                    .filter(a => !a.shouldIndex || (!a.attachmentId && !indexedAttachmentNames.includes(a.name)))
-                    .concat(failedTextAttachments);
-                const indexedNotice = indexedAttachmentNames.length > 0
-                    ? `ATTACHED FILES INDEXED FOR RETRIEVAL:\n- ${indexedAttachmentNames.join('\n- ')}\n\n`
-                    : '';
-
-                if (fallbackTextAttachments.length > 0) {
-                    const fileContext = fallbackTextAttachments.map(a => {
-                        const rawContent = typeof a.content === 'string' ? a.content : '';
-                        const safeContent = rawContent.length > 6000 ? `${rawContent.slice(0, 6000)}...` : rawContent;
-                        return `[File Attachment: ${a.name}]\n${safeContent}`;
-                    }).join('\n\n');
-                    apiPayload = `${indexedNotice}CONTEXT FROM ATTACHED FILES (upload skipped or failed):\n${fileContext}\n\nUSER MESSAGE: ${apiPayload}`;
-                } else if (indexedNotice) {
-                    apiPayload = `${indexedNotice}USER MESSAGE: ${apiPayload}`;
-                }
-
-                imageAttachments.forEach(a => {
-                    const base64 = typeof a.content === 'string' ? a.content.split(',')[1] : '';
-                    if (base64) images.push(base64);
-                });
+            if (pendingChunk) {
+                updateMessageById(assistantMessageId, (message) => ({
+                    ...message,
+                    content: botContent
+                }));
+                onChunk?.(pendingChunk);
             }
 
-            let lastUpdate = Date.now();
-            let pendingChunk = '';
+            finalizeAssistantMessage(assistantMessageId, botContent);
+        } catch (error) {
+            if (isAbortError(error)) {
+                if (botContent.trim()) {
+                    finalizeAssistantMessage(assistantMessageId, botContent, 'cancelled');
+                } else {
+                    removeMessageById(assistantMessageId);
+                }
+                return;
+            }
 
-            await api.sendChatMessage(activeId!, apiPayload, (chunk) => {
-                botContent += chunk;
-                pendingChunk += chunk;
+            const errorMessage = error instanceof Error ? error.message : 'Sorry, I encountered an error. Please try again.';
+            updateMessageById(assistantMessageId, (message) => ({
+                ...message,
+                content: errorMessage,
+                status: 'failed',
+                progressText: undefined,
+                progressSteps: undefined,
+                progressPhase: undefined
+            }));
+        } finally {
+            abortControllerRef.current = null;
+            setIsLoading(false);
+        }
+    }, [
+        context,
+        ensureChatConversation,
+        finalizeAssistantMessage,
+        isLoading,
+        isResourceAttachment,
+        isSpecificChatQuery,
+        prepareAttachmentsForSend,
+        removeMessageById,
+        systemContext,
+        updateMessageById
+    ]);
+
+    const stopStreaming = useCallback(() => {
+        abortControllerRef.current?.abort();
+    }, []);
+
+    const regenerateLastResponse = useCallback(async (onChunk?: (chunk: string) => void) => {
+        if (!conversationId || isLoading) return;
+
+        const currentMessages = messagesRef.current.filter((message) => message.id !== 'welcome');
+        if (currentMessages.length === 0) return;
+
+        const trailingAssistant = currentMessages[currentMessages.length - 1]?.role === 'assistant'
+            ? currentMessages[currentMessages.length - 1]
+            : null;
+        const lastUser = [...(trailingAssistant ? currentMessages.slice(0, -1) : currentMessages)]
+            .reverse()
+            .find((message) => message.role === 'user');
+
+        if (!lastUser) return;
+
+        const assistantMessageId = `${Date.now()}-regen`;
+        const baseMessages = trailingAssistant
+            ? currentMessages.filter((message) => message.id !== trailingAssistant.id)
+            : currentMessages;
+
+        setMessages([
+            ...baseMessages,
+            {
+                id: assistantMessageId,
+                role: 'assistant',
+                content: '',
+                timestamp: new Date(),
+                loadingLabel: lastUser.attachments?.length ? 'knowledge' : 'thinking',
+                resourceSummary: (lastUser.attachments || []).map((attachment) => attachment.name).slice(0, 6)
+            }
+        ]);
+
+        const controller = new AbortController();
+        abortControllerRef.current = controller;
+        setIsLoading(true);
+
+        let botContent = '';
+        let pendingChunk = '';
+        let streamBuffer = '';
+        let lastUpdate = Date.now();
+
+        const handleProgressUpdate = (progressText: string) => {
+            updateMessageById(assistantMessageId, (message) => {
+                const nextLabel = inferLoadingLabel(progressText, message.loadingLabel || 'thinking');
+                const nextSteps = Array.from(new Set([...(message.progressSteps || []), progressText])).slice(-4);
+
+                return {
+                    ...message,
+                    loadingLabel: nextLabel,
+                    progressText,
+                    progressSteps: nextSteps,
+                    progressPhase: inferProgressPhase(nextLabel, progressText)
+                };
+            });
+        };
+
+        try {
+            await api.regenerateChatResponse(conversationId, (chunk) => {
+                const parsedChunk = consumeStreamingChunk(streamBuffer, chunk, handleProgressUpdate);
+                streamBuffer = parsedChunk.remainder;
+                if (parsedChunk.visibleText) {
+                    botContent += parsedChunk.visibleText;
+                    pendingChunk += parsedChunk.visibleText;
+                }
 
                 const now = Date.now();
                 if (now - lastUpdate > 32) {
                     lastUpdate = now;
-                    const throttledContent = botContent;
-                    setMessages(prev => prev.map(msg =>
-                        msg.id === botMsgId
-                            ? { ...msg, content: throttledContent }
-                            : msg
-                    ));
-                    onChunk?.(pendingChunk);
+                    updateMessageById(assistantMessageId, (message) => ({
+                        ...message,
+                        content: botContent
+                    }));
+                    if (pendingChunk) onChunk?.(pendingChunk);
                     pendingChunk = '';
                 }
-            }, undefined, 'learning-os', undefined, images, collectedAttachmentIds);
+            }, controller.signal);
 
-            // Final update
+            const finalChunk = consumeStreamingChunk(streamBuffer, '', handleProgressUpdate, true);
+            if (finalChunk.visibleText) {
+                botContent += finalChunk.visibleText;
+                pendingChunk += finalChunk.visibleText;
+            }
+
             if (pendingChunk) {
-                setMessages(prev => prev.map(msg =>
-                    msg.id === botMsgId
-                        ? { ...msg, content: botContent }
-                        : msg
-                ));
+                updateMessageById(assistantMessageId, (message) => ({
+                    ...message,
+                    content: botContent
+                }));
                 onChunk?.(pendingChunk);
             }
 
+            finalizeAssistantMessage(assistantMessageId, botContent);
         } catch (error) {
-            console.error('[AIContext] Chat failed:', error);
-            setMessages(prev => prev.map(msg =>
-                msg.id === botMsgId
-                    ? { ...msg, content: 'Sorry, I encountered an error. Please try again.' }
-                    : msg
-            ));
+            if (isAbortError(error)) {
+                if (botContent.trim()) {
+                    finalizeAssistantMessage(assistantMessageId, botContent, 'cancelled');
+                } else {
+                    removeMessageById(assistantMessageId);
+                }
+                return;
+            }
+
+            const errorMessage = error instanceof Error ? error.message : 'Failed to regenerate the response.';
+            updateMessageById(assistantMessageId, (message) => ({
+                ...message,
+                content: errorMessage,
+                status: 'failed',
+                progressText: undefined,
+                progressSteps: undefined,
+                progressPhase: undefined
+            }));
         } finally {
+            abortControllerRef.current = null;
             setIsLoading(false);
         }
-    }, [sessionId, isLoading, selectedModel, isSpecificChatQuery, isResourceAttachment]);
+    }, [conversationId, finalizeAssistantMessage, isLoading, removeMessageById, updateMessageById]);
 
-    // Fetch activity history when widget opens
     useEffect(() => {
         if (isOpen && token) {
             api.getActivityHistory(10)
-                .then(activities => {
-                    // Limit to last 5 activities to keep context lean and fast
+                .then((activities) => {
                     const topActivities = activities.slice(0, 5);
-                    const formattedDetails = topActivities.map(a =>
-                        `- [${new Date(a.timestamp || Date.now()).toLocaleTimeString()}] ${a.description} (${a.type})`
+                    const formattedDetails = topActivities.map((activity) =>
+                        `- [${new Date(activity.timestamp || Date.now()).toLocaleTimeString()}] ${activity.description} (${activity.type})`
                     ).join('\n');
 
                     if (formattedDetails) {
                         setSystemContext(`USER ACTIVITY CONTEXT:\n${formattedDetails}\n\n`);
                     }
                 })
-                .catch(err => console.warn('Failed to fetch activity context:', err));
+                .catch((err) => console.warn('Failed to fetch activity context:', err));
         }
     }, [isOpen, token]);
-
-    // Public wrapper to inject context
-    const sendMessage = useCallback(async (content: string, attachments: Attachment[] = [], onChunk?: (chunk: string) => void) => {
-        let injectedContext = '';
-
-        if (systemContext && systemContext.trim()) {
-            injectedContext += systemContext.trim() + '\n\n';
-            setSystemContext(''); // Clear it so we don't send it again next msg
-        }
-
-        // Inject real-time UI context if the user has a specific modal or card open
-        if (context && Object.keys(context).length > 0) {
-            const contextStr = JSON.stringify(context, null, 2);
-            // Limit UI context to 4000 chars to avoid overwhelming the payload
-            const safeContext = contextStr.length > 4000 ? contextStr.slice(0, 4000) + '...' : contextStr;
-            injectedContext += `[Current Data Context: ${safeContext}]\n\n`;
-        }
-
-        await _sendMessage(content, attachments, injectedContext, onChunk);
-    }, [_sendMessage, systemContext, context]);
 
     const updateContext = useCallback((newData: any) => {
         setContext((prev: any) => {
@@ -444,25 +825,38 @@ export function AIProvider({ children }: { children: ReactNode }) {
     const value: AIContextType = useMemo(() => ({
         isOpen,
         toggleOpen,
-        sessionId,
-        setSessionId,
+        conversationId,
+        setConversationId,
         messages,
         setMessages,
         isLoading,
         setIsLoading,
         sendMessage,
+        stopStreaming,
+        regenerateLastResponse,
         clearMessages,
         selectedModel,
         setSelectedModel,
         AI_MODELS,
         context,
         setContext: updateContext,
-        ensureChatSession,
-        uploadAttachment,
+        ensureChatConversation,
+        indexAttachment
     }), [
-        isOpen, toggleOpen, sessionId, messages, isLoading, 
-        sendMessage, clearMessages, selectedModel, context, 
-        ensureChatSession, uploadAttachment, updateContext
+        clearMessages,
+        context,
+        conversationId,
+        ensureChatConversation,
+        indexAttachment,
+        isLoading,
+        isOpen,
+        messages,
+        regenerateLastResponse,
+        selectedModel,
+        sendMessage,
+        stopStreaming,
+        toggleOpen,
+        updateContext,
     ]);
 
     return (
@@ -480,10 +874,6 @@ export function useAI() {
     return context;
 }
 
-/**
- * Hook to automatically track entity context for the AI assistant.
- * Usage: useAIContextTracker('DSA Problem', problem);
- */
 export function useAIContextTracker(type: string | null, data: any) {
     const { setContext } = useAI();
     const lastDataRef = useRef<string>('');
@@ -497,22 +887,16 @@ export function useAIContextTracker(type: string | null, data: any) {
             return;
         }
 
-        // Use ID and type for a stable key, or stringify for deep check
         const dataId = data?._id || data?.id || 'no-id';
         const currentDataStr = `${type}-${dataId}-${JSON.stringify(data).length}`;
 
         if (currentDataStr !== lastDataRef.current) {
-            setContext({ 
-                type, 
-                data, 
-                trackedAt: new Date().toISOString() 
+            setContext({
+                type,
+                data,
+                trackedAt: new Date().toISOString()
             });
             lastDataRef.current = currentDataStr;
         }
-
-        return () => {
-            // Optional: clear on unmount if we're leaving the "Detail" scope
-            // For now, we rely on the next component's mount to overwrite or clear
-        };
     }, [type, data, setContext]);
 }

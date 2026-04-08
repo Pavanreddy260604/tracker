@@ -104,7 +104,8 @@ export class OllamaService implements IAIService {
      */
     async *chatStream(
         messages: { role: string; content: string }[],
-        systemPrompt?: string
+        systemPrompt?: string,
+        options?: import('./ai.interface').ChatOptions
     ): AsyncGenerator<string, void, unknown> {
 
         const modelsToTry = Array.from(new Set([this.primaryModel, ...this.fallbackModels]));
@@ -118,7 +119,8 @@ export class OllamaService implements IAIService {
                     messages: messages,
                     stream: true,
                     options: {
-                        temperature: 0.9, 
+                        temperature: options?.temperature ?? 0.0, 
+                        seed: options?.seed,
                         num_ctx: 16384, // Increased context
                         num_thread: 8, 
                         f16_kv: true, // Faster
@@ -240,7 +242,8 @@ export class OllamaService implements IAIService {
                     stream: false,
                     format: options?.format === 'json' ? 'json' : undefined,
                     options: {
-                        temperature: options?.temperature ?? 0.7,
+                        temperature: options?.temperature ?? 0.0,
+                        seed: options?.seed,
                         num_predict: options?.max_tokens || 8192,
                         num_ctx: 16384, // Larger context for 100+ scene treatments
                         num_thread: 8,

@@ -23,9 +23,11 @@ import {
     AlertCircle
 } from 'lucide-react';
 import {
-    scriptWriterApi,
-    type MasterScriptReconstruction,
-    type MasterScriptReconstructionLine
+    scriptWriterApi
+} from '../../../services/scriptWriter.api';
+import type {
+    MasterScriptReconstruction,
+    MasterScriptReconstructionLine
 } from '../../../services/scriptWriter.api';
 
 interface ChunkViewerModalProps {

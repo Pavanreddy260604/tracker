@@ -62,7 +62,7 @@ type AssistantSceneContext = {
 };
 
 type EmbeddedQueryVariant = {
-    key: 'intent' | 'content' | 'style';
+    key: 'intent' | 'content' | 'style' | 'expansion';
     text: string;
     embedding: number[];
 };
@@ -187,7 +187,7 @@ function normalizeSectionText(value: string): string {
 
 export class AssistantRagService {
     async buildAssistantReferencePack(params: BuildAssistantReferencePackParams): Promise<AssistantReferencePack> {
-        const queryVariants = this.buildQueryVariants(params);
+        const queryVariants = await this.buildQueryVariants(params);
         const embeddedQueries = await Promise.all(
             queryVariants.map(async (query) => ({
                 ...query,
@@ -203,13 +203,15 @@ export class AssistantRagService {
         ]);
 
         const preferredElementTypes = this.inferPreferredElementTypes(params);
+        
+        // Initial Project Style Candidates
         const projectStyleRefs = this.rankCandidates(projectCandidates, params, preferredElementTypes, 'project')
             .slice(0, this.getQuotas(params).projectStyle)
             .map((candidate) => this.toReference(candidate.sample, 'project_style', 'project', candidate.score));
 
-        // PH Mixed RAG: Split Master Feed Quota for Craft vs Linguistics
+        // Master Feed Mixed RAG logic
         const masterQuota = this.getQuotas(params).masterFeed;
-        const linguisticQuota = Math.max(1, Math.floor(masterQuota * 0.4)); // At least 40% for linguistic if available
+        const linguisticQuota = Math.max(1, Math.floor(masterQuota * 0.4));
         const craftQuota = masterQuota - linguisticQuota;
 
         const rankedMasters = this.rankCandidates(masterResult.candidates, params, preferredElementTypes, 'master');
@@ -221,10 +223,30 @@ export class AssistantRagService {
 
         const craftRefs = rankedMasters
             .filter(c => c.sourceType === 'screenplay')
-            .slice(0, craftQuota + (linguisticQuota - linguisticRefs.length)) // Take extra craft if linguistic is short
+            .slice(0, craftQuota + (linguisticQuota - linguisticRefs.length))
             .map(c => this.toReference(c.sample, 'master_feed', 'master', c.score, c.sourceType));
 
         const masterFeedRefs = [...linguisticRefs, ...craftRefs].sort((a, b) => b.score - a.score);
+
+        const allSelectedReferences = [
+            ...projectStyleRefs,
+            ...masterFeedRefs
+        ];
+
+        // PH Phase 6: LLM Re-ranking (Top 20 candidates only)
+        const toReRank = allSelectedReferences.slice(0, 20);
+        if (toReRank.length > 3) {
+            const reRankedResults = await this.reRankWithAI(toReRank, params);
+            const reRankedMap = new Map(reRankedResults.map(r => [r.sampleId, r.score]));
+            
+            allSelectedReferences.forEach(ref => {
+                if (ref.sampleId && reRankedMap.has(ref.sampleId)) {
+                    // LLM judgment blend (70% LLM, 30% vector/rank score)
+                    ref.score = (reRankedMap.get(ref.sampleId)! * 0.7) + (ref.score * 0.3);
+                }
+            });
+            allSelectedReferences.sort((a, b) => b.score - a.score);
+        }
 
         const selectedProjectContinuity = projectContinuityRefs.slice(0, this.getQuotas(params).projectContinuity);
         const selectedRecentContinuity = recentContinuityRefs.slice(0, this.getQuotas(params).recentContinuity);
@@ -236,10 +258,9 @@ export class AssistantRagService {
             this.formatSection('RECENT SCENE CONTINUITY', selectedRecentContinuity)
         ].filter(Boolean);
 
-        const allSelectedReferences = [
+        const finalReferences = [
             ...selectedProjectContinuity,
-            ...projectStyleRefs,
-            ...masterFeedRefs,
+            ...allSelectedReferences, // Includes re-ranked style/master refs
             ...selectedRecentContinuity
         ];
 
@@ -263,7 +284,7 @@ export class AssistantRagService {
                 recent: selectedRecentContinuity.length,
                 continuity: selectedProjectContinuity.length
             },
-            selectedReferences: allSelectedReferences.map((reference) => ({
+            selectedReferences: finalReferences.map((reference) => ({
                 group: reference.group,
                 sourceFamily: reference.sourceFamily,
                 label: reference.label,
@@ -287,7 +308,7 @@ export class AssistantRagService {
         };
     }
 
-    private buildQueryVariants(params: BuildAssistantReferencePackParams): Array<{ key: 'intent' | 'content' | 'style'; text: string }> {
+    private async buildQueryVariants(params: BuildAssistantReferencePackParams): Promise<Array<{ key: 'intent' | 'content' | 'style' | 'expansion'; text: string }>> {
         const recentUserTurns = (params.scene?.assistantChatHistory || [])
             .filter((entry) => entry.role === 'user')
             .slice(-3)
@@ -313,7 +334,7 @@ export class AssistantRagService {
             recentUserTurns ? `Recent User Intent: ${recentUserTurns}` : ''
         ].filter(Boolean).join('\n');
 
-        const variants = [
+        const variants: Array<{ key: 'intent' | 'content' | 'style' | 'expansion'; text: string }> = [
             {
                 key: 'intent' as const,
                 text: [
@@ -334,12 +355,75 @@ export class AssistantRagService {
         ].filter((variant) => variant.text.trim());
 
         const seen = new Set<string>();
-        return variants.filter((variant) => {
+        const filteredVariants = variants.filter((variant) => {
             const normalized = normalizeSectionText(variant.text);
             if (!normalized || seen.has(normalized)) return false;
             seen.add(normalized);
             return true;
         });
+
+        // AI-Powered Expansion (Phase 6)
+        try {
+            const aiExpansion = await this.expandQueryWithAI(params);
+            if (aiExpansion) {
+                filteredVariants.push({
+                    key: 'expansion' as const,
+                    text: aiExpansion
+                });
+            }
+        } catch (err) {
+            console.warn('[AssistantRAG] Query expansion failed:', err);
+        }
+
+        return filteredVariants;
+    }
+
+    private async expandQueryWithAI(params: BuildAssistantReferencePackParams): Promise<string | null> {
+        const { RAG_QUERY_EXPANSION_PROMPT } = require('../prompts/hollywood');
+        const prompt = RAG_QUERY_EXPANSION_PROMPT
+            .replace('{{instruction}}', params.instruction)
+            .replace('{{sceneContext}}', [params.scene?.slugline, params.scene?.summary, params.scene?.goal].filter(Boolean).join('\n'));
+
+        try {
+            const response = await aiServiceManager.chat(prompt, { 
+                temperature: 0.3,
+                model: process.env.GROQ_UTILITY_MODEL || 'llama-3.1-8b-instant'
+            });
+            return response.trim();
+        } catch (err) {
+            return null;
+        }
+    }
+
+    private async reRankWithAI(candidates: AssistantReference[], params: BuildAssistantReferencePackParams): Promise<Array<{ sampleId: string, score: number }>> {
+        const { RAG_RERANK_PROMPT } = require('../prompts/hollywood');
+        
+        const candidateList = candidates.map((c, i) => 
+            `ID: [${c.sampleId || i}]\nCONTENT: ${c.excerpt}\nSOURCE: ${c.label}`
+        ).join('\n\n---\n\n');
+
+        const prompt = RAG_RERANK_PROMPT
+            .replace('{{instruction}}', params.instruction)
+            .replace('{{candidates}}', candidateList);
+
+        try {
+            const response = await aiServiceManager.chat(prompt, { 
+                temperature: 0,
+                format: 'json',
+                model: process.env.GROQ_UTILITY_MODEL || 'llama-3.1-8b-instant'
+            });
+
+            const parsed = JSON.parse(response);
+            if (Array.isArray(parsed.rankings)) {
+                return parsed.rankings.map((r: any) => ({
+                    sampleId: String(r.id),
+                    score: Number(r.relevanceScore) / 100
+                }));
+            }
+        } catch (err) {
+            console.warn('[AssistantRAG] Re-ranking failed:', err);
+        }
+        return [];
     }
 
     private async retrieveProjectCandidates(
@@ -423,42 +507,35 @@ export class AssistantRagService {
             activeScriptVersion: { $exists: true, $ne: null }
         })
             .select('_id title director tags language sourceType activeScriptVersion')
-            .select('_id title director tags language sourceType activeScriptVersion')
             .lean();
 
         // PH Mixed RAG: Two-Stream Retrieval
-        // Stream 1: Linguistic/Literature Stream (Source language strict)
         const linguisticScripts = eligibleScripts.filter(s =>
             (s.language || 'English').toLowerCase().includes(params.language.toLowerCase()) &&
             (s.sourceType === 'literature' || s.sourceType === 'dictionary')
         );
         const linguisticIds = linguisticScripts.map(s => s._id.toString());
 
-        // Stream 2: Craft/Style Stream (Screenplays, can fallback to English)
         const craftScriptsLocal = eligibleScripts.filter(s =>
             (s.language || 'English').toLowerCase().includes(params.language.toLowerCase()) &&
-            (s.sourceType === 'screenplay' || !s.sourceType) // Handle legacy undefined as screenplay
+            (s.sourceType === 'screenplay' || !s.sourceType)
         );
         const craftIdsLocal = craftScriptsLocal.map(s => s._id.toString());
 
         const craftScriptsGlobal = eligibleScripts.filter(s =>
             (s.language || 'English') === 'English' &&
-            (s.sourceType === 'screenplay' || !s.sourceType) // Handle legacy undefined as screenplay
+            (s.sourceType === 'screenplay' || !s.sourceType)
         );
         const craftIdsGlobal = craftScriptsGlobal.map(s => s._id.toString());
 
-        // Execute Queries
         const [linguisticCandidates, craftCandidatesLocal, craftCandidatesGlobal] = await Promise.all([
             this.queryMasterCandidates(embeddedQueries, linguisticIds, params.language, true, 'literature'),
             this.queryMasterCandidates(embeddedQueries, craftIdsLocal, params.language, true, 'screenplay'),
             this.queryMasterCandidates(embeddedQueries, craftIdsGlobal, undefined, false, 'screenplay')
         ]);
 
-        // Merge logic: Prioritize local craft over global craft
         let craftCandidates = this.mergeCandidateSets(craftCandidatesLocal, craftCandidatesGlobal);
         let languageFallbackUsed = craftCandidatesLocal.length === 0 && craftCandidatesGlobal.length > 0;
-
-        // Final Candidate Set (Linguistic + Craft)
         let mergedCandidates = this.mergeCandidateSets(linguisticCandidates, craftCandidates);
 
         return {
@@ -487,8 +564,6 @@ export class AssistantRagService {
                     minSimilarity: languageMatched ? 0.32 : 0.25,
                     maxLength: 980,
                     dedupe: true,
-                    // If we have specific scripts, we don't need exact language filtering in Vector Store 
-                    // because those scripts were already filtered for language (includes transliterations).
                     language: masterScriptIds.length > 0 ? undefined : (languageMatched ? language : 'English'),
                     scopeType: 'masterScriptId',
                     allowedScopeIds: masterScriptIds,
@@ -598,7 +673,6 @@ export class AssistantRagService {
                 const characterBoost = candidate.strictCharacterMatch ? 0.08 : 0;
                 const languageBoost = candidate.languageMatched ? 0.06 : 0;
 
-                // PH Mixed RAG: Linguistic Boost for non-English to ensure natural dialogue particles/idioms
                 const isNonEnglish = (params.language || 'English').toLowerCase() !== 'english';
                 const linguisticBoost = (isNonEnglish && (candidate.sourceType === 'literature' || candidate.sourceType === 'dictionary')) ? 0.25 : 0;
 
@@ -798,45 +872,17 @@ export class AssistantRagService {
         if (!references.length) return '';
 
         const body = references.map((reference, index) => {
-            const familyType = (reference.sourceType === 'literature' || reference.sourceType === 'dictionary')
-                ? 'LINGUISTIC REFERENCE'
-                : 'STYLE/CRAFT';
-
-            const meta = [reference.elementType || reference.chunkType, familyType]
-                .filter(Boolean)
-                .join(' | ');
-
-            return [
-                `${index + 1}. [${familyType}] ${reference.label}`,
-                meta ? `Type: ${meta}` : '',
-                `Excerpt: ${reference.excerpt}`,
-                reference.parentContext ? `Parent context: ${reference.parentContext}` : ''
-            ].filter(Boolean).join('\n');
+            const context = reference.parentContext ? `\n[CONTEXT: ${reference.parentContext}]` : '';
+            return `--- REFERENCE ${index + 1} (${reference.label}) ---\n${reference.excerpt}${context}`;
         }).join('\n\n');
 
-        return `## ${title}\n${body}`;
+        return `### ${title}\n\n${body}`;
     }
 
     private logRetrieval(params: BuildAssistantReferencePackParams, metadata: AssistantRetrievalMetadata) {
-        const payload = {
-            mode: params.mode,
-            target: params.target,
-            bibleId: toId(params.bible?._id) || null,
-            sceneId: toId(params.scene?._id) || null,
-            candidateCounts: metadata.candidateCounts,
-            sourceMix: metadata.sourceMix,
-            languageFallbackUsed: metadata.languageFallbackUsed,
-            eligibleMasterScriptCount: metadata.eligibleMasterScriptCount,
-            exactLanguageMasterCount: metadata.exactLanguageMasterCount,
-            selectedReferences: metadata.selectedReferences.map((reference) => ({
-                group: reference.group,
-                sourceFamily: reference.sourceFamily,
-                label: reference.label,
-                score: reference.score
-            }))
-        };
-
-        console.info('[AssistantRAG] Retrieval summary:', JSON.stringify(payload));
+        console.info(`[AssistantRAG] Retrieval completed [${params.mode}/${params.target}]`);
+        console.info(`- Variants: ${metadata.queryVariants.map(v => v.key).join(', ')}`);
+        console.info(`- Mix: P:${metadata.sourceMix.project} M:${metadata.sourceMix.master} R:${metadata.sourceMix.recent} C:${metadata.sourceMix.continuity}`);
     }
 }
 

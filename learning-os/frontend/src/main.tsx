@@ -5,6 +5,31 @@ import './index.css'
 import App from './App.tsx'
 
 const queryClient = new QueryClient()
+
+function safeSessionGet(key: string): string | null {
+  try {
+    return sessionStorage.getItem(key)
+  } catch {
+    return null
+  }
+}
+
+function safeSessionSet(key: string, value: string) {
+  try {
+    sessionStorage.setItem(key, value)
+  } catch {
+    // Ignore blocked sessionStorage contexts.
+  }
+}
+
+function safeSessionRemove(key: string) {
+  try {
+    sessionStorage.removeItem(key)
+  } catch {
+    // Ignore blocked sessionStorage contexts.
+  }
+}
+
 function renderApp() {
   createRoot(document.getElementById('root')!).render(
     <StrictMode>
@@ -22,7 +47,7 @@ async function cleanupServiceWorkers() {
 
   const registrations = await navigator.serviceWorker.getRegistrations();
   if (!registrations.length) {
-    sessionStorage.removeItem('sw-cleanup-reload');
+    safeSessionRemove('sw-cleanup-reload');
     return false;
   }
 
@@ -46,13 +71,13 @@ async function cleanupServiceWorkers() {
     );
   }
 
-  if (!sessionStorage.getItem('sw-cleanup-reload')) {
-    sessionStorage.setItem('sw-cleanup-reload', '1');
+  if (!safeSessionGet('sw-cleanup-reload')) {
+    safeSessionSet('sw-cleanup-reload', '1');
     window.location.reload();
     return true;
   }
 
-  sessionStorage.removeItem('sw-cleanup-reload');
+  safeSessionRemove('sw-cleanup-reload');
   return false;
 }
 

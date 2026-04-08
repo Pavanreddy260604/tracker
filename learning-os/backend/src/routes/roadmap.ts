@@ -15,6 +15,7 @@ const roadmapSyncSchema = z.object({
     nodes: z.array(z.object({
         id: z.string().optional(),
         nodeId: z.string().optional(),
+        topicId: z.string().optional(),
         roadmapId: z.string().optional(),
         type: z.string().optional(),
         data: z.object({
@@ -51,6 +52,7 @@ function normalizeRoadmapNode(node: RoadmapSyncPayload['nodes'][number], userId:
         userId,
         roadmapId: node.roadmapId || 'default',
         nodeId: node.nodeId || node.id || '',
+        topicId: node.topicId ? new mongoose.Types.ObjectId(node.topicId) : undefined,
         type: node.type || 'roadmap',
         data: {
             label: node.data?.label || 'Unnamed',

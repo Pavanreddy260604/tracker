@@ -12,8 +12,10 @@ export interface ProctoringEvent {
     | 'integrity_violation'
     | 'paste_detected'
     | 'automation_detected'
+    | 'camera_lost'
+    | 'audio_threshold_reached'
     | 'unknown';
-  timestamp: number;
+  timestamp: string; // Changed to string (ISO)
   sessionId: string;
   clientProof: string;
   sequenceNumber: number;
@@ -49,14 +51,16 @@ export class ProctoringAttestationService {
    * This secret is shared securely with the client via WebSocket
    */
   async generateSessionSecret(sessionId: string): Promise<string> {
+    const key = `proctoring:secret:${sessionId}`;
+    
+    // Try to get existing secret first to maintain stability on reloads
+    const existing = await redis.get(key);
+    if (existing) return existing;
+
     const secret = randomBytes(32).toString('hex');
     
-    // Store in Redis with TTL matching session
-    await redis.setex(
-      `proctoring:secret:${sessionId}`,
-      7200, // 2 hours
-      secret
-    );
+    // Store in Redis with TTL matching session (2 hours)
+    await redis.setex(key, 7200, secret);
     
     return secret;
   }
@@ -106,7 +110,8 @@ export class ProctoringAttestationService {
 
     // Check timestamp is reasonable (within 5 minutes of server time)
     const serverTime = Date.now();
-    const timeDiff = Math.abs(serverTime - event.timestamp);
+    const eventTime = new Date(event.timestamp).getTime();
+    const timeDiff = Math.abs(serverTime - eventTime);
     
     if (timeDiff > this.EVENT_WINDOW_MS) {
       console.error(`[Proctoring] Stale event: ${timeDiff}ms difference`);
@@ -134,8 +139,9 @@ export class ProctoringAttestationService {
     const profile = await this.getBehavioralProfile(userId);
     
     // Calculate metrics
+    const now = Date.now();
     const tabSwitchesLast5Min = recentEvents.filter(
-      e => e.type === 'tab_switch' && e.timestamp > Date.now() - 5 * 60 * 1000
+      e => e.type === 'tab_switch' && new Date(e.timestamp).getTime() > now - 5 * 60 * 1000
     ).length;
     
     const fullscreenExits = recentEvents.filter(e => e.type === 'fullscreen_exit').length;
@@ -148,6 +154,24 @@ export class ProctoringAttestationService {
         confidence: 0.95,
         reason: 'Developer tools detected - potential inspection/copying',
         action: 'terminate'
+      };
+    }
+
+    if (event.type === 'camera_lost') {
+      return {
+        severity: 'critical',
+        confidence: 1.0,
+        reason: 'Camera feed lost - mandatory monitoring interrupted',
+        action: 'terminate'
+      };
+    }
+
+    if (event.type === 'audio_threshold_reached') {
+      return {
+        severity: 'high',
+        confidence: 0.8,
+        reason: 'Suspicious audio/voice activity detected',
+        action: 'flag'
       };
     }
 

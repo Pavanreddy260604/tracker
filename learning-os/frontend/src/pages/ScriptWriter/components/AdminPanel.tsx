@@ -14,7 +14,8 @@ import {
     Trash2,
     Eye
 } from 'lucide-react';
-import { scriptWriterApi, type IMasterScript } from '../../../services/scriptWriter.api';
+import { scriptWriterApi } from '../../../services/scriptWriter.api';
+import type { IMasterScript } from '../../../services/scriptWriter.api';
 
 export function AdminPanel() {
     const navigate = useNavigate();
@@ -144,7 +145,7 @@ export function AdminPanel() {
     };
 
     return (
-        <div className="admin-panel animate-in fade-in duration-500">
+        <div className="admin-panel animate-in fade-in duration-500 text-zinc-300">
             <div className="flex items-center justify-between mb-8">
                 <div className="flex items-center gap-3">
                     <div className="p-3 bg-blue-500/10 rounded-2xl border border-blue-500/20">
@@ -278,8 +279,8 @@ export function AdminPanel() {
                                 <Database size={16} /> Ingest & Index Script
                             </button>
                         </div>
-                    </form >
-                </div >
+                    </form>
+                </div>
             ) : (
                 <div className="space-y-4">
                     <div className="relative mb-6">
@@ -421,9 +422,7 @@ export function AdminPanel() {
                         </div>
                     )}
                 </div>
-            )
-            }
-
-        </div >
+            )}
+        </div>
     );
 }

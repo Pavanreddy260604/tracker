@@ -203,6 +203,22 @@ export class VectorService {
 
         return scoredDocs.sort((a, b) => b.score - a.score).slice(0, limit);
     }
+
+    /**
+     * Retrieve all chunks for a specific attachment ID.
+     * Used for High-Density Context Pinning.
+     */
+    async findAllForAttachment(attachmentId: string): Promise<string[]> {
+        await this.init();
+        if (!this.collection) return [];
+
+        const results: any = await this.collection.get({
+            where: { attachmentId: { "$eq": attachmentId } },
+            include: ["documents"]
+        } as any);
+
+        return results.documents || [];
+    }
 }
 
 export const vectorService = new VectorService();

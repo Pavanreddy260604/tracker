@@ -13,8 +13,26 @@ interface CritiqueResult {
 export class CriticService {
     async evaluateScene(sceneContent: string, sceneGoal: string, genre: string, language: string = 'English'): Promise<CritiqueResult> {
         const prompt = `
-        You are a ruthless, elite Hollywood Script Doctor performing an Executive Scene Audit.
-        Your job is to provide an objective, unflinching breakdown of the following screenplay scene. Do not flatter the writer. Be brutally honest. If the scene is boring, say so. If the dialogue is clunky, point it out.
+        You are a ruthless, world-class Hollywood Script Consultant. Your reputation depends on your ability to catch every flaw. You are the gatekeeper of quality.
+        
+        TASK: Perform a BRUTAL EXECUTIVE AUDIT of the screenplay scene below. 
+        Start with a SCORE of 100 and apply the following DEDUCTION PROTOCOL:
+        
+        1. FORMATTING (-10 to -30): Deduct 10 points for each major deviation from WGA standards (sluglines, character cues, margins).
+        2. DIALOGUE (-5 to -40): 
+           - Deduct 15 points for "On-the-nose" exposition (characters saying what they feel/know instead of using subtext).
+           - Deduct 10 points for "Wooden/Generic" voices that sound identical.
+           - Deduct 5 points for every line that doesn't use a TACTIC (deflect, intimidate, etc.).
+        3. PACING (-5 to -20): 
+           - Deduct 10 points if the scene doesn't "Enter late and leave early."
+           - Deduct 5 points for "Director's notes" in action lines (telling instead of showing).
+        4. DRAMATIC GOAL (-20 to -50): If the scene fails to move the story forward or achieve its stated goal, deduct 30+ points.
+        
+        SCORING SCALE:
+        90-100: Masterpiece (A) - Professional-ready.
+        80-89: Solid (B) - Good craft, minor subtext issues.
+        70-79: Average (C) - Readable, but needs significant work.
+        <70: Failing (D/F) - Amateurish or mechanically broken.
 
         CONTEXT:
         Language: ${language}
@@ -26,30 +44,25 @@ export class CriticService {
         ${sceneContent}
         """
         
-        Analyze the scene for:
-        1. FORMATTING: Absolute fidelity to Industry Standard Screenplay Format. Call out any sloppy formatting.
-        2. DIALOGUE: Naturalism, subtext, and character voice. Ruthlessly identify "on-the-nose" exposition or wooden lines.
-        3. PACING: Tension, momentum, and scene economy. Does it enter late and leave early? Where does the scene drag?
-        4. GOAL: Does it actually achieve the stated dramatic goal, or does it wander aimlessly?
-
         Return a JSON object with the following structure:
         {
-            "score": [0-100 integer],
+            "score": [final integer after deductions],
             "grade": ["A", "B", "C", "D", "F"],
-            "summary": "Your brutally honest executive verdict (max 3 sentences).",
-            "formattingIssues": ["list", "of", "sloppy", "errors", "or empty if perfect"],
-            "dialogueIssues": ["list", "of", "wooden lines", "on-the-nose exposition", "or empty if brilliant"],
-            "pacingIssues": ["list", "of", "where the scene drags", "unnecessary action lines"],
-            "suggestions": ["3 aggressive, specific prescriptions for rewriting the scene. If the score is 90+, provide 'Elite Polish' suggestions."]
+            "summary": "Your brutally honest executive verdict (max 2 sentences).",
+            "formattingIssues": ["list of deductions made", "or empty if 0"],
+            "dialogueIssues": ["list of wooden lines/on-the-nose hits", "or empty if brilliant"],
+            "pacingIssues": ["list of where the scene drags", "unnecessary fluff"],
+            "suggestions": ["3 mandatory, aggressive prescriptions for rewriting."]
         }
         
-        Be precise, surgical, and unsparing.
+        Be surgical. If the scene is mediocre, a score of 80 is TOO HIGH. A score of 82 means it is ALMOST production-ready. 
+        If it's regular work, it should be in the 60s or 70s.
         ONLY RETURN THE RAW JSON.
         `;
 
         try {
             const response = await aiServiceManager.chat(prompt, {
-                temperature: 0.3, // Low temp for analytical consistency
+                temperature: 0.0, // Zero temp for absolute scoring consistency
                 format: "json"
             });
 

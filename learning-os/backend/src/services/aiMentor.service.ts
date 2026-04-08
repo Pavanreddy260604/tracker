@@ -22,21 +22,31 @@ export class AIMentorService extends AIClientService {
         if (!topic) throw new Error('Topic not found');
 
         const prompt = `
-            Act as a Senior Staff Engineer. Conduct a Scalability & Production-Ready Audit for the following Backend Learning Topic:
+            Act as a Senior Staff Engineer. Conduct a BRUTAL Scalability & Production-Ready Audit for the following Backend Learning Topic.
+            Your reputation depends on catching architectural leaks and bottlenecks.
             
             Topic: ${topic.topicName}
             Category: ${topic.category}
             Initial Notes: ${topic.notes}
             Bugs Experienced: ${topic.bugsFaced}
             
+            SCORING PROTOCOL (Start at 100):
+            - Scalability Bottleneck: -20 per identified issue (e.g. N+1, missing indexes, O(N^2) loops).
+            - Single Point of Failure: -25.
+            - Missing Edge Case Handling: -15.
+            - Lack of Observability/Logging: -10.
+            - Vague/Incomplete Notes: -10.
+            
             Identify "Scalability Gotchas" and create a "Production-Ready Checklist".
             The output must be a valid JSON object with the following structure:
             {
-                "score": number (0-100, representing how scalable the current understanding is),
-                "gotchas": string[],
+                "score": number (final integer after deductions),
+                "gotchas": string[] (be specific and technical),
                 "checklist": { "task": string, "importance": "high" | "medium" | "low" }[],
-                "summary": string
+                "summary": string (unsparing architectural verdict)
             }
+
+            If a topic is understood well, a score of 80 is too high. 80+ should mean it is READY for high-traffic production.
         `;
 
         const response = await this.generateResponse(prompt);

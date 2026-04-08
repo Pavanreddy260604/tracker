@@ -1,8 +1,9 @@
 import type { ComponentPropsWithoutRef, ReactNode } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import { ArrowRight, Check, Copy, Loader2, Pencil, Trash2, User, Sparkles, Scissors } from 'lucide-react';
+import { ArrowRight, Check, Copy, Loader2, Pencil, Trash2, Sparkles, Scissors, Search, Compass, BookOpen, ChevronRight, ChevronDown } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useState } from 'react';
 import type { AssistantMessage, AssistantScope } from '../types';
 import { statusText } from './AssistantPanelConfig';
 import { EmptyState } from './AssistantPanelShared';
@@ -12,7 +13,7 @@ type MarkdownCodeProps = ComponentPropsWithoutRef<'code'> & {
     inline?: boolean;
 };
 
-function MessageActionButton({
+function MessageAction({
     label,
     onClick,
     children,
@@ -28,55 +29,152 @@ function MessageActionButton({
             type="button"
             aria-label={label}
             onClick={onClick}
-            className={`rounded-md border border-border-subtle bg-console-surface-2 p-1 text-text-muted transition-colors hover:text-text-primary ${
-                danger ? 'hover:border-status-error/30 hover:text-status-error' : 'hover:border-border-muted'
+            className={`p-1 rounded text-white/20 hover:text-white/60 transition-colors ${
+                danger ? 'hover:text-red-400' : ''
             }`}
         >
-
             {children}
         </button>
     );
 }
 
-function renderPatchCard(content: string, messageId: string, onApplyProposal: (messageId: string) => void) {
+function renderPatchCard(
+    content: string, 
+    messageId: string, 
+    onApplyProposal: (messageId: string) => void,
+    onDiscardProposal: (messageId: string) => void
+) {
     const searchIndex = content.indexOf('<<<SEARCH>>>');
     const replaceIndex = content.indexOf('<<<REPLACE>>>');
 
-    if (searchIndex === -1 || replaceIndex === -1) {
-        return null;
-    }
+    if (searchIndex === -1 || replaceIndex === -1) return null;
 
     const oldText = content.substring(searchIndex + 12, replaceIndex).replace(/^\r?\n/, '').replace(/\r?\n$/, '');
     const newText = content.substring(replaceIndex + 13).replace(/^\r?\n/, '').replace(/\r?\n$/, '');
 
     return (
-        <div className="group/patch my-3 overflow-hidden rounded-xl border border-border-subtle bg-console-surface">
-
-            <div className="flex items-center justify-between border-b border-border-subtle px-3 py-2">
+        <div className="my-3 overflow-hidden rounded-lg border border-white/[0.06] bg-white/[0.02] group/patch">
+            <div className="flex items-center justify-between border-b border-white/[0.04] px-3 py-2">
                 <div className="flex items-center gap-2">
-                    <Scissors size={12} className="text-text-tertiary" />
-                    <span className="text-[10px] font-medium uppercase tracking-[0.14em] text-text-tertiary">Local patch</span>
+                    <Scissors size={11} className="text-white/30" />
+                    <span className="text-[10px] text-white/30 font-medium">Patch</span>
                 </div>
-                <button
-                    type="button"
-                    onClick={() => onApplyProposal(`${messageId}|${btoa(encodeURIComponent(content))}`)}
-                    className="rounded-md border border-border-subtle px-1.5 py-0.5 text-[10px] font-medium text-text-tertiary opacity-0 transition-all hover:border-border-strong hover:text-text-primary group-hover/message:opacity-100 group-focus-within/message:opacity-100"
-                >
-                    Apply
-                </button>
+                <div className="flex items-center gap-2">
+                    <button
+                        type="button"
+                        onClick={() => onDiscardProposal(messageId)}
+                        className="text-[10px] text-white/30 hover:text-red-400 font-medium transition-all"
+                    >
+                        Discard
+                    </button>
+                    <button
+                        type="button"
+                        onClick={() => onApplyProposal(`${messageId}|${btoa(encodeURIComponent(content))}`)}
+                        className="text-[10px] text-white/60 hover:text-white bg-white/[0.08] hover:bg-white/[0.12] rounded px-2 py-0.5 font-medium transition-all"
+                    >
+                        Apply
+                    </button>
+                </div>
             </div>
-            <div className="divide-y divide-border-subtle">
-                <div className="bg-console-bg/60 px-3 py-3">
-                    <div className="mb-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-text-tertiary">Search</div>
-                    <pre className="whitespace-pre-wrap font-mono text-xs leading-relaxed text-text-tertiary line-through decoration-border-strong">{oldText}</pre>
+            <div className="divide-y divide-white/[0.04]">
+                <div className="px-3 py-2.5 bg-red-500/[0.03]">
+                    <pre className="whitespace-pre-wrap font-mono text-[11px] leading-relaxed text-white/30 line-through">{oldText}</pre>
                 </div>
-                <div className="flex items-center justify-center py-1.5 text-text-tertiary">
-                    <ArrowRight size={13} />
+                <div className="flex items-center justify-center py-1 text-white/10">
+                    <ArrowRight size={11} />
                 </div>
-                <div className="bg-console-surface/40 px-3 py-3">
-                    <div className="mb-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-text-tertiary">Replace</div>
-                    <pre className="whitespace-pre-wrap font-mono text-xs leading-relaxed text-text-primary">{newText}</pre>
+                <div className="px-3 py-2.5 bg-emerald-500/[0.03]">
+                    <pre className="whitespace-pre-wrap font-mono text-[11px] leading-relaxed text-white/70">{newText}</pre>
                 </div>
+            </div>
+        </div>
+    );
+}
+
+function ThoughtIndicator({ duration, isStreaming }: { duration?: number; isStreaming?: boolean }) {
+    const [isExpanded, setIsExpanded] = useState(false);
+    
+    if (!duration && !isStreaming) return null;
+    
+    return (
+        <div className="mb-3">
+            <button 
+                onClick={() => setIsExpanded(!isExpanded)}
+                className="flex items-center gap-1.5 text-[11px] text-white/25 hover:text-white/40 transition-colors font-medium"
+            >
+                {isExpanded ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
+                {isStreaming ? (
+                    <span className="flex items-center gap-1.5">
+                        <Loader2 size={10} className="animate-spin" />
+                        Thinking...
+                    </span>
+                ) : (
+                    <span>Thought for {duration}s</span>
+                )}
+            </button>
+            <AnimatePresence>
+                {isExpanded && (
+                    <motion.div 
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: 'auto' }}
+                        exit={{ opacity: 0, height: 0 }}
+                        className="mt-1.5 ml-4 border-l border-white/[0.06] pl-3 py-1"
+                    >
+                        <p className="text-[11px] text-white/25 leading-relaxed">
+                            {isStreaming 
+                                ? "Analyzing context and formulating response..." 
+                                : "Analyzed the screenplay structure to formulate a precise revision."}
+                        </p>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+        </div>
+    );
+}
+
+function ResearchCard({ research, plan }: { research?: string; plan?: string }) {
+    if (!research && !plan) return null;
+    
+    return (
+        <div className="mb-4 space-y-2">
+            {research && (
+                <details className="group">
+                    <summary className="flex items-center gap-2 cursor-pointer text-[11px] text-white/30 hover:text-white/50 transition-colors font-medium list-none">
+                        <Search size={11} />
+                        <span>Research</span>
+                        <ChevronRight size={11} className="group-open:rotate-90 transition-transform ml-auto" />
+                    </summary>
+                    <div className="mt-2 ml-4 border-l border-white/[0.06] pl-3 text-[12px] text-white/40 leading-relaxed">
+                        <ReactMarkdown remarkPlugins={[remarkGfm]}>{research}</ReactMarkdown>
+                    </div>
+                </details>
+            )}
+            {plan && (
+                <details className="group">
+                    <summary className="flex items-center gap-2 cursor-pointer text-[11px] text-white/30 hover:text-white/50 transition-colors font-medium list-none">
+                        <Compass size={11} />
+                        <span>Plan</span>
+                        <ChevronRight size={11} className="group-open:rotate-90 transition-transform ml-auto" />
+                    </summary>
+                    <div className="mt-2 ml-4 border-l border-white/[0.06] pl-3 text-[12px] text-white/40 leading-relaxed">
+                        <ReactMarkdown remarkPlugins={[remarkGfm]}>{plan}</ReactMarkdown>
+                    </div>
+                </details>
+            )}
+        </div>
+    );
+}
+
+function DirectorNote({ content }: { content: string }) {
+    if (!content) return null;
+    return (
+        <div className="mt-4 border-t border-white/[0.04] pt-3">
+            <div className="flex items-center gap-1.5 mb-2">
+                <BookOpen size={11} className="text-white/25" />
+                <span className="text-[10px] text-white/25 font-medium uppercase tracking-wider">Rationale</span>
+            </div>
+            <div className="text-[12px] text-white/40 leading-relaxed">
+                <ReactMarkdown remarkPlugins={[remarkGfm]}>{content}</ReactMarkdown>
             </div>
         </div>
     );
@@ -113,65 +211,52 @@ function MessageCard({
 }) {
     const isUser = msg.role === 'user';
     const isEditing = msg.type === 'instruction' && editingId === msg.id;
-    const wrapperClass = isUser ? 'ml-auto w-full max-w-[88%]' : 'w-full';
-    const metaAlignClass = isUser ? 'justify-end' : 'justify-start';
-    const bubbleClass = isUser
-        ? 'rounded-[24px] rounded-tr-[4px] border border-accent-primary/20 bg-gradient-to-br from-accent-primary/20 to-accent-primary/5 p-5 shadow-xl shadow-accent-primary/5'
-        : msg.status === 'error'
-            ? 'rounded-[24px] rounded-tl-[4px] border border-status-error/20 bg-status-error-soft/30 p-5 backdrop-blur-md'
-            : 'rounded-[24px] rounded-tl-[4px] border border-border-subtle/30 bg-console-surface/50 p-5 shadow-2xl shadow-console-bg/40 backdrop-blur-xl';
-
     const isStreamingPlaceholder = msg.status === 'streaming' && !msg.content.trim();
 
     return (
         <motion.div 
-            initial={{ opacity: 0, x: isUser ? 20 : -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.3 }}
-            className={wrapperClass}
+            initial={{ opacity: 0, y: 6 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.2 }}
+            className={isUser ? 'ml-auto max-w-[85%]' : 'w-full'}
         >
-            <div className={`mb-3 flex flex-wrap items-center gap-2.5 text-[9px] font-bold uppercase tracking-[0.2em] text-text-disabled ${metaAlignClass}`}>
-                <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full border transition-all duration-300 ${
-                    isUser 
-                        ? 'bg-accent-primary/10 border-accent-primary/20 text-accent-primary' 
-                        : 'bg-console-surface/50 border-border-subtle/30 text-text-secondary'
-                }`}>
-                    {isUser ? <User size={10} strokeWidth={3} /> : <Sparkles size={10} strokeWidth={3} />}
-                    <span>{isUser ? 'Director' : 'Assistant'}</span>
-                </div>
-                {msg.selectionLabel && (
-                    <span className="rounded-full border border-border-subtle/20 bg-console-surface/30 px-3 py-1.5 normal-case tracking-normal text-text-tertiary italic backdrop-blur-sm">
-                        {msg.selectionLabel}
-                    </span>
-                )}
-            </div>
-
-
+            {/* Message bubble */}
             {msg.type === 'thought' ? (
-                <div className="inline-flex items-center gap-2 rounded-lg border border-border-subtle bg-console-bg/80 px-2.5 py-1.5 text-[10px] text-text-tertiary">
+                <div className="flex items-center gap-2 text-[11px] text-white/25 py-1">
                     <Loader2 size={11} className="animate-spin" />
                     <span>{msg.content}</span>
                 </div>
             ) : (
-                <div className={`group/message relative overflow-hidden backdrop-blur-sm transition-all duration-300 ${bubbleClass}`}>
-                    <div className="absolute right-3 top-3 flex items-center gap-1.5 opacity-0 transition-opacity group-hover/message:opacity-100 group-focus-within/message:opacity-100 z-10">
-                        <MessageActionButton label="Copy message" onClick={() => onCopy(msg.content, msg.id)}>
-                            {copiedId === msg.id ? <Check size={12} className="text-status-ok" /> : <Copy size={12} />}
-                        </MessageActionButton>
+                <div className={`group/msg relative rounded-lg transition-all ${
+                    isUser
+                        ? 'bg-white/[0.06] border border-white/[0.08] px-4 py-3'
+                        : msg.status === 'error'
+                            ? 'bg-red-500/[0.05] border border-red-500/[0.1] px-4 py-3'
+                            : msg.status === 'applied'
+                                ? 'bg-emerald-500/[0.03] border border-emerald-500/[0.08] px-4 py-3 opacity-70'
+                                : msg.status === 'discarded'
+                                    ? 'border border-white/[0.03] px-4 py-3 opacity-40'
+                                    : 'px-4 py-3'
+                }`}>
+                    {/* Hover actions */}
+                    <div className="absolute right-2 top-2 flex items-center gap-0.5 opacity-0 group-hover/msg:opacity-100 transition-opacity z-10">
+                        <MessageAction label="Copy" onClick={() => onCopy(msg.content, msg.id)}>
+                            {copiedId === msg.id ? <Check size={11} className="text-emerald-400" /> : <Copy size={11} />}
+                        </MessageAction>
                         {isUser && msg.type === 'instruction' && !isEditing && (
-                            <MessageActionButton label="Edit instruction" onClick={() => onStartEdit(msg)}>
-                                <Pencil size={12} />
-                            </MessageActionButton>
+                            <MessageAction label="Edit" onClick={() => onStartEdit(msg)}>
+                                <Pencil size={11} />
+                            </MessageAction>
                         )}
-                        <MessageActionButton label="Delete message" onClick={() => onDelete(msg.id)} danger>
-                            <Trash2 size={12} />
-                        </MessageActionButton>
+                        <MessageAction label="Delete" onClick={() => onDelete(msg.id)} danger>
+                            <Trash2 size={11} />
+                        </MessageAction>
                     </div>
 
                     {isEditing ? (
-                        <div className="space-y-3">
+                        <div className="space-y-2">
                             <textarea
-                                className="w-full resize-none rounded-xl border border-border-subtle bg-console-bg px-3 py-2 text-sm leading-relaxed text-text-primary outline-none focus:border-border-strong"
+                                className="w-full resize-none rounded-md border border-white/[0.08] bg-white/[0.03] px-3 py-2 text-[13px] text-white/80 outline-none focus:border-white/[0.15]"
                                 value={editValue}
                                 onChange={(e) => onEditValueChange(e.target.value)}
                                 rows={4}
@@ -184,82 +269,114 @@ function MessageCard({
                                     }
                                 }}
                             />
-                            <div className="flex items-center justify-end gap-2">
-                                <button type="button" onClick={onCancelEdit} className="rounded-lg px-2 py-1 text-[11px] font-medium text-text-tertiary transition-colors hover:bg-console-surface hover:text-text-primary">Cancel</button>
-                                <button type="button" onClick={() => onSaveEdit(msg.id)} className="rounded-lg bg-text-primary px-2.5 py-1 text-[11px] font-medium text-console-bg transition-colors hover:opacity-90">Save</button>
+                            <div className="flex justify-end gap-2">
+                                <button type="button" onClick={onCancelEdit} className="text-[11px] text-white/30 hover:text-white/60 px-2 py-1">Cancel</button>
+                                <button type="button" onClick={() => onSaveEdit(msg.id)} className="text-[11px] text-white/80 bg-white/[0.08] hover:bg-white/[0.12] px-2.5 py-1 rounded">Save</button>
                             </div>
                         </div>
                     ) : isUser || msg.type === 'instruction' ? (
-                        <p className="whitespace-pre-wrap pr-14 text-[13px] leading-relaxed text-text-primary">{msg.content}</p>
+                        <p className="whitespace-pre-wrap text-[13px] leading-relaxed text-white/80 pr-10">{msg.content}</p>
                     ) : (
-                        <div className="prose prose-invert prose-sm max-w-none pr-14 text-text-secondary">
+                        <div className="text-[13px] text-white/60 leading-relaxed">
+                            {/* Thought indicator */}
+                            <ThoughtIndicator 
+                                duration={msg.metadata?.thoughtDuration} 
+                                isStreaming={isStreamingPlaceholder} 
+                            />
+
+                            {/* Research & Plan (collapsible) */}
+                            <ResearchCard research={msg.metadata?.research} plan={msg.metadata?.plan} />
+
                             {isStreamingPlaceholder ? (
                                 msg.type === 'proposal' ? (
                                     <div className="py-2">
                                         <ProgressBar 
                                             progress={progress} 
-                                            label="Drafting screenplay..." 
+                                            label="Drafting..." 
                                             showPercentage={true}
                                             className="mb-2"
                                         />
-                                        <div className="flex items-center gap-2 text-text-tertiary">
+                                        <div className="flex items-center gap-2 text-white/25">
                                             <Loader2 size={10} className="animate-spin" />
-                                            <span className="text-[10px] italic">
-                                                Analyzing context and shaping the revision...
-                                            </span>
+                                            <span className="text-[11px]">Writing revision...</span>
                                         </div>
                                     </div>
                                 ) : (
-                                    <div className="flex items-center gap-2 py-2 text-[11px] text-text-tertiary">
-                                        <Loader2 size={12} className="animate-spin" />
-                                        <span>Thinking...</span>
+                                    <div className="flex items-center gap-2 py-1 text-white/25">
+                                        <Loader2 size={11} className="animate-spin" />
+                                        <span className="text-[11px]">Thinking...</span>
                                     </div>
                                 )
                             ) : (
-                                <ReactMarkdown
-                                    remarkPlugins={[remarkGfm]}
-                                    components={{
-                                        pre: ({ children }) => <div className="not-prose overflow-x-auto rounded-xl border border-border-subtle/30 bg-console-bg/50 p-3">{children}</div>,
-                                        code({ inline, className, children, ...props }: MarkdownCodeProps) {
-                                            const match = /language-(\w+)/.exec(className || '');
-                                            const isPatch = match && match[1] === 'script-edit';
-                                            const content = String(children).replace(/\n$/, '');
+                                <>
+                                    <div className="prose prose-invert prose-sm max-w-none 
+                                        prose-p:text-white/60 prose-p:leading-relaxed prose-p:my-2
+                                        prose-strong:text-white/80 prose-strong:font-semibold
+                                        prose-li:text-white/55 prose-li:my-0.5
+                                        prose-headings:text-white/75 prose-headings:font-semibold prose-headings:mt-4 prose-headings:mb-2
+                                        prose-code:text-white/70 prose-code:bg-white/[0.05] prose-code:px-1 prose-code:py-0.5 prose-code:rounded prose-code:text-[0.85em]
+                                        prose-a:text-blue-400/70 prose-a:no-underline hover:prose-a:text-blue-400
+                                    ">
+                                        <ReactMarkdown
+                                            remarkPlugins={[remarkGfm]}
+                                            components={{
+                                                pre: ({ children }) => <div className="not-prose overflow-x-auto rounded-md border border-white/[0.06] bg-white/[0.02] p-3 my-3">{children}</div>,
+                                                code({ inline, className, children, ...props }: MarkdownCodeProps) {
+                                                    const match = /language-(\w+)/.exec(className || '');
+                                                    const isPatch = match && match[1] === 'script-edit';
+                                                    const content = String(children).replace(/\n$/, '');
+                
+                                                    if (!inline && isPatch) {
+                                                        return renderPatchCard(content, msg.id, onApplyProposal, onDiscardProposal);
+                                                    }
+                
+                                                    if (inline) {
+                                                        return <code className="rounded bg-white/[0.05] px-1 py-0.5 text-[0.85em] text-white/70" {...props}>{children}</code>;
+                                                    }
     
-                                            if (!inline && isPatch) {
-                                                return renderPatchCard(content, msg.id, onApplyProposal);
-                                            }
-    
-                                            if (inline) {
-                                                return <code className="rounded bg-console-surface-2 px-1 py-0.5 text-[0.85em] text-text-primary" {...props}>{children}</code>;
-                                            }
-
-                                        return <code className={className} {...props}>{children}</code>;
-                                    }
-                                }}
-                            >
-                                {msg.content}
-                            </ReactMarkdown>
-                        )}
+                                                    return <code className={className} {...props}>{children}</code>;
+                                                }
+                                            }}
+                                        >
+                                            {msg.content}
+                                        </ReactMarkdown>
+                                    </div>
+                                    
+                                    {/* Director's Note / Rationale */}
+                                    {msg.metadata?.explanation && <DirectorNote content={msg.metadata.explanation} />}
+                                </>
+                            )}
                         </div>
                     )}
 
-                    {msg.type === 'proposal' && msg.scope === 'scene' && msg.status !== 'streaming' && msg.content.trim() && (
-                        <div className="mt-2 flex items-center justify-end gap-1.5">
+                    {/* Proposal actions */}
+                    {msg.type === 'proposal' && msg.scope === 'scene' && msg.status === 'pending' && msg.content.trim() && (
+                        <div className="mt-3 flex items-center justify-end gap-2 pt-2 border-t border-white/[0.04]">
                             <button
                                 type="button"
                                 onClick={() => onDiscardProposal(msg.id)}
-                                className="rounded-md border border-border-subtle px-2 py-1 text-[10px] font-medium text-text-tertiary transition-colors hover:border-status-error/30 hover:text-status-error"
+                                className="text-[11px] text-white/30 hover:text-red-400 font-medium transition-colors"
                             >
                                 Discard
                             </button>
                             <button
                                 type="button"
                                 onClick={() => onApplyProposal(msg.id)}
-                                className="rounded-md border border-border-strong px-2 py-1 text-[10px] font-medium text-text-secondary transition-colors hover:border-accent-primary/40 hover:text-text-primary"
+                                className="text-[11px] text-white/70 hover:text-white bg-white/[0.06] hover:bg-white/[0.1] border border-white/[0.08] rounded-md px-3 py-1 font-medium transition-all"
                             >
                                 Apply
                             </button>
                         </div>
+                    )}
+
+                    {msg.status === 'applied' && (
+                        <div className="mt-2 flex items-center justify-end gap-1 text-[10px] text-emerald-400/60 font-medium">
+                            <Check size={10} /> Applied
+                        </div>
+                    )}
+
+                    {msg.status === 'discarded' && (
+                        <div className="mt-2 text-right text-[10px] text-white/20 font-medium">Discarded</div>
                     )}
                 </div>
             )}
@@ -305,10 +422,7 @@ export function AssistantThread({
     onDiscardProposal: (messageId: string) => void;
 }) {
     const visibleMessages = messages.filter((message) => {
-        if (message.role === 'user' || message.type === 'thought') {
-            return true;
-        }
-
+        if (message.role === 'user' || message.type === 'thought') return true;
         return message.status === 'streaming' || message.content.trim().length > 0;
     });
 
@@ -317,7 +431,7 @@ export function AssistantThread({
     }
 
     return (
-        <div className="flex flex-col gap-5 px-4 py-4">
+        <div className="flex flex-col gap-4 px-4 py-4">
             <AnimatePresence mode="popLayout">
                 {visibleMessages.map((msg) => (
                     <MessageCard
@@ -342,7 +456,7 @@ export function AssistantThread({
                 && visibleMessages[visibleMessages.length - 1]?.type === 'proposal'
                 && visibleMessages[visibleMessages.length - 1]?.status !== 'streaming'
                 && (
-                <div className="inline-flex w-full flex-col gap-2 rounded-lg border border-border-subtle bg-console-bg/80 px-3 py-2.5">
+                <div className="rounded-lg border border-white/[0.06] bg-white/[0.02] px-3 py-2.5">
                     <ProgressBar 
                         progress={progress} 
                         label={statusText(effectiveScope)} 

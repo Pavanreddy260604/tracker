@@ -38,6 +38,14 @@ export type AssistantMessage = {
     mode?: AssistantMode;
     scope?: AssistantScope;
     selectionLabel?: string;
+    metadata?: {
+        research?: string;
+        plan?: string;
+        explanation?: string;
+        summary?: string;
+        thoughtDuration?: number;
+        analyzedFiles?: { name: string; type: string }[];
+    };
 };
 
 export type PendingFixState = {

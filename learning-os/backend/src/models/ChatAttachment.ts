@@ -2,7 +2,7 @@ import mongoose, { Schema, Document } from 'mongoose';
 
 export interface IChatAttachment extends Document {
     userId: mongoose.Types.ObjectId;
-    sessionId: mongoose.Types.ObjectId;
+    conversationId: mongoose.Types.ObjectId;
     fileName: string;
     fileType: string;
     fileSize: number;
@@ -16,7 +16,7 @@ export interface IChatAttachment extends Document {
 
 const chatAttachmentSchema = new Schema<IChatAttachment>({
     userId: { type: Schema.Types.ObjectId, ref: 'User', required: true },
-    sessionId: { type: Schema.Types.ObjectId, ref: 'ChatSession', required: true },
+    conversationId: { type: Schema.Types.ObjectId, ref: 'ChatSession', required: true },
     fileName: { type: String, required: true },
     fileType: { type: String, required: true },
     fileSize: { type: Number, required: true },
@@ -27,7 +27,7 @@ const chatAttachmentSchema = new Schema<IChatAttachment>({
 }, { timestamps: true });
 
 // Index for cleanup logic: Find attachments for sessions with no recent activity
-chatAttachmentSchema.index({ sessionId: 1, lastAccessed: -1 });
+chatAttachmentSchema.index({ conversationId: 1, lastAccessed: -1 });
 chatAttachmentSchema.index({ userId: 1 });
 
 export const ChatAttachment = mongoose.model<IChatAttachment>('ChatAttachment', chatAttachmentSchema);

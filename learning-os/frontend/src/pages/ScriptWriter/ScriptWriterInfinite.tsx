@@ -41,6 +41,7 @@ function ScriptWriterInfiniteContent() {
         handleNewScene,
         handleUpdateScene,
         handleDeleteScene,
+        handleReorderScenes,
         loadScenes,
         updateSceneInState,
     } = useScriptWriterProjects({
@@ -124,6 +125,7 @@ function ScriptWriterInfiniteContent() {
         canRefreshCritique,
         pointsToRefresh,
         eliteHighScore,
+        isCritiqueStale,
         pendingFix,
         setPendingFix
     } = useScriptWriterSceneEditor({
@@ -202,6 +204,11 @@ function ScriptWriterInfiniteContent() {
                             await handleUpdateScene(activeProjectId, sceneId, updates);
                         }
                     }}
+                    onReorderScenes={async (reordered) => {
+                        if (activeProjectId) {
+                            await handleReorderScenes(activeProjectId, reordered);
+                        }
+                    }}
                 />
             }
             rightPanel={
@@ -230,6 +237,7 @@ function ScriptWriterInfiniteContent() {
                     setPendingFix={setPendingFix}
                     setError={setError}
                     characters={characters}
+                    isCritiqueStale={isCritiqueStale}
                 />
             }
         >

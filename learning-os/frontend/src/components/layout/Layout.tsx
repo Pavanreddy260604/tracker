@@ -63,7 +63,7 @@ export function Layout({ children, banner }: LayoutProps) {
     // Collapsible Sidebar Sections mapped to folder state
     const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
         learning: true,
-        tools: false,
+        tools: window.location.pathname.startsWith('/interview'),
     });
 
     const toggleSection = (section: string) => {
@@ -446,7 +446,8 @@ export function Layout({ children, banner }: LayoutProps) {
                                 { label: location.pathname === '/' ? 'Home' : location.pathname.split('/')[1].charAt(0).toUpperCase() + location.pathname.split('/')[1].slice(1), active: location.pathname.split('/').length === 2 },
                                 ...(location.pathname.split('/').length > 2 ? [
                                     { 
-                                        label: location.pathname.split('/')[2] === 'new' ? 'New' : 'Detail', 
+                                        label: location.pathname.split('/')[2] === 'new' ? 'New' : 
+                                               location.pathname.split('/')[2] === 'setup' ? 'Setup' : 'Detail', 
                                         active: true 
                                     }
                                 ] : [])

@@ -18,11 +18,13 @@ export interface IRoadmapNode extends Document {
         x: number;
         y: number;
     };
+    topicId?: mongoose.Types.ObjectId;
 }
 
 const roadmapNodeSchema = new Schema<IRoadmapNode>({
     userId: { type: Schema.Types.ObjectId, ref: 'User', required: true },
     roadmapId: { type: String, default: 'default' },
+    topicId: { type: Schema.Types.ObjectId, ref: 'BackendTopic' },
     nodeId: { type: String, required: true },
     type: { type: String, default: 'roadmap' },
     data: {

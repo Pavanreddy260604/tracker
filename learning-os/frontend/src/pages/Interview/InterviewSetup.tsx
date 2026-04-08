@@ -1,10 +1,15 @@
-import { useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Clock, Play, Plus, Trash2, Settings, Code2, AlertCircle, Sparkles, Shield } from 'lucide-react';
+import { Clock, Play, Plus, Trash2, Settings, Code2, AlertCircle, Sparkles, Shield, Activity, Camera } from 'lucide-react';
 import { api } from '../../services/api';
 import { useDialog } from '../../hooks/useDialog';
 import { AlertDialog } from '../../components/ui/AlertDialog';
+import { Button } from '../../components/ui/Button';
+import { Input } from '../../components/ui/Input';
+import { Select } from '../../components/ui/Select';
+import { Badge } from '../../components/ui/Badge';
+import { cn } from '../../lib/utils';
 
 interface QuestionConfig {
     id: string;
@@ -53,6 +58,41 @@ export function InterviewSetup() {
     const [language, setLanguage] = useState('javascript');
     const [strictMode, setStrictMode] = useState(true);
     const [enforceFullscreen, setEnforceFullscreen] = useState(true);
+    const [hasCameraAccess, setHasCameraAccess] = useState(false); // OFF by default — user must toggle ON (user gesture needed for getUserMedia)
+    const [cameraPermission, setCameraPermission] = useState<'pending' | 'granted' | 'denied' | 'checking'>('pending');
+    const permissionStreamRef = useRef<MediaStream | null>(null);
+
+    const requestCameraPermission = useCallback(async () => {
+        setCameraPermission('checking');
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+            // Keep stream ref so we can stop it on unmount / when camera disabled
+            permissionStreamRef.current = stream;
+            setCameraPermission('granted');
+        } catch {
+            setCameraPermission('denied');
+        }
+    }, []);
+
+    const stopPermissionStream = useCallback(() => {
+        if (permissionStreamRef.current) {
+            permissionStreamRef.current.getTracks().forEach(t => t.stop());
+            permissionStreamRef.current = null;
+        }
+    }, []);
+
+    const handleCameraToggle = useCallback(() => {
+        if (hasCameraAccess) {
+            // Turning OFF
+            setHasCameraAccess(false);
+            setCameraPermission('pending');
+            stopPermissionStream();
+        } else {
+            // Turning ON — request permission immediately
+            setHasCameraAccess(true);
+            requestCameraPermission();
+        }
+    }, [hasCameraAccess, requestCameraPermission, stopPermissionStream]);
 
     // Section Config List
     const [sections, setSections] = useState<SectionConfig[]>([
@@ -105,8 +145,10 @@ export function InterviewSetup() {
         }
     ]);
 
-    // Force cache refresh
-    console.log('InterviewSetup component loaded');
+    // Cleanup permission stream on unmount
+    useEffect(() => {
+        return () => stopPermissionStream();
+    }, [stopPermissionStream]);
 
     const addSection = () => {
         const newType: SectionType = 'sql';
@@ -179,6 +221,7 @@ export function InterviewSetup() {
                 language,
                 strictMode,
                 enforceFullscreen,
+                hasCameraAccess,
                 sectionsConfig
             });
 
@@ -192,33 +235,48 @@ export function InterviewSetup() {
     };
 
     return (
-        <div className="sw-page max-w-5xl mx-auto space-y-8 pb-32">
-            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
-                <h1 className="sw-page-title">Interview Simulator</h1>
-                <p className="sw-page-subtitle max-w-2xl">
-                    Design your perfect technical interview. Configure each question or let AI balance difficulty and topics.
+        <div className="max-w-6xl mx-auto space-y-12 pb-32 pt-8">
+            <motion.div 
+                initial={{ opacity: 0, scale: 0.98, y: 10 }} 
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                className="space-y-4"
+            >
+                <div className="flex items-center gap-3 text-accent-primary font-black uppercase tracking-[0.3em] text-[10px]">
+                    <Sparkles size={14} className="animate-pulse" />
+                    Interview Environment Architect
+                </div>
+                <h1 className="text-5xl lg:text-6xl font-black text-text-primary tracking-tighter leading-none">
+                    Session <span className="text-accent-primary">Configuration</span>
+                </h1>
+                <p className="text-text-muted text-lg max-w-2xl font-medium tracking-tight leading-relaxed">
+                    Design your perfect technical evaluation. Fine-tune every section or leverage AI to balance difficulty and systemic coverage.
                 </p>
             </motion.div>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <div className="lg:col-span-1 space-y-6">
-                    <div className="sw-card p-6 sticky top-6">
-                        <div className="flex items-center gap-2 mb-6 pb-4 border-b border-[color:var(--border-subtle)]">
-                            <Settings size={18} className="sw-accent-text" />
-                            <span className="sw-section-title">Session Settings</span>
+                <div className="lg:col-span-1 space-y-8">
+                    <div className="interview-card p-8 sticky top-8 bg-console-surface/40 backdrop-blur-2xl border-white/5 shadow-elevation-2">
+                        <div className="flex items-center gap-3 mb-8 pb-4 border-b border-white/5">
+                            <Settings size={18} className="text-accent-primary" />
+                            <h3 className="text-sm font-black uppercase tracking-widest text-text-primary">Global Parameters</h3>
                         </div>
 
                         {/* Duration */}
-                        <div className="mb-6">
-                            <label className="sw-label flex items-center gap-2">
-                                <Clock size={14} /> Duration (mins)
+                        <div className="space-y-4 mb-8">
+                            <label className="text-[11px] font-black uppercase tracking-widest text-text-muted flex items-center gap-2">
+                                <Clock size={14} className="text-accent-primary" /> Duration Matrix
                             </label>
-                            <div className="grid grid-cols-2 gap-2">
+                            <div className="grid grid-cols-2 gap-3">
                                 {[30, 45, 60, 90].map(mins => (
                                     <button
                                         key={mins}
                                         onClick={() => setTotalDuration(mins)}
-                                        className={`sw-option h-11 flex items-center justify-center transition-all ${totalDuration === mins ? 'is-active' : ''}`}
+                                        className={cn(
+                                            "h-12 flex items-center justify-center rounded-xl font-bold transition-all border",
+                                            totalDuration === mins 
+                                                ? 'bg-accent-primary text-white border-accent-primary shadow-lg shadow-accent-primary/20 scale-105' 
+                                                : 'bg-console-bg/50 text-text-muted border-white/5 hover:border-white/10'
+                                        )}
                                     >
                                         {mins}m
                                     </button>
@@ -227,131 +285,221 @@ export function InterviewSetup() {
                         </div>
 
                         {/* Language */}
-                        <div className="mb-6">
-                            <label className="sw-label flex items-center gap-2">
-                                <Code2 size={14} /> Language
+                        <div className="space-y-4 mb-8">
+                            <label className="text-[11px] font-black uppercase tracking-widest text-text-muted flex items-center gap-2">
+                                <Code2 size={14} className="text-accent-primary" /> Runtime Protocol
                             </label>
-                            <select
+                            <Select
                                 value={language}
-                                onChange={(e) => setLanguage(e.target.value)}
-                                className="sw-select h-11"
-                            >
-                                <option value="javascript">JavaScript</option>
-                                <option value="python">Python</option>
-                                <option value="java">Java</option>
-                                <option value="cpp">C++</option>
-                                <option value="go">Go</option>
-                            </select>
+                                onChange={(v) => setLanguage(v)}
+                                options={[
+                                    { value: 'javascript', label: 'JavaScript' },
+                                    { value: 'python', label: 'Python' },
+                                    { value: 'java', label: 'Java' },
+                                    { value: 'cpp', label: 'C++' },
+                                    { value: 'go', label: 'Go' },
+                                ]}
+                                className="h-12 bg-console-bg/50 border-white/5"
+                            />
                         </div>
 
                         {/* Proctoring Settings */}
-                        <div className="space-y-4">
+                        <div className="space-y-6 pt-6 border-t border-white/5">
                             <div className="flex items-center justify-between">
-                                <div>
-                                    <label className="sw-label flex items-center gap-2">
-                                        <Shield size={14} /> Strict Mode
+                                <div className="space-y-1">
+                                    <label className="text-[11px] font-black uppercase tracking-widest text-text-primary flex items-center gap-2">
+                                        <Shield size={14} className="text-accent-primary" /> Strict Mode
                                     </label>
-                                    <p className="text-xs text-text-tertiary mt-1">Enable proctoring and test integrity features</p>
+                                    <p className="text-[10px] text-text-muted font-medium">Activate systemic integrity checks</p>
                                 </div>
                                 <button
                                     onClick={() => {
                                         setStrictMode(!strictMode);
                                         if (!strictMode) setEnforceFullscreen(true);
                                     }}
-                                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${strictMode ? 'bg-accent-primary' : 'bg-console-surface-3'}`}
+                                    className={cn(
+                                        "relative inline-flex h-6 w-11 items-center rounded-full transition-all",
+                                        strictMode ? 'bg-accent-primary shadow-[0_0_15px_rgba(var(--accent-primary-rgb),0.3)]' : 'bg-console-surface-3'
+                                    )}
                                 >
-                                    <span className={`inline-block h-4 w-4 transform rounded-full bg-[color:var(--text-on-accent)] shadow-sm transition-transform ${strictMode ? 'translate-x-6' : 'translate-x-1'}`} />
+                                    <span className={cn(
+                                        "inline-block h-4 w-4 transform rounded-full bg-white transition-transform",
+                                        strictMode ? 'translate-x-6' : 'translate-x-1'
+                                    )} />
                                 </button>
                             </div>
 
                             {strictMode && (
-                                <div className="flex items-center justify-between pl-4 border-l-2 border-accent-primary/20">
-                                    <div>
-                                        <label className="sw-label text-sm">Enforce Fullscreen</label>
-                                        <p className="text-xs text-text-tertiary">Require fullscreen mode during test</p>
+                                <motion.div 
+                                    initial={{ opacity: 0, x: -10 }}
+                                    animate={{ opacity: 1, x: 0 }}
+                                    className="flex items-center justify-between pl-4 border-l-2 border-accent-primary/20 py-1"
+                                >
+                                    <div className="space-y-1">
+                                        <label className="text-[10px] font-bold text-text-muted uppercase tracking-wider">Lock Fullscreen</label>
+                                        <p className="text-[9px] text-text-muted opacity-60 italic">Mandatory focus protocol</p>
                                     </div>
                                     <button
                                         onClick={() => setEnforceFullscreen(!enforceFullscreen)}
-                                        className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${enforceFullscreen ? 'bg-accent-primary' : 'bg-console-surface-3'}`}
+                                        className={cn(
+                                            "relative inline-flex h-5 w-9 items-center rounded-full transition-all",
+                                            enforceFullscreen ? 'bg-accent-primary/80' : 'bg-console-surface-3'
+                                        )}
                                     >
-                                        <span className={`inline-block h-3 w-3 transform rounded-full bg-[color:var(--text-on-accent)] shadow-sm transition-transform ${enforceFullscreen ? 'translate-x-5' : 'translate-x-1'}`} />
+                                        <span className={cn(
+                                            "inline-block h-3 w-3 transform rounded-full bg-white transition-transform",
+                                            enforceFullscreen ? 'translate-x-5' : 'translate-x-1'
+                                        )} />
                                     </button>
+                                </motion.div>
+                            )}
+
+                            <div className="flex items-center justify-between">
+                                <div className="space-y-1">
+                                    <label className="text-[11px] font-black uppercase tracking-widest text-text-primary flex items-center gap-2">
+                                        <Camera size={14} className="text-accent-primary" /> Camera Monitor
+                                    </label>
+                                    <p className="text-[10px] text-text-muted font-medium">Capture real-time video proctoring</p>
                                 </div>
+                                <button
+                                    onClick={handleCameraToggle}
+                                    className={cn(
+                                        "relative inline-flex h-6 w-11 items-center rounded-full transition-all",
+                                        hasCameraAccess ? 'bg-accent-primary shadow-[0_0_15px_rgba(var(--accent-primary-rgb),0.3)]' : 'bg-console-surface-3'
+                                    )}
+                                >
+                                    <span className={cn(
+                                        "inline-block h-4 w-4 transform rounded-full bg-white transition-transform",
+                                        hasCameraAccess ? 'translate-x-6' : 'translate-x-1'
+                                    )} />
+                                </button>
+                            </div>
+
+                            {/* Camera Permission Status */}
+                            {hasCameraAccess && (
+                                <motion.div
+                                    initial={{ opacity: 0, height: 0 }}
+                                    animate={{ opacity: 1, height: 'auto' }}
+                                    className="pl-4 border-l-2 border-accent-primary/20"
+                                >
+                                    {cameraPermission === 'checking' && (
+                                        <div className="flex items-center gap-2 text-text-muted">
+                                            <div className="w-3 h-3 border-2 border-accent-primary/30 border-t-accent-primary rounded-full animate-spin" />
+                                            <span className="text-[10px] font-bold uppercase tracking-wider">Requesting access...</span>
+                                        </div>
+                                    )}
+                                    {cameraPermission === 'granted' && (
+                                        <div className="flex items-center gap-2 text-status-ok">
+                                            <div className="w-2 h-2 bg-status-ok rounded-full animate-pulse" />
+                                            <span className="text-[10px] font-black uppercase tracking-wider">Camera & Mic Ready</span>
+                                        </div>
+                                    )}
+                                    {cameraPermission === 'denied' && (
+                                        <div className="space-y-2">
+                                            <div className="flex items-center gap-2 text-status-error">
+                                                <AlertCircle size={12} />
+                                                <span className="text-[10px] font-black uppercase tracking-wider">Permission Denied</span>
+                                            </div>
+                                            <p className="text-[9px] text-text-muted font-medium leading-relaxed">
+                                                Click the camera/lock icon in your browser's address bar to allow access, then retry.
+                                            </p>
+                                            <button
+                                                onClick={requestCameraPermission}
+                                                className="text-[9px] font-black text-accent-primary uppercase tracking-wider hover:underline"
+                                            >
+                                                Retry Permission
+                                            </button>
+                                        </div>
+                                    )}
+                                    {cameraPermission === 'pending' && (
+                                        <div className="flex items-center gap-2 text-text-muted/60">
+                                            <span className="text-[9px] font-bold uppercase tracking-wider italic">Permission will be requested on toggle</span>
+                                        </div>
+                                    )}
+                                </motion.div>
                             )}
                         </div>
                     </div>
                 </div>
 
                 {/* Right Panel: Question Builder */}
-                <div className="lg:col-span-2 space-y-6">
-                    <div className="sw-card p-6">
-                        <div className="flex items-center justify-between mb-6 pb-4 border-b border-[color:var(--border-subtle)]">
-                            <h2 className="sw-section-title flex items-center gap-2">
-                                <Sparkles size={18} className="sw-accent-text" />
-                                Question Configuration
-                            </h2>
-                            <span className="sw-muted text-sm">{sections.length} Sections</span>
+                <div className="lg:col-span-2 space-y-8">
+                    <div className="interview-card p-10 bg-console-surface/30 backdrop-blur-3xl border-white/5 relative overflow-hidden group">
+                        <div className="absolute top-0 right-0 p-10 opacity-[0.02] -rotate-12 transition-transform duration-1000 group-hover:rotate-0 group-hover:scale-110">
+                            <Sparkles size={160} />
                         </div>
 
-                        <div className="space-y-4">
-                            <AnimatePresence>
+                        <div className="flex items-center justify-between mb-10 pb-6 border-b border-white/5">
+                            <div className="space-y-1">
+                                <h2 className="text-xl font-black text-text-primary tracking-tight flex items-center gap-3 italic">
+                                    <Activity size={24} className="text-accent-primary" />
+                                    Sequence Architecture
+                                </h2>
+                                <p className="text-[10px] font-bold text-text-muted uppercase tracking-[0.2em]">Module Count: {sections.length}</p>
+                            </div>
+                        </div>
+
+                        <div className="space-y-6">
+                            <AnimatePresence mode="popLayout">
                                 {sections.map((section, idx) => (
                                     <motion.div
                                         key={section.id}
-                                        initial={{ opacity: 0, height: 0 }}
-                                        animate={{ opacity: 1, height: 'auto' }}
-                                        exit={{ opacity: 0, height: 0 }}
-                                        className="sw-card sw-card-muted p-4"
+                                        initial={{ opacity: 0, scale: 0.95, y: 20 }}
+                                        animate={{ opacity: 1, scale: 1, y: 0 }}
+                                        exit={{ opacity: 0, scale: 0.9, x: -20 }}
+                                        className="relative p-8 bg-console-bg/40 rounded-[2rem] border border-white/5 hover:border-accent-primary/20 transition-all duration-500 group/section"
                                     >
-                                        {(() => {
-                                            const topicOptions = TOPICS_BY_SECTION_TYPE[section.type] || TOPICS_BY_SECTION_TYPE.coding;
-                                            return (
-                                                <>
-                                        <div className="flex items-start justify-between gap-4 mb-4">
-                                            <div className="flex items-center gap-3">
-                                                <span className="sw-step-indicator">
+                                        <div className="flex items-start justify-between gap-6 mb-8">
+                                            <div className="flex items-center gap-4">
+                                                <div className="w-12 h-12 rounded-2xl bg-accent-primary/10 border border-accent-primary/20 flex items-center justify-center text-accent-primary font-black text-lg shadow-inner">
                                                     {idx + 1}
-                                                </span>
-                                                <h3 className="sw-item-title">{section.name}</h3>
+                                                </div>
+                                                <div className="space-y-1">
+                                                    <Input
+                                                        value={section.name}
+                                                        onChange={(e) => updateSection(section.id, 'name', e.target.value)}
+                                                        className="h-auto p-0 bg-transparent border-none text-xl font-black text-text-primary focus:ring-0 placeholder:text-text-muted/50"
+                                                        placeholder="Phase Name"
+                                                    />
+                                                </div>
                                             </div>
 
                                             {sections.length > 1 && (
                                                 <button
                                                     onClick={() => removeSection(section.id)}
-                                                    className="sw-icon-button sw-icon-button-sm"
-                                                    aria-label="Remove section"
+                                                    className="p-3 text-text-muted hover:text-status-error hover:bg-status-error/10 rounded-xl transition-all opacity-0 group-hover/section:opacity-100"
                                                 >
-                                                    <Trash2 size={16} />
+                                                    <Trash2 size={18} />
                                                 </button>
                                             )}
                                         </div>
 
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                                             {/* Section Type */}
-                                            <div>
-                                                <label className="sw-label">Section Type</label>
-                                                <select
+                                            <div className="space-y-3">
+                                                <label className="text-[10px] font-black uppercase tracking-widest text-text-muted ml-1">Modal Type</label>
+                                                <Select
                                                     value={section.type}
-                                                    onChange={(e) => handleSectionTypeChange(section.id, e.target.value as SectionType)}
-                                                    className="sw-select h-11"
-                                                >
-                                                    {SECTION_TYPE_OPTIONS.map((option) => (
-                                                        <option key={option.value} value={option.value}>
-                                                            {option.label}
-                                                        </option>
-                                                    ))}
-                                                </select>
+                                                    onChange={(v) => handleSectionTypeChange(section.id, v as SectionType)}
+                                                    options={SECTION_TYPE_OPTIONS}
+                                                    className="h-14 bg-console-bg border-white/5 rounded-2xl"
+                                                />
                                             </div>
 
-                                            {/* Difficulty Select */}
-                                            <div>
-                                                <label className="sw-label">Difficulty</label>
-                                                <div className="sw-segment min-h-[44px]">
+                                            {/* Difficulty */}
+                                            <div className="space-y-3">
+                                                <label className="text-[10px] font-black uppercase tracking-widest text-text-muted ml-1">Intensity Level</label>
+                                                <div className="flex p-1.5 bg-console-bg rounded-2xl border border-white/5 h-14">
                                                     {['easy', 'medium', 'hard'].map(diff => (
                                                         <button
                                                             key={diff}
                                                             onClick={() => updateSection(section.id, 'difficulty', diff)}
-                                                            className={`sw-segment-item h-full flex-1 flex items-center justify-center ${section.difficulty === diff ? 'is-active' : ''} is-${diff}`}
+                                                            className={cn(
+                                                                "flex-1 rounded-xl text-[11px] font-black uppercase tracking-widest transition-all",
+                                                                section.difficulty === diff 
+                                                                    ? 'bg-console-surface-3 text-text-primary shadow-sm' 
+                                                                    : 'text-text-muted hover:text-text-secondary'
+                                                            )}
                                                         >
                                                             {diff}
                                                         </button>
@@ -359,37 +507,40 @@ export function InterviewSetup() {
                                                 </div>
                                             </div>
 
-                                            {/* Topics Select */}
-                                            <div>
-                                                <label className="sw-label">
-                                                    Topics <span className="sw-muted font-normal ml-1">({section.topics?.length || 0})</span>
+                                            {/* Topics */}
+                                            <div className="md:col-span-2 space-y-4">
+                                                <label className="text-[10px] font-black uppercase tracking-widest text-text-muted ml-1 flex justify-between items-center">
+                                                    Spectral Coverage
+                                                    <span className="text-accent-primary font-bold">{section.topics?.length || 0} Topics</span>
                                                 </label>
-                                                <div className="flex overflow-x-auto pb-2 gap-2 no-scrollbar -mx-1 px-1">
-                                                    {topicOptions.map(cat => (
+                                                <div className="flex flex-wrap gap-2">
+                                                    {(TOPICS_BY_SECTION_TYPE[section.type] || []).map(topic => (
                                                         <button
-                                                            key={cat}
+                                                            key={topic}
                                                             onClick={() => {
                                                                 const currentTopics = section.topics || [];
-                                                                const newTopics = currentTopics.includes(cat)
-                                                                    ? currentTopics.filter(t => t !== cat)
-                                                                    : [...currentTopics, cat];
+                                                                const newTopics = currentTopics.includes(topic)
+                                                                    ? currentTopics.filter(t => t !== topic)
+                                                                    : [...currentTopics, topic];
                                                                 updateSection(
                                                                     section.id,
                                                                     'topics',
                                                                     newTopics.length ? newTopics : getDefaultTopicsForType(section.type)
                                                                 );
                                                             }}
-                                                            className={`sw-chip whitespace-nowrap h-9 px-4 flex items-center justify-center shrink-0 ${section.topics?.includes(cat) ? 'is-active' : ''}`}
+                                                            className={cn(
+                                                                "px-5 py-2.5 rounded-xl text-[11px] font-bold transition-all border",
+                                                                section.topics?.includes(topic)
+                                                                    ? 'bg-accent-primary/10 border-accent-primary/30 text-accent-primary shadow-[0_0_15px_rgba(var(--accent-primary-rgb),0.1)]'
+                                                                    : 'bg-console-bg border-white/5 text-text-muted hover:border-white/20'
+                                                            )}
                                                         >
-                                                            {cat}
+                                                            {topic}
                                                         </button>
                                                     ))}
                                                 </div>
                                             </div>
                                         </div>
-                                                </>
-                                            );
-                                        })()}
                                     </motion.div>
                                 ))}
                             </AnimatePresence>
@@ -397,36 +548,33 @@ export function InterviewSetup() {
 
                         <button
                             onClick={addSection}
-                            className="sw-btn sw-btn-secondary w-full justify-center border-dashed h-11"
+                            className="mt-8 w-full h-16 rounded-[1.5rem] border-2 border-dashed border-white/5 bg-white/[0.02] flex items-center justify-center gap-3 text-sm font-black uppercase tracking-[0.2em] text-text-muted hover:bg-white/[0.04] hover:border-white/10 hover:text-text-primary transition-all duration-300"
                         >
-                            <Plus size={18} /> Add Another Section
+                            <Plus size={20} className="text-accent-primary" /> 
+                            Execute New Phase
                         </button>
                     </div>
                 </div>
             </div>
 
-            {/* Sticky Footer */}
-            <div className="interview-footer pb-[calc(1rem+env(safe-area-inset-bottom,0px))] md:pb-4">
-                <div className="max-w-5xl mx-auto flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                    <div className="flex items-center gap-3 text-sm sw-muted">
-                        <AlertCircle size={18} className="sw-accent-text" />
-                        <span>
-                            AI will generate tailored questions for each slot. Interview questions and rules are proprietary and protected. Sharing or bypass attempts may result in account termination.
-                        </span>
+            {/* Premium Sticky Footer */}
+            <div className="fixed bottom-0 left-0 right-0 z-50 p-6 bg-gradient-to-t from-console-bg via-console-bg/90 to-transparent pointer-events-none">
+                <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-center justify-between gap-6 pointer-events-auto">
+                    <div className="flex items-center gap-4 p-4 bg-console-surface/80 backdrop-blur-2xl rounded-2xl border border-white/5 shadow-2xl max-w-xl">
+                        <AlertCircle size={20} className="text-amber-500 shrink-0" />
+                        <p className="text-[10px] font-bold text-text-muted uppercase tracking-wider leading-relaxed">
+                            AI protocols will synthesize tailored evaluation matrices. System security records are active. Bypassing integrity safeguards triggers immediate termination.
+                        </p>
                     </div>
-                    <button
+                    
+                    <Button
                         onClick={handleStart}
-                        disabled={isLoading}
-                        className="sw-btn sw-btn-primary w-full sm:w-auto h-12 justify-center"
+                        isLoading={isLoading}
+                        size="lg"
+                        className="w-full md:w-auto px-12 h-16 rounded-2xl font-black text-lg tracking-tight bg-gradient-to-r from-accent-primary to-accent-dark shadow-xl shadow-accent-primary/20 hover:scale-[1.02] transition-transform active:scale-95"
                     >
-                        {isLoading ? (
-                            <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                        ) : (
-                            <>
-                                Begin Interview <Play size={16} fill="currentColor" />
-                            </>
-                        )}
-                    </button>
+                        Initialize Simulation <Play size={18} fill="currentColor" className="ml-2" />
+                    </Button>
                 </div>
             </div>
 
