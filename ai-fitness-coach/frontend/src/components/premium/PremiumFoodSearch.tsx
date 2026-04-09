@@ -17,10 +17,11 @@ interface FoodItem {
 
 interface PremiumFoodSearchProps {
   onSelect: (food: FoodItem) => void;
+  disabled?: boolean;
   className?: string;
 }
 
-export const PremiumFoodSearch: React.FC<PremiumFoodSearchProps> = ({ onSelect, className }) => {
+export const PremiumFoodSearch: React.FC<PremiumFoodSearchProps> = ({ onSelect, disabled, className }) => {
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<FoodItem[]>([]);
   const [loading, setLoading] = useState(false);
@@ -51,14 +52,15 @@ export const PremiumFoodSearch: React.FC<PremiumFoodSearchProps> = ({ onSelect, 
     <div className={cn("relative w-full", className)}>
       <div className="relative group">
         <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground group-focus-within:text-primary transition-colors" />
-        <Input 
-          placeholder="Search for a food..." 
+        <Input
+          placeholder={disabled ? 'Logging...' : 'Search for a food...'}
           value={query}
+          disabled={disabled}
           onChange={(e) => {
             setQuery(e.target.value);
             setIsOpen(true);
           }}
-          className="h-14 pl-12 pr-12 rounded-2xl bg-white dark:bg-zinc-950 border-zinc-200 dark:border-zinc-800 shadow-xl focus:ring-2 focus:ring-primary/20 transition-all text-lg font-medium"
+          className="h-14 pl-12 pr-12 rounded-2xl bg-white dark:bg-zinc-950 border-zinc-200 dark:border-zinc-800 shadow-xl focus:ring-2 focus:ring-primary/20 transition-all text-lg font-medium disabled:opacity-60"
         />
         {query && (
           <button 

@@ -27,6 +27,7 @@ app.get('/health', (req: Request, res: Response) => {
 app.get('/api/v1/nutrition/food/search', authenticate, nutritionController.searchFood);
 app.post('/api/v1/nutrition/log', authenticate, nutritionController.logEntry);
 app.get('/api/v1/nutrition/log/:date', authenticate, nutritionController.getDailyLog);
+app.delete('/api/v1/nutrition/log/:entryId', authenticate, nutritionController.deleteEntry);
 app.get('/api/v1/nutrition/summary/:date', authenticate, nutritionController.getSummary);
 app.get('/api/v1/nutrition/quick-add', authenticate, nutritionController.getQuickAdd);
 
