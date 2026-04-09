@@ -39,7 +39,7 @@ const ProgressScreen: React.FC = () => {
   }, [metricType, limit]);
 
   return (
-    <div className="min-h-screen bg-background text-foreground animate-in fade-in duration-500">
+    <div className="min-h-screen bg-background text-foreground animate-in fade-in duration-500 pb-24">
       <div className="container mx-auto max-w-5xl px-4 py-8 space-y-8">
         <header className="flex items-center justify-between">
           <Button variant="ghost" size="icon" onClick={() => navigate('/')}>

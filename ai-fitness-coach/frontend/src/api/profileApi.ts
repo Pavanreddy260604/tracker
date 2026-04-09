@@ -11,16 +11,16 @@ export const updateProfile = async (data: any) => {
 };
 
 export const getCoachSettings = async () => {
-  const response = await apiClient.get('/api/v1/coach/settings');
+  const response = await apiClient.get('/api/v1/profile/coach-settings');
   return response.data;
 };
 
 export const updateCoachSettings = async (data: any) => {
-  const response = await apiClient.put('/api/v1/coach/settings', data);
+  const response = await apiClient.put('/api/v1/profile/coach-settings', data);
   return response.data;
 };
 
 export const getAvailableEquipment = async () => {
-  const response = await apiClient.get('/api/v1/coach/equipment');
+  const response = await apiClient.get('/api/v1/profile/equipment');
   return response.data;
 };

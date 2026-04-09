@@ -113,6 +113,38 @@ export const getQuickAdd = async (req: AuthenticatedRequest, res: Response): Pro
   }
 };
 
+export const deleteEntry = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+  const userId = (req.user as any)?.userId;
+  if (!userId) {
+    res.status(401).json({ message: 'User ID missing from token' });
+    return;
+  }
+
+  try {
+    const { entryId } = req.params;
+    const { NutritionLog } = await import('../models/nutrition_log');
+
+    const log = await NutritionLog.findOne({ userId, 'entries._id': entryId });
+    if (!log) {
+      res.status(404).json({ message: 'Nutrition entry not found' });
+      return;
+    }
+
+    log.entries = log.entries.filter((e: any) => e._id.toString() !== entryId) as any;
+
+    // Recalculate totals
+    log.totals.calories = Number(log.entries.reduce((sum: number, e: any) => sum + e.calories, 0).toFixed(1));
+    log.totals.protein = Number(log.entries.reduce((sum: number, e: any) => sum + e.protein, 0).toFixed(1));
+    log.totals.carbohydrates = Number(log.entries.reduce((sum: number, e: any) => sum + e.carbohydrates, 0).toFixed(1));
+    log.totals.fats = Number(log.entries.reduce((sum: number, e: any) => sum + e.fats, 0).toFixed(1));
+
+    await log.save();
+    res.json({ message: 'Entry deleted successfully', log });
+  } catch (error: any) {
+    res.status(500).json({ message: 'Error deleting nutrition entry', error: error.message });
+  }
+};
+
 export const getInternalAdherence = async (req: any, res: Response): Promise<void> => {
   try {
     const { userId } = req.params;

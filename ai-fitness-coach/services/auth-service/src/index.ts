@@ -13,6 +13,7 @@ const PORT = process.env.PORT || 3001;
 connectDB();
 
 import * as profileController from './controllers/profileController';
+import * as authController from './controllers/authController';
 import { authenticate } from './middlewares/auth';
 
 app.use(helmet());
@@ -25,20 +26,24 @@ app.get('/health', (req: Request, res: Response) => {
 
 import * as streakController from './controllers/streakController';
 
+// Auth Routes
+app.post('/api/v1/auth/register', authController.register);
+app.post('/api/v1/auth/login', authController.login);
+
 // Profile Routes
 app.get('/api/v1/profile', authenticate, profileController.getProfile);
 app.put('/api/v1/profile', authenticate, profileController.updateProfile);
 app.post('/api/v1/profile', authenticate, profileController.createProfile);
 
+// Coach settings (stored in user profile)
+app.get('/api/v1/profile/coach-settings', authenticate, profileController.getCoachSettings);
+app.put('/api/v1/profile/coach-settings', authenticate, profileController.updateCoachSettings);
+app.get('/api/v1/profile/equipment', authenticate, profileController.getAvailableEquipment);
+
 // Streak Routes
 app.post('/api/v1/auth/activity', authenticate, streakController.updateActivity);
 app.get('/api/v1/auth/streak', authenticate, streakController.getStreak);
 app.get('/api/v1/internal/auth/streak/:userId', streakController.getInternalStreak);
-
-// Auth Routes placeholder
-app.use('/api/auth', (req, res) => {
-  res.status(501).json({ message: 'Auth endpoints coming soon' });
-});
 
 app.listen(PORT, () => {
   console.log(`Auth Service running on port ${PORT}`);

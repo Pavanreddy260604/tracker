@@ -68,10 +68,10 @@ export const logNutritionEntry = async (
 };
 
 export const getNutritionSummary = async (
-  userId: string, 
-  date: Date, 
+  userId: string,
+  date: Date,
   targets: { calories: number; protein: number; carbohydrates: number; fats: number }
-): Promise<{ totals: any; remaining: any; suggestions: IFoodItem[] }> => {
+): Promise<{ totals: any; remaining: any; targets: any; suggestions: IFoodItem[] }> => {
   const log = await getDailyLog(userId, date);
   const totals = log?.totals || { calories: 0, protein: 0, carbohydrates: 0, fats: 0 };
 
@@ -79,17 +79,16 @@ export const getNutritionSummary = async (
     calories: Number((targets.calories - totals.calories).toFixed(1)),
     protein: Number((targets.protein - totals.protein).toFixed(1)),
     carbohydrates: Number((targets.carbohydrates - totals.carbohydrates).toFixed(1)),
-    fats: Number((targets.fats - totals.fats).toFixed(1))
+    fats: Number((targets.fats - totals.fats).toFixed(1)),
   };
 
   const suggestions: IFoodItem[] = [];
   if (totals.protein < 0.8 * targets.protein) {
-    // If protein is low, suggest high-protein foods (>15g protein per serving)
     const highProteinFoods = await FoodItem.find({ 'macros.protein': { $gt: 15 } }).limit(3);
     suggestions.push(...highProteinFoods);
   }
 
-  return { totals, remaining, suggestions };
+  return { totals, remaining, targets, suggestions };
 };
 
 export const getQuickAddFoods = async (userId: string): Promise<IFoodItem[]> => {

@@ -41,6 +41,7 @@ app.get('/api/v1/sessions/active', authenticate, sessionController.getActiveSess
 app.post('/api/v1/sessions/:sessionId/sets', authenticate, sessionController.logSet);
 app.post('/api/v1/sessions/:sessionId/skip', authenticate, sessionController.skipExercise);
 app.post('/api/v1/sessions/:sessionId/complete', authenticate, sessionController.completeSession);
+app.post('/api/v1/sessions/:sessionId/substitute', authenticate, sessionController.substituteExercise);
 
 // Internal routes (No auth for now, or use API key in production)
 app.get('/api/v1/internal/workout-volume/:userId', sessionController.getInternalVolume);

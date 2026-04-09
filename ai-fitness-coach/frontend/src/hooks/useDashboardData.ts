@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import apiClient from '../api/apiClient';
 
 export interface TodayPlan {
@@ -16,65 +16,80 @@ export const useTodayPlan = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    const fetchPlan = async () => {
-      try {
-        const response = await apiClient.get('/api/v1/coach/today');
-        setPlan(response.data);
-      } catch (err: any) {
-        setError(err.message);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchPlan();
+  const fetchPlan = useCallback(async () => {
+    setLoading(true);
+    try {
+      const response = await apiClient.get('/api/v1/coach/today');
+      setPlan(response.data);
+    } catch (err: any) {
+      setError(err.message);
+      // Provide a sensible fallback so UI doesn't break
+      setPlan({ workoutType: 'rest', nutritionTargets: { calories: 2000, protein: 150 } });
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
-  return { plan, loading, error };
+  useEffect(() => {
+    fetchPlan();
+  }, [fetchPlan]);
+
+  return { plan, loading, error, refetch: fetchPlan };
 };
 
 export const useStreak = () => {
-  const [streak, setStreak] = useState<{ current: number; hasFreeze: boolean; isFreezeActive: boolean } | null>(null);
+  const [streak, setStreak] = useState<{ current: number; longest: number; hasFreeze: boolean; isFreezeActive: boolean } | null>(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    const fetchStreak = async () => {
-      try {
-        const response = await apiClient.get('/api/v1/auth/streak');
-        setStreak(response.data);
-      } catch (err: any) {
-        console.error('Failed to fetch streak', err);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchStreak();
+  const fetchStreak = useCallback(async () => {
+    try {
+      const response = await apiClient.get('/api/v1/auth/streak');
+      const data = response.data;
+      setStreak({
+        current: data.current ?? data.streak?.current ?? 0,
+        longest: data.longest ?? data.streak?.longest ?? 0,
+        hasFreeze: data.freezeAvailable ?? !(data.streak?.freezeUsed),
+        isFreezeActive: data.streak?.freezeUsed ?? false,
+      });
+    } catch (err: any) {
+      console.error('Failed to fetch streak', err);
+      setStreak({ current: 0, longest: 0, hasFreeze: false, isFreezeActive: false });
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
-  return { streak, loading };
+  useEffect(() => {
+    fetchStreak();
+  }, [fetchStreak]);
+
+  return { streak, loading, refetch: fetchStreak };
 };
 
 export const useNutritionProgress = () => {
   const [progress, setProgress] = useState<{ currentCalories: number; currentProtein: number } | null>(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    const fetchProgress = async () => {
-      try {
-        const today = new Date().toISOString().split('T')[0];
-        const response = await apiClient.get(`/api/v1/nutrition/summary/${today}`);
-        setProgress({
-          currentCalories: response.data.currentCalories || 0,
-          currentProtein: response.data.currentProtein || 0
-        });
-      } catch (err: any) {
-        console.error('Failed to fetch nutrition progress', err);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchProgress();
+  const fetchProgress = useCallback(async () => {
+    try {
+      const today = new Date().toISOString().split('T')[0];
+      const response = await apiClient.get(`/api/v1/nutrition/summary/${today}`);
+      const data = response.data;
+      setProgress({
+        currentCalories: data.totals?.calories ?? 0,
+        currentProtein: data.totals?.protein ?? 0,
+      });
+    } catch (err: any) {
+      console.error('Failed to fetch nutrition progress', err);
+      setProgress({ currentCalories: 0, currentProtein: 0 });
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
-  return { progress, loading };
+  useEffect(() => {
+    fetchProgress();
+  }, [fetchProgress]);
+
+  return { progress, loading, refetch: fetchProgress };
 };

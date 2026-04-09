@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, useNavigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, useNavigate, useLocation } from 'react-router-dom';
 import { useTheme } from './contexts/ThemeContext'
 import { useAuth } from './contexts/AuthContext'
 import { DailyPlanCard } from './components/premium/DailyPlanCard'
@@ -17,14 +17,37 @@ import NutritionScreen from './pages/NutritionScreen';
 import ProfileScreen from './pages/ProfileScreen';
 import LoginScreen from './pages/LoginScreen';
 import { BottomNav } from './components/shared/BottomNav';
+import { useEffect } from 'react';
+
+const COACH_TIPS = [
+  "Hydration is key for recovery. Aim for 3L of water today!",
+  "Progressive overload is the #1 driver of muscle growth. Add 2.5kg when sets feel easy.",
+  "Sleep 7-9 hours to maximize recovery and hormone production.",
+  "Protein synthesis peaks post-workout — log your meal within 90 minutes.",
+  "Consistency beats intensity. Show up even on low-energy days.",
+  "Breathe out on exertion, breathe in on the return. Control your breath.",
+  "Rest days are growth days — your muscles rebuild stronger during recovery.",
+];
 
 function HomeScreen() {
   const { theme, setTheme } = useTheme()
   const { user, logout } = useAuth()
-  const { plan, loading: planLoading } = useTodayPlan()
-  const { streak, loading: streakLoading } = useStreak()
-  const { progress, loading: nutritionLoading } = useNutritionProgress()
+  const { plan, loading: planLoading, refetch: refetchPlan } = useTodayPlan()
+  const { streak, loading: streakLoading, refetch: refetchStreak } = useStreak()
+  const { progress, loading: nutritionLoading, refetch: refetchNutrition } = useNutritionProgress()
   const navigate = useNavigate()
+  const location = useLocation()
+
+  // Refetch all dashboard data when returning from workout completion
+  useEffect(() => {
+    if ((location.state as any)?.workoutCompleted) {
+      refetchPlan();
+      refetchStreak();
+      refetchNutrition();
+      // Clear the state so it doesn't re-trigger
+      window.history.replaceState({}, '');
+    }
+  }, [location.state]);
 
   const toggleTheme = () => {
     const nextTheme = theme === 'dark' ? 'light' : 'dark'
@@ -34,8 +57,12 @@ function HomeScreen() {
 
   const isLoading = planLoading || streakLoading || nutritionLoading
 
+  // Rotate tip by day-of-year
+  const tipIndex = Math.floor(Date.now() / 86400000) % COACH_TIPS.length;
+  const todayTip = COACH_TIPS[tipIndex];
+
   return (
-    <div className="container mx-auto max-w-5xl px-4 py-8 space-y-8 animate-in fade-in duration-700">
+    <div className="container mx-auto max-w-5xl px-4 py-8 space-y-8 animate-in fade-in duration-700 pb-24">
       <header className="flex items-center justify-between">
         <div className="space-y-1">
           <h1 className="text-3xl font-black tracking-tighter sm:text-4xl">
@@ -60,7 +87,7 @@ function HomeScreen() {
 
       {isLoading ? (
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-          {[1,2,3].map(i => (
+          {[1, 2, 3].map(i => (
             <div key={i} className="h-48 rounded-2xl bg-muted animate-pulse" />
           ))}
         </div>
@@ -68,57 +95,60 @@ function HomeScreen() {
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 items-start">
           {/* Main Daily Plan */}
           <div className="lg:col-span-2 space-y-6">
-            <DailyPlanCard 
+            <DailyPlanCard
               type={plan?.workoutType || 'rest'}
               workoutName={plan?.workoutName}
               exercises={plan?.exercises}
               className="h-full"
             />
-            
+
             <div className="grid gap-6 sm:grid-cols-2">
-               <NutritionProgress 
+              <NutritionProgress
                 calories={{
                   current: progress?.currentCalories || 0,
-                  target: plan?.nutritionTargets.calories || 2000
+                  target: plan?.nutritionTargets?.calories || 2000,
                 }}
                 protein={{
                   current: progress?.currentProtein || 0,
-                  target: plan?.nutritionTargets.protein || 150
+                  target: plan?.nutritionTargets?.protein || 150,
                 }}
               />
               <div className="space-y-6">
-                 <div className="p-6 rounded-2xl border bg-card/50 backdrop-blur-sm space-y-4">
-                    <h4 className="text-sm font-bold uppercase tracking-wider text-muted-foreground flex items-center">
-                      <Settings className="h-4 w-4 mr-2" />
-                      Quick Actions
-                    </h4>
-                    <div className="grid gap-2">
-                      <Button variant="secondary" className="justify-start h-11" onClick={() => navigate('/nutrition')}>Log a Meal</Button>
-                      <Button variant="secondary" className="justify-start h-11" onClick={() => navigate('/progress')}>Update Weight</Button>
-                    </div>
-                 </div>
+                <div className="p-6 rounded-2xl border bg-card/50 backdrop-blur-sm space-y-4">
+                  <h4 className="text-sm font-bold uppercase tracking-wider text-muted-foreground flex items-center">
+                    <Settings className="h-4 w-4 mr-2" />
+                    Quick Actions
+                  </h4>
+                  <div className="grid gap-2">
+                    <Button variant="secondary" className="justify-start h-11" onClick={() => navigate('/nutrition')}>
+                      Log a Meal
+                    </Button>
+                    <Button variant="secondary" className="justify-start h-11" onClick={() => navigate('/progress')}>
+                      Update Weight
+                    </Button>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
 
           {/* Sidebar Area */}
           <div className="space-y-6">
-            <StreakDisplay 
+            <StreakDisplay
               count={streak?.current || 0}
+              longest={streak?.longest || 0}
               hasFreeze={streak?.hasFreeze || false}
               isFreezeActive={streak?.isFreezeActive || false}
+              onFreezeUsed={refetchStreak}
             />
-            
+
             <Card className="p-6 border-primary/20 bg-primary/5">
               <h4 className="font-bold mb-2">Coach's Tip</h4>
-              <p className="text-sm text-muted-foreground leading-relaxed">
-                "Hydration is key for recovery today. Aim for 3L of water given your session volume!"
-              </p>
+              <p className="text-sm text-muted-foreground leading-relaxed">"{todayTip}"</p>
             </Card>
           </div>
         </div>
       )}
-
     </div>
   )
 }

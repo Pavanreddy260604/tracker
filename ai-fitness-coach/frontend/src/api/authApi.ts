@@ -11,6 +11,6 @@ export const register = async (userData: any) => {
 };
 
 export const getProfile = async () => {
-  const response = await apiClient.get('/api/v1/auth/profile');
+  const response = await apiClient.get('/api/v1/profile');
   return response.data;
 };

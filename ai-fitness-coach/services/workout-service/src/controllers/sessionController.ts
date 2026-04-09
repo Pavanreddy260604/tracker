@@ -124,6 +124,49 @@ export const getActiveSession = async (req: AuthenticatedRequest, res: Response)
     res.status(500).json({ message: 'Error fetching active session', error: error.message });
   }
 };
+export const substituteExercise = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+  try {
+    const { sessionId } = req.params as { sessionId: string };
+    const { exerciseId, substituteId } = req.body;
+
+    if (!exerciseId || !substituteId) {
+      res.status(400).json({ message: 'Missing required parameters: exerciseId, substituteId' });
+      return;
+    }
+
+    const { WorkoutSession } = await import('../models/workout_session');
+    const session = await WorkoutSession.findById(sessionId);
+    if (!session || session.status !== 'active') {
+      res.status(404).json({ message: 'Active session not found' });
+      return;
+    }
+
+    const exercise = session.exercises.find((e: any) => e.exerciseId === exerciseId);
+    if (!exercise) {
+      res.status(404).json({ message: 'Exercise not found in session' });
+      return;
+    }
+
+    (exercise as any).exerciseId = substituteId;
+    await session.save();
+
+    // Record user preference for this substitution
+    const userId = (req.user as any)?.userId;
+    if (userId) {
+      const { SubstitutionPreference } = await import('../models/substitution_preference');
+      await SubstitutionPreference.findOneAndUpdate(
+        { userId, originalExerciseId: exerciseId, preferredSubstituteId: substituteId },
+        { $inc: { count: 1 } },
+        { upsert: true }
+      );
+    }
+
+    res.json({ message: 'Exercise substituted successfully', session });
+  } catch (error: any) {
+    res.status(500).json({ message: 'Error substituting exercise', error: error.message });
+  }
+};
+
 export const getInternalVolume = async (req: Request, res: Response): Promise<void> => {
   try {
     const { userId } = req.params;
