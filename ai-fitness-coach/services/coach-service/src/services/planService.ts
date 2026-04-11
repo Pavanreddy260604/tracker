@@ -2,33 +2,55 @@ import axios from 'axios';
 
 const WORKOUT_SERVICE_URL = process.env.WORKOUT_SERVICE_URL || 'http://localhost:3002';
 const NUTRITION_SERVICE_URL = process.env.NUTRITION_SERVICE_URL || 'http://localhost:3003';
+const AUTH_SERVICE_URL = process.env.AUTH_SERVICE_URL || 'http://localhost:3001';
 
 export const getTodayOverview = async (userId: string, token: string) => {
   const date = new Date().toISOString().split('T')[0];
   const headers = { Authorization: `Bearer ${token}` };
+  // Sunday=0 … Saturday=6
+  const dayOfWeek = new Date().getDay();
 
-  try {
-    const [workoutRes, nutritionRes] = await Promise.allSettled([
-      axios.get(`${WORKOUT_SERVICE_URL}/api/v1/sessions/active`, { headers }),
-      axios.get(`${NUTRITION_SERVICE_URL}/api/v1/nutrition/summary/${date}`, { headers })
-    ]);
+  const [workoutPlanRes, nutritionRes, profileRes] = await Promise.allSettled([
+    axios.get(`${WORKOUT_SERVICE_URL}/api/v1/workouts/active`, { headers }),
+    axios.get(`${NUTRITION_SERVICE_URL}/api/v1/nutrition/summary/${date}`, { headers }),
+    axios.get(`${AUTH_SERVICE_URL}/api/v1/profile`, { headers }),
+  ]);
 
-    const workout = workoutRes.status === 'fulfilled' ? workoutRes.value.data : { status: 'unavailable', error: 'Workout service unreachable' };
-    const nutrition = nutritionRes.status === 'fulfilled' ? nutritionRes.value.data : { status: 'unavailable', error: 'Nutrition service unreachable' };
+  // --- Workout plan for today ---
+  let workoutType: 'workout' | 'rest' = 'rest';
+  let workoutName: string | undefined;
+  let exercises: any[] = [];
 
-    return {
-      date,
-      workout: {
-        active: !!workout && workout._id,
-        session: workout,
-        message: !workout ? 'No active workout session' : 'Workout in progress'
-      },
-      nutrition: {
-        summary: nutrition,
-        message: !nutrition ? 'No nutrition logs for today' : 'Daily nutrition tracked'
-      }
-    };
-  } catch (error: any) {
-    throw new Error(`Failed to aggregate daily plan: ${error.message}`);
+  if (workoutPlanRes.status === 'fulfilled') {
+    const plan = workoutPlanRes.value.data;
+    const todayDay = plan?.days?.find((d: any) => d.dayOfWeek === dayOfWeek);
+    if (todayDay && todayDay.exercises?.length > 0) {
+      workoutType = 'workout';
+      workoutName = todayDay.name || "Today's Workout";
+      exercises = todayDay.exercises;
+    }
   }
+
+  // --- Nutrition targets from user profile ---
+  let nutritionTargets = { calories: 2000, protein: 150 };
+  if (profileRes.status === 'fulfilled') {
+    const profile = profileRes.value.data;
+    const cal = profile?.derivedMetrics?.dailyCalorieTarget;
+    const pro = profile?.derivedMetrics?.dailyProteinTarget;
+    if (cal) nutritionTargets.calories = Math.round(cal);
+    if (pro) nutritionTargets.protein = Math.round(pro);
+  }
+
+  // --- Nutrition summary (for reference in coach context) ---
+  const nutritionSummary =
+    nutritionRes.status === 'fulfilled' ? nutritionRes.value.data : null;
+
+  return {
+    date,
+    workoutType,
+    workoutName,
+    exercises,
+    nutritionTargets,
+    nutritionSummary,
+  };
 };

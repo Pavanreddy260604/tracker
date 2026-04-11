@@ -87,7 +87,8 @@ export const MacroRings: React.FC<MacroRingsProps> = ({
         {/* Center Text */}
         <div className="absolute flex flex-col items-center justify-center text-center">
           <span className="text-3xl font-black text-foreground">{calories.current}</span>
-          <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">kcal left</span>
+          <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">kcal</span>
+          <span className="text-[9px] font-medium text-muted-foreground/60">of {calories.target}</span>
         </div>
       </div>
 

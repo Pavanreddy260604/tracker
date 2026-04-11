@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { cn } from '@/lib/utils';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -19,31 +19,32 @@ export const RestTimer: React.FC<RestTimerProps> = ({
   className,
 }) => {
   const [remaining, setRemaining] = useState(durationSeconds);
+  // Use a ref so the interval callback always has the latest onComplete without
+  // being listed as a useEffect dependency (avoids interval being reset every render).
+  const onCompleteRef = useRef(onComplete);
+  onCompleteRef.current = onComplete;
 
   useEffect(() => {
-    if (remaining <= 0) return;
-
     const interval = setInterval(() => {
       setRemaining((prev) => {
         if (prev <= 1) {
           clearInterval(interval);
           vibrate('success');
-          onComplete();
+          onCompleteRef.current();
           return 0;
         }
-        // Haptic pulse at 3, 2, 1
         if (prev <= 4) vibrate('light');
         return prev - 1;
       });
     }, 1000);
 
     return () => clearInterval(interval);
-  }, [remaining, onComplete]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // intentionally run once on mount
 
   const addTime = () => setRemaining((p) => p + 30);
   const progress = ((durationSeconds - remaining) / durationSeconds) * 100;
 
-  // SVG ring
   const size = 180;
   const stroke = 8;
   const radius = (size - stroke) / 2;
@@ -55,8 +56,8 @@ export const RestTimer: React.FC<RestTimerProps> = ({
 
   return (
     <Card className={cn(
-      "p-8 flex flex-col items-center space-y-6 animate-in fade-in zoom-in-95 duration-500",
-      "bg-white dark:bg-zinc-950 border-zinc-200 dark:border-zinc-800 shadow-2xl",
+      'p-8 flex flex-col items-center space-y-6 animate-in fade-in zoom-in-95 duration-500',
+      'bg-white dark:bg-zinc-950 border-zinc-200 dark:border-zinc-800 shadow-2xl',
       className
     )}>
       <h4 className="text-[10px] font-black uppercase tracking-[0.3em] text-muted-foreground">Rest Period</h4>
@@ -87,8 +88,8 @@ export const RestTimer: React.FC<RestTimerProps> = ({
         </svg>
         <div className="absolute flex flex-col items-center">
           <span className={cn(
-            "text-4xl font-black tabular-nums tracking-tight",
-            remaining <= 3 ? "text-primary animate-pulse scale-110" : "text-foreground"
+            'text-4xl font-black tabular-nums tracking-tight',
+            remaining <= 3 ? 'text-primary animate-pulse scale-110' : 'text-foreground'
           )}>
             {minutes}:{seconds.toString().padStart(2, '0')}
           </span>

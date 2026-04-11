@@ -50,13 +50,14 @@ const NutritionScreen: React.FC = () => {
     setLoggingFood(true);
     try {
       const dateStr = selectedDate.toISOString().split('T')[0];
+      // Backend expects: { description, servings, calories, protein, carbohydrates, fats }
       await logNutritionEntry(dateStr, {
-        description: food.name,
-        servings: 1,
-        calories: food.calories ?? food.macros?.calories ?? 0,
-        protein: food.protein ?? food.macros?.protein ?? 0,
-        carbohydrates: food.carbs ?? food.carbohydrates ?? food.macros?.carbs ?? 0,
-        fats: food.fats ?? food.macros?.fats ?? 0,
+        description: food.description || food.name || 'Unknown Food',
+        servings: food.servings ?? 1,
+        calories: Math.round(food.calories ?? food.macros?.calories ?? 0),
+        protein: Number((food.protein ?? food.macros?.protein ?? 0).toFixed(1)),
+        carbohydrates: Number((food.carbs ?? food.carbohydrates ?? food.macros?.carbs ?? 0).toFixed(1)),
+        fats: Number((food.fats ?? food.macros?.fats ?? 0).toFixed(1)),
       });
       toast.success(`Logged ${food.name}`);
       fetchNutritionData();

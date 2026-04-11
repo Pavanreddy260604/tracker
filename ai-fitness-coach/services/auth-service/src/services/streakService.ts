@@ -47,5 +47,20 @@ export const updateStreak = async (userId: string) => {
 
 export const getStreak = async (userId: string) => {
   const user = await User.findById(userId);
-  return user?.streak || null;
+  if (!user) return null;
+
+  const now = new Date();
+  const currentMonth = now.getMonth();
+  // Freeze is available if never used, or was used in a previous month
+  const freezeAvailable =
+    !user.streak.freezeUsed || user.streak.freezeMonth !== currentMonth;
+
+  return {
+    current: user.streak.current,
+    longest: user.streak.longest,
+    lastActivityDate: user.streak.lastActivityDate,
+    freezeAvailable,
+    freezeUsed: user.streak.freezeUsed,
+    freezeMonth: user.streak.freezeMonth,
+  };
 };

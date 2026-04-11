@@ -8,11 +8,19 @@ import { searchFood } from '@/api/nutritionApi';
 interface FoodItem {
   _id: string;
   name: string;
-  calories: number;
-  protein: number;
-  carbs: number;
-  fats: number;
-  servingSize: string;
+  // Backend stores macros in a nested object
+  macros?: {
+    calories: number;
+    protein: number;
+    carbohydrates: number;
+    fats: number;
+  };
+  // Flat fields (for legacy / seeded data compatibility)
+  calories?: number;
+  protein?: number;
+  carbs?: number;
+  fats?: number;
+  servingSize?: { amount?: number; unit?: string } | string;
 }
 
 interface PremiumFoodSearchProps {
@@ -97,14 +105,21 @@ export const PremiumFoodSearch: React.FC<PremiumFoodSearchProps> = ({ onSelect, 
                     </div>
                     <div>
                       <p className="font-bold text-foreground group-hover:text-primary transition-colors">{food.name}</p>
-                      <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-tight">{food.servingSize}</p>
+                      <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-tight">
+                        {typeof food.servingSize === 'object'
+                          ? `${food.servingSize?.amount ?? ''}${food.servingSize?.unit ?? ''}`
+                          : food.servingSize}
+                      </p>
                     </div>
                   </div>
                   <div className="text-right">
-                    <p className="text-sm font-black text-foreground">{food.calories} <span className="text-[10px] font-normal text-muted-foreground">kcal</span></p>
+                    <p className="text-sm font-black text-foreground">
+                      {food.macros?.calories ?? food.calories ?? 0}{' '}
+                      <span className="text-[10px] font-normal text-muted-foreground">kcal</span>
+                    </p>
                     <div className="flex items-center space-x-2 mt-0.5">
-                      <span className="text-[10px] text-blue-500 font-bold">P: {food.protein}g</span>
-                      <span className="text-[10px] text-amber-500 font-bold">C: {food.carbs}g</span>
+                      <span className="text-[10px] text-blue-500 font-bold">P: {food.macros?.protein ?? food.protein ?? 0}g</span>
+                      <span className="text-[10px] text-amber-500 font-bold">C: {food.macros?.carbohydrates ?? food.carbs ?? 0}g</span>
                     </div>
                   </div>
                 </button>

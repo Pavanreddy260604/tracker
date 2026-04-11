@@ -46,10 +46,11 @@ export const useStreak = () => {
       const response = await apiClient.get('/api/v1/auth/streak');
       const data = response.data;
       setStreak({
-        current: data.current ?? data.streak?.current ?? 0,
-        longest: data.longest ?? data.streak?.longest ?? 0,
-        hasFreeze: data.freezeAvailable ?? !(data.streak?.freezeUsed),
-        isFreezeActive: data.streak?.freezeUsed ?? false,
+        current: data.current ?? 0,
+        longest: data.longest ?? 0,
+        // freezeAvailable is now computed server-side
+        hasFreeze: data.freezeAvailable ?? false,
+        isFreezeActive: !!(data.freezeUsed),
       });
     } catch (err: any) {
       console.error('Failed to fetch streak', err);

@@ -1,6 +1,6 @@
 import apiClient from './apiClient';
 
-export const getMetricHistory = async (type: 'weight' | 'bodyfat' | 'volume', limit: number = 30) => {
+export const getMetricHistory = async (type: 'weight' | 'bodyfat', limit: number = 30) => {
   const response = await apiClient.get('/api/v1/monitoring/history', {
     params: { type, limit }
   });
